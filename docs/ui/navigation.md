@@ -15,6 +15,7 @@ and the menus and shortcuts that reach them.
 | **Builds** | One per project | ⌘5, a tile, the menu bar panel, a link | 1180 × 720 pt | [Builds](builds.md) |
 | **Chat** | One per project | ⌘6, a tile, the menu bar panel, the chat panel | 1180 × 780 pt | [Chat](chat.md) |
 | **Virtual Machines** | One window | ⌘7 (Window menu) | 1100 × 760 pt | [Virtual Machines](virtual-machines.md) |
+| **Project Settings** | One per project | ⇧⌘, (File menu), the Projects window's More menu | 600 × 720 pt | [Project Settings](project-settings.md) |
 | **Settings** | One window | ⌘, | 520 × 440 pt | [Projects › Settings ▸ Projects](projects.md#settings--projects), [Chat › Settings](chat.md) |
 | **Menu bar panel** | Menu bar item | The `wrench.and.screwdriver` icon | 360 × 460 pt | [Menu bar](menu-bar.md) |
 
@@ -33,7 +34,7 @@ every window as the `availableTools` environment value, and the menus read it di
 
 | Feature | Tools and windows | Available |
 | --- | --- | --- |
-| Projects | The Projects window, Settings ▸ Projects, the menu bar panel | Yes |
+| Projects | The Projects window, Project Settings, Settings ▸ Projects, the menu bar panel | Yes |
 | Dashboard, Tickets, Service Map, Contracts, Builds, Chat | Their tool windows, Settings ▸ Chat | Not yet |
 | Virtual Machines | Its window | Not yet |
 
@@ -77,7 +78,7 @@ tiles, the menu bar panel and the chat's **Open** buttons all use routes.
 | `.projectWindow(id)` | The frontmost window already showing the project, or the Projects window with it selected when none does. Used by the menu bar panel. |
 | `.tool(tool, project:, focus:)` | The tool's window for the project. The focus is selected in it. |
 | `.machine(id)` | The Virtual Machines window, with the machine selected. |
-| `.projectSettings(id)` | The project's settings. Until Project Settings has its window, it opens the Projects window with the project selected. |
+| `.projectSettings(id)` | The project's Project Settings window: the open one, brought forward and un-minimized, or a new one. |
 
 **Focus formats**, the item a tool selects when a route opens it:
 
@@ -92,7 +93,7 @@ tiles, the menu bar panel and the chat's **Open** buttons all use routes.
 ## Window reuse
 
 A route never opens a second window for what a window already shows (the user's choice).
-`WindowDirectory` keeps every window with what it shows: its role (Projects, Virtual Machines or a tool)
+`WindowDirectory` keeps every window with what it shows: its role (Projects, Virtual Machines, Project Settings or a tool)
 and its project. Each window reports itself when it appears and whenever its project changes.
 
 - **A tool route** finds the frontmost window of that tool and project. It un-minimizes the window, brings it
@@ -126,6 +127,7 @@ replace the items SwiftUI adds for each kind of window, which would open a tool 
 | **New Machine…** | ⇧⌘N | Virtual Machines | Not wired yet. |
 | **New Item** | ⇧⌘N | Any other window | Disabled: the window creates nothing. |
 | **Add Existing Folder…** | ⌘O | The Projects window | Opens a folder panel ([Add Existing Folder](projects.md#add-existing-folder)). Disabled in other windows. |
+| **Project Settings…** | ⇧⌘, | A window with a project | Opens the key window's project's [Project Settings](project-settings.md), or brings it forward. Disabled without a project. |
 
 **Window menu**, above the list of open windows:
 

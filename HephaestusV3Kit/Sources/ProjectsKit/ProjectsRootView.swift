@@ -15,6 +15,7 @@ public struct ProjectsRootView: View {
     var onAddFolder: () -> Void
 
     @State private var model: ProjectsModel
+    @Environment(\.openRoute) private var openRoute
     /// The app's project data; nil in previews, whose actions only call the closures.
     private let session: ProjectSession?
     @State private var newProject: NewProjectModel?
@@ -301,6 +302,12 @@ extension ProjectsRootView {
                 }
             }
             .accessibilityIdentifier("projects.more.showInFinder")
+            Button(String(localized: "Project Settings…", bundle: #bundle)) {
+                if let project = model.selectedProject {
+                    openRoute(.projectSettings(project.id))
+                }
+            }
+            .accessibilityIdentifier("projects.more.settings")
             Divider()
             Button(String(localized: "Remove Project…", bundle: #bundle), role: .destructive) {
                 removal = model.selectedProject

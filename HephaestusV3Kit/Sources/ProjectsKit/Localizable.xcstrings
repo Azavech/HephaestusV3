@@ -22,6 +22,9 @@
         }
       }
     },
+    "%@ is not an SF Symbol of this Mac." : {
+
+    },
     "%@, %@: %@, %@, %@" : {
       "comment" : "An activity event, for VoiceOver: project, tool: what happened, its subject, its date",
       "localizations" : {
@@ -57,7 +60,13 @@
     "A file can't be used: %@" : {
       "comment" : "A storage error; the detail is technical, in English"
     },
+    "API Access" : {
+
+    },
     "Activity" : {
+
+    },
+    "Add Environment" : {
 
     },
     "Add Existing Folder…" : {
@@ -67,6 +76,9 @@
 
     },
     "Add Project" : {
+
+    },
+    "Allow invalid certificates" : {
 
     },
     "An environment named “%@” already exists." : {
@@ -81,6 +93,9 @@
     "Bring its window forward" : {
 
     },
+    "Browse…" : {
+
+    },
     "Cancel" : {
 
     },
@@ -91,6 +106,9 @@
 
     },
     "Can’t Remove “%@”" : {
+
+    },
+    "Checking the cluster" : {
 
     },
     "Choose a folder inside “%@”." : {
@@ -129,7 +147,16 @@
     "Data Folder" : {
 
     },
+    "Deployment" : {
+
+    },
+    "Docs Folder" : {
+
+    },
     "Drafts" : {
+
+    },
+    "Enable graph" : {
 
     },
     "Enter a GitHub page, for example https://github.com/owner/name." : {
@@ -162,6 +189,9 @@
     "Enter an identifier." : {
 
     },
+    "Environment" : {
+
+    },
     "Environments" : {
 
     },
@@ -189,6 +219,18 @@
     "Gave nothing; the tools run with the app’s own environment." : {
 
     },
+    "General" : {
+
+    },
+    "GitHub" : {
+
+    },
+    "GitHub Page" : {
+
+    },
+    "Icon" : {
+
+    },
     "Identifier" : {
 
     },
@@ -198,7 +240,13 @@
     "Inherited from %@" : {
       "comment" : "The project whose environments a sub project uses"
     },
+    "Inherited from %@: only its address, deployment, Jaeger and certificates change here." : {
+
+    },
     "Its %lld sub projects are removed with it." : {
+
+    },
+    "Its GitHub page and, for a service, its environments and graph come from “%@”." : {
 
     },
     "Its identifier %@ is already used by “%@”." : {
@@ -216,6 +264,12 @@
       "comment" : "Why a project of the list didn't load; the detail is technical, in English"
     },
     "Its sub project is removed with it." : {
+
+    },
+    "Jaeger" : {
+
+    },
+    "Kubeconfig File" : {
 
     },
     "Last build" : {
@@ -240,6 +294,12 @@
       "comment" : "The selected project's actions"
     },
     "Name" : {
+
+    },
+    "Namespace" : {
+
+    },
+    "New Environment" : {
 
     },
     "New Folder" : {
@@ -275,6 +335,9 @@
     "No data folder" : {
       "comment" : "Settings ▸ Projects without a data folder"
     },
+    "No environment yet. Add one with +." : {
+
+    },
     "No project’s name or identifier contains “%@”." : {
 
     },
@@ -305,16 +368,31 @@
     "Open tickets, sub projects included" : {
 
     },
+    "Parent" : {
+
+    },
     "Parent Project" : {
 
     },
     "Pick a project to see where it stands and open its tools." : {
 
     },
+    "Port" : {
+
+    },
     "Project Actions" : {
 
     },
     "Project Folder" : {
+
+    },
+    "Project Not Found" : {
+
+    },
+    "Project Settings" : {
+
+    },
+    "Project Settings…" : {
 
     },
     "Projects" : {
@@ -326,10 +404,16 @@
     "Remove" : {
 
     },
+    "Remove Environment" : {
+
+    },
     "Remove Project…" : {
 
     },
     "Remove “%@” from Hephaestus V3?" : {
+
+    },
+    "Service" : {
 
     },
     "Show All Projects" : {
@@ -342,6 +426,9 @@
 
     },
     "Sub projects included" : {
+
+    },
+    "Suggestions" : {
 
     },
     "Switch Project" : {
@@ -361,6 +448,9 @@
     },
     "The folder is missing." : {
       "comment" : "Why a project of the list didn't load"
+    },
+    "The identifier is set at creation and cannot be changed." : {
+
     },
     "The list names it with a path that can't be used." : {
       "comment" : "Why a project of the list didn't load"
@@ -386,6 +476,9 @@
     "Tickets, builds and services in widgets you arrange" : {
 
     },
+    "Tint" : {
+
+    },
     "Took too long; the tools run with the app’s own environment." : {
 
     },
@@ -395,6 +488,9 @@
     "Type" : {
 
     },
+    "URL" : {
+
+    },
     "Unavailable" : {
       "comment" : "A sidebar section of projects that didn't load"
     },
@@ -402,6 +498,9 @@
 
     },
     "Use one line." : {
+
+    },
+    "Use parent settings" : {
 
     },
     "Version %@, ^[%lld operation](inflect: true)" : {
@@ -437,6 +536,15 @@
 
     },
     "^[%lld variable](inflect: true) read" : {
+
+    },
+    "kubectl can’t reach the cluster" : {
+
+    },
+    "kubectl reaches the cluster" : {
+
+    },
+    "kubectl wasn’t found in your login shell’s PATH." : {
 
     },
     "project.yml can't be read" : {

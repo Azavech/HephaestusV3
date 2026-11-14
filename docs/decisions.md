@@ -35,3 +35,9 @@ chosen at design time" beside it. Newest phase last.
 | What do tools that haven't come over show? | Nothing: their windows, tiles, menu items, shortcuts and Settings tab are hidden; the previews keep every tool. | [Navigation › Available tools](ui/navigation.md#available-tools) |
 | Which shortcut adds an existing folder? | ⌘O, File ▸ Add Existing Folder…, as V2's Open Project…; nothing else used it. | [Navigation › Menus and shortcuts](ui/navigation.md#menus-and-shortcuts) |
 | Where does a selection go after a removal? | The nearest ancestor still listed, else the first project, as V2's windows did. | [Projects › Remove Project](ui/projects.md#remove-project) |
+| Is Project Settings a section or a window? | A window per project (⇧⌘,), as each tool has its windows; V2 showed it as a section of its main window. | [Project Settings](ui/project-settings.md) |
+| How is the icon chosen? | A text field for the SF Symbol's name, checked against this Mac's symbols, with the symbol beside it; V2's searchable symbol popover can come later. | same |
+| What does a namespace or deployment field offer? | A text field with a menu of the cluster's names, as macOS SwiftUI has no combo box; any name can be typed. | same |
+| How is the connection to a cluster checked? | By listing its namespaces with the kubeconfig file, which also gives the suggestions. | same |
+| What may an inherited environment's Name field do? | Nothing: it shows the parent's name, disabled, as V2. | same |
+| May a copy of a stored environment skip the write rules? | No: each stored environment keeps at most one equal environment as it is; a copy is checked, so two environments can't share a name. V2 let an exact copy through. | [Data › Changes](data.md#changes) |

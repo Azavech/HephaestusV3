@@ -100,6 +100,17 @@ extension ProjectTint {
         case .warning: .warning
         }
     }
+
+    /// The tint's name in Project Settings: the color AZDesign draws.
+    public var title: String {
+        switch self {
+        case .accent: String(localized: "Purple", bundle: #bundle, comment: "A project's tint")
+        case .accentSecondary: String(localized: "Pink", bundle: #bundle, comment: "A project's tint")
+        case .info: String(localized: "Cyan", bundle: #bundle, comment: "A project's tint")
+        case .success: String(localized: "Green", bundle: #bundle, comment: "A project's tint")
+        case .warning: String(localized: "Orange", bundle: #bundle, comment: "A project's tint")
+        }
+    }
 }
 
 extension DeploymentEnvironment.Health {

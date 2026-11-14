@@ -40,6 +40,12 @@
     "Open this window from the Projects window." : {
 
     },
+    "Project Settings" : {
+
+    },
+    "Project Settings…" : {
+      "comment" : "File menu item, ⇧⌘,"
+    },
     "Projects" : {
 
     },

@@ -56,7 +56,7 @@ fills the rest and scrolls vertically on the `canvas` color. It has 28 pt of pad
 | Sidebar button | The split view's own button | System | None | Shows or hides the sidebar. Folded at first in the iPad layout. | Mac, iPad |
 | **Projects** | Window title and subtitle | None | None | The subtitle is the selected project's name. | Mac, iPad, iPhone |
 | **Add Project** | Pull-down menu, help "Add Project" | `plus` | ⇧⌘N for **New Project…** (File ▸ New Project…), ⌘O for **Add Existing Folder…** (File ▸ Add Existing Folder…) | **New Project…** and **New Sub Project…** open the [New Project](#new-project) sheet; New Sub Project… is disabled when no project is selected. **Add Existing Folder…**: see [Add Existing Folder](#add-existing-folder). | Mac, iPad, iPhone |
-| **More** | Pull-down menu, help "Project Actions" | `ellipsis.circle` | None | The selected project's actions: **Show in Finder** (reveals its folder), then **Remove Project…** ([Remove Project](#remove-project)). Disabled when no project is selected. | Mac, iPad, iPhone |
+| **More** | Pull-down menu, help "Project Actions" | `ellipsis.circle` | None | The selected project's actions: **Show in Finder** (reveals its folder), **Project Settings…** ([Project Settings](project-settings.md)), then **Remove Project…** ([Remove Project](#remove-project)). Disabled when no project is selected. | Mac, iPad, iPhone |
 | **Filter Projects** | Search field at the top of the sidebar; in the toolbar of the projects' page on iPhone | System | None | Filters the projects (see below). | Mac, iPad (sidebar), iPhone |
 
 The Projects window has no chat panel and no chat panel button. While it is the key window, **View › Show
@@ -441,7 +441,7 @@ grows (the user's choice):
 | --- | --- | --- |
 | **Add Project** menu | `projects.add` | Label and help "Add Project". |
 | Its items | `projects.add.newProject`, `projects.add.newSubProject`, `projects.add.existingFolder` | |
-| **More** menu | `projects.more` | Label "More", help "Project Actions". Items `projects.more.showInFinder`, `projects.more.remove`. |
+| **More** menu | `projects.more` | Label "More", help "Project Actions". Items `projects.more.showInFinder`, `projects.more.settings`, `projects.more.remove`. |
 | Loading, can't open, no projects | `projects.loading`, `projects.failed`, `projects.empty` | The empty state's buttons: `projects.empty.newProject`, `projects.empty.addFolder`. |
 | Unavailable entry | `projects.unavailable.<folder name>` | One element: the name and the reason. |
 | File issue card | `projects.fileIssue` | One element. |
@@ -499,5 +499,4 @@ tool symbols.
 
 ## Open issues
 
-- A project's settings can't be changed in the app yet: Project Settings comes with the rest of the Projects
-  feature.
+None.

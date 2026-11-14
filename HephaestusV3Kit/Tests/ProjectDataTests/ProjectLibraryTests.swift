@@ -341,6 +341,10 @@ struct ProjectChangesTests {
             await #expect(throws: ProjectError.rule(.duplicateEnvironment("odd"))) {
                 try await library.update("ORD", ProjectChange(environments: stored + [EnvironmentEntry(name: "odd ")]))
             }
+            // A copy of a stored environment is checked: the hand-edited URL it carries is refused.
+            await #expect(throws: ProjectError.rule(.url(field: "environments[1].url"))) {
+                try await library.update("ORD", ProjectChange(environments: stored + stored))
+            }
             await #expect(throws: ProjectError.rule(.port(field: "environments[1].port"))) {
                 try await library.update("ORD", ProjectChange(environments: stored + [EnvironmentEntry(name: "y", port: 70000)]))
             }

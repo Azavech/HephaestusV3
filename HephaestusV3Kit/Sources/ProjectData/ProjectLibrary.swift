@@ -499,8 +499,11 @@ public actor ProjectLibrary {
                         inheritedNames: Set<String>) throws(ProjectRuleError) -> [EnvironmentEntry] {
         var list: [EnvironmentEntry] = []
         var kept: [Bool] = []
+        // Each stored environment keeps at most one equal environment as it is: a copy is checked.
+        var unmatched = stored
         for (index, environment) in environments.enumerated() {
-            if stored.contains(environment) {
+            if let match = unmatched.firstIndex(of: environment) {
+                unmatched.remove(at: match)
                 list.append(environment)
                 kept.append(true)
                 continue

@@ -15,6 +15,7 @@ import ToolsFoundation
 enum SceneID {
     static let projects = "projects"
     static let machines = "machines"
+    static let projectSettings = "projectSettings"
 }
 
 /// Every window of the app.
@@ -65,6 +66,18 @@ public struct ToolsScenes: Scene {
         toolScene(.contracts, size: CGSize(width: 1120, height: 740))
         toolScene(.builds, size: CGSize(width: 1180, height: 720))
         toolScene(.chat, size: CGSize(width: 1180, height: 780))
+
+        // One Project Settings window per project; a route brings the open one forward.
+        WindowGroup(Text("Project Settings", bundle: #bundle), id: SceneID.projectSettings, for: Project.ID.self) { $projectID in
+            routeHost {
+                if let projectID {
+                    ProjectSettingsWindow(session: appData.session, projectID: projectID)
+                        .registersWindow(.projectSettings, projectID: projectID)
+                }
+            }
+        }
+        .defaultSize(width: 600, height: 720)
+        .defaultLaunchBehavior(.suppressed)
 
         // Hidden until the Virtual Machines feature comes over from V2 (`AppData.machinesAvailable`).
         Window(Text("Virtual Machines", bundle: #bundle), id: SceneID.machines) {
@@ -180,8 +193,10 @@ private struct RouteHost<Content: View>: View {
                         WindowDirectory.activate()
                     }
                 case .projectSettings(let id):
-                    // Project Settings opens in the Projects window until its own window comes.
-                    showProjects(id)
+                    if !windows.bringForward(role: .projectSettings, projectID: id) {
+                        openWindow(id: SceneID.projectSettings, value: id)
+                        WindowDirectory.activate()
+                    }
                 case .machine(let id):
                     // A new window opens on the machine; an open one is asked to select it.
                     $machineFocus.wrappedValue = id
@@ -371,7 +386,25 @@ private struct NewItemCommands: Commands {
             NewWindowMenuItem()
             NewItemMenuItem()
             AddFolderMenuItem()
+            Divider()
+            ProjectSettingsMenuItem()
         }
+    }
+}
+
+/// Project Settings…, ⇧⌘,: the settings of the key window's project, in their window.
+private struct ProjectSettingsMenuItem: View {
+    @FocusedValue(\.activeProject) private var project
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button(String(localized: "Project Settings…", bundle: #bundle, comment: "File menu item, ⇧⌘,")) {
+            if let project, !WindowDirectory.shared.bringForward(role: .projectSettings, projectID: project.id) {
+                openWindow(id: SceneID.projectSettings, value: project.id)
+            }
+        }
+        .keyboardShortcut(",", modifiers: [.command, .shift])
+        .disabled(project == nil)
     }
 }
 

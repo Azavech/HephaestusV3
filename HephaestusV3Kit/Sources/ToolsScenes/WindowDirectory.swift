@@ -15,6 +15,8 @@ final class WindowDirectory {
         case projects
         case machines
         case tool(ToolKind)
+        /// A project's Project Settings window.
+        case projectSettings
     }
 
     private struct Entry {

@@ -31,6 +31,7 @@ strings and tests. The shared, generic components come from AZDesign, whose refe
 | Page | Covers |
 | --- | --- |
 | [Projects](projects.md) | The project selector: the project tree, a project's overview, sub projects |
+| [Project Settings](project-settings.md) | One project's settings: name, type, tint, icon, folder, GitHub page, a service's graph and environments |
 | [Menu bar](menu-bar.md) | The menu bar item and its Open Project panel |
 | [Dashboard](dashboard.md) | Widgets on a 24-column grid, edit mode, widget settings, the one-per-row list |
 | [Tickets](tickets.md) | Filters, the ticket list, a ticket's page, its actions, New Ticket |

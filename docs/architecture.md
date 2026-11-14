@@ -710,6 +710,7 @@ mapping, Mac widths) and `WindowDirectory.swift` (window reuse). Its only public
 | --- | --- | --- | --- | --- | --- |
 | Projects | `Window(Text("Projects", bundle: #bundle), id:)` | `projects` | `ProjectsRootView(directory: appData.directory, session: appData.session, selection: $selectedProjectID)`, with `focusedSceneValue(\.activeProject, …)` and `registersWindow(.projects, projectID: selectedProjectID)` | 1040 × 680 | Opens |
 | Dashboard, Tickets, Service Map, Contracts, Builds, Chat | `WindowGroup(Text(tool.title), id: tool.windowID, for: ToolWindowValue.self)` | the tool's `windowID` | `ToolWindowRoot(tool:value:)` | 1240 × 820, 1180 × 760, 1320 × 840, 1120 × 740, 1180 × 720, 1180 × 780 | `.defaultLaunchBehavior(.suppressed)` |
+| Project Settings | `WindowGroup(Text("Project Settings", bundle: #bundle), id:, for: Project.ID.self)` | `projectSettings` | `ProjectSettingsWindow(session: appData.session, projectID:)`, with `registersWindow(.projectSettings, projectID:)` | 600 × 720 | Suppressed |
 | Virtual Machines | `Window(Text("Virtual Machines", bundle: #bundle), id:)` | `machines` | `MachinesRootView(focus: machineFocus)`, with `.environment(\.focusRequest, machineFocusRequest)` and `registersWindow(.machines, projectID: nil)` | 1100 × 760 | Suppressed |
 | Menu bar | `MenuBarExtra(String(localized: "Open Project"), systemImage: "wrench.and.screwdriver")`, `.menuBarExtraStyle(.window)` | — | `ProjectLauncher(projects: appData.directory.projects)` | 360 × 460 (the panel's own) | Always present |
 | Settings | `Settings` | — | `TabView`: `ProjectsSettingsPane(session: appData.session)` labeled Projects (`folder`), then `ChatSettingsView()` labeled with Chat's title and symbol while Chat is available; `.frame(width: 520, height: 440)`, `.tint(.accent)` | 520 × 440 | — |
@@ -725,8 +726,10 @@ today) and `AppData.machinesAvailable` (false) say which tools and windows have 
 `RouteHost` gives every view `\.availableTools` and `\.projectDirectory`. The tool windows read their project
 from the directory (`directory.project(value.projectID)`, `directory.tree.path(of:)`, the switcher's
 `directory.projects`). The File menu gains **Add Existing Folder…** (⌘O, `AddFolderMenuItem`), which calls
-the `addFolder` focused value the Projects window publishes. `.projectSettings(id)` opens the Projects
-window on the project until Project Settings has its window.
+the `addFolder` focused value the Projects window publishes. `.projectSettings(id)` brings forward the
+window registered with the role `.projectSettings` for the project, or opens the scene `projectSettings` with
+the project's identifier. The File menu's **Project Settings…** (⇧⌘,, `ProjectSettingsMenuItem`) does the same
+for the `activeProject` focused value.
 
 The Projects window carries `.commands { NewItemCommands(); ToolCommands(); ChatPanelCommands() }`, which
 apply to the whole app. macOS restores the tool windows open at quit, with their `ToolWindowValue`.
@@ -962,6 +965,8 @@ The project selector. Spec: [Projects](ui/projects.md), [Menu bar](ui/menu-bar.m
 | `NewProjectModel.swift` | `NewProjectModel` |
 | `NewProjectSheet.swift` | `NewProjectSheet` |
 | `ProjectsSettingsView.swift` | `ProjectsSettingsPane` (public), `ProjectsSettingsView` |
+| `ProjectSettingsModel.swift` | `ProjectSettingsBackend` (`ProjectSession` conforms), `ProjectSettingsModel` |
+| `ProjectSettingsView.swift` | `ProjectSettingsWindow` (public), the form, `PreviewSettingsBackend`, `previewSettings(_:)` |
 | `ProjectsModel.swift` | `ProjectsModel`, `ProjectEnvironments`, `ActivityEntry`, `OverviewGrid` |
 | `ProjectPickerModel.swift` | `ProjectPickerModel` |
 | `ActivityItem.swift` | `ActivityItem`, its tone colors and samples |
@@ -976,8 +981,31 @@ The project selector. Spec: [Projects](ui/projects.md), [Menu bar](ui/menu-bar.m
   app's window, whose New Project, Add Existing Folder and Remove Project go through the session.
 - `ProjectsRootView(projects: [Project], selection: Binding<Project.ID?>, onNewProject: () -> Void = {}, onNewSubProject: (Project.ID) -> Void = { _ in }, onAddFolder: () -> Void = {})`:
   a window on given projects, whose actions only call the closures.
-- `ProjectsSettingsPane(session:)`; `AddFolderCommand` and the `addFolder` focused value; the mapping of
-  `ProjectMapping.swift`.
+- `ProjectsSettingsPane(session:)`; `ProjectSettingsWindow(session:projectID:)`; `AddFolderCommand` and the
+  `addFolder` focused value; the mapping of `ProjectMapping.swift`.
+
+**`ProjectSettingsModel`** (`@Observable`) takes a `ProjectSettingsBackend` (`snapshot`, `kubectl`,
+`update(_:_:)`): `ProjectSession` in the app, a real session on a temporary folder in the tests, a fixed
+snapshot whose kubectl answers from fixed lists in the previews. It reads the project from the snapshot at each
+access and keeps the text of each field (`name`, `icon`, `docsPath`, `githubPage`, and the environment's
+`environmentName`, `kubeconfig`, `namespace`, `deployment`, `jaeger`, `url`, `port`), which `reload(except:)`
+refills from the stored values, except the field being edited. Every change is `async`: `applyName()`,
+`applyKind(_:)`, `applyTint(_:)` (the tint's name), `applyIcon()` (checked with `NSImage(systemSymbolName:)`),
+`applyDocsPath()`, `applyGitHubPage()`, `applyUseParentSettings(_:)`, `applyGraph(_:)`; `select(_:)`,
+`addEnvironment()`, `removeEnvironment()`, `applyEnvironmentField(_:)`, `applyPendingEnvironmentFields()` (every
+changed field in one `ProjectChange`), `applyCertificates(_:)`; `checkCluster()`. Each calls the backend with a
+`ProjectChange` of the values it sets and, on failure, keeps `ProjectMessages.message(_:)` for the field
+(`message(_:)`). An own environment changes in `environments` (the whole list, the entry edited in place, its
+other keys kept); an inherited one in `environmentOverrides`, an empty field giving `nil`, the certificates
+stored only while they differ from the parent's, and a change that sets nothing removed. `connection`
+(`none`, `checking`, `connected`, `failed(message)`), `namespaces` and `deployments` come from
+`kubectl.namespaces(kubeconfig:)` then `deployments(namespace:kubeconfig:)`, run by the view's
+`.task(id:)` on the selected environment, its kubeconfig file and its namespace.
+
+**`ProjectSettingsWindow`** shows the form, or "Project Not Found" when the project left the list. The form
+applies a text field on Return (`onSubmit`) and when the focus leaves it (`onChange(of: focus)`), calls
+`reload(except: focus)` when the project changes, and offers `fileImporter` for the kubeconfig file
+(`fileDialogDefaultDirectory` `~/.kube`, hidden files shown).
 - `ProjectSwitcher(projects: [Project], selection: Binding<Project.ID>, tool: ToolKind)`.
 - `ProjectLauncher(projects: [Project])`.
 
@@ -1649,7 +1677,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 352 tests). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 355 tests). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
@@ -1659,7 +1687,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ExternalToolsTests | Child processes, The login shell's environment, Finding the tools, git ssh and kubectl | Output, status, input, folder, environment, signals, missing executables; the timeout ending a whole process group; `terminateAll`; `env -0` parsing and every capture outcome; `PATH` lookup and the git stub; the commands, arguments, parsing and failures of git, ssh and kubectl. Uses `FakeRunner`. |
 | ProjectDataTests | Project file, Registry and current environments, Data folder, Import from HephaestusV2, Rules and GitHub, Loading, Outside changes, Creating opening and removing, Inherited settings, Current environment, GitHub page, Session | V2's complete project file written back byte for byte; every V2 example round-tripping with all its keys; defaults; environments, base URLs and overrides; V3's additions; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; the import's list, skips, choices, single run and missing V2; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints; loading depth first with every issue; data folder files set aside; outside changes (changed, invalid, renamed identifier, deleted and returning files, the registry, own writes, relevance); create, open and remove with their refusals and sub projects; update with its write rules; inheritance on, off, nested and across types; the current environment chosen, renamed, removed and forgotten; GitHub pages from origins, aliases, typed pages and parents, `.git/config`; the session's start, lock, changes and a real outside change. Fixtures: V2's examples. Uses `FakeRunner`. |
 | ToolsFoundationTests | Routes, Strings, Inherited settings | Each `FocusRequest` is new; `ChatReference.route` and ids per environment; shared titles from the catalog; unique tool shortcuts; inherited environments. |
-| ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker, Projects from the app's data, New Project, Projects window on the app's data | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`.; the mapping of kinds, tints and environments; New Project's following fields, rules, type and parent from the folder, sub project folders and default location; the loading, empty and unavailable states; the selection after a removal and at load. |
+| ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker, Projects from the app's data, New Project, Projects window on the app's data, Project Settings | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`.; the mapping of kinds, tints and environments; New Project's following fields, rules, type and parent from the folder, sub project folders and default location; the loading, empty and unavailable states; the selection after a removal and at load.; Project Settings' fields, rules and messages, environments added, renamed and removed, pending fields applied together, and inherited environments changed in the sub project's changes. |
 | DashboardsKitTests | What the Dashboard shows, Edit mode, Steps of the keyboard and VoiceOver, Settings, Saving | Sample, default and saved lists; hidden service widgets; toolbar environment and time window; a change in every window of a project; list order; titles; Done, remove, add, first save, drags; every step and its limits; title, checkbox and Number rules; lenient decoding; keys. Uses `MockDashboardLayoutStore`. |
 | TicketsKitTests | The store, The list, Selection and route focus, Comments, New Ticket, The reader | Store queries and counts; grouping, filters, counts, bundles; default selection, focus, repeated routes, hidden and missing tickets, chat subject; comment drafts; the sheet's project and validation; reader sentences and suggestions. Uses `MockTicketStore`. |
 | ServiceMapKitTests | Focus formats, Service Map model, Service Map reader, Service widgets, Formats | Focus parsing; opening environment and view; history, Back, Show All; taps; repeated routes; missing items; chat subject; summary; request order and sorting; graph contents; logs; reader per environment, details and suggestions; widget readings; durations, literals, stable layout. Uses `MockServiceMapStore`. |
@@ -1678,7 +1706,7 @@ Where the code doesn't yet meet the workspace's rules, or the architecture is kn
   they move into the files of [Data](data.md) with their features (the Dashboard into `project.yml`).
 - **Most tools are hidden.** The Projects window, Settings ▸ Projects and the menu bar panel run on the app's
   data; the other tools still run on sample stores, hidden until their features come over
-  ([Navigation › Available tools](ui/navigation.md#available-tools)). Project Settings isn't built yet.
+  ([Navigation › Available tools](ui/navigation.md#available-tools)).
 - **No asset catalog.** The app target has no app icon.
 - **Routes come only from inside the app.** No URL scheme, App Intents, Spotlight, widgets or Handoff lead
   into it yet. When they come, each becomes a `Route` handled by `RouteHost`. Nothing sends `.machine(id)` yet.

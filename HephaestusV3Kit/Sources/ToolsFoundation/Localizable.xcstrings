@@ -31,6 +31,9 @@
     "Created" : {
 
     },
+    "Cyan" : {
+      "comment" : "A project's tint"
+    },
     "Dashboard" : {
 
     },
@@ -54,6 +57,9 @@
     },
     "Folder" : {
 
+    },
+    "Green" : {
+      "comment" : "A project's tint"
     },
     "Healthy" : {
 
@@ -82,6 +88,9 @@
     "Name" : {
 
     },
+    "Orange" : {
+      "comment" : "A project's tint"
+    },
     "Other" : {
       "comment" : "A project that is neither a service, an app nor a library"
     },
@@ -91,8 +100,14 @@
     "Passed" : {
 
     },
+    "Pink" : {
+      "comment" : "A project's tint"
+    },
     "Project" : {
 
+    },
+    "Purple" : {
+      "comment" : "A project's tint"
     },
     "Recent Builds" : {
 
