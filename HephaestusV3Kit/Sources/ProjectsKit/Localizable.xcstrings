@@ -1,0 +1,183 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ (⌘%@)" : {
+      "comment" : "A tool button's help: the tool and its shortcut",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ (⌘%2$@)"
+          }
+        }
+      }
+    },
+    "%@, %@: %@, %@, %@" : {
+      "comment" : "An activity event, for VoiceOver: project, tool: what happened, its subject, its date",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@: %3$@, %4$@, %5$@"
+          }
+        }
+      }
+    },
+    "%@: %@, %@, %@" : {
+      "comment" : "An activity event, for VoiceOver: tool: what happened, its subject, its date",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@, %3$@, %4$@"
+          }
+        }
+      }
+    },
+    "%lld open, %lld in review, ^[%lld draft](inflect: true)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld open, %2$lld in review, ^[%3$lld draft](inflect: true)"
+          }
+        }
+      }
+    },
+    "Activity" : {
+
+    },
+    "Add Existing Folder…" : {
+
+    },
+    "Add Project" : {
+
+    },
+    "Ask Claude, which reads through these tools" : {
+
+    },
+    "Bring its window forward" : {
+
+    },
+    "Current" : {
+      "comment" : "The project the window shows, in the project switcher"
+    },
+    "Drafts" : {
+
+    },
+    "Environments" : {
+
+    },
+    "Filter Projects" : {
+
+    },
+    "In review" : {
+
+    },
+    "Inherited from %@" : {
+      "comment" : "The project whose environments a sub project uses"
+    },
+    "Last build" : {
+
+    },
+    "Last run on %@" : {
+
+    },
+    "New Project…" : {
+      "comment" : "File menu item, ⇧⌘N"
+    },
+    "New Sub Project…" : {
+
+    },
+    "No %@" : {
+      "comment" : "A project without the window's tool, such as No Contracts"
+    },
+    "No Matching Projects" : {
+
+    },
+    "No Project Selected" : {
+
+    },
+    "No contract yet" : {
+
+    },
+    "No project’s name or identifier contains “%@”." : {
+
+    },
+    "Nothing happened in this project yet." : {
+
+    },
+    "Open" : {
+      "comment" : "Opens a tool's window from its tile"
+    },
+    "Open %@" : {
+      "comment" : "Opens a tool's window, such as Open Tickets"
+    },
+    "Open Project" : {
+
+    },
+    "Open tickets" : {
+
+    },
+    "Open tickets, sub projects included" : {
+
+    },
+    "Pick a project to see where it stands and open its tools." : {
+
+    },
+    "Projects" : {
+
+    },
+    "Show All Projects" : {
+
+    },
+    "Sub Projects" : {
+
+    },
+    "Sub projects included" : {
+
+    },
+    "Switch Project" : {
+
+    },
+    "Tickets and builds in widgets you arrange" : {
+
+    },
+    "Tickets, builds and services in widgets you arrange" : {
+
+    },
+    "Tools" : {
+
+    },
+    "Version %@, ^[%lld operation](inflect: true)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Version %1$@, ^[%2$lld operation](inflect: true)"
+          }
+        }
+      }
+    },
+    "^[%lld open ticket](inflect: true)" : {
+
+    },
+    "^[%lld service](inflect: true) in ^[%lld environment](inflect: true)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "^[%1$lld service](inflect: true) in ^[%2$lld environment](inflect: true)"
+          }
+        }
+      }
+    },
+    "^[%lld sub project](inflect: true)" : {
+
+    },
+    "↩ Open  ⌘1–⌘6 Tools" : {
+      "comment" : "The menu bar panel's reminder of its keys"
+    }
+  },
+  "version" : "1.0"
+}

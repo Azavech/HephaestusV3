@@ -1,0 +1,568 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ %@ %@" : {
+      "comment" : "A row of the Failed Requests widget: the request's first service, then its method and path",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@ %3$@"
+          }
+        }
+      }
+    },
+    "%@ %@ · %@" : {
+      "comment" : "The route of a request under the Client node of the graph: method, path and HTTP status",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@ · %3$@"
+          }
+        }
+      }
+    },
+    "%@ / %@, %@" : {
+      "comment" : "The tooltip of the namespace summary: cluster, namespace and the environment's health",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ / %2$@, %3$@"
+          }
+        }
+      }
+    },
+    "%@ calls per second" : {
+      "comment" : "Calls per second with a decimal, read by VoiceOver"
+    },
+    "%@ has no recent request “%@”." : {
+      "comment" : "The details of a request id that isn't among the environment's recent requests",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ has no recent request “%2$@”."
+          }
+        }
+      }
+    },
+    "%@ has no service named “%@”." : {
+      "comment" : "The details of a focus on a service the environment's map doesn't have",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ has no service named “%2$@”."
+          }
+        }
+      }
+    },
+    "%@ is degraded in %@: p95 latency %@, error rate %@, %lld of ^[%lld pod](inflect: true) ready." : {
+      "comment" : "A service read by the chat",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ is degraded in %2$@: p95 latency %3$@, error rate %4$@, %5$lld of ^[%6$lld pod](inflect: true) ready."
+          }
+        }
+      }
+    },
+    "%@ is degraded in %@: p95 latency %@, error rate %@." : {
+      "comment" : "An external service read by the chat",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ is degraded in %2$@: p95 latency %3$@, error rate %4$@."
+          }
+        }
+      }
+    },
+    "%@ is down in %@: p95 latency %@, error rate %@, %lld of ^[%lld pod](inflect: true) ready." : {
+      "comment" : "A service read by the chat",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ is down in %2$@: p95 latency %3$@, error rate %4$@, %5$lld of ^[%6$lld pod](inflect: true) ready."
+          }
+        }
+      }
+    },
+    "%@ is down in %@: p95 latency %@, error rate %@." : {
+      "comment" : "An external service read by the chat",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ is down in %2$@: p95 latency %3$@, error rate %4$@."
+          }
+        }
+      }
+    },
+    "%@ is healthy in %@: p95 latency %@, error rate %@, %lld of ^[%lld pod](inflect: true) ready." : {
+      "comment" : "A service read by the chat",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ is healthy in %2$@: p95 latency %3$@, error rate %4$@, %5$lld of ^[%6$lld pod](inflect: true) ready."
+          }
+        }
+      }
+    },
+    "%@ is healthy in %@: p95 latency %@, error rate %@." : {
+      "comment" : "An external service read by the chat",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ is healthy in %2$@: p95 latency %3$@, error rate %4$@."
+          }
+        }
+      }
+    },
+    "%@ to %@" : {
+      "comment" : "An arrow of the graph, for VoiceOver: the node that calls, then the node called",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ to %2$@"
+          }
+        }
+      }
+    },
+    "%@ to %@, %@" : {
+      "comment" : "A call, for VoiceOver: the caller, the node called and its kind",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ to %2$@, %3$@"
+          }
+        }
+      }
+    },
+    "%@ · %@" : {
+      "comment" : "Under a database, queue or external service on the graph: its kind, then the label of the arrow into it",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ → %@" : {
+      "comment" : "A row of the Busiest Calls widget: the caller, then the service called",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ → %2$@"
+          }
+        }
+      }
+    },
+    "%@ → %@ %@" : {
+      "comment" : "A row of the Busiest Calls widget: the caller, the node called, then its kind (Database, Queue, External)",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ → %2$@ %3$@"
+          }
+        }
+      }
+    },
+    "%@, %@" : {
+      "comment" : "Two parts of a description, such as a name and a kind, or a kind and a health",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "%@/s" : {
+      "comment" : "Calls or requests per second, short: on an arrow of the graph and in the details"
+    },
+    "%lld of %lld" : {
+      "comment" : "Pods ready out of the deployment's pods",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "%lld of ^[%lld container](inflect: true) ready, %@, ^[%lld restart](inflect: true), age %@, not scheduled" : {
+      "comment" : "A pod of the Instances widget that is on no node, for VoiceOver, after its name",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of ^[%2$lld container](inflect: true) ready, %3$@, ^[%4$lld restart](inflect: true), age %5$@, not scheduled"
+          }
+        }
+      }
+    },
+    "%lld of ^[%lld container](inflect: true) ready, %@, ^[%lld restart](inflect: true), age %@, on %@" : {
+      "comment" : "A pod of the Instances widget, for VoiceOver, after its name",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of ^[%2$lld container](inflect: true) ready, %3$@, ^[%4$lld restart](inflect: true), age %5$@, on %6$@"
+          }
+        }
+      }
+    },
+    "A service map shows a project that runs in a cluster." : {
+
+    },
+    "Age" : {
+      "comment" : "A column of the Instances widget: the pod's age"
+    },
+    "Back" : {
+      "comment" : "Goes back to the graph's view before"
+    },
+    "Back to the view before (⌘[ or a right-click on the graph)" : {
+
+    },
+    "Busiest" : {
+      "comment" : "The high end of the graph's color scale"
+    },
+    "Called by %@, %@" : {
+      "comment" : "A call a service receives, for VoiceOver: the caller, then its calls per second",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Called by %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "Called by %@, %@, error rate %@" : {
+      "comment" : "A call a service receives, for VoiceOver: the caller, its calls per second and its error rate",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Called by %1$@, %2$@, error rate %3$@"
+          }
+        }
+      }
+    },
+    "Calls" : {
+      "comment" : "A section of a service's details: the calls it makes and receives"
+    },
+    "Calls %@, %@" : {
+      "comment" : "A call a service makes, for VoiceOver: the node called, then its calls per second",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Calls %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "Calls %@, %@, error rate %@" : {
+      "comment" : "A call a service makes, for VoiceOver: the node called, its calls per second and its error rate",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Calls %1$@, %2$@, error rate %3$@"
+          }
+        }
+      }
+    },
+    "Client" : {
+      "comment" : "A kind of node on the service map: who sent a request"
+    },
+    "Database" : {
+      "comment" : "A kind of node on the service map"
+    },
+    "Details" : {
+
+    },
+    "Details of the service or request" : {
+
+    },
+    "Duration" : {
+      "comment" : "A column of the requests table"
+    },
+    "Environment" : {
+
+    },
+    "Environment “%@” has no deployment." : {
+
+    },
+    "Environment, time window and Live" : {
+
+    },
+    "Error" : {
+      "comment" : "The level of a log line"
+    },
+    "Errors" : {
+      "comment" : "A figure of a service: its error rate"
+    },
+    "External" : {
+      "comment" : "A kind of node on the service map: a service outside the cluster"
+    },
+    "Failed" : {
+      "comment" : "A span of a request that failed"
+    },
+    "Faster" : {
+      "comment" : "The low end of the graph's color scale in a request's view"
+    },
+    "Fewer calls" : {
+      "comment" : "The low end of the graph's color scale"
+    },
+    "Fit" : {
+      "comment" : "Zooms the graph so that every node shows"
+    },
+    "Focuses the map on this service." : {
+
+    },
+    "Follow new requests as they arrive" : {
+
+    },
+    "Gateway" : {
+      "comment" : "A kind of node on the service map"
+    },
+    "In %@, %@ %@ answered %@ after %@, through ^[%lld service](inflect: true)." : {
+      "comment" : "A request read by the chat: its method and path, its HTTP status, its duration and the services it went through",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "In %1$@, %2$@ %3$@ answered %4$@ after %5$@, through ^[%6$lld service](inflect: true)."
+          }
+        }
+      }
+    },
+    "Info" : {
+      "comment" : "The level of a log line"
+    },
+    "Live" : {
+
+    },
+    "Logs" : {
+
+    },
+    "Map Settings" : {
+
+    },
+    "Method" : {
+      "comment" : "A column of the requests table: the HTTP method"
+    },
+    "Minute" : {
+
+    },
+    "Name" : {
+      "comment" : "A column of the Instances widget: the pod's name"
+    },
+    "No Environments" : {
+
+    },
+    "No calls" : {
+      "comment" : "The legend of a grey arrow"
+    },
+    "No calls in the window." : {
+
+    },
+    "No failed requests in the window." : {
+
+    },
+    "No log lines in this time window." : {
+
+    },
+    "Node" : {
+      "comment" : "A column of the Instances widget: the cluster node"
+    },
+    "Nothing Selected" : {
+
+    },
+    "Open Contract" : {
+
+    },
+    "Open the Service Map" : {
+
+    },
+    "Open the request in the Service Map" : {
+
+    },
+    "Open the service's contract in Contracts" : {
+
+    },
+    "Path" : {
+      "comment" : "A column of the requests table: the HTTP path"
+    },
+    "Pick a service on the map or a request in the list." : {
+
+    },
+    "Pods ready" : {
+
+    },
+    "Queue" : {
+      "comment" : "A kind of node on the service map"
+    },
+    "Read request %@" : {
+      "comment" : "What the chat did: it read a request of the Service Map"
+    },
+    "Read service %@" : {
+      "comment" : "What the chat did: it read a service of the Service Map"
+    },
+    "Ready" : {
+      "comment" : "A column of the Instances widget: ready containers"
+    },
+    "Request Not Found" : {
+
+    },
+    "Requests" : {
+      "comment" : "Requests: the caption of a service's requests per second, or a chart's axis"
+    },
+    "Requests per minute over the window" : {
+
+    },
+    "Requests per second" : {
+
+    },
+    "Requests, last 30 minutes" : {
+
+    },
+    "Restarts" : {
+      "comment" : "A column of the Instances widget"
+    },
+    "Service" : {
+      "comment" : "A kind of node on the service map"
+    },
+    "Service Not Found" : {
+
+    },
+    "Services" : {
+      "comment" : "A column of the requests table: how many services a request went through"
+    },
+    "Show All" : {
+      "comment" : "Shows the whole namespace on the graph"
+    },
+    "Show every node" : {
+
+    },
+    "Show the whole namespace" : {
+
+    },
+    "Slowest" : {
+      "comment" : "The high end of the graph's color scale in a request's view"
+    },
+    "Started" : {
+      "comment" : "A column of the requests table: when a request started"
+    },
+    "Status" : {
+      "comment" : "A column: a request's HTTP status, or a pod's kubectl status"
+    },
+    "Status %@, failed" : {
+      "comment" : "A request's HTTP status, for VoiceOver"
+    },
+    "Status %@, succeeded" : {
+      "comment" : "A request's HTTP status, for VoiceOver"
+    },
+    "This project has no environments." : {
+
+    },
+    "Time Window" : {
+
+    },
+    "Timeline" : {
+      "comment" : "A section of a request's details: its spans"
+    },
+    "Warning" : {
+      "comment" : "The level of a log line"
+    },
+    "What are %@'s errors?" : {
+      "comment" : "A question the chat suggests about a service with errors"
+    },
+    "What calls %@?" : {
+      "comment" : "A question the chat suggests about a service"
+    },
+    "What does %@ call?" : {
+      "comment" : "A question the chat suggests about a healthy service"
+    },
+    "Which service made %@ slow?" : {
+      "comment" : "A question the chat suggests about a slow request"
+    },
+    "Which services handled %@?" : {
+      "comment" : "A question the chat suggests about a request"
+    },
+    "Why aren't all pods of %@ ready?" : {
+      "comment" : "A question the chat suggests about a service with pods not ready"
+    },
+    "Why did %@ fail?" : {
+      "comment" : "A question the chat suggests about a failed request"
+    },
+    "Why is %@ degraded?" : {
+      "comment" : "A question the chat suggests about a service"
+    },
+    "Why is %@ down?" : {
+      "comment" : "A question the chat suggests about a service"
+    },
+    "Why is %@ slow?" : {
+      "comment" : "A question the chat suggests about a slow service"
+    },
+    "Worker" : {
+      "comment" : "A kind of node on the service map"
+    },
+    "Zoom" : {
+      "comment" : "The graph's zoom level, for VoiceOver"
+    },
+    "Zoom In" : {
+
+    },
+    "Zoom Out" : {
+
+    },
+    "^[%lld call](inflect: true)" : {
+      "comment" : "A number of calls, read by VoiceOver"
+    },
+    "^[%lld call](inflect: true) per second" : {
+      "comment" : "Calls per second, read by VoiceOver"
+    },
+    "^[%lld service](inflect: true)" : {
+      "comment" : "How many services a request went through, in the requests list of an iPhone's layout"
+    },
+    "^[%lld service](inflect: true), %lld needing attention" : {
+      "comment" : "The namespace summary: how many services, and how many of them aren't healthy",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "^[%1$lld service](inflect: true), %2$lld needing attention"
+          }
+        }
+      }
+    },
+    "^[%lld service](inflect: true), all healthy" : {
+      "comment" : "The namespace summary: how many services, none needing attention"
+    },
+    "in the last minute" : {
+      "comment" : "Under the Requests per Minute widget's number: the requests of the last minute"
+    },
+    "p95 latency" : {
+      "comment" : "A figure of a service: its 95th percentile latency"
+    }
+  },
+  "version" : "1.0"
+}

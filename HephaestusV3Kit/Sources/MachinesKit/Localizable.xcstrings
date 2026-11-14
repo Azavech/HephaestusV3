@@ -1,0 +1,152 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ of %@" : {
+      "comment" : "How much of a system image is downloaded, out of its size: 11.7 GB of 18.9 GB",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "Address" : {
+
+    },
+    "CPU" : {
+
+    },
+    "Cancel Download" : {
+
+    },
+    "Cores" : {
+
+    },
+    "Disk" : {
+
+    },
+    "Done" : {
+      "comment" : "Closes a virtual machine's details"
+    },
+    "Downloading" : {
+      "comment" : "A system image's status"
+    },
+    "Downloading, %@" : {
+
+    },
+    "Hide Inspector" : {
+
+    },
+    "Images" : {
+
+    },
+    "Inspector" : {
+
+    },
+    "Machine Not Found" : {
+
+    },
+    "Machines" : {
+
+    },
+    "Memory" : {
+
+    },
+    "More Actions" : {
+
+    },
+    "New Machine" : {
+
+    },
+    "New Machine (⇧⌘N)" : {
+
+    },
+    "New Machine from This Image" : {
+
+    },
+    "New Machine…" : {
+      "comment" : "File menu item, ⇧⌘N"
+    },
+    "No Machine Selected" : {
+
+    },
+    "No machine on this Mac has the id “%@”." : {
+
+    },
+    "No machines yet." : {
+
+    },
+    "No snapshots yet." : {
+
+    },
+    "None" : {
+      "comment" : "The project of a virtual machine that tests no project"
+    },
+    "None while stopped" : {
+
+    },
+    "Open Shell" : {
+
+    },
+    "Pause" : {
+
+    },
+    "Paused" : {
+      "comment" : "A virtual machine's state"
+    },
+    "Pick a machine or an image in the list." : {
+
+    },
+    "Project" : {
+
+    },
+    "Ready" : {
+      "comment" : "A system image's status: downloaded, new machines can start from it"
+    },
+    "Restore" : {
+      "comment" : "Restores a virtual machine to this snapshot"
+    },
+    "Resume" : {
+      "comment" : "Resumes a paused virtual machine"
+    },
+    "Running" : {
+      "comment" : "A virtual machine's state"
+    },
+    "Screen of %@" : {
+
+    },
+    "Show Inspector" : {
+
+    },
+    "Size" : {
+
+    },
+    "Snapshots" : {
+
+    },
+    "Start" : {
+      "comment" : "Starts a stopped virtual machine"
+    },
+    "Status" : {
+
+    },
+    "Stop" : {
+
+    },
+    "Stopped" : {
+      "comment" : "A virtual machine's state"
+    },
+    "System" : {
+
+    },
+    "Take Snapshot" : {
+
+    },
+    "Virtual Machines" : {
+
+    }
+  },
+  "version" : "1.0"
+}

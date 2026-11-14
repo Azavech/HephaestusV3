@@ -1,0 +1,128 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ parameter, %@" : {
+      "comment" : "VoiceOver hint of a parameter's field: where it goes, then its type, such as: path parameter, string.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ parameter, %2$@"
+          }
+        }
+      }
+    },
+    "%@ · %@" : {
+      "comment" : "A parameter's location and type, such as: path · string.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@: %@ %@, in %@ %@. Its last call answered %lld after %@." : {
+      "comment" : "What an operation is, for the chat. Pay for an order: POST /orders/{id}/checkout, in Orders API 1.4.0. Its last call answered 504 after 4.2 sec.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@ %3$@, in %4$@ %5$@. Its last call answered %6$lld after %7$@."
+          }
+        }
+      }
+    },
+    "Body" : {
+      "comment" : "Heading of the request's body editor."
+    },
+    "Documented Responses" : {
+
+    },
+    "Environment" : {
+
+    },
+    "Environment the requests go to" : {
+
+    },
+    "Filter Operations" : {
+
+    },
+    "In" : {
+      "comment" : "Column heading: where a parameter goes in the request (path, query or header)."
+    },
+    "Last Response" : {
+
+    },
+    "Name" : {
+      "comment" : "Column heading: a parameter's name."
+    },
+    "No Contract" : {
+
+    },
+    "No Matching Operations" : {
+
+    },
+    "No Operation Selected" : {
+
+    },
+    "No body." : {
+      "comment" : "In place of a response's body, when it has none."
+    },
+    "No path, summary or operation id contains “%@”." : {
+
+    },
+    "Pick an operation to read it and call it." : {
+
+    },
+    "Read operation %@" : {
+      "comment" : "A tool call of the chat; the value is an operationId."
+    },
+    "Request" : {
+
+    },
+    "Required" : {
+
+    },
+    "Send" : {
+      "comment" : "Button: sends the request to the environment."
+    },
+    "Send the request" : {
+
+    },
+    "Show an example request for %@" : {
+
+    },
+    "Status %@" : {
+      "comment" : "VoiceOver label of a response's HTTP status, such as: Status 504."
+    },
+    "This project has no OpenAPI contract yet." : {
+
+    },
+    "Type" : {
+      "comment" : "Column heading: a parameter's type."
+    },
+    "URL" : {
+
+    },
+    "Value" : {
+      "comment" : "Column heading: a parameter's value."
+    },
+    "What does %@ return?" : {
+
+    },
+    "Why did %@ answer %lld?" : {
+      "comment" : "A question to the chat about an operation's last call, such as: Why did checkoutOrder answer 504?",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Why did %1$@ answer %2$lld?"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

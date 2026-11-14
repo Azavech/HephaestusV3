@@ -1,0 +1,143 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Add Widget" : {
+
+    },
+    "Add a widget from the toolbar." : {
+
+    },
+    "Add, remove, move, resize and set up the widgets" : {
+
+    },
+    "Click Edit to add widgets." : {
+
+    },
+    "Column %lld, row %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Column %1$lld, row %2$lld"
+          }
+        }
+      }
+    },
+    "Column %lld, row %lld, ^[%lld column](inflect: true) wide, ^[%lld row](inflect: true) tall" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Column %1$lld, row %2$lld, ^[%3$lld column](inflect: true) wide, ^[%4$lld row](inflect: true) tall"
+          }
+        }
+      }
+    },
+    "Dashboard Settings" : {
+
+    },
+    "Done" : {
+      "comment" : "The button that ends the Dashboard's edit mode."
+    },
+    "Edit" : {
+      "comment" : "The button that starts the Dashboard's edit mode."
+    },
+    "Enter a title of at most %lld characters." : {
+
+    },
+    "Environment" : {
+
+    },
+    "Environment and time window" : {
+
+    },
+    "Environment the Instances and service widgets read" : {
+
+    },
+    "Fields" : {
+
+    },
+    "Finish editing the widgets" : {
+
+    },
+    "Height" : {
+
+    },
+    "Include sub projects" : {
+
+    },
+    "Make Narrower" : {
+
+    },
+    "Make Shorter" : {
+
+    },
+    "Make Taller" : {
+
+    },
+    "Make Wider" : {
+
+    },
+    "Move Down" : {
+
+    },
+    "Move Left" : {
+
+    },
+    "Move Right" : {
+
+    },
+    "Move Up" : {
+
+    },
+    "No Widgets" : {
+
+    },
+    "Number" : {
+
+    },
+    "Position" : {
+
+    },
+    "Remove Widget" : {
+
+    },
+    "Resize Widget" : {
+
+    },
+    "Statuses" : {
+
+    },
+    "Time Window" : {
+
+    },
+    "Time window of the service widgets" : {
+
+    },
+    "Title" : {
+
+    },
+    "Type: %@" : {
+
+    },
+    "Widen the window to edit the Dashboard." : {
+
+    },
+    "Widget Settings" : {
+
+    },
+    "Widget Settings…" : {
+
+    },
+    "Width" : {
+
+    },
+    "^[%lld column](inflect: true)" : {
+
+    },
+    "^[%lld row](inflect: true)" : {
+
+    }
+  },
+  "version" : "1.0"
+}

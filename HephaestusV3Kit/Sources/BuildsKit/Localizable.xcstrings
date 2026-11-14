@@ -1,0 +1,286 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "#%@" : {
+      "comment" : "A run's number: #641"
+    },
+    "#%@ · %@" : {
+      "comment" : "A run's number and commit: #641 · 8e7ccf3\nA run's number and workflow, in a list of runs: #641 · CI",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "#%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "#%@ · %@ · %@" : {
+      "comment" : "A run's number, workflow and branch: #1288 · CI · fix/payments-backoff",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "#%1$@ · %2$@ · %3$@"
+          }
+        }
+      }
+    },
+    "#%@ · %@ · %@ · %@" : {
+      "comment" : "Where a run ran: its number, workflow, branch and commit",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "#%1$@ · %2$@ · %3$@ · %4$@"
+          }
+        }
+      }
+    },
+    "%@ · Cancelled · %@ on %@" : {
+      "comment" : "A read run: its title, status, workflow and branch",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · Cancelled · %2$@ on %3$@"
+          }
+        }
+      }
+    },
+    "%@ · Failed · %@ on %@" : {
+      "comment" : "A read run: its title, status, workflow and branch",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · Failed · %2$@ on %3$@"
+          }
+        }
+      }
+    },
+    "%@ · Latest · Published %@" : {
+      "comment" : "A read release: its title, that it is the latest, and its date",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · Latest · Published %2$@"
+          }
+        }
+      }
+    },
+    "%@ · Passed · %@ on %@" : {
+      "comment" : "A read run: its title, status, workflow and branch",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · Passed · %2$@ on %3$@"
+          }
+        }
+      }
+    },
+    "%@ · Pre-release · Published %@" : {
+      "comment" : "A read release: its title, that it is a pre-release, and its date",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · Pre-release · Published %2$@"
+          }
+        }
+      }
+    },
+    "%@ · Published %@" : {
+      "comment" : "A read release: its title and its date",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · Published %2$@"
+          }
+        }
+      }
+    },
+    "%@ · Queued · %@ on %@" : {
+      "comment" : "A read run: its title, status, workflow and branch",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · Queued · %2$@ on %3$@"
+          }
+        }
+      }
+    },
+    "%@ · Running · %@ on %@" : {
+      "comment" : "A read run: its title, status, workflow and branch",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · Running · %2$@ on %3$@"
+          }
+        }
+      }
+    },
+    "Assets" : {
+      "comment" : "The column of a release's number of files\nThe heading of a release's files"
+    },
+    "Branch" : {
+
+    },
+    "Cancelled" : {
+      "comment" : "The status of a run, a job or a step"
+    },
+    "Copy Log" : {
+
+    },
+    "Download" : {
+
+    },
+    "Download %@" : {
+      "comment" : "The button that downloads a release's file, named"
+    },
+    "Duration" : {
+
+    },
+    "Failed" : {
+      "comment" : "The status of a run, a job or a step"
+    },
+    "Jobs" : {
+
+    },
+    "Latest" : {
+      "comment" : "A release that is the latest"
+    },
+    "No Release Selected" : {
+
+    },
+    "No Releases" : {
+
+    },
+    "No Run Selected" : {
+
+    },
+    "No Runs" : {
+
+    },
+    "No Step Selected" : {
+
+    },
+    "No assets." : {
+      "comment" : "A release without files"
+    },
+    "No builds yet." : {
+
+    },
+    "No notes." : {
+      "comment" : "A release without notes"
+    },
+    "Open on GitHub" : {
+
+    },
+    "Open the run in Builds" : {
+
+    },
+    "Passed" : {
+      "comment" : "The status of a run, a job or a step"
+    },
+    "Pick a step in the run's details to read its log." : {
+
+    },
+    "Pre-release" : {
+      "comment" : "A release that is a pre-release"
+    },
+    "Published" : {
+
+    },
+    "Queued" : {
+      "comment" : "The status of a run, a job or a step"
+    },
+    "Re-run" : {
+
+    },
+    "Read release %@" : {
+      "comment" : "A read of a release, by its tag"
+    },
+    "Read run %@" : {
+      "comment" : "A read of a run, by its number"
+    },
+    "Refresh" : {
+
+    },
+    "Release %@" : {
+      "comment" : "A release, by its tag, as a chat names it"
+    },
+    "Releases" : {
+
+    },
+    "Run" : {
+      "comment" : "The column of a run's commit message and number"
+    },
+    "Run %@" : {
+      "comment" : "A run, by its number, as a chat names it"
+    },
+    "Running" : {
+      "comment" : "The status of a run, a job or a step"
+    },
+    "Runs" : {
+
+    },
+    "Show" : {
+
+    },
+    "Started" : {
+
+    },
+    "Status" : {
+
+    },
+    "Tag" : {
+
+    },
+    "This project's repository has no releases yet." : {
+
+    },
+    "This project's repository has no workflow runs yet." : {
+
+    },
+    "Title" : {
+
+    },
+    "Was run %@ slower than usual?" : {
+      "comment" : "A question to ask the chat about a run that passed"
+    },
+    "What changed in run %@?" : {
+      "comment" : "A question to ask the chat about a run"
+    },
+    "What's left before release %@ is final?" : {
+      "comment" : "A question to ask the chat about a pre-release"
+    },
+    "What's new in release %@?" : {
+      "comment" : "A question to ask the chat about a release"
+    },
+    "Which runs went into release %@?" : {
+      "comment" : "A question to ask the chat about a release"
+    },
+    "Which step is run %@ on?" : {
+      "comment" : "A question to ask the chat about a running run"
+    },
+    "Why did run %@ fail?" : {
+      "comment" : "A question to ask the chat about a failed run"
+    },
+    "Why is run %@ still queued?" : {
+      "comment" : "A question to ask the chat about a queued run"
+    },
+    "Why was run %@ cancelled?" : {
+      "comment" : "A question to ask the chat about a cancelled run"
+    },
+    "Workflow" : {
+
+    }
+  },
+  "version" : "1.0"
+}

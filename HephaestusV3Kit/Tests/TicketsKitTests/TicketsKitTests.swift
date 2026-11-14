@@ -1,0 +1,352 @@
+import Foundation
+import Testing
+import ToolsFoundation
+@testable import TicketsKit
+
+/// Tickets and bundles given by each test, in the order given.
+struct MockTicketStore: TicketStore {
+    var allTickets: [Ticket]
+    var allBundles: [TicketBundle] = []
+
+    func tickets(of projects: Set<Project.ID>) -> [Ticket] {
+        allTickets.filter { projects.contains($0.projectID) }
+    }
+
+    func bundles(of projects: Set<Project.ID>) -> [TicketBundle] {
+        allBundles.filter { projects.contains($0.projectID) }
+    }
+
+    func ticket(_ id: Ticket.ID) -> Ticket? {
+        allTickets.first { $0.id == id }
+    }
+}
+
+/// A ticket with only what a test looks at.
+func ticket(
+    _ id: String, in projectID: Project.ID, _ status: TicketStatus = .created, priority: TicketPriority = .medium,
+    title: String = "A ticket"
+) -> Ticket {
+    Ticket(
+        id: id, projectID: projectID, title: title, details: "", status: status, priority: priority, labels: [],
+        reporter: "You", createdAt: SampleClock.date(), updatedAt: SampleClock.date(), links: [], events: []
+    )
+}
+
+/// Shop's family as the sample tree has it: Shop, then Orders, Payments and Edge Gateway. The store
+/// lists the sub projects' tickets before the parent's, as the sample data does.
+let familyStore = MockTicketStore(
+    allTickets: [
+        ticket("ORD-2", in: "ORD", .inProgress),
+        ticket("ORD-1", in: "ORD", .done),
+        ticket("PAY-1", in: "PAY", .draft),
+        ticket("SHOP-1", in: "SHOP", .inProgress),
+        ticket("SHOP-2", in: "SHOP", .draft),
+        ticket("TLS-1", in: "TLS", .inReview),
+    ],
+    allBundles: [
+        TicketBundle(id: "ORD-B1", projectID: "ORD", title: "Checkout", ticketIDs: ["ORD-2", "ORD-1"]),
+        TicketBundle(id: "SHOP-B1", projectID: "SHOP", title: "Cluster move", ticketIDs: ["SHOP-1"]),
+    ]
+)
+
+func model(_ projectID: Project.ID, focus: String? = nil, filter: TicketFilter = .all, store: MockTicketStore = familyStore) -> TicketsModel {
+    TicketsModel(project: Project.sample(projectID)!, focus: focus, filter: filter, store: store)
+}
+
+@Suite("The store")
+struct TicketStoreTests {
+    @Test("Lists the tickets and bundles of the projects asked for")
+    func listsByProject() {
+        #expect(familyStore.tickets(of: ["ORD"]).map(\.id) == ["ORD-2", "ORD-1"])
+        #expect(familyStore.bundles(of: ["SHOP"]).map(\.id) == ["SHOP-B1"])
+        #expect(familyStore.ticket("PAY-1")?.projectID == "PAY")
+        #expect(familyStore.ticket("NOPE-1") == nil)
+    }
+
+    @Test("Counts a status with or without the sub projects")
+    func countsByStatus() {
+        #expect(familyStore.count(of: .inProgress, in: "SHOP", includingSubprojects: false) == 1)
+        #expect(familyStore.count(of: .inProgress, in: "SHOP", includingSubprojects: true) == 2)
+        #expect(familyStore.count(of: .draft, in: "SHOP", includingSubprojects: true) == 2)
+    }
+
+    @Test("The sample store holds the sample tickets")
+    func sampleStore() {
+        let store = SampleTicketStore()
+        #expect(store.tickets(of: ["ORD"]).count == 6)
+        #expect(store.tickets(of: Set(Project.tree.family(of: "SHOP").map(\.id))).count == 12)
+        #expect(store.bundles(of: ["ORD"]).map(\.id) == ["ORD-B3", "ORD-B2"])
+    }
+}
+
+@Suite("The list")
+struct TicketListTests {
+    @Test("A parent's list groups its tickets by project, the parent first, in tree order")
+    func groupsByProject() {
+        let shop = model("SHOP")
+        #expect(shop.isGrouped)
+        #expect(shop.groups.map(\.id) == ["SHOP", "ORD", "PAY"])
+        #expect(shop.visibleTickets.map(\.id) == ["SHOP-1", "SHOP-2", "ORD-2", "ORD-1", "PAY-1"])
+        #expect(shop.listState == .grouped(shop.groups))
+    }
+
+    @Test("A filter keeps the groups and drops the empty ones")
+    func filterKeepsGroups() {
+        let shop = model("SHOP", filter: .status(.draft))
+        #expect(shop.groups.map(\.id) == ["SHOP", "PAY"])
+        #expect(shop.visibleTickets.map(\.id) == ["SHOP-2", "PAY-1"])
+    }
+
+    @Test("A project without sub projects lists its tickets in the store's order")
+    func flatList() {
+        let orders = model("ORD")
+        #expect(!orders.isGrouped)
+        #expect(orders.listState == .loaded(orders.visibleTickets))
+        #expect(orders.visibleTickets.map(\.id) == ["ORD-2", "ORD-1"])
+    }
+
+    @Test("A project filter lets through the project and its own sub projects")
+    func projectFilter() {
+        let shop = model("SHOP", filter: .project("ORD"))
+        #expect(shop.visibleTickets.map(\.id) == ["ORD-2", "ORD-1"])
+        #expect(model("SHOP", filter: .project("SHOP")).visibleTickets.count == 5)
+    }
+
+    @Test("A bundle filter lets through the bundle's tickets")
+    func bundleFilter() {
+        #expect(model("ORD", filter: .bundle("ORD-B1")).visibleTickets.map(\.id) == ["ORD-2", "ORD-1"])
+    }
+
+    @Test("A project without tickets reads as empty")
+    func emptyProject() {
+        #expect(model("AZD").listState == .empty)
+        #expect(model("AZD", filter: .status(.done)).listState == .empty)
+    }
+
+    @Test("A filter with no match says so, and Show All Tickets clears it")
+    func noMatch() {
+        let tools = model("TLS", filter: .status(.done))
+        #expect(tools.listState == .noMatch("No ticket is done."))
+        tools.showAllTickets()
+        #expect(tools.filter == .all)
+        #expect(tools.listState == .grouped(tools.groups))
+        #expect(model("ORD", filter: .status(.draft)).listState == .noMatch("No ticket is a draft."))
+        #expect(model("SHOP", filter: .project("GW")).listState == .noMatch("Edge Gateway has no tickets."))
+    }
+
+    @Test("The sidebar and the Filter menu list their sections in one order")
+    func sectionOrder() {
+        #expect(model("SHOP").filterSections == [.status, .projects, .bundles])
+        #expect(model("ORD").filterSections == [.status, .bundles])
+        #expect(model("TLS").filterSections == [.status, .projects])
+        #expect(model("AZD").filterSections == [.status])
+    }
+
+    @Test("Counts cover the window's tickets before any filter")
+    func counts() {
+        let shop = model("SHOP", filter: .status(.done))
+        #expect(shop.count(.all) == 5)
+        #expect(shop.count(.status(.inProgress)) == 2)
+        #expect(shop.count(.project("ORD")) == 2)
+        #expect(shop.count(.project("SHOP")) == 5)
+        let orders = model("ORD")
+        #expect(orders.doneCount(of: orders.bundles[0]) == 1)
+    }
+
+    @Test("A parent's sidebar lists only its own bundles")
+    func ownBundles() {
+        #expect(model("SHOP").bundles.map(\.id) == ["SHOP-B1"])
+        #expect(model("ORD").bundles.map(\.id) == ["ORD-B1"])
+    }
+
+    @Test("The filter's name and whether one applies")
+    func filterNames() {
+        let shop = model("SHOP")
+        #expect(!shop.isFiltered)
+        shop.filter = nil
+        #expect(!shop.isFiltered)
+        shop.filter = .project("PAY")
+        #expect(shop.isFiltered)
+        #expect(shop.title(of: .project("PAY")) == "Payments")
+        #expect(shop.title(of: .bundle("SHOP-B1")) == "Cluster move")
+        #expect(shop.title(of: .status(.inReview)) == TicketStatus.inReview.title)
+        #expect(shop.title(of: .all) == "All Tickets")
+    }
+}
+
+@Suite("Selection and route focus")
+struct TicketSelectionTests {
+    @Test("Without a focus, the first row of the list is selected")
+    func firstRow() {
+        #expect(model("ORD").selection == "ORD-2")
+        // The parent's own tickets come first in its list, though the store lists them later.
+        #expect(model("SHOP").selection == "SHOP-1")
+        #expect(model("AZD").selection == nil)
+        #expect(!model("SHOP").opensSelection)
+    }
+
+    @Test("The first focus arrives with the window and opens its page on an iPhone")
+    func initialFocus() {
+        let shop = model("SHOP", focus: "PAY-1")
+        #expect(shop.selection == "PAY-1")
+        #expect(shop.selectedTicket?.id == "PAY-1")
+        #expect(shop.opensSelection)
+    }
+
+    @Test("A route to the ticket selected before selects it again after the user picked another")
+    func sameTicketAgain() {
+        let orders = model("ORD", focus: "ORD-1")
+        orders.selection = "ORD-2"
+        orders.select(focus: "ORD-1")
+        #expect(orders.selection == "ORD-1")
+    }
+
+    @Test("A route to a ticket the filter hides shows every ticket")
+    func focusClearsHidingFilter() {
+        let orders = model("ORD", filter: .status(.done))
+        orders.select(focus: "ORD-2")
+        #expect(orders.filter == .all)
+        #expect(orders.selection == "ORD-2")
+        let shown = model("ORD", filter: .status(.inProgress))
+        shown.select(focus: "ORD-2")
+        #expect(shown.filter == .status(.inProgress))
+    }
+
+    @Test("A focus that names no ticket of the window is reported as missing")
+    func unknownFocus() {
+        let orders = model("ORD", focus: "ORD-999")
+        #expect(orders.selectedTicket == nil)
+        #expect(orders.missingSelection == "ORD-999")
+        #expect(orders.chatSubject == nil)
+        orders.select(focus: "ORD-2")
+        #expect(orders.missingSelection == nil)
+        let filtered = model("ORD", filter: .status(.done))
+        filtered.select(focus: "PAY-1")
+        #expect(filtered.filter == .status(.done))
+        #expect(filtered.missingSelection == "PAY-1")
+        #expect(model("ORD").missingSelection == nil)
+    }
+
+    @Test("The chat asks about the selected ticket, in its own project")
+    func chatSubject() {
+        let shop = model("SHOP", focus: "ORD-2")
+        #expect(shop.chatSubject == ChatReference(tool: .tickets, projectID: "ORD", focus: "ORD-2", title: "ORD-2"))
+        shop.selection = nil
+        #expect(shop.chatSubject == nil)
+    }
+
+    @Test("A sub project's ticket shows its bundle in a parent's window")
+    func bundleInParent() {
+        let shop = model("SHOP")
+        #expect(shop.bundle(of: familyStore.ticket("ORD-2")!)?.id == "ORD-B1")
+        #expect(shop.bundle(of: familyStore.ticket("SHOP-1")!)?.id == "SHOP-B1")
+        #expect(shop.bundle(of: familyStore.ticket("PAY-1")!) == nil)
+    }
+}
+
+@Suite("Comments")
+struct TicketCommentTests {
+    @Test("Each ticket keeps its own comment draft")
+    func draftPerTicket() {
+        let orders = model("ORD")
+        orders.setCommentDraft("Backoff is in.", for: "ORD-2")
+        #expect(orders.commentDraft(for: "ORD-1") == "")
+        #expect(orders.commentDraft(for: "ORD-2") == "Backoff is in.")
+        orders.setCommentDraft("", for: "ORD-2")
+        #expect(orders.commentDrafts.isEmpty)
+    }
+}
+
+@Suite("New Ticket")
+struct NewTicketTests {
+    @Test("The sheet opens empty, for the window's project")
+    func opensEmpty() {
+        let shop = model("SHOP")
+        shop.draft.title = "Left over"
+        shop.startNewTicket()
+        #expect(shop.isComposing)
+        #expect(shop.draft == NewTicketDraft(projectID: "SHOP"))
+        #expect(shop.newTicketProjects.map(\.id) == ["SHOP", "ORD", "PAY", "GW"])
+    }
+
+    @Test("The project picked in the sidebar is the new ticket's project")
+    func defaultsToFilteredProject() {
+        let shop = model("SHOP", filter: .project("PAY"))
+        shop.startNewTicket()
+        #expect(shop.draft.projectID == "PAY")
+        shop.filter = .status(.draft)
+        shop.startNewTicket()
+        #expect(shop.draft.projectID == "SHOP")
+        #expect(model("ORD").newTicketProjects.map(\.id) == ["ORD"])
+    }
+
+    @Test("A title of spaces only can't be created")
+    func blankTitle() {
+        let orders = model("ORD")
+        orders.startNewTicket()
+        orders.draft.title = "  \n "
+        #expect(!orders.draft.canCreate)
+        orders.createNewTicket()
+        #expect(orders.isComposing)
+        orders.draft.title = " Slow search "
+        #expect(orders.draft.canCreate)
+        orders.createNewTicket()
+        #expect(!orders.isComposing)
+    }
+
+    @Test("Cancel closes the sheet")
+    func cancel() {
+        let orders = model("ORD")
+        orders.startNewTicket()
+        orders.cancelNewTicket()
+        #expect(!orders.isComposing)
+    }
+}
+
+@Suite("The reader")
+struct TicketsReaderTests {
+    let store = MockTicketStore(allTickets: [
+        ticket("ORD-142", in: "ORD", .inProgress, priority: .urgent, title: "Retry storm between checkout and payments"),
+        ticket("ORD-141", in: "ORD", .draft, priority: .low, title: "Document cursor pagination"),
+        ticket("ORD-130", in: "ORD", .done, priority: .low, title: "Customer id in logs"),
+    ])
+
+    @Test("Reads a ticket in whole sentences")
+    func readsTicket() throws {
+        let reading = try #require(TicketsReader.read("ORD-142", store: store))
+        #expect(reading.action == "Read ticket ORD-142")
+        #expect(reading.detail == "“Retry storm between checkout and payments” is in progress, with urgent priority.")
+        #expect(TicketsReader.read("ORD-141", store: store)?.detail == "“Document cursor pagination” is a draft, with low priority.")
+        #expect(TicketsReader.read("ORD-130", store: store)?.detail == "“Customer id in logs” is done. Its priority was low.")
+    }
+
+    @Test("Suggests the questions the ticket's status raises")
+    func suggestions() {
+        #expect(TicketsReader.read("ORD-142", store: store)?.suggestions == ["What's left before ORD-142 can go to review?", "Summarize ORD-142"])
+        #expect(TicketsReader.read("ORD-141", store: store)?.suggestions == ["Is ORD-141 ready to create?", "Summarize ORD-141"])
+        #expect(TicketsReader.read("ORD-130", store: store)?.suggestions == ["What did ORD-130 change?", "Summarize ORD-130"])
+    }
+
+    @Test("Every status and priority has its sentence")
+    func everyCombination() {
+        for status in TicketStatus.allCases {
+            for priority in TicketPriority.allCases {
+                let detail = TicketsReader.detail(of: ticket("X-1", in: "ORD", status, priority: priority, title: "T"))
+                #expect(detail.hasPrefix("“T”"))
+                #expect(detail.contains(priority.rawValue))
+            }
+        }
+    }
+
+    @Test("A focus that names no ticket reads nothing")
+    func unknownTicket() {
+        #expect(TicketsReader.read("ORD-999", store: store) == nil)
+        #expect(TicketsReader.read("", store: store) == nil)
+    }
+
+    @Test("The public reader answers from the sample tickets")
+    func sampleReader() {
+        #expect(TicketsReader.read("ORD-142")?.action == "Read ticket ORD-142")
+        #expect(TicketsReader.read("TKIT-4") != nil)
+    }
+}

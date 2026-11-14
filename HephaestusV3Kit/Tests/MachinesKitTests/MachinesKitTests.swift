@@ -1,0 +1,227 @@
+import Foundation
+import Testing
+import ToolsFoundation
+@testable import MachinesKit
+
+/// Two machines and two images, in a fixed order.
+struct MockMachineStore: MachineStore {
+    var storedMachines: [VirtualMachine] = [
+        .mock(id: "alpha", state: .running),
+        .mock(id: "beta", state: .stopped),
+    ]
+    var storedImages: [MachineImage] = [
+        MachineImage(id: "ready-image", name: "Ready image", system: .macOS, sizeGB: 18.4, state: .ready),
+        MachineImage(id: "new-image", name: "New image", system: .linux, sizeGB: 2, state: .downloading(progress: 0.25)),
+    ]
+
+    func machines() -> [VirtualMachine] { storedMachines }
+    func images() -> [MachineImage] { storedImages }
+}
+
+extension VirtualMachine {
+    static func mock(id: String, state: State) -> VirtualMachine {
+        VirtualMachine(
+            id: id, name: id.capitalized, system: .linux, systemVersion: "Ubuntu 26.04", state: state,
+            cores: 2, memoryGB: 4, diskGB: 32, address: nil, projectID: nil, cpuUsage: 0, snapshots: []
+        )
+    }
+}
+
+@Suite("Machines window: selection and routes")
+struct MachinesSelectionTests {
+    @Test("A route's machine is selected when the window opens, and an iPhone's starts on its page")
+    func focusAtOpening() {
+        let model = MachinesModel(focus: "beta", store: MockMachineStore())
+        #expect(model.selection == .machine("beta"))
+        #expect(model.content == .machine(.mock(id: "beta", state: .stopped)))
+        #expect(model.opensSelection)
+    }
+
+    @Test("Without a route's machine, the first machine is selected and an iPhone's starts on the list")
+    func noFocus() {
+        let model = MachinesModel(focus: nil, store: MockMachineStore())
+        #expect(model.selection == .machine("alpha"))
+        #expect(!model.opensSelection)
+    }
+
+    @Test("With no machines, nothing is selected")
+    func noMachines() {
+        let model = MachinesModel(focus: nil, store: MockMachineStore(storedMachines: []))
+        #expect(model.selection == nil)
+        #expect(model.content == .nothing)
+    }
+
+    @Test("A machine id that matches no machine shows a message, not a blank detail")
+    func unknownMachine() {
+        let model = MachinesModel(focus: "retired", store: MockMachineStore())
+        #expect(model.content == .machineNotFound("retired"))
+    }
+
+    @Test("A second route to the same machine selects it again after the user picked another")
+    func sameMachineRouteAgain() {
+        let model = MachinesModel(focus: "alpha", store: MockMachineStore())
+        model.selection = .machine("beta")
+        model.select(focus: "alpha")
+        #expect(model.selection == .machine("alpha"))
+    }
+
+    @Test("A route moves the selection from an image to its machine")
+    func routeFromImage() {
+        let model = MachinesModel(focus: nil, store: MockMachineStore())
+        model.selection = .image("new-image")
+        model.select(focus: "beta")
+        #expect(model.selection == .machine("beta"))
+    }
+
+    @Test("A route to an unknown machine in an open window shows the message")
+    func routeToUnknownMachine() {
+        let model = MachinesModel(focus: nil, store: MockMachineStore())
+        model.select(focus: "retired")
+        #expect(model.content == .machineNotFound("retired"))
+    }
+
+    @Test("An image's page shows the image")
+    func imageContent() {
+        let store = MockMachineStore()
+        let model = MachinesModel(store: store, selection: .image("ready-image"))
+        #expect(model.content == .image(store.storedImages[0]))
+        #expect(model.content(of: .image("missing")) == .nothing)
+        #expect(model.content(of: nil) == .nothing)
+    }
+}
+
+@Suite("Machines window: layouts")
+struct MachinesLayoutTests {
+    @Test("Its Mac width is 900 points")
+    func macWidth() {
+        #expect(MachinesModel.macWidth == 900)
+    }
+
+    @Test("The width picks the layout", arguments: [
+        (390.0, ToolLayout.phone), (639, .phone), (640, .pad), (899, .pad), (900, .mac), (2_560, .mac),
+    ])
+    func layout(width: Double, expected: ToolLayout) {
+        let model = MachinesModel(focus: nil, store: MockMachineStore())
+        model.resize(to: width)
+        #expect(model.layout == expected)
+    }
+
+    @Test("A Mac's shows the sidebar and the inspector, each on its own")
+    func macPanes() {
+        let model = MachinesModel(focus: nil, store: MockMachineStore())
+        model.resize(to: 1_100)
+        #expect(model.showsSidebar && model.showsInspector)
+        model.setSidebarShown(false)
+        #expect(model.showsInspector)
+        model.setSidebarShown(true)
+        model.toggleInspector()
+        #expect(model.showsSidebar && !model.showsInspector)
+    }
+
+    @Test("An iPad's folds the inspector behind its button")
+    func padFoldsInspector() {
+        let model = MachinesModel(focus: nil, store: MockMachineStore())
+        model.resize(to: 760)
+        #expect(model.showsSidebar)
+        #expect(!model.showsInspector)
+        #expect(!model.isInspectorShown)
+    }
+
+    @Test("An iPad's shows one side column at a time, so the screen keeps its room")
+    func padOneSideColumn() {
+        let model = MachinesModel(focus: nil, store: MockMachineStore())
+        model.resize(to: 760)
+        model.toggleInspector()
+        #expect(model.showsInspector && !model.showsSidebar)
+        model.setSidebarShown(true)
+        #expect(model.showsSidebar && !model.showsInspector)
+    }
+
+    @Test("Widening to a Mac's shows both side columns again")
+    func backToMac() {
+        let model = MachinesModel(focus: nil, store: MockMachineStore())
+        model.resize(to: 760)
+        model.toggleInspector()
+        model.resize(to: 1_100)
+        #expect(model.showsSidebar && model.showsInspector)
+    }
+
+    @Test("An iPhone's shows the inspector as a sheet")
+    func phoneSheet() {
+        let model = MachinesModel(focus: nil, store: MockMachineStore())
+        model.resize(to: 420)
+        #expect(!model.isInspectorShown)
+        model.toggleInspector()
+        #expect(model.showsInspectorSheet)
+        #expect(model.isInspectorShown)
+        model.resize(to: 1_100)
+        #expect(!model.showsInspectorSheet)
+    }
+
+    @Test("Resizing within a layout keeps the panes the user picked")
+    func resizeWithinLayout() {
+        let model = MachinesModel(focus: nil, store: MockMachineStore())
+        model.resize(to: 1_100)
+        model.toggleInspector()
+        model.resize(to: 1_400)
+        #expect(!model.showsInspector)
+    }
+}
+
+@Suite("Machines: states and sizes")
+struct MachineStateTests {
+    @Test("A running machine offers Pause, Stop, Take Snapshot and Open Shell")
+    func running() {
+        let state = VirtualMachine.State.running
+        #expect(state.isRunning)
+        #expect(state.startAction == nil)
+        #expect(state.allowsSnapshot)
+        #expect(state.allowsShell)
+    }
+
+    @Test("A paused machine offers Resume and Take Snapshot, not Open Shell")
+    func paused() {
+        let state = VirtualMachine.State.paused
+        #expect(!state.isRunning)
+        #expect(state.startAction == .resume)
+        #expect(state.allowsSnapshot)
+        #expect(!state.allowsShell)
+    }
+
+    @Test("A stopped machine offers Start only")
+    func stopped() {
+        let state = VirtualMachine.State.stopped
+        #expect(!state.isRunning)
+        #expect(state.startAction == .start)
+        #expect(!state.allowsSnapshot)
+        #expect(!state.allowsShell)
+    }
+
+    @Test("Sizes are written with a unit formatter")
+    func sizes() {
+        let english = Locale(identifier: "en_US")
+        #expect(StorageSize.formatted(gigabytes: 8, locale: english) == "8 GB")
+        #expect(StorageSize.formatted(gigabytes: 18.4, fractionDigits: 1, locale: english) == "18.4 GB")
+        // French writes its own unit, after a narrow no-break space.
+        #expect(StorageSize.formatted(gigabytes: 8, locale: Locale(identifier: "fr_FR")) == "8\u{202F}Go")
+    }
+
+    @Test("An image's download reads as an amount out of its size")
+    func downloadedSize() {
+        let english = Locale(identifier: "en_US")
+        let image = MachineImage(id: "beta", name: "Beta", system: .macOS, sizeGB: 18.9, state: .downloading(progress: 0.62))
+        #expect(image.formattedSize(locale: english) == "18.9 GB")
+        #expect(image.downloadedSize(locale: english) == "11.7 GB of 18.9 GB")
+        let ready = MachineImage(id: "ready", name: "Ready", system: .macOS, sizeGB: 2.1, state: .ready)
+        #expect(ready.downloadedSize(locale: english) == nil)
+    }
+
+    @Test("The sample machines have unique ids, and the first is Orders sandbox, which a route with no id selects")
+    func samples() {
+        let machines = SampleMachineStore().machines()
+        #expect(Set(machines.map(\.id)).count == machines.count)
+        #expect(machines.first?.id == "orders-sandbox")
+        let images = SampleMachineStore().images()
+        #expect(Set(images.map(\.id)).count == images.count)
+    }
+}

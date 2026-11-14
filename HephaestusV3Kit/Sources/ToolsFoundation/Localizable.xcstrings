@@ -1,0 +1,123 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "1 hour" : {
+
+    },
+    "24 hours" : {
+
+    },
+    "5 min" : {
+
+    },
+    "App" : {
+
+    },
+    "Apps" : {
+
+    },
+    "Builds" : {
+
+    },
+    "Busiest Calls" : {
+
+    },
+    "Chat" : {
+
+    },
+    "Contracts" : {
+
+    },
+    "Created" : {
+
+    },
+    "Dashboard" : {
+
+    },
+    "Degraded" : {
+
+    },
+    "Done" : {
+
+    },
+    "Down" : {
+
+    },
+    "Draft" : {
+
+    },
+    "Failed" : {
+
+    },
+    "Failed Requests" : {
+
+    },
+    "Folder" : {
+
+    },
+    "Healthy" : {
+
+    },
+    "Hide the Chat Panel (⌃⌘C)" : {
+
+    },
+    "Identifier" : {
+
+    },
+    "In Progress" : {
+
+    },
+    "In Review" : {
+
+    },
+    "Instances" : {
+
+    },
+    "Libraries" : {
+
+    },
+    "Library" : {
+
+    },
+    "Name" : {
+
+    },
+    "Passed" : {
+
+    },
+    "Project" : {
+
+    },
+    "Recent Builds" : {
+
+    },
+    "Requests per Minute" : {
+
+    },
+    "Running" : {
+
+    },
+    "Service" : {
+
+    },
+    "Service Graph" : {
+
+    },
+    "Service Map" : {
+
+    },
+    "Services" : {
+
+    },
+    "Show the Chat Panel (⌃⌘C)" : {
+
+    },
+    "Tickets" : {
+
+    },
+    "Type" : {
+
+    }
+  },
+  "version" : "1.0"
+}

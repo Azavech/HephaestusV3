@@ -1,0 +1,305 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ has no ticket with the id %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ has no ticket with the id %2$@."
+          }
+        }
+      }
+    },
+    "%@ has no tickets." : {
+
+    },
+    "%lld of %lld done" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld done"
+          }
+        }
+      }
+    },
+    "A draft stays out of the workflow until you create it." : {
+
+    },
+    "Activity" : {
+
+    },
+    "Add a comment" : {
+
+    },
+    "Add the Comment (⌘↩)" : {
+
+    },
+    "All Tickets" : {
+
+    },
+    "Build" : {
+      "comment" : "The kind of an item a ticket links to"
+    },
+    "Bundle" : {
+      "comment" : "A ticket's property"
+    },
+    "Bundles" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Change Status" : {
+
+    },
+    "Comment" : {
+      "comment" : "The button that adds a comment"
+    },
+    "Contract" : {
+      "comment" : "The kind of an item a ticket links to"
+    },
+    "Couldn't Load Tickets" : {
+
+    },
+    "Create" : {
+
+    },
+    "Create Ticket" : {
+
+    },
+    "Create Ticket (⇧⌘↩)" : {
+
+    },
+    "Created On" : {
+      "comment" : "A ticket's property"
+    },
+    "Description" : {
+
+    },
+    "Filter" : {
+
+    },
+    "Filter Tickets" : {
+
+    },
+    "High" : {
+      "comment" : "A ticket's priority"
+    },
+    "Is %@ ready to be marked as done?" : {
+
+    },
+    "Is %@ ready to create?" : {
+
+    },
+    "Labels" : {
+      "comment" : "A ticket's property"
+    },
+    "Last Updated" : {
+      "comment" : "A ticket's property"
+    },
+    "Linked" : {
+
+    },
+    "Loading Tickets" : {
+
+    },
+    "Low" : {
+      "comment" : "A ticket's priority"
+    },
+    "Mark as Done" : {
+
+    },
+    "Mark as Done (⇧⌘↩)" : {
+
+    },
+    "Medium" : {
+      "comment" : "A ticket's priority"
+    },
+    "New Ticket" : {
+
+    },
+    "New Ticket (⇧⌘N)" : {
+
+    },
+    "New Ticket…" : {
+      "comment" : "File menu item, ⇧⌘N"
+    },
+    "Next Step" : {
+
+    },
+    "No Matching Tickets" : {
+
+    },
+    "No Ticket Selected" : {
+
+    },
+    "No Tickets" : {
+
+    },
+    "No ticket is a draft." : {
+
+    },
+    "No ticket is done." : {
+
+    },
+    "No ticket is in progress." : {
+
+    },
+    "No ticket is in review." : {
+
+    },
+    "No ticket is waiting to start." : {
+
+    },
+    "No ticket matches this filter." : {
+
+    },
+    "None" : {
+      "comment" : "The Bundle property of a ticket in no bundle"
+    },
+    "Pick a ticket to see its details." : {
+
+    },
+    "Priority" : {
+      "comment" : "The word for a ticket's priority, as a label: a property, a field of the New Ticket sheet"
+    },
+    "Project" : {
+
+    },
+    "Projects" : {
+
+    },
+    "Read ticket %@" : {
+
+    },
+    "Reporter" : {
+      "comment" : "A ticket's property"
+    },
+    "Request" : {
+      "comment" : "The kind of an item a ticket links to"
+    },
+    "Save as Draft" : {
+
+    },
+    "Send to Review" : {
+
+    },
+    "Send to Review (⇧⌘↩)" : {
+
+    },
+    "Service" : {
+      "comment" : "The kind of an item a ticket links to"
+    },
+    "Show" : {
+
+    },
+    "Show All Tickets" : {
+
+    },
+    "Shows all tickets." : {
+
+    },
+    "Start Work" : {
+
+    },
+    "Start Work (⇧⌘↩)" : {
+
+    },
+    "Status" : {
+      "comment" : "The word for a ticket's status, as a label: a property, a section of the sidebar, the status menu without a ticket"
+    },
+    "Sub projects included" : {
+
+    },
+    "Summarize %@" : {
+
+    },
+    "Ticket Not Found" : {
+
+    },
+    "Tickets you create or draft show up here." : {
+
+    },
+    "Title" : {
+
+    },
+    "Try Again" : {
+
+    },
+    "Urgent" : {
+      "comment" : "A ticket's priority"
+    },
+    "What did %@ change?" : {
+
+    },
+    "What's left before %@ can go to review?" : {
+
+    },
+    "Where should work on %@ start?" : {
+
+    },
+    "“%@” is a draft, with high priority." : {
+
+    },
+    "“%@” is a draft, with low priority." : {
+
+    },
+    "“%@” is a draft, with medium priority." : {
+
+    },
+    "“%@” is a draft, with urgent priority." : {
+
+    },
+    "“%@” is done. Its priority was high." : {
+
+    },
+    "“%@” is done. Its priority was low." : {
+
+    },
+    "“%@” is done. Its priority was medium." : {
+
+    },
+    "“%@” is done. Its priority was urgent." : {
+
+    },
+    "“%@” is in progress, with high priority." : {
+
+    },
+    "“%@” is in progress, with low priority." : {
+
+    },
+    "“%@” is in progress, with medium priority." : {
+
+    },
+    "“%@” is in progress, with urgent priority." : {
+
+    },
+    "“%@” is in review, with high priority." : {
+
+    },
+    "“%@” is in review, with low priority." : {
+
+    },
+    "“%@” is in review, with medium priority." : {
+
+    },
+    "“%@” is in review, with urgent priority." : {
+
+    },
+    "“%@” is waiting to start, with high priority." : {
+
+    },
+    "“%@” is waiting to start, with low priority." : {
+
+    },
+    "“%@” is waiting to start, with medium priority." : {
+
+    },
+    "“%@” is waiting to start, with urgent priority." : {
+
+    }
+  },
+  "version" : "1.0"
+}

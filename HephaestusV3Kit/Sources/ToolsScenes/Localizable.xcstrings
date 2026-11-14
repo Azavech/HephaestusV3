@@ -1,0 +1,51 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Hide Chat Panel" : {
+
+    },
+    "New Builds Window" : {
+
+    },
+    "New Chat Window" : {
+
+    },
+    "New Contracts Window" : {
+
+    },
+    "New Dashboard Window" : {
+
+    },
+    "New Item" : {
+      "comment" : "File menu item, disabled: the key window creates nothing"
+    },
+    "New Service Map Window" : {
+
+    },
+    "New Tickets Window" : {
+
+    },
+    "New Window" : {
+
+    },
+    "No Project" : {
+
+    },
+    "Open Project" : {
+
+    },
+    "Open this window from the Projects window." : {
+
+    },
+    "Projects" : {
+
+    },
+    "Show Chat Panel" : {
+
+    },
+    "Virtual Machines" : {
+
+    }
+  },
+  "version" : "1.0"
+}
