@@ -1,24 +1,28 @@
+import AppKit
 import AZDesign
-import ToolsFoundation
+import QuickLook
 import SwiftUI
+import ToolsFoundation
+import UniformTypeIdentifiers
 
-/// The detail column: everything about one ticket.
+/// The detail column: everything about one ticket, and every change made to it.
 ///
 /// When the column is wide enough, the ticket's properties move to a column of their own on the
 /// right, as in an issue tracker, and the description and history take the rest of the width. A
 /// narrower column stacks them. Either way the comment field stays at the bottom.
 ///
 /// Its toolbar actions live in `TicketActions`, so they can stay in place when no ticket is selected.
-/// A linked item opens in its own tool's window, through the app's routes. The comment being written
-/// belongs to the ticket: the window keeps one per ticket.
+/// A linked item opens in its own window, through the app's routes. The comment being written belongs to
+/// the ticket: the window keeps one per ticket, with its files.
 struct TicketDetailView: View {
     let ticket: Ticket
-    var bundle: TicketBundle? = nil
-    @Binding var comment: String
-    /// Not wired yet: the example leaves it empty.
-    var onComment: () -> Void = {}
+    @Bindable var model: TicketsModel
 
     @State private var isWide = false
+    @State private var isImporting = false
+    /// Where the files picked go: the ticket's own, or the next comment's.
+    @State private var importsForComment = false
+    @State private var preview: URL?
 
     @Environment(\.openRoute) private var openRoute
 
@@ -28,10 +32,7 @@ struct TicketDetailView: View {
                 HStack(spacing: 0) {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 26) {
-                            header
-                            description
-                            linked
-                            activity
+                            mainParts(properties: false)
                         }
                         .padding(28)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -39,7 +40,7 @@ struct TicketDetailView: View {
                     .safeAreaInset(edge: .bottom, spacing: 0) { composer }
                     Divider()
                     ScrollView {
-                        TicketProperties(ticket: ticket, bundle: bundle, columns: [GridItem(.flexible(), alignment: .topLeading)])
+                        properties(columns: [GridItem(.flexible(), alignment: .topLeading)])
                             .padding(20)
                     }
                     .frame(width: 280)
@@ -48,11 +49,7 @@ struct TicketDetailView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 26) {
-                        header
-                        description
-                        TicketProperties(ticket: ticket, bundle: bundle, columns: [GridItem(.adaptive(minimum: 150), alignment: .topLeading)])
-                        linked
-                        activity
+                        mainParts(properties: true)
                     }
                     .padding(24)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -63,18 +60,58 @@ struct TicketDetailView: View {
         .background(.canvas)
         .onGeometryChange(for: Bool.self) { $0.size.width >= 720 } action: { isWide = $0 }
         .navigationTitle(Text(verbatim: ticket.id))
+        // Files dropped on the ticket, outside the comment field, become its own.
+        .dropDestination(for: URL.self) { urls, _ in
+            Task { await model.addAttachments(urls, to: ticket.id) }
+            return !urls.isEmpty
+        }
+        .fileImporter(isPresented: $isImporting, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            guard case .success(let urls) = result else { return }
+            if importsForComment {
+                model.attach(urls, to: ticket.id)
+            } else {
+                Task { await model.addAttachments(urls, to: ticket.id) }
+            }
+        }
+        .quickLookPreview($preview)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("ticket.detail")
     }
 
-    /// The ticket's number, title, status and priority.
+    @ViewBuilder private func mainParts(properties showsProperties: Bool) -> some View {
+        if let edit = Binding($model.edit), edit.wrappedValue.ticketID == ticket.id {
+            TicketEditor(edit: edit, onCancel: { model.cancelEditing() }, onSave: { Task { await model.saveEditing() } })
+        } else {
+            header
+            description
+        }
+        if showsProperties {
+            properties(columns: [GridItem(.adaptive(minimum: 150), alignment: .topLeading)])
+        }
+        attachments
+        linked
+        activity
+    }
+
+    /// The ticket's number, title, status and priority, and Edit.
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(verbatim: ticket.id)
-                .font(.callout)
-                .monospacedDigit()
-                .foregroundStyle(.textSecondary)
-                .accessibilityIdentifier("ticket.number")
+            HStack(alignment: .firstTextBaseline) {
+                Text(verbatim: ticket.id)
+                    .font(.callout)
+                    .monospacedDigit()
+                    .foregroundStyle(.textSecondary)
+                    .accessibilityIdentifier("ticket.number")
+                Spacer()
+                Button(String(localized: "Edit", bundle: #bundle, comment: "Edits a ticket's title, description, priority and labels"), systemImage: "pencil") {
+                    model.startEditing(ticket)
+                }
+                .labelStyle(.titleAndIcon)
+                .buttonStyle(.borderless)
+                .keyboardShortcut("e", modifiers: .command)
+                .help(String(localized: "Edit the Ticket (⌘E)", bundle: #bundle))
+                .accessibilityIdentifier("ticket.edit")
+            }
             Text(verbatim: ticket.title)
                 .font(.title.weight(.semibold))
                 .foregroundStyle(.textPrimary)
@@ -84,25 +121,76 @@ struct TicketDetailView: View {
             HStack(spacing: 6) {
                 Label(ticket.status.title, systemImage: ticket.status.symbol)
                     .labelStyle(.badge(ticket.status.color))
-                Label(ticket.priority.title, systemImage: ticket.priority.symbol)
-                    .labelStyle(.badge(ticket.priority.color))
+                if let priority = ticket.priority {
+                    Label(priority.title, systemImage: priority.symbol)
+                        .labelStyle(.badge(priority.color))
+                }
+                if ticket.isBlocked {
+                    Label(TicketWords.blocked, systemImage: "hand.raised")
+                        .labelStyle(.badge(.danger))
+                        .help(String(localized: "It depends on a ticket that isn't done.", bundle: #bundle))
+                        .accessibilityIdentifier("ticket.blocked")
+                }
             }
         }
     }
 
-    private var description: some View {
-        Text(verbatim: ticket.details)
-            .font(.body)
-            .lineSpacing(3)
-            .foregroundStyle(.textPrimary)
-            .textSelection(.enabled)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityIdentifier("ticket.description")
+    @ViewBuilder private var description: some View {
+        if ticket.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            Text("No description.", bundle: #bundle)
+                .foregroundStyle(.textSecondary)
+                .accessibilityIdentifier("ticket.description")
+        } else {
+            TicketText(ticket.details, projectID: ticket.projectID)
+                .font(.body)
+                .lineSpacing(3)
+                .foregroundStyle(.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("ticket.description")
+        }
     }
 
-    @ViewBuilder private var linked: some View {
-        if !ticket.links.isEmpty {
-            DetailSection(String(localized: "Linked", bundle: #bundle)) {
+    private func properties(columns: [GridItem]) -> some View {
+        TicketProperties(ticket: ticket, bundles: model.bundles(of: ticket), columns: columns) { priority in
+            Task { await model.setPriority(priority, of: ticket) }
+        }
+    }
+
+    /// The ticket's own files, and Add Files….
+    private var attachments: some View {
+        TicketSection(String(localized: "Attachments (\(ticket.attachments.count))", bundle: #bundle)) {
+            Button(String(localized: "Add Files…", bundle: #bundle), systemImage: "paperclip") {
+                importsForComment = false
+                isImporting = true
+            }
+            .buttonStyle(.borderless)
+            .accessibilityIdentifier("ticket.attachments.add")
+        } content: {
+            if ticket.attachments.isEmpty {
+                Text("Drop files here or click Add Files…", bundle: #bundle)
+                    .foregroundStyle(.textSecondary)
+            } else {
+                AttachmentStrip(attachments: ticket.attachments, projectID: ticket.projectID, model: model, ticket: ticket,
+                                removable: true, onOpen: open)
+            }
+        }
+        .accessibilityIdentifier("ticket.attachments")
+    }
+
+    /// The tickets it depends on, blocks or relates to, and the items it links to in other tools.
+    private var linked: some View {
+        TicketSection(String(localized: "Linked", bundle: #bundle)) {
+            Button(String(localized: "Add Link…", bundle: #bundle), systemImage: "plus") {
+                model.linkingTicket = ticket.id
+            }
+            .buttonStyle(.borderless)
+            .disabled(model.linkCandidates(for: ticket).isEmpty)
+            .accessibilityIdentifier("ticket.links.add")
+        } content: {
+            if ticket.links.isEmpty {
+                Text("No linked tickets.", bundle: #bundle)
+                    .foregroundStyle(.textSecondary)
+            } else {
                 GroupBox {
                     VStack(spacing: 0) {
                         ForEach(ticket.links) { link in
@@ -110,6 +198,13 @@ struct TicketDetailView: View {
                                 Divider()
                             }
                             LinkRow(link: link) { openRoute(link.route(in: ticket.projectID)) }
+                                .contextMenu {
+                                    if link.isDeclared {
+                                        Button(String(localized: "Remove Link", bundle: #bundle), role: .destructive) {
+                                            Task { await model.removeLink(link, from: ticket) }
+                                        }
+                                    }
+                                }
                         }
                     }
                     .padding(.horizontal, 4)
@@ -122,36 +217,213 @@ struct TicketDetailView: View {
         DetailSection(String(localized: "Activity", bundle: #bundle)) {
             VStack(alignment: .leading, spacing: 14) {
                 ForEach(ticket.events) { event in
-                    EventRow(event: event)
-                        .accessibilityIdentifier("ticket.activity.\(event.id)")
+                    if let edit = model.commentEdit, edit.ticketID == ticket.id, edit.commentID == event.commentID {
+                        CommentEditor(text: Binding { model.commentEdit?.text ?? "" } set: { model.commentEdit?.text = $0 },
+                                      onCancel: { model.commentEdit = nil }, onSave: { Task { await model.saveComment() } })
+                    } else {
+                        EventRow(event: event, projectID: ticket.projectID, model: model, ticket: ticket, onOpen: open)
+                            .accessibilityIdentifier("ticket.activity.\(event.id)")
+                            .contextMenu {
+                                if let commentID = event.commentID {
+                                    Button(String(localized: "Edit", bundle: #bundle)) {
+                                        model.startEditingComment(event, of: ticket.id)
+                                    }
+                                    Button(String(localized: "Copy Text", bundle: #bundle)) {
+                                        NSPasteboard.general.clearContents()
+                                        NSPasteboard.general.setString(event.comment ?? "", forType: .string)
+                                    }
+                                    Divider()
+                                    Button(String(localized: "Delete…", bundle: #bundle), role: .destructive) {
+                                        model.confirmation = .deleteComment(ticket.id, commentID)
+                                    }
+                                }
+                            }
+                    }
                 }
             }
         }
     }
 
-    /// The field to add a comment, kept under the history.
+    /// The field to add a comment, kept under the history, with the files waiting to go with it.
     private var composer: some View {
         VStack(spacing: 0) {
             Divider()
-            HStack(alignment: .bottom, spacing: 10) {
-                TextField(String(localized: "Add a comment", bundle: #bundle), text: $comment, axis: .vertical)
+            VStack(alignment: .leading, spacing: 8) {
+                let files = model.files(for: ticket.id)
+                if !files.isEmpty {
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 6) {
+                            ForEach(files, id: \.self) { file in
+                                PendingFileChip(url: file) { model.detach(file, from: ticket.id) }
+                            }
+                        }
+                    }
+                    .scrollIndicators(.hidden)
+                }
+                HStack(alignment: .bottom, spacing: 10) {
+                    Button(String(localized: "Attach Files", bundle: #bundle), systemImage: "paperclip") {
+                        importsForComment = true
+                        isImporting = true
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .help(String(localized: "Attach Files to the Comment", bundle: #bundle))
+                    .accessibilityIdentifier("ticket.comment.attach")
+                    TextField(String(localized: "Add a comment", bundle: #bundle), text: Binding {
+                        model.commentDraft(for: ticket.id)
+                    } set: {
+                        model.setCommentDraft($0, for: ticket.id)
+                    }, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...6)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 7)
                     .background(.surfaceSunken, in: .capsule)
                     .accessibilityIdentifier("ticket.comment")
-                Button(String(localized: "Comment", bundle: #bundle, comment: "The button that adds a comment"), action: onComment)
+                    Button(String(localized: "Comment", bundle: #bundle, comment: "The button that adds a comment")) {
+                        Task { await model.sendComment(on: ticket.id) }
+                    }
                     .buttonStyle(.glassProminent)
                     .keyboardShortcut(.return, modifiers: .command)
                     .help(String(localized: "Add the Comment (⌘↩)", bundle: #bundle))
-                    .disabled(comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!model.canComment(on: ticket.id) || model.isWorking)
                     .accessibilityIdentifier("ticket.comment.send")
+                }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
+            // Files dropped on the comment field go with the next comment.
+            .dropDestination(for: URL.self) { urls, _ in
+                model.attach(urls, to: ticket.id)
+                return !urls.isEmpty
+            }
         }
         .background(.canvas)
+    }
+
+    /// Opens an attachment with Quick Look.
+    private func open(_ attachment: TicketAttachment) {
+        Task { preview = await model.url(of: attachment, in: ticket) }
+    }
+}
+
+/// A part of the ticket under a title, as `DetailSection`, with a button at the title's trailing end.
+private struct TicketSection<Accessory: View, Content: View>: View {
+    let title: String
+    let accessory: Accessory
+    let content: Content
+
+    init(_ title: String, @ViewBuilder accessory: () -> Accessory, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.accessory = accessory()
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(verbatim: title)
+                    .font(.headline)
+                    .foregroundStyle(.textPrimary)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 12)
+                accessory
+            }
+            content
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
+/// A description or a comment, as Markdown with the ids of the loaded projects linked and its relative links
+/// opening the files of the ticket's project.
+struct TicketText: View {
+    let text: String
+    var projectID: Project.ID?
+    @Environment(\.projectDirectory) private var directory
+
+    init(_ text: String, projectID: Project.ID? = nil) {
+        self.text = text
+        self.projectID = projectID
+    }
+
+    var body: some View {
+        MarkdownView(text, projects: Set(directory.projects.map(\.id)), root: directory.project(projectID)?.path)
+    }
+}
+
+/// The editor of a ticket's title, description, priority and labels.
+private struct TicketEditor: View {
+    @Binding var edit: TicketEdit
+    let onCancel: () -> Void
+    let onSave: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            TextField(String(localized: "Title", bundle: #bundle), text: $edit.title, prompt: Text("Title", bundle: #bundle))
+                .font(.title2.weight(.semibold))
+                .accessibilityIdentifier("ticket.edit.title")
+            TextEditor(text: $edit.details)
+                .font(.body.monospaced())
+                .frame(minHeight: 160)
+                .scrollContentBackground(.hidden)
+                .padding(6)
+                .background(.surfaceSunken, in: .rect(corners: .concentric(minimum: .fixed(8)), isUniform: true))
+                .accessibilityLabel(Text("Description", bundle: #bundle))
+                .accessibilityIdentifier("ticket.edit.description")
+            HStack(spacing: 16) {
+                Picker(TicketWords.priority, selection: $edit.priority) {
+                    Text(verbatim: TicketWords.none).tag(TicketPriority?.none)
+                    ForEach(TicketPriority.allCases) { priority in
+                        Text(verbatim: priority.title).tag(TicketPriority?.some(priority))
+                    }
+                }
+                .fixedSize()
+                .accessibilityIdentifier("ticket.edit.priority")
+                TextField(String(localized: "Labels", bundle: #bundle), text: $edit.labels,
+                          prompt: Text("Labels, separated by commas", bundle: #bundle))
+                    .accessibilityIdentifier("ticket.edit.labels")
+            }
+            HStack {
+                Spacer()
+                Button(String(localized: "Cancel", bundle: #bundle), role: .cancel, action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                    .accessibilityIdentifier("ticket.edit.cancel")
+                Button(String(localized: "Save", bundle: #bundle), action: onSave)
+                    .keyboardShortcut("s", modifiers: .command)
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!edit.canSave)
+                    .accessibilityIdentifier("ticket.edit.save")
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("ticket.editor")
+    }
+}
+
+/// A comment's text being edited, in place of the comment.
+private struct CommentEditor: View {
+    @Binding var text: String
+    let onCancel: () -> Void
+    let onSave: () -> Void
+
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 8) {
+            TextEditor(text: $text)
+                .frame(minHeight: 80)
+                .scrollContentBackground(.hidden)
+                .padding(6)
+                .background(.surfaceSunken, in: .rect(corners: .concentric(minimum: .fixed(8)), isUniform: true))
+                .accessibilityIdentifier("ticket.commentEditor.text")
+            HStack {
+                Button(String(localized: "Cancel", bundle: #bundle), role: .cancel, action: onCancel)
+                    .keyboardShortcut(.cancelAction)
+                Button(String(localized: "Save", bundle: #bundle), action: onSave)
+                    .keyboardShortcut(.return, modifiers: .command)
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("ticket.commentEditor.save")
+            }
+        }
     }
 }
 
@@ -159,8 +431,9 @@ struct TicketDetailView: View {
 /// as fit under its description.
 private struct TicketProperties: View {
     let ticket: Ticket
-    let bundle: TicketBundle?
+    let bundles: [TicketBundle]
     let columns: [GridItem]
+    let onPriority: (TicketPriority?) -> Void
 
     var body: some View {
         LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
@@ -169,24 +442,47 @@ private struct TicketProperties: View {
                     .labelStyle(.badge(ticket.status.color))
             }
             LabeledContent(TicketWords.priority) {
-                Label(ticket.priority.title, systemImage: ticket.priority.symbol)
-                    .labelStyle(.badge(ticket.priority.color))
+                Menu {
+                    Picker(TicketWords.priority, selection: Binding(get: { ticket.priority }, set: onPriority)) {
+                        Text(verbatim: TicketWords.none).tag(TicketPriority?.none)
+                        ForEach(TicketPriority.allCases) { priority in
+                            Label(priority.title, systemImage: priority.symbol).tag(TicketPriority?.some(priority))
+                        }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    if let priority = ticket.priority {
+                        Label(priority.title, systemImage: priority.symbol)
+                            .labelStyle(.badge(priority.color))
+                    } else {
+                        Text(verbatim: TicketWords.none)
+                            .foregroundStyle(.textSecondary)
+                    }
+                }
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .fixedSize()
+                .accessibilityIdentifier("ticket.priority")
             }
             LabeledContent(String(localized: "Reporter", bundle: #bundle, comment: "A ticket's property")) {
                 Text(verbatim: ticket.reporter)
             }
             LabeledContent(String(localized: "Bundle", bundle: #bundle, comment: "A ticket's property")) {
-                if let bundle {
-                    Label {
-                        Text(verbatim: bundle.title)
-                    } icon: {
-                        Image(systemName: "shippingbox")
-                            .foregroundStyle(.accent)
-                            .accessibilityHidden(true)
-                    }
-                } else {
-                    Text("None", bundle: #bundle, comment: "The Bundle property of a ticket in no bundle")
+                if bundles.isEmpty {
+                    Text(verbatim: TicketWords.none)
                         .foregroundStyle(.textSecondary)
+                } else {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(bundles) { bundle in
+                            Label {
+                                Text(verbatim: bundle.title)
+                            } icon: {
+                                Image(systemName: "shippingbox")
+                                    .foregroundStyle(.accent)
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                    }
                 }
             }
             LabeledContent(String(localized: "Created On", bundle: #bundle, comment: "A ticket's property")) {
@@ -196,14 +492,19 @@ private struct TicketProperties: View {
                 Text(ticket.updatedAt, format: .dateTime.day().month().year())
             }
             LabeledContent(String(localized: "Labels", bundle: #bundle, comment: "A ticket's property")) {
-                HStack(spacing: 6) {
-                    ForEach(ticket.labels, id: \.self) { label in
-                        Text(verbatim: label)
-                            .font(.caption)
-                            .foregroundStyle(.textPrimary)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2)
-                            .background(.surfaceSunken, in: Capsule())
+                if ticket.labels.isEmpty {
+                    Text(verbatim: TicketWords.none)
+                        .foregroundStyle(.textSecondary)
+                } else {
+                    HStack(spacing: 6) {
+                        ForEach(ticket.labels, id: \.self) { label in
+                            Text(verbatim: label)
+                                .font(.caption)
+                                .foregroundStyle(.textPrimary)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(.surfaceSunken, in: Capsule())
+                        }
                     }
                 }
             }
@@ -213,7 +514,8 @@ private struct TicketProperties: View {
     }
 }
 
-/// Something the ticket points to in another tool. Clicking it opens that tool's window on it.
+/// Something the ticket points to: another ticket, or an item in another tool. Clicking it opens its
+/// window on it.
 private struct LinkRow: View {
     let link: TicketLink
     let action: () -> Void
@@ -228,6 +530,12 @@ private struct LinkRow: View {
                 Text(verbatim: link.title)
                     .foregroundStyle(.textPrimary)
                     .lineLimit(1)
+                if link.isMissing {
+                    Label(String(localized: "Not found", bundle: #bundle, comment: "A linked ticket whose file is missing"),
+                          systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.warning)
+                        .font(.callout)
+                }
                 Spacer(minLength: 16)
                 Text(verbatim: link.kind.title)
                     .foregroundStyle(.textSecondary)
@@ -239,13 +547,18 @@ private struct LinkRow: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+        .disabled(link.isMissing)
         .accessibilityIdentifier("ticket.link.\(link.id)")
     }
 }
 
-/// One entry of the ticket's history, with the text of a comment under it.
+/// One entry of the ticket's history, with a comment's text and files under it.
 private struct EventRow: View {
     let event: TicketEvent
+    let projectID: Project.ID
+    let model: TicketsModel
+    let ticket: Ticket
+    let onOpen: (TicketAttachment) -> Void
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -257,23 +570,191 @@ private struct EventRow: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(verbatim: event.text)
                         .foregroundStyle(.textPrimary)
+                    if let edited = event.editedAt {
+                        Text("(edited)", bundle: #bundle)
+                            .foregroundStyle(.textSecondary)
+                            .help(Text(edited, format: .dateTime.day().month(.abbreviated).hour().minute()))
+                    }
                     Spacer(minLength: 16)
                     Text(event.date, format: .dateTime.day().month(.abbreviated).hour().minute())
                         .font(.callout)
                         .foregroundStyle(.textSecondary)
                 }
-                if let comment = event.comment {
-                    Text(verbatim: comment)
+                if let comment = event.comment, !comment.isEmpty {
+                    TicketText(comment, projectID: projectID)
                         .lineSpacing(2)
                         .foregroundStyle(.textPrimary)
-                        .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(12)
                         .background(.surface, in: .rect(corners: .concentric(minimum: .fixed(8)), isUniform: true))
                 }
+                if !event.attachments.isEmpty {
+                    AttachmentStrip(attachments: event.attachments, projectID: projectID, model: model, ticket: ticket,
+                                    removable: false, onOpen: onOpen)
+                }
             }
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Files of a ticket or a comment: images as thumbnails, others as chips. A click opens Quick Look.
+private struct AttachmentStrip: View {
+    let attachments: [TicketAttachment]
+    let projectID: Project.ID
+    let model: TicketsModel
+    let ticket: Ticket
+    /// Only a ticket's own files are removed one by one; a comment's go with it.
+    let removable: Bool
+    let onOpen: (TicketAttachment) -> Void
+
+    var body: some View {
+        FlowStack(spacing: 8) {
+            ForEach(attachments) { attachment in
+                AttachmentView(attachment: attachment, url: { await model.url(of: attachment, in: ticket) })
+                    .onTapGesture { onOpen(attachment) }
+                    .contextMenu {
+                        Button(String(localized: "Open", bundle: #bundle)) { onOpen(attachment) }
+                        Button(String(localized: "Open With Default App", bundle: #bundle)) {
+                            Task { if let url = await model.url(of: attachment, in: ticket) { NSWorkspace.shared.open(url) } }
+                        }
+                        Button(String(localized: "Show in Finder", bundle: #bundle)) {
+                            Task {
+                                if let url = await model.url(of: attachment, in: ticket) {
+                                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                                }
+                            }
+                        }
+                        if removable {
+                            Divider()
+                            Button(String(localized: "Remove…", bundle: #bundle), role: .destructive) {
+                                model.confirmation = .removeAttachment(ticket.id, attachment)
+                            }
+                        }
+                    }
+                    .accessibilityIdentifier("ticket.attachment.\(attachment.id.uuidString)")
+            }
+        }
+    }
+}
+
+/// One attachment: a thumbnail at most 96 pt high and 192 pt wide with its name, or a chip with its
+/// type's icon, its name and its size.
+private struct AttachmentView: View {
+    let attachment: TicketAttachment
+    let url: () async -> URL?
+    @State private var file: URL?
+
+    var body: some View {
+        Group {
+            if attachment.isImage {
+                VStack(alignment: .leading, spacing: 4) {
+                    Group {
+                        if let file, let image = NSImage(contentsOf: file) {
+                            Image(nsImage: image)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                        } else {
+                            Image(systemName: "photo")
+                                .foregroundStyle(.textSecondary)
+                                .frame(width: 96, height: 96)
+                        }
+                    }
+                    .frame(maxWidth: 192, maxHeight: 96)
+                    .clipShape(.rect(corners: .concentric(minimum: .fixed(6)), isUniform: true))
+                    Text(verbatim: attachment.name)
+                        .font(.caption)
+                        .foregroundStyle(.textSecondary)
+                        .lineLimit(1)
+                        .frame(maxWidth: 192, alignment: .leading)
+                }
+            } else {
+                HStack(spacing: 6) {
+                    Image(nsImage: NSWorkspace.shared.icon(for: UTType(mimeType: attachment.contentType) ?? .data))
+                        .resizable()
+                        .frame(width: 18, height: 18)
+                        .accessibilityHidden(true)
+                    Text(verbatim: attachment.name)
+                        .lineLimit(1)
+                    Text(Int64(attachment.size), format: .byteCount(style: .file))
+                        .foregroundStyle(.textSecondary)
+                }
+                .font(.callout)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(.surfaceSunken, in: .capsule)
+            }
+        }
+        .contentShape(.rect)
+        .task(id: attachment.id) {
+            if attachment.isImage { file = await url() }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// A file waiting to go with the next comment, with a button that takes it off.
+private struct PendingFileChip: View {
+    let url: URL
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "doc")
+                .accessibilityHidden(true)
+            Text(verbatim: url.lastPathComponent)
+                .lineLimit(1)
+            Button(String(localized: "Remove", bundle: #bundle), systemImage: "xmark.circle.fill", action: onRemove)
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .foregroundStyle(.textSecondary)
+        }
+        .font(.callout)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(.surfaceSunken, in: .capsule)
+        .accessibilityIdentifier("ticket.comment.file")
+    }
+}
+
+/// A row that wraps its items onto as many lines as they need.
+private struct FlowStack: Layout {
+    var spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let rows = arrange(subviews, width: proposal.width ?? .infinity)
+        return CGSize(width: rows.map(\.width).max() ?? 0, height: rows.reduce(0) { $0 + $1.height } + spacing * CGFloat(max(rows.count - 1, 0)))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for row in arrange(subviews, width: bounds.width) {
+            var x = bounds.minX
+            for index in row.items {
+                let size = subviews[index].sizeThatFits(.unspecified)
+                subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+                x += size.width + spacing
+            }
+            y += row.height + spacing
+        }
+    }
+
+    private func arrange(_ subviews: Subviews, width: CGFloat) -> [(items: [Int], width: CGFloat, height: CGFloat)] {
+        var rows: [(items: [Int], width: CGFloat, height: CGFloat)] = []
+        var current: (items: [Int], width: CGFloat, height: CGFloat) = ([], 0, 0)
+        for index in subviews.indices {
+            let size = subviews[index].sizeThatFits(.unspecified)
+            let added = current.items.isEmpty ? size.width : current.width + spacing + size.width
+            if added > width, !current.items.isEmpty {
+                rows.append(current)
+                current = ([index], size.width, size.height)
+            } else {
+                current = (current.items + [index], added, max(current.height, size.height))
+            }
+        }
+        if !current.items.isEmpty { rows.append(current) }
+        return rows
     }
 }
 
@@ -295,74 +776,93 @@ struct TicketNotFoundView: View {
     }
 }
 
+
 #Preview("Loaded", traits: .appChrome) {
-    @Previewable @State var comment = ""
+    @Previewable @State var model = TicketsModel(project: Project.sample("ORD")!, focus: "ORD-142", store: SampleTicketStore())
     NavigationStack {
-        TicketDetailView(ticket: Ticket.samples[0], bundle: TicketBundle.samples[0], comment: $comment)
-            .toolbar { TicketActions(ticket: Ticket.samples[0]) }
+        TicketDetailView(ticket: model.selectedTicket!, model: model)
+            .toolbar { TicketActions(ticket: model.selectedTicket) }
     }
     .frame(width: 980, height: 760)
 }
 
 #Preview("Narrow", traits: .appChrome) {
-    @Previewable @State var comment = ""
+    @Previewable @State var model = TicketsModel(project: Project.sample("ORD")!, focus: "ORD-142", store: SampleTicketStore())
     NavigationStack {
-        TicketDetailView(ticket: Ticket.samples[0], bundle: TicketBundle.samples[0], comment: $comment)
-            .toolbar { TicketActions(ticket: Ticket.samples[0]) }
+        TicketDetailView(ticket: model.selectedTicket!, model: model)
+            .toolbar { TicketActions(ticket: model.selectedTicket) }
     }
     .frame(width: 600, height: 760)
 }
 
 #Preview("Loaded, Dark", traits: .appChrome) {
-    @Previewable @State var comment = ""
+    @Previewable @State var model = TicketsModel(project: Project.sample("ORD")!, focus: "ORD-142", store: SampleTicketStore())
     NavigationStack {
-        TicketDetailView(ticket: Ticket.samples[0], bundle: TicketBundle.samples[0], comment: $comment)
-            .toolbar { TicketActions(ticket: Ticket.samples[0]) }
+        TicketDetailView(ticket: model.selectedTicket!, model: model)
+            .toolbar { TicketActions(ticket: model.selectedTicket) }
     }
     .frame(width: 640, height: 720)
     .preferredColorScheme(.dark)
 }
 
 #Preview("Draft", traits: .appChrome) {
-    @Previewable @State var comment = ""
+    @Previewable @State var model = TicketsModel(project: Project.sample("ORD")!, focus: "ORD-141", store: SampleTicketStore())
     NavigationStack {
-        TicketDetailView(ticket: Ticket.samples[1], bundle: TicketBundle.samples[1], comment: $comment)
-            .toolbar { TicketActions(ticket: Ticket.samples[1]) }
+        TicketDetailView(ticket: model.selectedTicket!, model: model)
+            .toolbar { TicketActions(ticket: model.selectedTicket) }
     }
     .frame(width: 640, height: 720)
 }
 
 #Preview("Done", traits: .appChrome) {
-    @Previewable @State var comment = ""
+    @Previewable @State var model = TicketsModel(project: Project.sample("ORD")!, focus: "ORD-130", store: SampleTicketStore())
     NavigationStack {
-        TicketDetailView(ticket: Ticket.samples[5], bundle: TicketBundle.samples[1], comment: $comment)
-            .toolbar { TicketActions(ticket: Ticket.samples[5]) }
+        TicketDetailView(ticket: model.selectedTicket!, model: model)
+            .toolbar { TicketActions(ticket: model.selectedTicket) }
     }
     .frame(width: 640, height: 720)
 }
 
-#Preview("Comment Draft", traits: .appChrome) {
-    @Previewable @State var comment = "Backoff is in run 1288. Can you check the retries in tonight's batch?"
+#Preview("Editing", traits: .appChrome) {
+    @Previewable @State var model = {
+        let model = TicketsModel(project: Project.sample("ORD")!, focus: "ORD-142", store: SampleTicketStore())
+        model.startEditing(model.selectedTicket!)
+        return model
+    }()
     NavigationStack {
-        TicketDetailView(ticket: Ticket.samples[0], bundle: TicketBundle.samples[0], comment: $comment)
-            .toolbar { TicketActions(ticket: Ticket.samples[0]) }
+        TicketDetailView(ticket: model.selectedTicket!, model: model)
+            .toolbar { TicketActions(ticket: model.selectedTicket) }
+    }
+    .frame(width: 980, height: 760)
+}
+
+#Preview("Comment Draft", traits: .appChrome) {
+    @Previewable @State var model = {
+        let model = TicketsModel(project: Project.sample("ORD")!, focus: "ORD-142", store: SampleTicketStore())
+        model.setCommentDraft("Backoff is in run 1288. Can you check the retries in tonight's batch?", for: "ORD-142")
+        model.attach([URL(fileURLWithPath: "/tmp/batch.log")], to: "ORD-142")
+        return model
+    }()
+    NavigationStack {
+        TicketDetailView(ticket: model.selectedTicket!, model: model)
+            .toolbar { TicketActions(ticket: model.selectedTicket) }
     }
     .frame(width: 640, height: 720)
 }
 
 #Preview("iPhone", traits: .phoneLayout, .fixedLayout(width: 420, height: 800)) {
-    @Previewable @State var comment = ""
+    @Previewable @State var model = TicketsModel(project: Project.sample("ORD")!, focus: "ORD-142", store: SampleTicketStore())
     NavigationStack {
-        TicketDetailView(ticket: Ticket.samples[0], bundle: TicketBundle.samples[0], comment: $comment)
-            .toolbar { TicketActions(ticket: Ticket.samples[0], isCompact: true) }
+        TicketDetailView(ticket: model.selectedTicket!, model: model)
+            .toolbar { TicketActions(ticket: model.selectedTicket, isCompact: true) }
     }
 }
 
 #Preview("Largest Text", traits: .largestText, .fixedLayout(width: 640, height: 800)) {
-    @Previewable @State var comment = ""
+    @Previewable @State var model = TicketsModel(project: Project.sample("ORD")!, focus: "ORD-142", store: SampleTicketStore())
     NavigationStack {
-        TicketDetailView(ticket: Ticket.samples[0], bundle: TicketBundle.samples[0], comment: $comment)
-            .toolbar { TicketActions(ticket: Ticket.samples[0]) }
+        TicketDetailView(ticket: model.selectedTicket!, model: model)
+            .toolbar { TicketActions(ticket: model.selectedTicket) }
     }
 }
 

@@ -5,7 +5,10 @@ for a project with sub projects, by project. The middle column lists the tickets
 through. The detail column shows the selected ticket: its header, description, properties, the items it
 links to in other tools, and its activity with comments, above a comment field. The toolbar changes the
 ticket's status and moves it to its next step, and a sheet writes a new ticket. A project with sub projects
-lists their tickets too, grouped by project. All tickets and bundles are sample data.
+lists their tickets too, grouped by project. The tickets and bundles are the project's own files, in V2's
+format ([Data › Tickets and bundles](../data.md#tickets-and-bundles)); every change applies V2's rules and is
+written at once, and a change made outside the app (git, an editor, Claude) shows within 2 seconds. The
+screenshots show the sample tickets of the previews.
 
 ![The Tickets window of Orders: the sidebar with All Tickets selected, the list with ORD-142 selected, and the ticket's page](images/tickets-light.png)
 *Tickets for Orders, a sub project of Shop. All Tickets is selected in the sidebar, and ORD-142 is open in the
@@ -16,14 +19,16 @@ detail column with its properties under the description. Light Mode.*
 | Way in | What happens |
 | --- | --- |
 | **Window ▸ Tickets**, ⌘2 | Opens the Tickets window for the key window's project, or brings forward the one already showing it. Every kind of project has Tickets, so the item is enabled whenever the key window has a project. See [navigation.md › Menus and shortcuts](navigation.md#menus-and-shortcuts). |
-| Projects window, **Tools** section | The **Tickets** tile reads "*n* open, *n* in review, *n* drafts" for the project and its sub projects, as this window lists them. Its **Open** button sends `.tool(.tickets, project:)`. |
+| Projects window, **Tools** section | The **Tickets** tile reads "*n* open, *n* in review, *n* drafts" for the project and its sub projects, as this window lists them, from the loaded tickets (open: neither done nor a draft). Its **Open** button sends `.tool(.tickets, project:)`. |
 | Projects window, **Activity** | A ticket event, such as "You started work on the retry storm between checkout and payments", opens the window on that ticket. The older events, such as "You closed the ticket about the flaky timeout test", name no ticket and open the window without a focus. |
 | Menu bar panel | The highlighted project's row has a **Tickets** button, and ⌘2 opens Tickets for the highlighted project. |
 | Project switcher | In any Tickets window, picking another project moves this window to it. The selection and filter start afresh. See [components.md › Project switcher](components.md#project-switcher). |
 | Chat | The **Open** button of a "Read ticket ORD-142" row, or of a ticket in the Chat window's references, opens the window on that ticket. Such a row appears when a message attaches a ticket or names an existing ticket's id, such as ORD-142. |
 
 - **Route.** `.tool(.tickets, project: <project id>, focus: <ticket id>)`. The focus is the ticket id, for
-  example `ORD-142`. A route without a focus selects the first ticket of the list.
+  example `ORD-142`, or a bundle id, such as `ORD-B3`, which selects the bundle in the sidebar. A route
+  without a focus selects the first ticket of the list. A ticket or bundle id in a description or a comment
+  is a link that sends this route ([Markdown](#markdown)).
 - **The ticket's own project.** Links to a ticket name the ticket's own project. A link to ORD-142 opens or
   brings forward the Orders window, even when a Shop window also lists ORD-142.
 - **Window reuse.** A route brings forward the Tickets window already showing the project, un-minimized, and
@@ -70,8 +75,8 @@ own toolbar (see [Layouts](#layouts)).
 | Title | Window title and subtitle | None | None | **Tickets**, with the project's path as subtitle, for example "Shop › Orders". Hidden when the window is narrower than 760 pt. | Mac, iPad |
 | **Filter** | Menu with an inline picker | `line.3.horizontal.decrease.circle`; `line.3.horizontal.decrease.circle.fill` while a filter applies | None | The sidebar's choices. See [Filter menu](#filter-menu-iphone). Help: "Filter Tickets". | iPhone (list) |
 | **New Ticket** | Button | `plus` | ⇧⌘N (File ▸ New Ticket…) | Opens the [New Ticket sheet](#new-ticket-sheet). Help: "New Ticket (⇧⌘N)". | Mac, iPad (list column); iPhone (list) |
-| Status | Menu | The ticket's status symbol, or `circle.dashed` | Its items: ⌃⌘1 to ⌃⌘5 | Shows the selected ticket's status, and lists the statuses to change it to. Not wired yet. Help: "Change Status". See [Status and next step](#status-and-next-step). | Mac, iPad: symbol and name; iPhone (page): symbol only |
-| Next step | Button, `borderedProminent` | None; `arrow.right` on iPhone | ⇧⌘Return | Moves the ticket one step forward: its label is the step's name, such as **Send to Review**. Not wired yet. Help: the step's name and its shortcut, such as "Send to Review (⇧⌘↩)". | Mac, iPad: name; iPhone (page): symbol only |
+| Status | Menu | The ticket's status symbol, or `circle.dashed` | Its items: ⌃⌘1 to ⌃⌘5 | Shows the selected ticket's status, and lists the statuses to change it to. Help: "Change Status". See [Status and next step](#status-and-next-step). | Mac, iPad: symbol and name; iPhone (page): symbol only |
+| Next step | Button, `borderedProminent` | None; `arrow.right` on iPhone | ⇧⌘Return | Moves the ticket one step forward: its label is the step's name, such as **Send to Review**. Help: the step's name and its shortcut, such as "Send to Review (⇧⌘↩)". | Mac, iPad: name; iPhone (page): symbol only |
 | Chat | Button | `sidebar.right` | ⌃⌘C | Shows or hides the chat panel. It is the last item, at the right edge of the toolbar (the user's choice). Absent when Settings ▸ Chat turns the panel off. See [components.md › Chat panel button](components.md#chat-panel-button). | Mac, iPad, iPhone |
 
 - **Steady toolbar.** The status menu and the next-step button stay in the toolbar when no ticket is selected,
@@ -93,22 +98,28 @@ is selected, the list shows all tickets.
 | **All Tickets** | `tray.full` | All the window's tickets | Every ticket. |
 | **Status** section: one row per status, in workflow order | The status symbol (see [Status and next step](#status-and-next-step)) | The tickets in that status | The tickets in that status. |
 | **Projects** section: the window's project, then its sub projects | The project's icon, in its tint | The tickets of that project and of its own sub projects | The tickets of that project and its own sub projects. |
-| **Bundles** section: one row per bundle | `shippingbox` | None; a progress bar instead | The tickets in the bundle. |
+| **Bundles** section: one row per bundle, and **New Bundle** (`plus`) in its header | `shippingbox`; the bundle's status symbol at the trailing edge | None; a progress bar instead | The tickets in the bundle. |
 
 - **Counts.** Badges count the tickets the window holds, before any filter.
 - **Projects section.** It appears only for a project with sub projects. The rows follow the project tree,
   depth first. Each level below the window's project is indented 14 pt. For Shop, the rows are Shop, then
   Orders, Payments and Edge Gateway, indented. Selecting the window's own project row lets through the
   same tickets as **All Tickets**.
-- **Bundles section.** It appears only when the window's project has bundles. Bundles stay per project: a
-  parent's window lists only its own bundles, never its sub projects' (the user's choice). Each row shows the
-  bundle's title on one line, with a mini linear progress bar under it: the share of the bundle's tickets
-  that are **Done**.
+- **Bundles section.** It always appears, so that its header's **New Bundle** button (help "New Bundle") is
+  there. Bundles stay per project: a parent's window lists only its own bundles, never its sub projects' (the
+  user's choice). Each row shows the bundle's title on one line, its status symbol in its color (To Do
+  `circle` in `textSecondary`, In Progress `circle.lefthalf.filled` in `accent`, Done `checkmark.circle.fill`
+  in `success`; help and VoiceOver: the status's name), and a mini linear progress bar under it: the share of
+  the bundle's tickets that are **Done**. A bundle's status follows its tickets ([Data › Ticket
+  rules](../data.md#ticket-rules)): it becomes Done when all are, and In Progress again when one isn't.
+- **Bundle context menu.** **Edit Bundle…** opens the [bundle sheet](#bundle-sheet) on it; **Set Status ▸**
+  To Do, In Progress, Done (the current one disabled); **Delete Bundle…** asks "Delete *ORD-B3*?", "Its
+  tickets are kept.", then moves the bundle's file to the Trash.
 - **Order.** **All Tickets**, **Status**, **Projects**, **Bundles**. The iPhone's **Filter** menu lists its
-  sections in the same order.
+  sections in the same order, Bundles only when there are some.
 - **Headings.** The section titles are headings for VoiceOver.
 - **Keyboard.** The arrow keys move the selection when the sidebar has the keyboard focus.
-- No context menus and no drag and drop.
+- No drag and drop.
 
 ## Ticket list
 
@@ -119,9 +130,10 @@ The tickets keep the order of the data. No sort is applied, and there is no sear
 
 - **First line:** the ticket's title (`headline`, `textPrimary`, at most two lines). The last-updated date
   (`caption`, `textSecondary`, day and abbreviated month, such as "11 Nov") is at the trailing edge.
-- **Second line:** the ticket id (`caption`, `textSecondary`, monospaced digits), the status badge and the
-  priority badge. Badges are capsules tinted with the value's color. See
-  [components.md › Badge](components.md#badge).
+- **Second line:** the ticket id (`caption`, `textSecondary`, monospaced digits), the status badge, the
+  priority badge when the ticket has a priority (V2's tickets have none until one is set), and **Blocked**
+  (`hand.raised`, `danger`) while it depends on a ticket that isn't done. Badges are capsules tinted with the
+  value's color. See [components.md › Badge](components.md#badge).
 - **Selected row.** The colors give way to the system's selection styles, so the text keeps its contrast.
 
 **A parent's tickets, grouped by project.** For a project with sub projects, the list shows their tickets
@@ -142,7 +154,13 @@ Bundles section.*
   is ORD-142; for Shop, whose own tickets come first, SHOP-14.
 - **No match.** When the filter lets no ticket through, the list says so and offers **Show All Tickets** (see
   [States](#states)).
-- No context menus and no drag and drop.
+- **Context menu** of a row: **Set Status ▸** with the five statuses; **Add to Bundle ▸** with the project's
+  bundles that don't hold it, then **New Bundle…** (the [bundle sheet](#bundle-sheet) with the ticket
+  checked); **Remove from *bundle*** for each bundle that holds it; **Delete…**.
+- **Delete** (⌘⌫, Edit ▸ Delete, or **Delete…**) asks "Delete *ORD-142*?", "Their files and attachments move to
+  the Trash.", with **Delete** and **Cancel**, then removes it from its bundles and the other tickets' links and
+  moves its file and its attachments to the Trash. The first ticket of the list is then selected.
+- No drag and drop.
 
 **Filter bar.** While the sidebar is hidden, the list has no other way to show its filter. So whenever a
 filter other than **All Tickets** applies, a bar above the list shows it:
@@ -172,14 +190,31 @@ description.
 
 ### Header
 
-- **Ticket id** (`callout`, `textSecondary`, monospaced digits), such as ORD-142.
+- **Ticket id** (`callout`, `textSecondary`, monospaced digits), such as ORD-142, and at the trailing edge
+  **Edit** (`pencil`, ⌘E, help "Edit the Ticket (⌘E)"), which opens the [editor](#editor).
 - **Title** (`title`, semibold, `textPrimary`). It can be selected and copied, and it is a heading for
   VoiceOver.
-- **Status and priority badges.**
+- **Status and priority badges**, and **Blocked** as in the list (help "It depends on a ticket that isn't
+  done.").
 
 ### Description
 
-The ticket's text (`body`, `textPrimary`, 3 pt of line spacing), as written. It can be selected and copied.
+The ticket's text, as Markdown ([Markdown](#markdown)), in `body`, `textPrimary`, 3 pt of line spacing. It can
+be selected and copied. An empty description reads "No description." in `textSecondary`.
+
+### Editor
+
+![ORD-142 being edited: the title field, the description in a monospaced editor, Priority, Labels, Cancel and Save](images/tickets-editing.png)
+*ORD-142 in the editor, in place of its header and description.*
+
+**Edit** replaces the header and the description with a form: the **Title** field (`title2`, semibold), the
+description in a monospaced `TextEditor` on `surfaceSunken`, at least 160 pt high, the **Priority** pop-up
+(None, Low, Medium, High, Urgent), the **Labels** field ("Labels, separated by commas"), then **Cancel**
+(Escape) and **Save** (⌘S, `borderedProminent`, disabled while the title is empty). Save applies the title,
+description, priority and labels in one change and closes the editor; a rule that fails (a title over 200
+characters, or on two lines) shows its message in an alert and the editor keeps what was typed. The
+history records the rename and the description edit ([Activity](#activity)); priority and labels add no
+entry.
 
 ### Properties
 
@@ -188,12 +223,12 @@ Each property shows its name (`caption`, semibold, `textSecondary`) above its va
 | Property | Value |
 | --- | --- |
 | **Status** | The status badge. |
-| **Priority** | The priority badge. |
-| **Reporter** | Who wrote the ticket: "You" or "Claude" in the sample data. |
-| **Bundle** | The bundle's title after `shippingbox` in `accent`, or "None" in `textSecondary`. |
+| **Priority** | The priority badge, or "None" in `textSecondary`: a menu that sets None, Low, Medium, High or Urgent at once. |
+| **Reporter** | Who created the ticket: "You" or "Claude". |
+| **Bundle** | Each bundle's title after `shippingbox` in `accent`, one per line (a ticket may be in several), or "None" in `textSecondary`. |
 | **Created On** | Day, month and year, such as "9 Nov 2026". |
 | **Last Updated** | Day, month and year. |
-| **Labels** | One capsule per label (`caption`, on `surfaceSunken`). |
+| **Labels** | One capsule per label (`caption`, on `surfaceSunken`), or "None". |
 
 The Bundle property shows the bundle the ticket is in among its own project's bundles. In a parent's
 window, a sub project's ticket shows its bundle too, though the sidebar lists only the parent's own bundles:
@@ -208,16 +243,34 @@ in the Shop window, ORD-142 reads Checkout reliability.
 | High | `arrow.up` | `warning` |
 | Urgent | `exclamationmark.2` | `danger` |
 
+### Attachments
+
+The ticket's own files under **Attachments (*n*)**, with **Add Files…** (`paperclip`) at the heading's trailing
+edge, which opens a file panel for several files. Files dropped on the ticket, outside the comment field, are
+added too. Without files the section reads "Drop files here or click Add Files…". Images (png, jpeg, gif, heic,
+heif, tiff, bmp, webp) show as thumbnails at most 96 pt high and 192 pt wide with their name under them; other
+files as capsules with their type's icon, name and size. A click opens Quick Look. The context menu has
+**Open**, **Open With Default App**, **Show in Finder** and **Remove…** ("Remove *name*?", "The file moves to
+the Trash."). Each file is at most 20 MB, and the files of one change at most 20 MB together
+([Data › Attachments](../data.md#attachments)).
+
 ### Linked
 
-The items in other tools that the ticket points to, under the heading **Linked**. The section appears only
-when the ticket has links. The rows sit in a group box, separated by dividers. Each row shows the kind's
-symbol in `accent`, the item's title on one line, the kind's name in `textSecondary`, and
-`arrow.up.forward.app`. The whole row is one plain button. Clicking it opens the other tool's window on the
-item, for the ticket's own project, through a route. That window is brought forward if it is already open.
+The tickets the ticket depends on, blocks or relates to, and the items in other tools that it points to, under
+the heading **Linked**, with **Add Link…** (`plus`) at the heading's trailing edge, disabled when every other
+ticket of the project is linked already. Without links it reads "No linked tickets.". The rows sit in a group
+box, separated by dividers. Each row shows the kind's symbol in `accent`, the item's title on one line (for a
+ticket, `<id> · <title>`), the kind's name in `textSecondary`, and `arrow.up.forward.app`. The whole row is one
+plain button. Clicking it opens the item's window, for the ticket's own project, through a route; a ticket opens
+in this window. A link the ticket declares has **Remove Link** in its context menu; Blocks and a Related link
+the other ticket declares are removed from that ticket. A declared link whose ticket is missing (git removed
+its file) shows **Not found** (`exclamationmark.triangle`, `warning`) and is disabled.
 
 | Kind | Symbol | Opens | Focus |
 | --- | --- | --- | --- |
+| Depends On | `arrow.turn.down.right` | Tickets | The ticket id |
+| Blocks | `hand.raised` | Tickets | The ticket id |
+| Related | `link` | Tickets | The ticket id |
 | Service | `shippingbox` | Service Map | `service:<name>`, such as `service:payments-api` |
 | Request | `arrow.left.arrow.right` | Service Map | `request:<id>`, such as `request:req-8f3a` |
 | Contract | `curlybraces.square` | Contracts | The operation id, such as `listOrders` |
@@ -225,31 +278,45 @@ item, for the ticket's own project, through a route. That window is brought forw
 
 ### Activity
 
-The ticket's history under the heading **Activity**, in the order of the data (oldest first in the samples),
-14 pt apart. Each entry shows its symbol in `textSecondary`, its text in `textPrimary`, and its date and time
+The ticket's history and its comments under the heading **Activity**, oldest first, 14 pt apart (at equal
+dates: the creation, the comments, then the other entries). Each entry shows its symbol in `textSecondary`, its text in `textPrimary`, and its date and time
 at the trailing edge (`callout`, `textSecondary`, such as "10 Nov at 07:00"). A comment's text follows under
 the entry, in a rounded box on the `surface` color with 12 pt of padding. The text can be selected and
 copied.
 
-| Entry | Symbol | Example |
+| Entry | Symbol | Sentences ("You" for the user, "Claude" for Claude) |
 | --- | --- | --- |
-| Drafted | `sparkles` | "Claude drafted this ticket" |
-| Status changed | `arrow.right.circle` | "You started work" |
-| Commented | `text.bubble` | "Claude commented", with the comment under it |
+| Drafted | `sparkles` | "You drafted this ticket", "Claude drafted this ticket" |
+| Created | `plus.circle` | "You created this ticket", "Claude created this ticket" |
+| Status changed | `arrow.right.circle` | "You moved it from Created to In Progress" |
+| Renamed | `character.cursor.ibeam` | "You renamed it from “*old*” to “*new*”"; V2's automatic naming: "It was named “*title*”" |
+| Link added | `link` | "You made it depend on ORD-139", "You related it to ORD-139" |
+| Link removed | `minus.circle` | "You removed its dependency on ORD-139", "You removed its relation to ORD-139" |
+| Description edited | `pencil` | "You edited the description" |
+| Commented | `text.bubble` | "Claude commented", with the comment (Markdown) and its files under it |
+
+- **Comments.** "(edited)" follows the sentence of a comment whose text was changed (help: the edit's date).
+  Its files show as in [Attachments](#attachments), without **Remove…**: a comment's files go with it. The
+  context menu has **Edit** (the comment's text in a `TextEditor` with **Cancel** and **Save**, ⌘Return),
+  **Copy Text** (the Markdown source) and **Delete…** ("Delete this comment?", "Its attachments move to the
+  Trash.").
 
 ### Comment composer
 
 A bar pinned to the bottom of the ticket, under a divider, on the `canvas` background, with 20 pt of padding
 on the sides and 12 pt above and below. In the two-column arrangement it spans the left column only.
 
+- **Attach Files** (`paperclip`, help "Attach Files to the Comment") opens a file panel; files dropped on the
+  composer join the comment too. They show as capsules above the field, each with a remove button.
 - **Comment field.** "Add a comment" as placeholder. A plain text field in a `surfaceSunken` capsule, with
   10 pt of padding on the sides and 7 pt above and below. It grows from one to six lines.
 - **One draft per ticket.** What is typed belongs to the ticket. Selecting another ticket shows that
   ticket's own draft, empty at first, and going back to the first ticket shows its draft again. Drafts last
   until the window closes or moves to another project.
-- **Comment.** A `glassProminent` button, disabled while the field is empty or holds only spaces and line
-  breaks. Its shortcut is ⌘Return, and its help reads "Add the Comment (⌘↩)". Not wired yet: clicking it
-  leaves the text in place.
+- **Comment.** A `glassProminent` button, disabled while the field holds only spaces and line breaks and no
+  file waits, and while a change runs. Its shortcut is ⌘Return, and its help reads "Add the Comment (⌘↩)". It
+  adds the comment as the user; the field and its files empty once it is written, and keep their content when
+  it fails.
 
 ## Status and next step
 
@@ -259,11 +326,13 @@ on Mac and iPad, and in the page's toolbar on iPhone.
 - **Status menu.** Its label shows the current status, with its symbol and name on Mac and iPad, and its
   symbol alone on iPhone. With no ticket selected it reads "Status" with `circle.dashed`, disabled. The menu
   lists the five statuses with their symbols and their shortcuts, ⌃⌘1 to ⌃⌘5 in workflow order. The current
-  status is disabled, and so is its shortcut. Choosing one is not wired yet.
+  status is disabled, and so is its shortcut. Choosing one sets it at once and adds a history entry.
 - **Next step.** A prominent button named after the step that follows the current status. Its shortcut is
   ⇧⌘Return, and its help names the step and the shortcut, such as "Send to Review (⇧⌘↩)". On iPhone it shows
   `arrow.right` alone, with the step's name as its VoiceOver label. It is disabled for a **Done** ticket and
-  when no ticket is selected, and then reads "Next Step". Not wired yet.
+  when no ticket is selected, and then reads "Next Step". It sets the next status: Draft → Created → In
+  Progress → In Review → Done.
+- **While a change runs**, both are disabled. A bundle that lists the ticket follows its automatic rules.
 - **Shortcuts.** They act on the selected ticket while the Tickets window is the key window, and do nothing
   while their control is disabled.
 
@@ -299,7 +368,7 @@ list, on the `canvas` background.
 | --- | --- |
 | Heading | **New Ticket** (`title3`, semibold), a heading for VoiceOver. |
 | First group | **Title**: a text field with "Title" as placeholder. **Description**: a text field with "Description" as placeholder, four lines high, growing to eight. |
-| Second group | **Project**: a picker of the window's project and its sub projects, by name, in tree order. Only for a project with sub projects. **Priority**: a picker with Low, Medium, High and Urgent, set to Medium. **Save as Draft**: a switch, on. Footer: "A draft stays out of the workflow until you create it." |
+| Second group | **Project**: a picker of the window's project and its sub projects, by name, in tree order. Only for a project with sub projects. **Priority**: a picker with None, Low, Medium, High and Urgent, set to Medium. **Save as Draft**: a switch, on. Footer: "A draft stays out of the workflow until you create it." |
 | Bottom bar | Under a divider, at the trailing edge: **Cancel** and **Create**. |
 
 - **Project.** In a parent's window, such as Shop, the Project field says where the ticket goes: Shop,
@@ -307,11 +376,62 @@ list, on the `canvas` background.
   on the window's own project when the sidebar shows anything else. A window without sub projects has no
   Project field: the ticket goes to the window's project.
 - **Cancel** closes the sheet. Its shortcut is Escape.
-- **Create** closes the sheet. Its shortcut is Return. It is disabled while the title is empty or holds only
-  spaces and line breaks.
-- **Nothing is saved.** The fields hold what is typed and nothing else. Both buttons only close the sheet, and
-  no ticket is created. Not wired yet.
+- **Create** creates the ticket in the chosen project, with the next number of its counter, as a draft when
+  **Save as Draft** is on and Created otherwise, then closes the sheet, selects the new ticket and shows All
+  Tickets when the filter would hide it. Its shortcut is Return. It is disabled while the title is empty or
+  holds only spaces and line breaks. When the creation fails, an alert shows why and the sheet stays open with
+  what was typed.
 - **Fresh each time.** The sheet opens empty every time, with the Project field on its starting project.
+
+## Add Link sheet
+
+![The Add Link sheet: Depends On or Related, and the project's other tickets](images/tickets-add-link.png)
+*Add Link for ORD-142: the kind, then the ticket.*
+
+**Add Link…** opens a sheet, 420 to 480 pt wide: the heading "Link *ORD-142* to Another Ticket", a segmented
+**Kind** picker (Depends On, Related), and the project's tickets that the ticket isn't linked to, each with its
+id, title and status badge. **Add Link** (Return) is disabled until a ticket is picked; **Cancel** (Escape)
+closes. A link that breaks V2's rules (a dependency cycle, a ticket that already links to this one) shows its
+message in an alert and the sheet stays open ([Data › Link rules](../data.md#link-rules)).
+
+## Bundle sheet
+
+![The New Bundle sheet: the title field and the project's tickets with checkboxes](images/tickets-bundle.png)
+*New Bundle in Orders, two tickets checked.*
+
+**New Bundle** (the sidebar's `plus`, or **Add to Bundle ▸ New Bundle…**) and **Edit Bundle…** open a sheet,
+420 to 480 pt wide: the heading "New Bundle" or "Edit Bundle", the **Title** field ("Named after its tickets":
+an empty title takes the tickets' titles), and the project's tickets with checkboxes. The bundle holds the
+checked tickets in the order they were checked, as the line under the list says ("2 tickets, in the order
+checked."). **Create** (Return, disabled without a ticket) or **Save**, and **Cancel** (Escape). A new bundle is
+selected in the sidebar; a bundle of tickets that are all done starts Done.
+
+## Markdown
+
+![A description rendered as Markdown: a heading, ids as links, task items, a quote, highlighted Swift and a table](images/tickets-markdown.png)
+*Markdown in a description: ORD-139 and ORD-137 are links, the Swift code is highlighted.*
+
+Descriptions and comments are Markdown, rendered with V2's renderer ([Text](../text.md)): headings
+(`title2`, `title3`, `headline`, then `subheadline`, semibold), paragraphs (each line break kept),
+block quotes (a 3 pt `divider` bar, `textSecondary`), bullet and numbered lists, task items (`checkmark.square`,
+`square`), code blocks (Fira Code `callout` on `surfaceSunken`, the language's name above, scrolling
+sideways), tables (a grid, the header semibold), rules, emphasis, strong, strikethrough and code spans (Fira
+Code). The text can be selected.
+
+- **Links.** A ticket or bundle id of a loaded project, such as ORD-139 or ORD-B3, is a link to it in its
+  Tickets window; a web link opens in the browser; a relative link, such as `docs/runbook.md`, opens the
+  project's file in its default app. An image shows its alt text, linked when it is on the web.
+- **Code colors.** Code blocks are highlighted for Go, Swift, Markdown, JSON, YAML and Shell, with AZDesign's
+  colors: keywords `accentSecondary`; types, properties and headings `info`; builtins and numbers `accent`;
+  functions `success`; strings `warning`; comments `textSecondary` (doc comments italic); attributes and
+  directives `danger`; keywords semibold. (V2's own colors stay in `TokenKind.style`.)
+
+## Confirmations and failures
+
+Deleting tickets, a bundle or a comment, and removing an attachment, ask first in an alert whose destructive
+button is **Delete** (**Remove** for an attachment) beside **Cancel**; the texts are in each section. A change
+that fails shows the alert **The Change Failed** with V2's message, such as "ORD-142 cannot depend on
+ORD-139, which depends on ORD-142.", and **OK**.
 
 ## States
 
@@ -332,11 +452,13 @@ list, on the `canvas` background.
 *Orders' window opened on ORD-999, which it doesn't have: **Ticket Not Found** in the detail column.*
 | Empty comment | The comment field is empty, or holds only spaces and line breaks | **Comment** is disabled. |
 | Untitled new ticket | The sheet's title is empty, or holds only spaces and line breaks | **Create** is disabled. |
-| Loading | Previews only | "Loading Tickets" with a progress indicator, in the list column. The window never shows it. |
-| Error | Previews only | **Couldn't Load Tickets** with `exclamationmark.triangle`, the error's message as given, and **Try Again** (not wired yet). The window never shows it. |
+| Loading | The app is reading the tickets | "Loading Tickets" with a progress indicator, in the list column. |
+| Error | The store can't read the tickets (previews) | **Couldn't Load Tickets** with `exclamationmark.triangle`, the error's message as given, and **Try Again**, which reads them again. The app's store has no such state: a file that can't be read is left out and logged in the snapshot. |
+| Editing | **Edit** was clicked | The [editor](#editor) in place of the header and the description. |
+| Blocked | The ticket depends on a ticket that isn't done | **Blocked** in its row and header. |
+| Missing link | A declared link's ticket is gone | **Not found** on its row. |
 | Chat panel off | Settings ▸ Chat turns the panel off | No chat button in the toolbar. |
 | No project | The window's value names no project | **No Project** with `folder`: "Open this window from the Projects window." See [navigation.md](navigation.md). |
-| Sample only | Always | Every ticket, bundle and event is sample data. |
 
 ## Layouts
 
@@ -469,6 +591,17 @@ See [Chat](chat.md) for the panel itself.
 | Activity entry | `ticket.activity.<event id>`, for example `ticket.activity.2` | One element: text, date and comment. The symbol is hidden from accessibility. Unique within the ticket shown. |
 | Comment field | `ticket.comment` | Placeholder "Add a comment". |
 | **Comment** | `ticket.comment.send` | Help "Add the Comment (⌘↩)". |
+| **Attach Files**, a waiting file | `ticket.comment.attach`, `ticket.comment.file` | Label "Attach Files"; the file's name and Remove. |
+| **Edit**, the editor and its fields | `ticket.edit`, `ticket.editor`, `ticket.edit.title`, `.description`, `.priority`, `.labels`, `.cancel`, `.save` | Help "Edit the Ticket (⌘E)". |
+| Priority property | `ticket.priority` | A menu: the priority's name or "None". |
+| **Blocked** | `ticket.blocked` | Help "It depends on a ticket that isn't done." |
+| Attachments, **Add Files…**, a file | `ticket.attachments`, `ticket.attachments.add`, `ticket.attachment.<uuid>` | A file is one button: its name (and size). |
+| **Add Link…** | `ticket.links.add` | None. |
+| Comment editor | `ticket.commentEditor.text`, `ticket.commentEditor.save` | None. |
+| **New Bundle** (sidebar) | `tickets.sidebar.newBundle` | Help "New Bundle". |
+| Add Link sheet | `addLink.sheet`, `addLink.kind`, `addLink.ticket.<id>`, `addLink.add` | Heading. |
+| Bundle sheet | `bundle.sheet`, `bundle.title`, `bundle.ticket.<id>`, `bundle.save` | Heading. |
+| Markdown | None | Headings keep the header trait; a task box reads "Done" or "Not done". |
 | New Ticket sheet | `newTicket.sheet` | Contains every field of the sheet. |
 | New Ticket heading | None | Heading. |
 | **Title** field | `newTicket.title` | Label "Title" (hidden visually). |
@@ -488,40 +621,18 @@ See [Chat](chat.md) for the panel itself.
 
 ## Sample data and limits
 
-- **Sample tickets.** There are 18 (`Ticket.samples`), across seven projects:
-
-  | Project | Tickets |
-  | --- | --- |
-  | Orders (`ORD`) | ORD-142, ORD-141, ORD-139, ORD-137, ORD-136, ORD-130 |
-  | Payments (`PAY`) | PAY-58, PAY-57, PAY-55 |
-  | Edge Gateway (`GW`) | GW-21 |
-  | Tools (`TLS`) | TLS-12, TLS-11, TLS-9 |
-  | AZDesign (`AZD`) | AZD-7 |
-  | Shop (`SHOP`) | SHOP-14, SHOP-12 |
-  | ToolsKit (`TKIT`) | TKIT-4, TKIT-3 |
-
-  Shop is the parent of Orders, Payments and Edge Gateway, so its window lists 12 tickets. Tools is the
-  parent of ToolsKit.
-- **Sample bundles.** There are three (`TicketBundle.samples`): Checkout reliability (ORD-142, ORD-139,
-  ORD-137) and Contract clean-up (ORD-141, ORD-130) in Orders, and Provider timeouts (PAY-58, PAY-55) in
-  Payments.
-- **Sample dates.** Dates are relative to the sample clock, 11 November 2026 at 14:00.
-- **Not wired yet:**
-  - the status menu's items;
-  - the next-step button;
-  - **Comment**;
-  - **Create** and **Cancel** in the New Ticket sheet, which only close it;
-  - **Try Again** in the error state.
-- **Shortcuts of actions not wired yet.** ⌃⌘1 to ⌃⌘5, ⇧⌘Return and ⌘Return press their controls, whose
-  actions are still empty.
-- **What works:** filtering from the sidebar, the **Filter** menu or the filter bar, selection, routes to a
-  ticket of an open window, the detail's two arrangements, the links to other tools, one comment draft per
-  ticket, the New Ticket sheet's fields, the chat panel's subject and suggestions, and the three layouts.
-- **Not shown by the window.** The loading and error states appear in previews only: the window always has
-  its tickets.
-- **Not there yet.** No sort, no search, no editing of a ticket's title, description or properties.
-- **Other clients.** `TicketsReader.read` answers from the sample tickets. In the real suite it would answer
-  from the tool's API.
+- **The app's tickets** come from the loaded projects' `.hephaestus/ticket/` and `bundle/` folders, through
+  `LiveTicketStore` ([Architecture › TicketsKit](../architecture.md#ticketskit)). Previews and screenshots use
+  the sample tickets: 18 (`Ticket.samples`) across seven projects (Orders: ORD-142, 141, 139, 137, 136, 130;
+  Payments: PAY-58, 57, 55; Edge Gateway: GW-21; Tools: TLS-12, 11, 9; AZDesign: AZD-7; Shop: SHOP-14, 12;
+  ToolsKit: TKIT-4, 3), three bundles (Checkout reliability and Contract clean-up in Orders, Provider timeouts
+  in Payments), dated from the sample clock, 11 November 2026 at 14:00. Their links to services, requests,
+  contracts and builds exist only in the samples until those tools come over.
+- **Not there yet.** No sort, no search, no ticket chats or Implement (V2's, left out with Claude's
+  workflow), no drag and drop of tickets into bundles or within a bundle.
+- **Other clients.** `TicketsReader.read`, which the chat panel calls, and the Dashboard's Tickets widget still
+  read the samples: both windows are hidden until Chat and the Dashboard come over. Claude reads and changes
+  tickets through the MCP server ([MCP](../mcp.md)).
 
 ## Previews
 
@@ -557,14 +668,15 @@ pointed at, such as "TicketsRootView, iPhone, Filtered".
 - "Row": one row, 340 pt wide.
 - "Filter Bar": the filter bar for In Progress, 390 pt wide.
 
-`TicketDetailView` (`.appChrome`, with its toolbar actions):
+`TicketDetailView` (`.appChrome`, with its toolbar actions, on a `TicketsModel` over the sample store):
 
 - "Loaded": ORD-142 at 980 × 760 pt, two columns.
 - "Narrow": ORD-142 at 600 × 760 pt, one column.
 - "Loaded, Dark": ORD-142 at 640 × 720 pt, in Dark Mode.
 - "Draft": ORD-141 at 640 × 720 pt.
 - "Done": ORD-130 at 640 × 720 pt.
-- "Comment Draft": ORD-142 with a comment typed, **Comment** enabled.
+- "Editing": ORD-142 in the editor, 980 × 760 pt.
+- "Comment Draft": ORD-142 with a comment typed and a file waiting, **Comment** enabled.
 - "iPhone": ORD-142 in the iPhone layout, 420 × 800 pt, with the compact actions.
 - "Largest Text": ORD-142 at the largest Dynamic Type size, 640 × 800 pt.
 - "Not Found": **Ticket Not Found** for ORD-999 in Orders, 640 × 480 pt.
@@ -578,6 +690,10 @@ pointed at, such as "TicketsRootView, iPhone, Filtered".
 - "Parent Project": Shop, with the Project field.
 - "iPhone": Shop, 366 pt wide, as in a 390 pt window.
 - "Largest Text": Shop at the largest Dynamic Type size.
+
+`AddLinkSheet` and `BundleSheet` (size that fits): "Add Link", "New Bundle", "Edit Bundle, Dark".
+
+`MarkdownView`: "Markdown" (every kind of block, 560 × 700 pt), "Markdown, Dark" (a Go code block).
 
 `TicketsDashboardWidget` (size that fits):
 

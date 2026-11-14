@@ -24,10 +24,22 @@
         }
       }
     },
+    "(edited)" : {
+
+    },
     "A draft stays out of the workflow until you create it." : {
 
     },
     "Activity" : {
+
+    },
+    "Add Files…" : {
+
+    },
+    "Add Link" : {
+
+    },
+    "Add Link…" : {
 
     },
     "Add a comment" : {
@@ -36,8 +48,26 @@
     "Add the Comment (⌘↩)" : {
 
     },
+    "Add to Bundle" : {
+
+    },
     "All Tickets" : {
 
+    },
+    "Attach Files" : {
+
+    },
+    "Attach Files to the Comment" : {
+
+    },
+    "Attachments (%lld)" : {
+
+    },
+    "Blocked" : {
+      "comment" : "A ticket that depends on a ticket that isn't done"
+    },
+    "Blocks" : {
+      "comment" : "The kind of a link between tickets: the other ticket depends on this one"
     },
     "Build" : {
       "comment" : "The kind of an item a ticket links to"
@@ -54,11 +84,61 @@
     "Change Status" : {
 
     },
+    "Claude" : {
+      "comment" : "Claude, as the author of a ticket"
+    },
+    "Claude commented" : {
+
+    },
+    "Claude created this ticket" : {
+
+    },
+    "Claude drafted this ticket" : {
+
+    },
+    "Claude edited the description" : {
+
+    },
+    "Claude made it depend on %@" : {
+
+    },
+    "Claude moved it from %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Claude moved it from %1$@ to %2$@"
+          }
+        }
+      }
+    },
+    "Claude related it to %@" : {
+
+    },
+    "Claude removed its dependency on %@" : {
+
+    },
+    "Claude removed its relation to %@" : {
+
+    },
+    "Claude renamed it from “%@” to “%@”" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Claude renamed it from “%1$@” to “%2$@”"
+          }
+        }
+      }
+    },
     "Comment" : {
       "comment" : "The button that adds a comment"
     },
     "Contract" : {
       "comment" : "The kind of an item a ticket links to"
+    },
+    "Copy Text" : {
+
     },
     "Couldn't Load Tickets" : {
 
@@ -75,7 +155,46 @@
     "Created On" : {
       "comment" : "A ticket's property"
     },
+    "Delete" : {
+
+    },
+    "Delete %@?" : {
+
+    },
+    "Delete %lld tickets?" : {
+
+    },
+    "Delete Bundle…" : {
+
+    },
+    "Delete this comment?" : {
+
+    },
+    "Delete…" : {
+
+    },
+    "Depends On" : {
+      "comment" : "The kind of a link between tickets"
+    },
     "Description" : {
+
+    },
+    "Done" : {
+      "comment" : "A bundle's status"
+    },
+    "Drop files here or click Add Files…" : {
+
+    },
+    "Edit" : {
+      "comment" : "Edits a ticket's title, description, priority and labels"
+    },
+    "Edit Bundle" : {
+
+    },
+    "Edit Bundle…" : {
+
+    },
+    "Edit the Ticket (⌘E)" : {
 
     },
     "Filter" : {
@@ -87,17 +206,44 @@
     "High" : {
       "comment" : "A ticket's priority"
     },
+    "Image" : {
+
+    },
+    "In Progress" : {
+      "comment" : "A bundle's status"
+    },
     "Is %@ ready to be marked as done?" : {
 
     },
     "Is %@ ready to create?" : {
 
     },
+    "It depends on a ticket that isn't done." : {
+
+    },
+    "It was named “%@”" : {
+      "comment" : "V2's automatic naming of a ticket"
+    },
+    "Its attachments move to the Trash." : {
+
+    },
+    "Its tickets are kept." : {
+
+    },
+    "Kind" : {
+      "comment" : "The kind of a link between tickets"
+    },
     "Labels" : {
       "comment" : "A ticket's property"
     },
+    "Labels, separated by commas" : {
+
+    },
     "Last Updated" : {
       "comment" : "A ticket's property"
+    },
+    "Link %@ to Another Ticket" : {
+
     },
     "Linked" : {
 
@@ -116,6 +262,15 @@
     },
     "Medium" : {
       "comment" : "A ticket's priority"
+    },
+    "Named after its tickets" : {
+
+    },
+    "New Bundle" : {
+
+    },
+    "New Bundle…" : {
+
     },
     "New Ticket" : {
 
@@ -138,6 +293,12 @@
     "No Tickets" : {
 
     },
+    "No description." : {
+
+    },
+    "No linked tickets." : {
+
+    },
     "No ticket is a draft." : {
 
     },
@@ -157,7 +318,22 @@
 
     },
     "None" : {
-      "comment" : "The Bundle property of a ticket in no bundle"
+      "comment" : "A ticket property without a value: no bundle, no priority"
+    },
+    "Not done" : {
+
+    },
+    "Not found" : {
+      "comment" : "A linked ticket whose file is missing"
+    },
+    "OK" : {
+
+    },
+    "Open" : {
+
+    },
+    "Open With Default App" : {
+
     },
     "Pick a ticket to see its details." : {
 
@@ -174,11 +350,32 @@
     "Read ticket %@" : {
 
     },
+    "Related" : {
+      "comment" : "The kind of a link between tickets"
+    },
+    "Remove" : {
+
+    },
+    "Remove %@?" : {
+
+    },
+    "Remove Link" : {
+
+    },
+    "Remove from %@" : {
+
+    },
+    "Remove…" : {
+
+    },
     "Reporter" : {
       "comment" : "A ticket's property"
     },
     "Request" : {
       "comment" : "The kind of an item a ticket links to"
+    },
+    "Save" : {
+
     },
     "Save as Draft" : {
 
@@ -192,10 +389,16 @@
     "Service" : {
       "comment" : "The kind of an item a ticket links to"
     },
+    "Set Status" : {
+
+    },
     "Show" : {
 
     },
     "Show All Tickets" : {
+
+    },
+    "Show in Finder" : {
 
     },
     "Shows all tickets." : {
@@ -216,6 +419,15 @@
     "Summarize %@" : {
 
     },
+    "The Change Failed" : {
+
+    },
+    "The file moves to the Trash." : {
+
+    },
+    "Their files and attachments move to the Trash." : {
+
+    },
     "Ticket Not Found" : {
 
     },
@@ -224,6 +436,9 @@
     },
     "Title" : {
 
+    },
+    "To Do" : {
+      "comment" : "A bundle's status"
     },
     "Try Again" : {
 
@@ -240,6 +455,56 @@
     "Where should work on %@ start?" : {
 
     },
+    "You" : {
+      "comment" : "The user, as the author of a ticket"
+    },
+    "You commented" : {
+
+    },
+    "You created this ticket" : {
+
+    },
+    "You drafted this ticket" : {
+
+    },
+    "You edited the description" : {
+
+    },
+    "You made it depend on %@" : {
+
+    },
+    "You moved it from %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You moved it from %1$@ to %2$@"
+          }
+        }
+      }
+    },
+    "You related it to %@" : {
+
+    },
+    "You removed its dependency on %@" : {
+
+    },
+    "You removed its relation to %@" : {
+
+    },
+    "You renamed it from “%@” to “%@”" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "You renamed it from “%1$@” to “%2$@”"
+          }
+        }
+      }
+    },
+    "^[%lld ticket](inflect: true), in the order checked." : {
+
+    },
     "“%@” is a draft, with high priority." : {
 
     },
@@ -250,6 +515,12 @@
 
     },
     "“%@” is a draft, with urgent priority." : {
+
+    },
+    "“%@” is a draft." : {
+
+    },
+    "“%@” is done." : {
 
     },
     "“%@” is done. Its priority was high." : {
@@ -276,6 +547,9 @@
     "“%@” is in progress, with urgent priority." : {
 
     },
+    "“%@” is in progress." : {
+
+    },
     "“%@” is in review, with high priority." : {
 
     },
@@ -288,6 +562,9 @@
     "“%@” is in review, with urgent priority." : {
 
     },
+    "“%@” is in review." : {
+
+    },
     "“%@” is waiting to start, with high priority." : {
 
     },
@@ -298,6 +575,9 @@
 
     },
     "“%@” is waiting to start, with urgent priority." : {
+
+    },
+    "“%@” is waiting to start." : {
 
     }
   },

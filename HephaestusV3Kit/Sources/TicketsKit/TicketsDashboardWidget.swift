@@ -10,6 +10,7 @@ public struct TicketsDashboardWidget: View {
     let widget: DashboardWidget
     let project: Project
     let store: any TicketStore
+    @Environment(\.projectDirectory) private var directory
 
     public init(widget: DashboardWidget, context: DashboardContext) {
         self.init(widget: widget, project: context.project, store: SampleTicketStore())
@@ -42,7 +43,7 @@ public struct TicketsDashboardWidget: View {
                 // The counts are never truncated or wrapped: a narrower widget scrolls them.
                 .fixedSize()
             }
-            if widget.includeSubprojects, !Project.tree.children(of: project.id).isEmpty {
+            if widget.includeSubprojects, !directory.tree.children(of: project.id).isEmpty {
                 Text("Sub projects included", bundle: #bundle)
                     .foregroundStyle(.textSecondary)
                     .accessibilityIdentifier("dashboard.tickets.subprojects")
@@ -51,7 +52,7 @@ public struct TicketsDashboardWidget: View {
     }
 
     private func count(_ status: TicketStatus) -> Int {
-        store.count(of: status, in: project.id, includingSubprojects: widget.includeSubprojects)
+        store.count(of: status, in: project.id, includingSubprojects: widget.includeSubprojects, tree: directory.tree)
     }
 }
 

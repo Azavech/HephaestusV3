@@ -62,10 +62,18 @@ chosen at design time" beside it. Newest phase last.
 | How is a ticket named without Haiku? | With V2's provisional title, kept as the title: the description's first plain line, cut to 60 characters, else `Untitled Ticket`; a bundle with its tickets' titles. Either can be renamed. | [Data › Ticket rules](data.md#ticket-rules) |
 | May Claude give a title? | Yes: V2 had no title input because Haiku named Claude's tickets; without Haiku the provisional title would be all Claude could give. | same |
 | Must a description be written? | Only without a title, to make the provisional title; a ticket with a title may have an empty description. V2 always required one. | same |
-| Is the description template kept? | Yes, as V2: Claude's descriptions follow it, the New Ticket sheet starts with it, the user's descriptions aren't checked. | same |
+| Is the description template kept? | For Claude, as V2: its descriptions follow it. The New Ticket sheet keeps V3's design, an empty Description field, and the user's descriptions aren't checked. | same |
 | What may Claude do with a draft (V3)? | Nothing to its status: Claude neither makes a draft nor changes one, so that "not ready yet" stays the user's call. Claude's new tickets start To Do. | same |
 | Do priority and labels (V3) add history entries? | No: the history keeps V2's six kinds. | [Data › Ticket changes](data.md#ticket-changes) |
 | Which device name goes into the history? | The Mac's computer name (`SCDynamicStoreCopyComputerName`), as V2's local windows. | [Data › Ticket file](data.md#ticket-file) |
 | What happens to copied files when a change fails? | They are removed for every change that copies files (V2 removed them only for a creation), so no unreferenced file stays. | [Data › Ticket changes](data.md#ticket-changes) |
 | Are V2's runtime keys kept? | No: `inverseLinks` and a comment's `answer` were never meant to be stored; they are ignored when read and never written. | [Data › Ticket file](data.md#ticket-file) |
 | How does the ticket data follow outside changes? | Through the projects' own stream: `ProjectSession.observeFileEvents` hands each batch to the ticket library, which reads again only the files the batch names. | [Architecture › TicketData](architecture.md#ticketdata) |
+| How does V2's ticket view fit V3's Tickets window? | Into the parts the redesign has: V2's ticket links join **Linked** (Depends On, Blocks, Related) beside the other tools' items; history and comments share **Activity**; attachments get a section; editing is an **Edit** mode in place of the header (V2 edited in place). | [UI › Tickets](ui/tickets.md#ticket-detail) |
+| What does V3's Created status write? | `todo`, V2's To Do: V3's names stay, the files keep V2's values. | [Data › Ticket file](data.md#ticket-file) |
+| Which bundles does a ticket show? | All of its project's bundles that hold it, one per line: V2 lets a ticket be in several. | [UI › Tickets](ui/tickets.md#properties) |
+| Where is New Bundle? | In the sidebar's Bundles header, which now always shows, and in a ticket's **Add to Bundle ▸** menu. | [UI › Tickets](ui/tickets.md#sidebar) |
+| Who appears in the activity? | "You" and "Claude": V3 runs on one Mac, so the device name stays in the file only; chat titles come with Chat. | [UI › Tickets](ui/tickets.md#activity) |
+| How is Markdown drawn without V2's web view? | Natively, from V2's block model (`MarkdownBlockRenderer`), with each line break kept, since people type plain lines; V2's markers and HTML output aren't brought over. | [Text](text.md) |
+| Which colors highlight code? | AZDesign's semantic colors, after Dracula's code colors: the workspace allows no hex values in views. | [UI › Tickets](ui/tickets.md#markdown) |
+| Where do relative links in a ticket go? | To the project's file, opened in its default app: V2's documentation viewer isn't brought over. | same |

@@ -42,7 +42,7 @@ public enum Author: String, Codable, Sendable, Hashable {
 }
 
 /// V3 addition: how urgent a ticket is.
-public enum TicketPriority: String, Codable, Sendable, Hashable, CaseIterable {
+public enum TicketFilePriority: String, Codable, Sendable, Hashable, CaseIterable {
     case low, medium, high, urgent
 }
 
@@ -64,13 +64,13 @@ public struct TicketFile: Codable, Sendable, Hashable {
     public var chatIDs: [String]
     public var links: [TicketLinkEntry]
     public var history: [HistoryEntry]
-    public var priority: TicketPriority?
+    public var priority: TicketFilePriority?
     public var labels: [String]
     public var unknownKeys: YAMLMapping
 
     public init(id: String, title: String, status: TicketFileStatus = .todo, created: Date, updated: Date? = nil,
                 createdBy: Author = .user, description: String = "", attachments: [AttachmentEntry] = [], comments: [CommentEntry] = [],
-                chatIDs: [String] = [], links: [TicketLinkEntry] = [], history: [HistoryEntry]? = nil, priority: TicketPriority? = nil,
+                chatIDs: [String] = [], links: [TicketLinkEntry] = [], history: [HistoryEntry]? = nil, priority: TicketFilePriority? = nil,
                 labels: [String] = [], unknownKeys: YAMLMapping = [:]) {
         schema = 1
         self.id = id

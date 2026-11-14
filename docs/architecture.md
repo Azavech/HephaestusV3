@@ -18,7 +18,7 @@ meet the workspace's rules (`~/Developer/Apple/CLAUDE.md`), [Open issues](#open-
 3. [The Xcode project](#the-xcode-project)
 4. [The package](#the-package)
 5. [The data targets](#the-data-targets): [FileStorage](#filestorage), [ExternalTools](#externaltools),
-   [ProjectData](#projectdata), [MCPKit](#mcpkit), [TicketData](#ticketdata)
+   [ProjectData](#projectdata), [MCPKit](#mcpkit), [TicketData](#ticketdata), [TextFormats](text.md)
 6. [ToolsFoundation](#toolsfoundation)
 7. [ToolsScenes](#toolsscenes)
 8. [The tool kits](#the-tool-kits): [ProjectsKit](#projectskit), [DashboardsKit](#dashboardskit),
@@ -174,7 +174,7 @@ struct HephaestusV3App: App {
 | `defaultLocalization` | `"en"` |
 | `platforms` | `.macOS("27.0")` |
 | `products` | one library, `ToolsScenes`, of the target `ToolsScenes` |
-| `dependencies` | `.package(url: "git@github.com:Azavech/AZDesign.git", from: "0.4.0")`: AZDesign by version, from its GitHub repo over SSH. `.package(url: "https://github.com/jpsim/Yams.git", from: "6.2.2")`: Yams, the YAML library the owner approved. `Package.resolved` pins the exact versions (AZDesign 0.4.0, revision `b0db917`; Yams 6.2.2, revision `a27b21e`) |
+| `dependencies` | `.package(url: "git@github.com:Azavech/AZDesign.git", from: "0.4.0")`: AZDesign by version, from its GitHub repo over SSH. `.package(url: "https://github.com/jpsim/Yams.git", from: "6.2.2")`: Yams, the YAML library the owner approved. `.package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.9.0")`: swift-markdown, approved for Markdown (it brings swift-cmark). `Package.resolved` pins the exact versions (AZDesign 0.4.0, revision `b0db917`; Yams 6.2.2, revision `a27b21e`) |
 
 Shared values in the manifest:
 
@@ -196,6 +196,7 @@ Shared values in the manifest:
 | `ProjectData` | The data folder, the import from HephaestusV2, the project files and their rules, the settings and secrets files. | FileStorage, ExternalTools | `.target(name:, dependencies:)` |
 | `MCPKit` | The MCP server: JSON values, input schemas, tool operations and their registry, JSON-RPC, HTTP on 127.0.0.1, tokens. | — | `.target(name:)` |
 | `TicketData` | The ticket, bundle and attachment files and their rules: the `TicketLibrary` actor and the `TicketSession`. | FileStorage, ProjectData | `.target(name:, dependencies:)` |
+| `TextFormats` | Markdown to a block model and syntax highlighting, from HephaestusV2 without its markers ([Text](text.md)). | swift-markdown | `.target(name:, dependencies:)` |
 | `ToolsFoundation` | Shared vocabulary: projects, tools, routes, chat vocabulary, the Dashboard model, `ProjectIcon`. | AZDesign | `.target` |
 | `ProjectsKit` | The project selector: the Projects window, the project switcher, the menu bar panel; New Project, Project Settings, Settings ▸ Projects; the mapping of the app's projects; the project tools of the MCP server. | ToolsFoundation, AZDesign, AZDesignCode, ProjectData, ExternalTools, MCPKit | `toolTarget(_:data:)` |
 | `DashboardsKit` | The Dashboard's grid, edit mode, settings and saving; the Project widget. | same | `toolTarget` |
@@ -256,7 +257,7 @@ Commit both `Package.resolved` files with it.
 ## The data targets
 
 Targets without UI hold the data code that V3 brings over from HephaestusV2: `FileStorage`, `ExternalTools`,
-`ProjectData`, `MCPKit` and `TicketData`. They import no SwiftUI, have no default isolation (a `@MainActor`
+`ProjectData`, `MCPKit`, `TicketData` and `TextFormats`. They import no SwiftUI, have no default isolation (a `@MainActor`
 session type says so itself), and keep shared state in `Mutex`es and actors. Each feature wires them into its
 windows as it comes over ([Open issues](#open-issues)).
 
@@ -1233,63 +1234,76 @@ The Dashboard has no focus format, no reader and no ⇧⌘N item, and reports no
 
 ### TicketsKit
 
-Spec: [Tickets](ui/tickets.md).
+Spec: [Tickets](ui/tickets.md). Data: `TicketData` ([TicketData](#ticketdata)) and `TextFormats` ([Text](text.md)).
 
 | File | Contents |
 | --- | --- |
-| `Ticket.swift` | `TicketPriority`, `TicketLink`, `TicketEvent`, `Ticket`, `TicketBundle` |
-| `TicketStore.swift` | `TicketStore` and its `count` extension, `SampleTicketStore` |
-| `TicketsModel.swift` | `TicketFilter`, `TicketFilterSection`, `TicketGroup`, `NewTicketDraft`, `TicketsModel` |
+| `Ticket.swift` | `TicketPriority`, `TicketLink` (`Kind`: `dependsOn`, `blocks`, `related`, `service`, `request`, `contract`, `build`; `isDeclared`, `isMissing`, `route(in:)`), `TicketAttachment` (`isImage`), `TicketAuthor`, `TicketEvent`, `Ticket`, `BundleStatus`, `TicketBundle`, `TicketLinkDraft` |
+| `TicketStore.swift` | `TicketStorePhase`, `TicketChangeRequest`, `TicketStoreError`, `TicketStore` (with defaults and `count`), `SampleTicketStore` |
+| `LiveTicketStore.swift` | `LiveTicketStore` (public) and its mapping from `TicketData`; `EnvironmentValues.ticketStore` |
+| `TicketsModel.swift` | `TicketFilter`, `TicketFilterSection`, `TicketGroup`, `NewTicketDraft`, `TicketEdit`, `TicketConfirmation`, `BundleDraft`, `TicketsModel` |
 | `TicketsReader.swift` | `TicketsReader` |
-| `TicketsRootView.swift` | `TicketsRootView`, `TicketSidebar`, `TicketFilterMenu` |
-| `TicketListView.swift` | `TicketListState`, `TicketListView`, `TicketFilterBar`, `TicketRow` |
-| `TicketDetailView.swift` | `TicketDetailView`, `TicketProperties`, `LinkRow`, `EventRow`, `TicketNotFoundView` |
+| `TicketsRootView.swift` | `TicketsRootView`, `TicketMenu`, `TicketSidebar`, `BundleRow`, `TicketFilterMenu` |
+| `TicketListView.swift` | `TicketListState`, `TicketListView<RowMenu>`, `TicketFilterBar`, `TicketRow` |
+| `TicketDetailView.swift` | `TicketDetailView`, `TicketSection`, `TicketText`, `TicketEditor`, `CommentEditor`, `TicketProperties`, `LinkRow`, `EventRow`, `AttachmentStrip`, `AttachmentView`, `PendingFileChip`, `FlowStack`, `TicketNotFoundView` |
+| `TicketSheets.swift` | `AddLinkSheet`, `BundleSheet` |
+| `MarkdownView.swift` | `MarkdownView`, `MarkdownInlines` (attributed inlines, highlighted code, token colors) |
 | `TicketActions.swift` | `TicketActions: ToolbarContent` |
 | `NewTicketView.swift` | `NewTicketView` |
-| `TicketAppearance.swift` | `TicketWords`; symbols, colors, shortcuts and next steps of statuses, priorities, links and events |
+| `TicketAppearance.swift` | `TicketWords` (shared labels and the activity sentences, one per author); symbols, colors, shortcuts, next steps and `next` of statuses; priorities, bundle statuses, links and events |
 | `TicketsDashboardWidget.swift` | `TicketsDashboardWidget` |
 | `SampleTickets.swift` | `Ticket.samples` (18 tickets), `TicketBundle.samples` |
 
-**Public API**: `TicketsRootView(project: Project, focus: String? = nil)`,
-`TicketsReader.read(_ focus: String) -> ToolReading?`, `TicketsDashboardWidget(widget:context:)`.
+**Public API**: `TicketsRootView(project:focus:store:directory:)`, `LiveTicketStore(session:)` with
+`counts() -> [Project.ID: TicketCounts]`, `EnvironmentValues.ticketStore`, `TicketsReader.read(_:)`,
+`TicketsDashboardWidget(widget:context:)`.
 
-**Types.** `Ticket`: `id`, `projectID`, `title`, `details`, `status: TicketStatus`, `priority`
-(`low`, `medium`, `high`, `urgent`), `labels`, `reporter`, `createdAt`, `updatedAt`, `links: [TicketLink]`,
-`events: [TicketEvent]`. `TicketLink`: `id`, `kind` (`service`, `request`, `contract`, `build`), `title`,
-`target`; `route(in:)` opens the Service Map (`service:<target>`, `request:<target>`), Contracts or Builds.
-`TicketEvent`: `id: Int`, `kind` (`drafted`, `statusChanged`, `commented`), `text`, `date`, `comment: String?`.
-`TicketBundle`: `id`, `projectID`, `title`, `ticketIDs`.
+**Store.** `@MainActor protocol TicketStore`: `phase` (`loading`, `ready`, `failed`), `tickets(of:)`,
+`bundles(of:)`, `ticket(_:)`, `perform(_: TicketChangeRequest) async throws(TicketStoreError) -> String?` (the id
+of what it created), `url(of:in:)` (an attachment's file), `retry()`; defaults: `ready`, a `perform` that
+refuses ("This store doesn't change tickets."), no URL. `TicketChangeRequest` has one case per change of
+[Data › Ticket changes](data.md#ticket-changes): `create`, `setStatus`, `edit`, `setPriority`, `setLinks`,
+`delete`, `addComment`, `editComment`, `deleteComment`, `addAttachments`, `removeAttachment`, `createBundle`,
+`editBundle`, `setBundleStatus`, `deleteBundle`.
 
-**Store.** `protocol TicketStore { tickets(of: Set<Project.ID>); bundles(of: Set<Project.ID>); ticket(_:) }`,
-with `count(of:in:includingSubprojects:)` in an extension (the family from `Project.tree`).
-`SampleTicketStore` filters `Ticket.samples` and `TicketBundle.samples`.
+- **`LiveTicketStore`** (`@Observable`) reads `TicketSession.snapshot` and maps it once per revision (a cache
+  ignored by observation): statuses (`todo` is Created, `review` In Review), priorities, the reporter ("You",
+  "Claude"), declared links (`dependsOn`, `related`, titled `<id> · <title>`, `isMissing` without a ticket),
+  inverse links (`blocks`, `related`), `isBlocked` (a Depends On ticket that exists and isn't done), the
+  attachments, and the activity: each history entry with its sentence, then the comments, merged by date
+  (at equal dates the creation, the comments, then the other entries). `perform` calls the session's change
+  as the user on this Mac and gives `TicketError.description` as the message. `phase` is `loading` until the
+  session has loaded.
+- **`SampleTicketStore`** (`@Observable`) applies each change in memory, without V2's rules, and records it
+  in `changes`, for previews and tests.
 
-**`TicketsModel`**, `init(project:focus:filter: = .all, store:)`:
+**`TicketsModel`**, `init(project:focus:filter: = .all, store:, directory: = .previewSamples)`: reads live
+from the store (`tickets`, `bundles`) and the directory (`family`, `indent(of:)`).
 
 | Group | Members |
 | --- | --- |
-| Data | `project`, `family` (`Project.tree.family`), `tickets` (the family's), `bundles` (the project's own), private `familyBundles`, `opensSelection` (`focus != nil`) |
-| State | `filter: TicketFilter?` (`.all`, `.status`, `.bundle`, `.project`), `selection: Ticket.ID?` (the focus, else the first visible ticket), `isComposing`, `draft: NewTicketDraft`, `commentDrafts` (private set) |
-| List | `isGrouped` (family of more than one), `filterSections`, `isFiltered`, `visibleTickets`, `groups`, `listState: TicketListState`, `lets(_:through:)`, `count(_:)`, `doneCount(of:)`, `showAllTickets()`, `title(of:)`, `symbol(of:)` |
-| Selection | `selectedTicket`, `missingSelection` (an id a route named that isn't here), `select(focus:)` (selects; a filter that hides it gives way to All Tickets), `bundle(of:)`, `chatSubject` |
-| Comments | `commentDraft(for:)`, `setCommentDraft(_:for:)` |
-| New Ticket | `newTicketProjects`, `defaultNewTicketProjectID`, `startNewTicket()`, `cancelNewTicket()`, `createNewTicket()` (closes the sheet; saves nothing yet) |
+| State | `filter`, `selection`, `isComposing`, `draft`, `commentDrafts`, `commentFiles`, `edit: TicketEdit?`, `commentEdit`, `linkingTicket`, `bundleDraft`, `confirmation`, `failure` (the message of the last failed change), `isWorking` |
+| List | `isGrouped`, `filterSections` (Bundles always, for New Bundle), `isFiltered`, `visibleTickets`, `groups`, `listState` (`loading` and `failed` from the store's phase), `lets(_:through:)`, `count(_:)`, `doneCount(of:)`, `showAllTickets()`, `title(of:)`, `symbol(of:)` |
+| Selection | `selectedTicket`, `ticket(_:)`, `missingSelection`, `select(focus:)` (a bundle id selects its bundle in the sidebar), `bundles(of:)`, `chatSubject` |
+| Changes | `perform(_:)` (sets `failure` on error; returns nil then), `setStatus(_:of:)`, `nextStep(of:)`, `confirm(_:)` |
+| Editing | `startEditing(_:)`, `cancelEditing()`, `saveEditing()`, `setPriority(_:of:)` |
+| Links | `declaredLinks(of:)`, `linkCandidates(for:)`, `addLink(_:to:)`, `removeLink(_:from:)` |
+| Comments | `commentDraft(for:)`, `setCommentDraft(_:for:)`, `files(for:)`, `attach(_:to:)`, `detach(_:from:)`, `canComment(on:)`, `sendComment(on:)`, `startEditingComment(_:of:)`, `saveComment()` |
+| Attachments | `addAttachments(_:to:)`, `url(of:in:)` |
+| Bundles | `startNewBundle(with:)`, `startEditing(_ bundle:)`, `bundleCandidates(in:)`, `saveBundle()`, `add(_:to:)`, `remove(_:from:)`, `setStatus(_:of: bundle)` |
+| New Ticket | `newTicketProjects`, `defaultNewTicketProjectID`, `startNewTicket()`, `cancelNewTicket()`, `createNewTicket()` (creates, closes the sheet, selects the ticket and clears a filter that hides it) |
 
-`TicketListState`: `loading`, `empty`, `noMatch(String)`, `failed(message:)`, `loaded([Ticket])`,
-`grouped([TicketGroup])`. The model produces `empty`, `noMatch`, `loaded` and `grouped`; previews show the others.
+**Reader.** `TicketsReader.read(_:)` still reads from `SampleTicketStore` until Chat comes over. `detail(of:)`
+has one sentence per status and priority, and one per status without a priority.
 
-**Reader.** `TicketsReader.read(_:)` reads from `SampleTicketStore`. `read(_:store:)`, `reference(_:)`
-(`ChatReference(tool: .tickets, projectID:, focus: id, title: id)`), `detail(of:)` (one sentence per status
-and priority, 20 in all) and `suggestions(for:)` (the question the status raises, then "Summarize <id>").
-
-**Widget.** `TicketsDashboardWidget` counts each checked status with `store.count(…)`, including sub projects
-when `includeSubprojects` is on.
+**Widget.** `TicketsDashboardWidget` counts with `store.count(…, tree:)` over the environment's directory; it
+reads the samples until the Dashboard comes over.
 
 **Root view.** `NavigationSplitView` with sidebar (190–280), list (300–480) and detail in `.mac` and `.pad`
-(`.doubleColumn` in `.pad`), or a `PhoneStack` in `.phone`. The list column sets `chatPanel` to nil, since the
-detail column's toolbar holds `ChatPanelToolbarItem(pushesToTrailingEdge: true)`. It reports
-`model.chatSubject` on each change of the selection, applies `onFocusRequest`, and makes ⇧⌘N "New Ticket…".
-`TicketActions` (status menu, ⌃⌘1–⌃⌘5; next step, ⇧⌘Return) has empty actions.
+(`.doubleColumn` in `.pad`), or a `PhoneStack` in `.phone`. It presents the New Ticket, Add Link and bundle
+sheets, the failure alert and the confirmation alert; the list's context menu (`contextMenu(forSelectionType:)`)
+and ⌘⌫ (`onDeleteCommand`); `TicketActions` call `setStatus` and `nextStep`, disabled while `isWorking`.
+ToolsScenes' `ToolWindowRoot` builds it with `\.ticketStore` and its directory.
 
 ### ServiceMapKit
 
@@ -1746,7 +1760,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 384 tests). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 464 tests). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
@@ -1757,11 +1771,12 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | MCPKitTests | JSON values and schemas, JSON-RPC, HTTP, Server | Number kinds and sorted output; every validation message in order; the classification table; initialize, ping, unknown methods and the version header; tools/list and tools/call results, errors and validation; heads, chunked and sized bodies and their limits; bearer tokens; a real listener on a free port answering with the token and refusing the rest. |
 | ProjectDataTests | Project file, Registry and current environments, Data folder, Import from HephaestusV2, Rules and GitHub, Loading, Outside changes, Creating opening and removing, Inherited settings, Current environment, GitHub page, Session | V2's complete project file written back byte for byte; every V2 example round-tripping with all its keys; defaults; environments, base URLs and overrides; V3's additions; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; the import's list, skips, choices, single run and missing V2; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints; loading depth first with every issue; data folder files set aside; outside changes (changed, invalid, renamed identifier, deleted and returning files, the registry, own writes, relevance); create, open and remove with their refusals and sub projects; update with its write rules; inheritance on, off, nested and across types; the current environment chosen, renamed, removed and forgotten; GitHub pages from origins, aliases, typed pages and parents, `.git/config`; the session's start, lock, changes and a real outside change. Fixtures: V2's examples. Uses `FakeRunner`. |
 | TicketDataTests | Ticket and bundle files, Ticket library | V2's complete ticket and bundle written back byte for byte; defaults, the creation entry and unknown keys; numbers from the counters, skipping existing files; provisional titles and the title, description and status messages; the template check for Claude; drafts; link rules 1–7 with their messages and inverse links; history entries in order and changes that write nothing; Claude's status limits; the Complete and Reopened rules, Claude's bundle limits and the Complete rule at load; deletion order and the Trash; comments and their files; attachment copies, names, limits and paths; outside changes, invalid files and removals. Fixtures: V2's examples. Uses a test Trash folder. |
+| TextFormatsTests | Language detection, Token kinds, Word lists, Highlighter fixtures, Tokenizer edge cases, Markdown block model, Links, Heading anchors, Ticket and bundle ids, Linked ids, Soft line breaks | V2's suites without the markers and the HTML output: every tokenizer against its fixtures and the word lists of [Text](text.md); the block model of every Markdown feature; links, images and path resolution read from [Text](text.md); ids. Fixtures: V2's highlighting examples (without the 1 MB ones). |
 | ToolsScenesTests | MCP documentation | docs/mcp.md's tools, descriptions and input schemas equal the registry's. |
 | ToolsFoundationTests | Routes, Strings, Inherited settings | Each `FocusRequest` is new; `ChatReference.route` and ids per environment; shared titles from the catalog; unique tool shortcuts; inherited environments. |
 | ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker, Projects from the app's data, New Project, Projects window on the app's data, Project Settings, Project tools | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`.; the mapping of kinds, tints and environments; New Project's following fields, rules, type and parent from the folder, sub project folders and default location; the loading, empty and unavailable states; the selection after a removal and at load.; Project Settings' fields, rules and messages, environments added, renamed and removed, pending fields applied together, and inherited environments changed in the sub project's changes.; the five project tools through JSON-RPC on a real session, their refusals and `~/` expansion. |
 | DashboardsKitTests | What the Dashboard shows, Edit mode, Steps of the keyboard and VoiceOver, Settings, Saving | Sample, default and saved lists; hidden service widgets; toolbar environment and time window; a change in every window of a project; list order; titles; Done, remove, add, first save, drags; every step and its limits; title, checkbox and Number rules; lenient decoding; keys. Uses `MockDashboardLayoutStore`. |
-| TicketsKitTests | The store, The list, Selection and route focus, Comments, New Ticket, The reader | Store queries and counts; grouping, filters, counts, bundles; default selection, focus, repeated routes, hidden and missing tickets, chat subject; comment drafts; the sheet's project and validation; reader sentences and suggestions. Uses `MockTicketStore`. |
+| TicketsKitTests | The store, The list, Selection and route focus, Comments, New Ticket, The reader, Changes, Tickets from the app's data | Store queries and counts; grouping, filters, counts, bundles; default selection, focus, repeated routes, hidden and missing tickets, chat subject; comment drafts; the sheet's project, validation, creation and failure; reader sentences and suggestions; next step and status, comments with files, editing, links, deletion, bundles, the store's phases; the live store's mapping of statuses, priorities, links, blocking and activity. Uses `MockTicketStore` and `SampleTicketStore`. |
 | ServiceMapKitTests | Focus formats, Service Map model, Service Map reader, Service widgets, Formats | Focus parsing; opening environment and view; history, Back, Show All; taps; repeated routes; missing items; chat subject; summary; request order and sorting; graph contents; logs; reader per environment, details and suggestions; widget readings; durations, literals, stable layout. Uses `MockServiceMapStore`. |
 | ContractsKitTests | Opening, Route focus, Filter, Request, Responses, Reader and chat, Sample contracts | Opening selection and environment; repeated routes, filters cleared, drafts kept; sections and matching; examples, URLs, draft keeping, Send; duration formats; reader sentences and suggestions; sample contracts. Uses `MockContractStore`. |
 | BuildsKitTests | Focus, Model, Reader, Samples and logs, Recent Builds widget | Focus parsing; default selection, focus by mode, repeated routes, steps, mode selections, chat subject; reader text and owner repository; default steps, open jobs, log line kinds, sample releases; recent runs within 1–20. Uses `MockBuildStore`. |
@@ -1777,16 +1792,15 @@ Where the code doesn't yet meet the workspace's rules, or the architecture is kn
 
 - **Data in `UserDefaults`.** The Dashboard and the chat preferences still live in `UserDefaults.standard`;
   they move into the files of [Data](data.md) with their features (the Dashboard into `project.yml`).
-- **Most tools are hidden.** The Projects window, Settings ▸ Projects and the menu bar panel run on the app's
-  data; the other tools still run on sample stores, hidden until their features come over
+- **Most tools are hidden.** The Projects window, Settings ▸ Projects, the menu bar panel and the Tickets
+  window run on the app's data; the other tools still run on sample stores, hidden until their features come over
   ([Navigation › Available tools](ui/navigation.md#available-tools)).
 - **No asset catalog.** The app target has no app icon.
 - **Routes come only from inside the app.** No URL scheme, App Intents, Spotlight, widgets or Handoff lead
   into it yet. When they come, each becomes a `Route` handled by `RouteHost`. Nothing sends `.machine(id)` yet.
 - **Sample stores are hard-wired in the hidden tools.** Their root views' public initializers build sample
   stores, and the readers read sample stores directly.
-- **Not wired yet**: New Project, New Sub Project, Add Existing Folder, New Machine, ticket status changes,
-  next step, Comment, New Ticket's Create (closes the sheet only), Contracts' Send, Builds' Refresh, the
+- **Not wired yet**: New Machine, Contracts' Send, Builds' Refresh, the
   Service Map's time window and Live. The chat's permissions are stored but no engine reads them. Each
   window page lists its own.
 - **ToolsScenes has one suite**, the MCP documentation's; its scenes, routes, `WindowDirectory` and menus are

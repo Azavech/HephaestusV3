@@ -15,6 +15,112 @@ enum TicketWords {
     static var priority: String {
         String(localized: "Priority", bundle: #bundle, comment: "The word for a ticket's priority, as a label: a property, a field of the New Ticket sheet")
     }
+
+    /// The user, as the author of a ticket or a comment.
+    static var you: String {
+        String(localized: "You", bundle: #bundle, comment: "The user, as the author of a ticket")
+    }
+
+    /// Claude, as the author of a ticket or a comment.
+    static var claude: String {
+        String(localized: "Claude", bundle: #bundle, comment: "Claude, as the author of a ticket")
+    }
+
+    /// A ticket that depends on a ticket that isn't done.
+    static var blocked: String {
+        String(localized: "Blocked", bundle: #bundle, comment: "A ticket that depends on a ticket that isn't done")
+    }
+
+    /// A priority that isn't set.
+    static var none: String {
+        String(localized: "None", bundle: #bundle, comment: "A ticket property without a value: no bundle, no priority")
+    }
+
+    // Activity sentences: one per author, so each reads naturally once translated.
+
+    static func created(by author: TicketAuthor, asDraft: Bool) -> String {
+        switch (author, asDraft) {
+        case (.claude, true): String(localized: "Claude drafted this ticket", bundle: #bundle)
+        case (.claude, false): String(localized: "Claude created this ticket", bundle: #bundle)
+        case (_, true): String(localized: "You drafted this ticket", bundle: #bundle)
+        case (_, false): String(localized: "You created this ticket", bundle: #bundle)
+        }
+    }
+
+    static func moved(by author: TicketAuthor, from: String, to: String) -> String {
+        author == .claude ? String(localized: "Claude moved it from \(from) to \(to)", bundle: #bundle)
+            : String(localized: "You moved it from \(from) to \(to)", bundle: #bundle)
+    }
+
+    static func renamed(by author: TicketAuthor, from: String, to: String) -> String {
+        switch author {
+        case .claude: String(localized: "Claude renamed it from “\(from)” to “\(to)”", bundle: #bundle)
+        case .automatic: String(localized: "It was named “\(to)”", bundle: #bundle, comment: "V2's automatic naming of a ticket")
+        case .user: String(localized: "You renamed it from “\(from)” to “\(to)”", bundle: #bundle)
+        }
+    }
+
+    static func linkAdded(by author: TicketAuthor, kind: TicketLink.Kind, ticket: String) -> String {
+        switch (author == .claude, kind == .dependsOn) {
+        case (true, true): String(localized: "Claude made it depend on \(ticket)", bundle: #bundle)
+        case (true, false): String(localized: "Claude related it to \(ticket)", bundle: #bundle)
+        case (false, true): String(localized: "You made it depend on \(ticket)", bundle: #bundle)
+        case (false, false): String(localized: "You related it to \(ticket)", bundle: #bundle)
+        }
+    }
+
+    static func linkRemoved(by author: TicketAuthor, kind: TicketLink.Kind, ticket: String) -> String {
+        switch (author == .claude, kind == .dependsOn) {
+        case (true, true): String(localized: "Claude removed its dependency on \(ticket)", bundle: #bundle)
+        case (true, false): String(localized: "Claude removed its relation to \(ticket)", bundle: #bundle)
+        case (false, true): String(localized: "You removed its dependency on \(ticket)", bundle: #bundle)
+        case (false, false): String(localized: "You removed its relation to \(ticket)", bundle: #bundle)
+        }
+    }
+
+    static func descriptionEdited(by author: TicketAuthor) -> String {
+        author == .claude ? String(localized: "Claude edited the description", bundle: #bundle)
+            : String(localized: "You edited the description", bundle: #bundle)
+    }
+
+    static func commented(by author: TicketAuthor) -> String {
+        author == .claude ? String(localized: "Claude commented", bundle: #bundle) : String(localized: "You commented", bundle: #bundle)
+    }
+}
+
+extension BundleStatus {
+    var title: String {
+        switch self {
+        case .todo: String(localized: "To Do", bundle: #bundle, comment: "A bundle's status")
+        case .inProgress: String(localized: "In Progress", bundle: #bundle, comment: "A bundle's status")
+        case .done: String(localized: "Done", bundle: #bundle, comment: "A bundle's status")
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .todo: "circle"
+        case .inProgress: "circle.lefthalf.filled"
+        case .done: "checkmark.circle.fill"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .todo: .textSecondary
+        case .inProgress: .accent
+        case .done: .success
+        }
+    }
+}
+
+extension TicketLinkDraft.Kind {
+    var title: String {
+        switch self {
+        case .dependsOn: String(localized: "Depends On", bundle: #bundle, comment: "The kind of a link between tickets")
+        case .related: String(localized: "Related", bundle: #bundle, comment: "The kind of a link between tickets")
+        }
+    }
 }
 
 extension TicketStatus {
@@ -48,6 +154,17 @@ extension TicketStatus {
         case .inProgress: "3"
         case .inReview: "4"
         case .done: "5"
+        }
+    }
+
+    /// The status the next step moves a ticket to. `nil` once the ticket is done.
+    var next: TicketStatus? {
+        switch self {
+        case .draft: .created
+        case .created: .inProgress
+        case .inProgress: .inReview
+        case .inReview: .done
+        case .done: nil
         }
     }
 
@@ -106,6 +223,9 @@ extension TicketPriority {
 extension TicketLink.Kind {
     var title: String {
         switch self {
+        case .dependsOn: String(localized: "Depends On", bundle: #bundle, comment: "The kind of a link between tickets")
+        case .blocks: String(localized: "Blocks", bundle: #bundle, comment: "The kind of a link between tickets: the other ticket depends on this one")
+        case .related: String(localized: "Related", bundle: #bundle, comment: "The kind of a link between tickets")
         case .service: String(localized: "Service", bundle: #bundle, comment: "The kind of an item a ticket links to")
         case .request: String(localized: "Request", bundle: #bundle, comment: "The kind of an item a ticket links to")
         case .contract: String(localized: "Contract", bundle: #bundle, comment: "The kind of an item a ticket links to")
@@ -115,6 +235,9 @@ extension TicketLink.Kind {
 
     var symbol: String {
         switch self {
+        case .dependsOn: "arrow.turn.down.right"
+        case .blocks: "hand.raised"
+        case .related: "link"
         case .service: "shippingbox"
         case .request: "arrow.left.arrow.right"
         case .contract: "curlybraces.square"
@@ -127,7 +250,12 @@ extension TicketEvent.Kind {
     var symbol: String {
         switch self {
         case .drafted: "sparkles"
+        case .created: "plus.circle"
         case .statusChanged: "arrow.right.circle"
+        case .renamed: "character.cursor.ibeam"
+        case .linkAdded: "link"
+        case .linkRemoved: "minus.circle"
+        case .descriptionEdited: "pencil"
         case .commented: "text.bubble"
         }
     }

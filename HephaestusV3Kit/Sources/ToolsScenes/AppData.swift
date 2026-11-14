@@ -5,6 +5,8 @@ import MCPKit
 import Observation
 import ProjectData
 import ProjectsKit
+import TicketData
+import TicketsKit
 import ToolsFoundation
 
 /// The app's data, shared by every window: the project session, and the directory the windows read, kept
@@ -13,12 +15,15 @@ import ToolsFoundation
 final class AppData {
     /// The tools whose feature has come over from HephaestusV2; the others are hidden in the running app
     /// (docs/ui/navigation.md › Available tools). Previews show every tool.
-    static let availableTools: Set<ToolKind> = []
+    static let availableTools: Set<ToolKind> = [.tickets]
     /// Whether the Virtual Machines window has come over.
     static let machinesAvailable = false
 
     let session: ProjectSession
     let directory = ProjectDirectory(projects: [], state: .loading)
+    /// The tickets and bundles of the loaded projects, and the store the Tickets windows read.
+    let tickets: TicketSession
+    let ticketStore: LiveTicketStore
     @ObservationIgnored private var started = false
 
     // MARK: MCP server (docs/mcp.md)
@@ -41,6 +46,8 @@ final class AppData {
 
     init() {
         session = ProjectSession(dataFolder: DataFolder.resolve())
+        tickets = TicketSession(projects: session)
+        ticketStore = LiveTicketStore(session: tickets)
     }
 
     /// Starts the session once, whichever window appears first, and stops it as the app quits.
@@ -53,7 +60,18 @@ final class AppData {
             SystemProcessRunner.shared.terminateAll()
         }
         await session.start()
+        await tickets.start()
+        followTickets()
         await startMCP()
+    }
+
+    /// Gives the directory the ticket counts now, and again each time the tickets change.
+    private func followTickets() {
+        withObservationTracking {
+            directory.update(ticketCounts: ticketStore.counts())
+        } onChange: { [weak self] in
+            Task { @MainActor in self?.followTickets() }
+        }
     }
 
     /// Starts the MCP server once the projects are loaded: the external token is read, or made and stored.

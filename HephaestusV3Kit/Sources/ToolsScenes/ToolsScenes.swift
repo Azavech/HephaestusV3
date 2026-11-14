@@ -221,6 +221,7 @@ private struct RouteHost<Content: View>: View {
             .environment(\.openRoute, openRouteAction)
             .environment(\.toolReader, appToolReader)
             .environment(\.projectDirectory, appData.directory)
+            .environment(\.ticketStore, appData.ticketStore)
             .environment(\.availableTools, AppData.availableTools)
             .task {
                 if appData.openRoute == nil { appData.openRoute = openRouteAction }
@@ -236,6 +237,7 @@ private struct ToolWindowRoot: View {
     let tool: ToolKind
     @Binding var value: ToolWindowValue?
     @Environment(\.projectDirectory) private var directory
+    @Environment(\.ticketStore) private var ticketStore
 
     /// Whether this window shows the chat panel; each window keeps its own, across launches.
     @SceneStorage("chatPanelShown") private var chatPanelShown = false
@@ -366,7 +368,10 @@ private struct ToolWindowRoot: View {
             DashboardRootView(project: project) { widget, context in
                 DashboardWidgetView(widget: widget, context: context)
             }
-        case .tickets: TicketsRootView(project: project, focus: focus)
+        case .tickets:
+            if let ticketStore {
+                TicketsRootView(project: project, focus: focus, store: ticketStore, directory: directory)
+            }
         case .serviceMap: ServiceMapRootView(project: project, focus: focus)
         case .contracts: ContractsRootView(project: project, focus: focus)
         case .builds: BuildsRootView(project: project, focus: focus)

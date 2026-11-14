@@ -4,8 +4,8 @@ import SwiftUI
 
 /// The sheet for writing a new ticket.
 ///
-/// The fields hold what you type in `draft` and nothing else: Cancel and Create only call their
-/// closures. A parent project's window offers its sub projects in a Project field.
+/// The fields hold what you type in `draft`; Create and Cancel call their closures, and the window's model
+/// creates the ticket. A parent project's window offers its sub projects in a Project field.
 struct NewTicketView: View {
     @Binding var draft: NewTicketDraft
     /// The projects the ticket can go to. The Project field shows only when there is a choice.
@@ -48,8 +48,9 @@ struct NewTicketView: View {
                         .accessibilityIdentifier("newTicket.project")
                     }
                     Picker(TicketWords.priority, selection: $draft.priority) {
+                        Text(verbatim: TicketWords.none).tag(TicketPriority?.none)
                         ForEach(TicketPriority.allCases) { priority in
-                            Text(verbatim: priority.title).tag(priority)
+                            Text(verbatim: priority.title).tag(TicketPriority?.some(priority))
                         }
                     }
                     .accessibilityIdentifier("newTicket.priority")

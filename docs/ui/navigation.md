@@ -35,7 +35,8 @@ every window as the `availableTools` environment value, and the menus read it di
 | Feature | Tools and windows | Available |
 | --- | --- | --- |
 | Projects | The Projects window, Project Settings, Settings ▸ Projects, the menu bar panel | Yes |
-| Dashboard, Tickets, Service Map, Contracts, Builds, Chat | Their tool windows, Settings ▸ Chat | Not yet |
+| Tickets | The Tickets window, its tile, Window ▸ Tickets (⌘2), its menu bar button | Yes |
+| Dashboard, Service Map, Contracts, Builds, Chat | Their tool windows, Settings ▸ Chat | Not yet |
 | Virtual Machines | Its window | Not yet |
 
 Previews and the screenshots of the spec show every tool: the environment value's default is all of them.
@@ -142,7 +143,8 @@ replace the items SwiftUI adds for each kind of window, which would open a tool 
 | Chat | ⌘6 | Same |
 | Virtual Machines | ⌘7 | Always |
 
-Only the available tools and windows are listed ([Available tools](#available-tools)): today, Projects alone.
+Only the available tools and windows are listed ([Available tools](#available-tools)): today, Projects and
+Tickets.
 The tool items act on the **key window's project**: the selection in the Projects window, or a tool
 window's project.
 

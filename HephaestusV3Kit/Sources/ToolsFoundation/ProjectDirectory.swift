@@ -56,15 +56,45 @@ public final class ProjectDirectory {
         if self.unavailable != unavailable { self.unavailable = unavailable }
     }
 
+    /// The ticket counts of each project on its own, once the tickets are loaded; nil in the samples, whose
+    /// figures come with each project's `activity`.
+    public private(set) var ticketCounts: [Project.ID: TicketCounts]?
+
+    public func update(ticketCounts: [Project.ID: TicketCounts]) {
+        if self.ticketCounts != ticketCounts { self.ticketCounts = ticketCounts }
+    }
+
+    /// The ticket figures of a project with all its sub projects, as its Tickets window lists them.
+    public func ticketTotals(of id: Project.ID) -> (open: Int, inReview: Int, drafts: Int) {
+        guard let ticketCounts else { return tree.ticketTotals(of: id) }
+        return tree.family(of: id).reduce((0, 0, 0)) { total, project in
+            let counts = ticketCounts[project.id] ?? TicketCounts()
+            return (total.0 + counts.open, total.1 + counts.inReview, total.2 + counts.drafts)
+        }
+    }
+
     /// The sample projects, for previews and tests.
     public static func samples() -> ProjectDirectory {
         ProjectDirectory(projects: Project.samples)
     }
 }
 
+/// How many tickets of one project are open (neither done nor drafts), in review, and drafts.
+nonisolated public struct TicketCounts: Hashable, Sendable {
+    public var open: Int
+    public var inReview: Int
+    public var drafts: Int
+
+    public init(open: Int = 0, inReview: Int = 0, drafts: Int = 0) {
+        self.open = open
+        self.inReview = inReview
+        self.drafts = drafts
+    }
+}
+
 extension ProjectDirectory {
     /// The directory of the previews, made once.
-    @MainActor static let previewSamples = ProjectDirectory.samples()
+    @MainActor public static let previewSamples = ProjectDirectory.samples()
 }
 
 extension EnvironmentValues {

@@ -15,13 +15,16 @@ enum TicketListState: Hashable {
     case grouped([TicketGroup])
 }
 
-/// The middle column: the tickets the sidebar let through.
-struct TicketListView: View {
+/// The middle column: the tickets the sidebar let through. A row's context menu and Delete (⌘⌫) act on
+/// the selected ticket.
+struct TicketListView<RowMenu: View>: View {
     let state: TicketListState
     @Binding var selection: Ticket.ID?
     var onNewTicket: () -> Void = {}
     var onShowAll: () -> Void = {}
     var onRetry: () -> Void = {}
+    var onDelete: ([Ticket.ID]) -> Void = { _ in }
+    @ViewBuilder var rowMenu: (Set<Ticket.ID>) -> RowMenu
 
     var body: some View {
         Group {
@@ -70,6 +73,8 @@ struct TicketListView: View {
                         .accessibilityIdentifier("tickets.row.\(ticket.id)")
                 }
                 .scrollContentBackground(.hidden)
+                .contextMenu(forSelectionType: Ticket.ID.self) { ids in rowMenu(ids) }
+                .onDeleteCommand { if let selection { onDelete([selection]) } }
             case .grouped(let groups):
                 // The window's project first, then each sub project in tree order.
                 List(selection: $selection) {
@@ -92,6 +97,8 @@ struct TicketListView: View {
                     }
                 }
                 .scrollContentBackground(.hidden)
+                .contextMenu(forSelectionType: Ticket.ID.self) { ids in rowMenu(ids) }
+                .onDeleteCommand { if let selection { onDelete([selection]) } }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -171,8 +178,14 @@ struct TicketRow: View {
                     .foreground(.textSecondary, onSelection: .secondary)
                 Label(ticket.status.title, systemImage: ticket.status.symbol)
                     .labelStyle(.badge(ticket.status.color))
-                Label(ticket.priority.title, systemImage: ticket.priority.symbol)
-                    .labelStyle(.badge(ticket.priority.color))
+                if let priority = ticket.priority {
+                    Label(priority.title, systemImage: priority.symbol)
+                        .labelStyle(.badge(priority.color))
+                }
+                if ticket.isBlocked {
+                    Label(TicketWords.blocked, systemImage: "hand.raised")
+                        .labelStyle(.badge(.danger))
+                }
             }
         }
         .padding(.vertical, 4)
@@ -238,4 +251,12 @@ struct TicketRow: View {
 #Preview("Filter Bar", traits: .appChrome, .sizeThatFitsLayout) {
     TicketFilterBar(title: TicketStatus.inProgress.title, symbol: TicketStatus.inProgress.symbol) {}
         .frame(width: 390)
+}
+
+extension TicketListView where RowMenu == EmptyView {
+    /// A list without a context menu: the previews'.
+    init(state: TicketListState, selection: Binding<Ticket.ID?>, onNewTicket: @escaping () -> Void = {}, onShowAll: @escaping () -> Void = {},
+         onRetry: @escaping () -> Void = {}) {
+        self.init(state: state, selection: selection, onNewTicket: onNewTicket, onShowAll: onShowAll, onRetry: onRetry) { _ in EmptyView() }
+    }
 }

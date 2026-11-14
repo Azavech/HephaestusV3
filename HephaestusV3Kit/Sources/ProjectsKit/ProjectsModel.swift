@@ -129,7 +129,7 @@ final class ProjectsModel {
 
     /// The ticket figures of a project with all its sub projects, as its Tickets window lists them.
     func ticketTotals(of id: Project.ID) -> (open: Int, inReview: Int, drafts: Int) {
-        tree.ticketTotals(of: id)
+        store.ticketTotals(of: id)
     }
 
     /// The environments the overview lists: those of the project whose settings apply. A sub project

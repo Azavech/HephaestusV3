@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import TicketData
 import ToolsFoundation
 
 /// What the sidebar lets into the list.
@@ -29,10 +30,11 @@ struct TicketGroup: Identifiable, Hashable {
 }
 
 /// What the New Ticket sheet holds while it is open.
-struct NewTicketDraft: Hashable {
+struct NewTicketDraft: Hashable, Sendable {
     var title = ""
     var details = ""
-    var priority = TicketPriority.medium
+    /// Medium by default; none leaves the ticket without a priority, as V2's.
+    var priority: TicketPriority? = .medium
     var startsAsDraft = true
     /// The project the ticket goes to: the window's project or one of its sub projects.
     var projectID: Project.ID
@@ -43,8 +45,53 @@ struct NewTicketDraft: Hashable {
     }
 }
 
+/// What the ticket editor holds while the title, description, priority and labels are being changed.
+struct TicketEdit: Hashable {
+    let ticketID: Ticket.ID
+    var title: String
+    var details: String
+    var priority: TicketPriority?
+    /// The labels, comma separated.
+    var labels: String
+
+    init(_ ticket: Ticket) {
+        ticketID = ticket.id
+        title = ticket.title
+        details = ticket.details
+        priority = ticket.priority
+        labels = ticket.labels.joined(separator: ", ")
+    }
+
+    var canSave: Bool { !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    var labelList: [String] {
+        labels.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+    }
+}
+
+/// What asks for a confirmation before it happens.
+enum TicketConfirmation: Hashable, Identifiable {
+    case deleteTickets([Ticket.ID])
+    case deleteBundle(TicketBundle.ID)
+    case deleteComment(Ticket.ID, UUID)
+    case removeAttachment(Ticket.ID, TicketAttachment)
+
+    var id: Self { self }
+}
+
+/// The sheet that picks tickets: a new bundle's, or a bundle's tickets.
+struct BundleDraft: Hashable, Identifiable {
+    /// The bundle being changed; nil for a new one.
+    let bundleID: TicketBundle.ID?
+    let projectID: Project.ID
+    var title: String
+    var ticketIDs: [Ticket.ID]
+
+    var id: String { bundleID ?? "new-\(projectID)" }
+}
+
 /// The Tickets window: its tickets, the sidebar's filter, the selection, what a route's focus selects,
-/// the New Ticket sheet and the comments being written.
+/// the sheets, and every change the window makes through its store.
 ///
 /// A project with sub projects also lists their tickets, at any depth, grouped by project, as in V2.
 /// Its bundles stay its own: a bundle never spans projects.
@@ -52,14 +99,8 @@ struct NewTicketDraft: Hashable {
 final class TicketsModel {
     /// The window's project.
     let project: Project
-    /// The project and its sub projects, in tree order.
-    let family: [Project]
-    /// The tickets of the project and its sub projects, in the store's order.
-    let tickets: [Ticket]
-    /// The window's own bundles, for the sidebar: a parent lists only its own (the user's choice).
-    let bundles: [TicketBundle]
-    /// The bundles of the whole family, for the Bundle property of a sub project's ticket.
-    @ObservationIgnored private let familyBundles: [TicketBundle]
+    @ObservationIgnored let store: any TicketStore
+    @ObservationIgnored let directory: ProjectDirectory
     /// Opened on a ticket: an iPhone's layout starts on its page.
     let opensSelection: Bool
 
@@ -73,22 +114,56 @@ final class TicketsModel {
     var draft: NewTicketDraft
     /// What is typed in each ticket's comment field, by ticket.
     private(set) var commentDrafts: [Ticket.ID: String] = [:]
+    /// The files waiting to go with each ticket's next comment.
+    private(set) var commentFiles: [Ticket.ID: [URL]] = [:]
+    /// The ticket being edited, with what the editor holds.
+    var edit: TicketEdit?
+    /// The comment being edited and its text.
+    var commentEdit: (ticketID: Ticket.ID, commentID: UUID, text: String)?
+    /// The Add Link sheet's ticket.
+    var linkingTicket: Ticket.ID?
+    /// The bundle sheet, while open.
+    var bundleDraft: BundleDraft?
+    /// What waits for a confirmation.
+    var confirmation: TicketConfirmation?
+    /// The message of the last change that failed, shown in an alert.
+    var failure: String?
+    /// True while a change runs.
+    private(set) var isWorking = false
 
     /// The window of `project`, with `focus` (a ticket id) selected; without one, the first ticket of
     /// the list.
-    init(project: Project, focus: String?, filter: TicketFilter = .all, store: any TicketStore) {
-        let family = Project.tree.family(of: project.id)
-        let ids = Set(family.map(\.id))
+    init(project: Project, focus: String?, filter: TicketFilter = .all, store: any TicketStore,
+         directory: ProjectDirectory = .previewSamples) {
         self.project = project
-        self.family = family
-        self.tickets = store.tickets(of: ids)
-        self.bundles = store.bundles(of: [project.id])
-        self.familyBundles = store.bundles(of: ids)
+        self.store = store
+        self.directory = directory
         self.opensSelection = focus != nil
         self.filter = filter
         self.draft = NewTicketDraft(projectID: project.id)
         self.selection = nil
         selection = focus ?? visibleTickets.first?.id
+    }
+
+    /// The project and its sub projects, in tree order.
+    var family: [Project] {
+        let family = directory.tree.family(of: project.id)
+        return family.isEmpty ? [project] : family
+    }
+
+    /// The tickets of the project and its sub projects, in the store's order.
+    var tickets: [Ticket] {
+        store.tickets(of: Set(family.map(\.id)))
+    }
+
+    /// The window's own bundles, for the sidebar: a parent lists only its own (the user's choice).
+    var bundles: [TicketBundle] {
+        store.bundles(of: [project.id])
+    }
+
+    /// The bundles of the whole family, for the Bundle property of a sub project's ticket.
+    private var familyBundles: [TicketBundle] {
+        store.bundles(of: Set(family.map(\.id)))
     }
 
     // MARK: The list
@@ -98,10 +173,15 @@ final class TicketsModel {
         family.count > 1
     }
 
-    /// The sidebar's sections, in order. The Projects section only for a project with sub projects,
-    /// the Bundles section only when the project has bundles.
+    /// The depth of a family member under the window's project, for the sidebar's indent.
+    func indent(of member: Project) -> Int {
+        directory.tree.depth(of: member.id) - directory.tree.depth(of: project.id)
+    }
+
+    /// The sidebar's sections, in order. The Projects section only for a project with sub projects; the
+    /// Bundles section always, with its New Bundle button.
     var filterSections: [TicketFilterSection] {
-        [.status] + (isGrouped ? [.projects] : []) + (bundles.isEmpty ? [] : [.bundles])
+        [.status] + (isGrouped ? [.projects] : []) + [.bundles]
     }
 
     /// Whether a filter other than All Tickets applies.
@@ -126,12 +206,18 @@ final class TicketsModel {
 
     /// What the list shows.
     var listState: TicketListState {
+        switch store.phase {
+        case .loading: return .loading
+        case .failed(let message): return .failed(message: message)
+        case .ready: break
+        }
+        let tickets = tickets
         if tickets.isEmpty { return .empty }
         if isGrouped {
             let groups = groups
             return groups.isEmpty ? .noMatch(noMatchMessage) : .grouped(groups)
         }
-        let visible = visibleTickets
+        let visible = tickets.filter(passesFilter)
         return visible.isEmpty ? .noMatch(noMatchMessage) : .loaded(visible)
     }
 
@@ -145,7 +231,7 @@ final class TicketsModel {
         case .bundle(let id):
             bundles.first { $0.id == id }?.ticketIDs.contains(ticket.id) ?? false
         case .project(let id):
-            Project.tree.family(of: id).contains { $0.id == ticket.projectID }
+            directory.tree.family(of: id).contains { $0.id == ticket.projectID } || id == ticket.projectID
         }
     }
 
@@ -212,32 +298,126 @@ final class TicketsModel {
 
     /// The selected ticket, when the selection names one of the window's tickets.
     var selectedTicket: Ticket? {
-        tickets.first { $0.id == selection }
+        selection.flatMap(ticket)
+    }
+
+    /// One of the window's tickets.
+    func ticket(_ id: Ticket.ID) -> Ticket? {
+        tickets.first { $0.id == id }
     }
 
     /// The id a route asked for that names none of the window's tickets.
     var missingSelection: Ticket.ID? {
-        selectedTicket == nil ? selection : nil
+        selectedTicket == nil && store.phase == .ready ? selection : nil
     }
 
     /// Selects the ticket a route asked for, even when it was selected before and the user has picked
     /// another since. A filter that hides it gives way to All Tickets, so its row shows.
     func select(focus: String) {
+        if TicketIDs.parseBundle(focus) != nil, bundles.contains(where: { $0.id == focus }) {
+            filter = .bundle(focus)
+            return
+        }
         selection = focus
-        if let ticket = tickets.first(where: { $0.id == focus }), !passesFilter(ticket) {
+        if let ticket = ticket(focus), !passesFilter(ticket) {
             filter = .all
         }
     }
 
-    /// The bundle `ticket` is in: one of its own project's, so a sub project's ticket shows its bundle
-    /// in a parent's window too.
-    func bundle(of ticket: Ticket) -> TicketBundle? {
-        familyBundles.first { $0.projectID == ticket.projectID && $0.ticketIDs.contains(ticket.id) }
+    /// The bundles `ticket` is in: its own project's, so a sub project's ticket shows them in a parent's
+    /// window too.
+    func bundles(of ticket: Ticket) -> [TicketBundle] {
+        familyBundles.filter { $0.projectID == ticket.projectID && $0.ticketIDs.contains(ticket.id) }
     }
 
     /// The selected ticket, as the chat panel asks about it.
     var chatSubject: ChatReference? {
         selectedTicket.map(TicketsReader.reference)
+    }
+
+    // MARK: Changes
+
+    /// Makes a change through the store; a failure shows its message. Returns what the change created.
+    @discardableResult
+    func perform(_ change: TicketChangeRequest) async -> String? {
+        isWorking = true
+        defer { isWorking = false }
+        do {
+            return try await store.perform(change) ?? ""
+        } catch {
+            failure = error.message
+            return nil
+        }
+    }
+
+    /// Sets the status of the selected ticket.
+    func setStatus(_ status: TicketStatus, of ids: [Ticket.ID]) async {
+        await perform(.setStatus(ids, status))
+    }
+
+    /// Moves a ticket one step forward: Draft to Created, then In Progress, In Review and Done.
+    func nextStep(of ticket: Ticket) async {
+        guard let next = ticket.status.next else { return }
+        await perform(.setStatus([ticket.id], next))
+    }
+
+    /// Deletes once confirmed: tickets, a bundle, a comment or an attachment.
+    func confirm(_ confirmation: TicketConfirmation) async {
+        switch confirmation {
+        case .deleteTickets(let ids):
+            if await perform(.delete(ids)) != nil, let selection, ids.contains(selection) {
+                self.selection = visibleTickets.first?.id
+            }
+        case .deleteBundle(let id):
+            if await perform(.deleteBundle(id)) != nil, filter == .bundle(id) { filter = .all }
+        case let .deleteComment(ticketID, commentID):
+            await perform(.deleteComment(ticketID, commentID))
+        case let .removeAttachment(ticketID, attachment):
+            await perform(.removeAttachment(ticketID, attachment.id))
+        }
+    }
+
+    // MARK: Editing
+
+    func startEditing(_ ticket: Ticket) {
+        edit = TicketEdit(ticket)
+    }
+
+    func cancelEditing() {
+        edit = nil
+    }
+
+    /// Saves the editor's values; the editor stays open with them when a rule fails.
+    func saveEditing() async {
+        guard let edit, edit.canSave else { return }
+        if await perform(.edit(edit.ticketID, title: edit.title, details: edit.details, priority: edit.priority, labels: edit.labelList)) != nil {
+            self.edit = nil
+        }
+    }
+
+    func setPriority(_ priority: TicketPriority?, of ticket: Ticket) async {
+        await perform(.setPriority(ticket.id, priority))
+    }
+
+    // MARK: Links
+
+    /// The links `ticket` declares, as the store takes them.
+    func declaredLinks(of ticket: Ticket) -> [TicketLinkDraft] {
+        ticket.links.filter(\.isDeclared).map { TicketLinkDraft(kind: $0.kind == .dependsOn ? .dependsOn : .related, ticketID: $0.target) }
+    }
+
+    /// The tickets `ticket` can link to: the others of its project it isn't linked to yet.
+    func linkCandidates(for ticket: Ticket) -> [Ticket] {
+        let linked = Set(ticket.links.filter(\.kind.isTicket).map(\.target))
+        return store.tickets(of: [ticket.projectID]).filter { $0.id != ticket.id && !linked.contains($0.id) }
+    }
+
+    func addLink(_ link: TicketLinkDraft, to ticket: Ticket) async -> Bool {
+        await perform(.setLinks(ticket.id, declaredLinks(of: ticket) + [link])) != nil
+    }
+
+    func removeLink(_ link: TicketLink, from ticket: Ticket) async {
+        await perform(.setLinks(ticket.id, declaredLinks(of: ticket).filter { $0.ticketID != link.target }))
     }
 
     // MARK: Comments
@@ -249,6 +429,103 @@ final class TicketsModel {
 
     func setCommentDraft(_ text: String, for ticket: Ticket.ID) {
         commentDrafts[ticket] = text.isEmpty ? nil : text
+    }
+
+    /// The files waiting to go with `ticket`'s next comment.
+    func files(for ticket: Ticket.ID) -> [URL] {
+        commentFiles[ticket, default: []]
+    }
+
+    func attach(_ files: [URL], to ticket: Ticket.ID) {
+        commentFiles[ticket, default: []] += files.filter { !commentFiles[ticket, default: []].contains($0) }
+    }
+
+    func detach(_ file: URL, from ticket: Ticket.ID) {
+        commentFiles[ticket]?.removeAll { $0 == file }
+        if commentFiles[ticket]?.isEmpty == true { commentFiles[ticket] = nil }
+    }
+
+    /// Whether `ticket`'s comment can be sent: text with more than spaces, or a file.
+    func canComment(on ticket: Ticket.ID) -> Bool {
+        !commentDraft(for: ticket).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !files(for: ticket).isEmpty
+    }
+
+    /// Sends the comment; the field and its files empty once it is added, and keep it when it fails.
+    func sendComment(on ticket: Ticket.ID) async {
+        guard canComment(on: ticket) else { return }
+        if await perform(.addComment(ticket, text: commentDraft(for: ticket), files: files(for: ticket))) != nil {
+            commentDrafts[ticket] = nil
+            commentFiles[ticket] = nil
+        }
+    }
+
+    func startEditingComment(_ event: TicketEvent, of ticket: Ticket.ID) {
+        guard let commentID = event.commentID else { return }
+        commentEdit = (ticket, commentID, event.comment ?? "")
+    }
+
+    func saveComment() async {
+        guard let commentEdit else { return }
+        if await perform(.editComment(commentEdit.ticketID, commentEdit.commentID, text: commentEdit.text)) != nil {
+            self.commentEdit = nil
+        }
+    }
+
+    // MARK: Attachments
+
+    func addAttachments(_ files: [URL], to ticket: Ticket.ID) async {
+        guard !files.isEmpty else { return }
+        await perform(.addAttachments(ticket, files))
+    }
+
+    /// The file of an attachment of `ticket`, to open it.
+    func url(of attachment: TicketAttachment, in ticket: Ticket) async -> URL? {
+        await store.url(of: attachment, in: ticket.projectID)
+    }
+
+    // MARK: Bundles
+
+    /// Opens the bundle sheet for a new bundle, with `tickets` checked.
+    func startNewBundle(with tickets: [Ticket.ID] = []) {
+        bundleDraft = BundleDraft(bundleID: nil, projectID: project.id, title: "", ticketIDs: tickets)
+    }
+
+    /// Opens the bundle sheet on a bundle's title and tickets.
+    func startEditing(_ bundle: TicketBundle) {
+        bundleDraft = BundleDraft(bundleID: bundle.id, projectID: bundle.projectID, title: bundle.title, ticketIDs: bundle.ticketIDs)
+    }
+
+    /// The tickets a bundle can hold: its project's.
+    func bundleCandidates(in projectID: Project.ID) -> [Ticket] {
+        store.tickets(of: [projectID])
+    }
+
+    func saveBundle() async {
+        guard let draft = bundleDraft else { return }
+        let done: Bool
+        if let id = draft.bundleID {
+            done = await perform(.editBundle(id, title: draft.title, tickets: draft.ticketIDs)) != nil
+        } else if let id = await perform(.createBundle(draft.projectID, title: draft.title, tickets: draft.ticketIDs)) {
+            done = true
+            filter = .bundle(id)
+        } else {
+            done = false
+        }
+        if done { bundleDraft = nil }
+    }
+
+    /// Adds a ticket to a bundle, after its other tickets.
+    func add(_ ticket: Ticket, to bundle: TicketBundle) async {
+        guard !bundle.ticketIDs.contains(ticket.id) else { return }
+        await perform(.editBundle(bundle.id, title: nil, tickets: bundle.ticketIDs + [ticket.id]))
+    }
+
+    func remove(_ ticket: Ticket, from bundle: TicketBundle) async {
+        await perform(.editBundle(bundle.id, title: nil, tickets: bundle.ticketIDs.filter { $0 != ticket.id }))
+    }
+
+    func setStatus(_ status: BundleStatus, of bundle: TicketBundle) async {
+        await perform(.setBundleStatus(bundle.id, status))
     }
 
     // MARK: New Ticket
@@ -274,9 +551,13 @@ final class TicketsModel {
         isComposing = false
     }
 
-    /// Closes the sheet once the ticket has a title. Not wired yet: no ticket is saved.
-    func createNewTicket() {
+    /// Creates the ticket; the sheet closes and the new ticket is selected, with the filters that would hide
+    /// it cleared. A failure keeps the sheet open with what was typed.
+    func createNewTicket() async {
         guard draft.canCreate else { return }
+        guard let id = await perform(.create(draft)) else { return }
         isComposing = false
+        if let ticket = ticket(id), !passesFilter(ticket) { filter = .all }
+        selection = id
     }
 }

@@ -48,6 +48,11 @@ public enum TicketsReader {
         case (.done, .medium): return String(localized: "“\(title)” is done. Its priority was medium.", bundle: #bundle)
         case (.done, .high): return String(localized: "“\(title)” is done. Its priority was high.", bundle: #bundle)
         case (.done, .urgent): return String(localized: "“\(title)” is done. Its priority was urgent.", bundle: #bundle)
+        case (.draft, nil): return String(localized: "“\(title)” is a draft.", bundle: #bundle)
+        case (.created, nil): return String(localized: "“\(title)” is waiting to start.", bundle: #bundle)
+        case (.inProgress, nil): return String(localized: "“\(title)” is in progress.", bundle: #bundle)
+        case (.inReview, nil): return String(localized: "“\(title)” is in review.", bundle: #bundle)
+        case (.done, nil): return String(localized: "“\(title)” is done.", bundle: #bundle)
         }
     }
 

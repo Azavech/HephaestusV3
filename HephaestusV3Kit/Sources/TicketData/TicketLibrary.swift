@@ -220,14 +220,14 @@ public actor TicketLibrary {
         public var description: String
         /// `todo`, or `draft` (V3) for the user.
         public var status: TicketFileStatus
-        public var priority: TicketPriority?
+        public var priority: TicketFilePriority?
         public var labels: [String]
         public var links: [TicketLinkEntry]
         /// Files copied in as the ticket's attachments.
         public var attachments: [URL]
 
         public init(projectID: String, title: String = "", description: String = "", status: TicketFileStatus = .todo,
-                    priority: TicketPriority? = nil, labels: [String] = [], links: [TicketLinkEntry] = [], attachments: [URL] = []) {
+                    priority: TicketFilePriority? = nil, labels: [String] = [], links: [TicketLinkEntry] = [], attachments: [URL] = []) {
             self.projectID = projectID
             self.title = title
             self.description = description
@@ -282,12 +282,12 @@ public actor TicketLibrary {
         public var title: String?
         public var description: String?
         /// `.some(nil)` removes the priority.
-        public var priority: TicketPriority??
+        public var priority: TicketFilePriority??
         public var labels: [String]?
         /// The whole list of links the ticket declares.
         public var links: [TicketLinkEntry]?
 
-        public init(title: String? = nil, description: String? = nil, priority: TicketPriority?? = nil, labels: [String]? = nil,
+        public init(title: String? = nil, description: String? = nil, priority: TicketFilePriority?? = nil, labels: [String]? = nil,
                     links: [TicketLinkEntry]? = nil) {
             self.title = title
             self.description = description

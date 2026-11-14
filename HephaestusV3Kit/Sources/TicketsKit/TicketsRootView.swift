@@ -16,10 +16,10 @@ public struct TicketsRootView: View {
     /// the Mac's 480 pt.
     @State private var phoneSheetWidth: CGFloat = 480
 
-    /// The Tickets window of `project`, with `focus` (a ticket id) selected when it opens. A later
-    /// route's focus arrives as a focus request.
-    public init(project: Project, focus: String? = nil) {
-        _model = State(initialValue: TicketsModel(project: project, focus: focus, store: SampleTicketStore()))
+    /// The Tickets window of `project` on the app's tickets, with `focus` (a ticket id) selected when it
+    /// opens. A later route's focus arrives as a focus request.
+    public init(project: Project, focus: String? = nil, store: LiveTicketStore, directory: ProjectDirectory) {
+        _model = State(initialValue: TicketsModel(project: project, focus: focus, store: store, directory: directory))
     }
 
     init(model: TicketsModel) {
@@ -41,8 +41,32 @@ public struct TicketsRootView: View {
                 projects: model.newTicketProjects,
                 width: layout == .phone ? phoneSheetWidth : nil,
                 onCancel: { model.cancelNewTicket() },
-                onCreate: { model.createNewTicket() }
+                onCreate: { Task { await model.createNewTicket() } }
             )
+        }
+        .sheet(item: Binding { model.linkingTicket.flatMap(model.ticket) } set: { model.linkingTicket = $0?.id }) { ticket in
+            AddLinkSheet(ticket: ticket, candidates: model.linkCandidates(for: ticket), onCancel: { model.linkingTicket = nil }) { link in
+                Task { if await model.addLink(link, to: ticket) { model.linkingTicket = nil } }
+            }
+        }
+        .sheet(item: $model.bundleDraft) { draft in
+            BundleSheet(draft: Binding { model.bundleDraft ?? draft } set: { model.bundleDraft = $0 },
+                        candidates: model.bundleCandidates(in: draft.projectID),
+                        onCancel: { model.bundleDraft = nil }, onSave: { Task { await model.saveBundle() } })
+        }
+        .alert(String(localized: "The Change Failed", bundle: #bundle), isPresented: Binding { model.failure != nil } set: { if !$0 { model.failure = nil } }) {
+            Button(String(localized: "OK", bundle: #bundle)) { model.failure = nil }
+        } message: {
+            Text(verbatim: model.failure ?? "")
+        }
+        .alert(confirmationTitle, isPresented: Binding { model.confirmation != nil } set: { if !$0 { model.confirmation = nil } },
+               presenting: model.confirmation) { confirmation in
+            Button(confirmationAction(confirmation), role: .destructive) {
+                Task { await model.confirm(confirmation) }
+            }
+            Button(String(localized: "Cancel", bundle: #bundle), role: .cancel) {}
+        } message: { confirmation in
+            Text(verbatim: confirmationMessage(confirmation))
         }
         // A route to a ticket of this open window selects it again, even after the user picked another.
         .onFocusRequest { focus in
@@ -96,7 +120,7 @@ public struct TicketsRootView: View {
                 }
             }
             .toolbar {
-                TicketActions(ticket: model.selectedTicket)
+                actions(for: model.selectedTicket)
                 // The ticket's actions start at the column's left edge; the button goes to its right.
                 ChatPanelToolbarItem(pushesToTrailingEdge: true)
             }
@@ -118,14 +142,14 @@ public struct TicketsRootView: View {
             // The list adds New Ticket and the chat panel's button after the filter.
         } page: { id in
             Group {
-                if let ticket = model.tickets.first(where: { $0.id == id }) {
+                if let ticket = model.ticket(id) {
                     detail(of: ticket)
                 } else {
                     TicketNotFoundView(id: id, project: model.project)
                 }
             }
             .toolbar {
-                TicketActions(ticket: model.tickets.first { $0.id == id }, isCompact: true)
+                actions(for: model.ticket(id), isCompact: true)
                 ChatPanelToolbarItem()
             }
         }
@@ -136,8 +160,46 @@ public struct TicketsRootView: View {
             state: model.listState,
             selection: $model.selection,
             onNewTicket: { model.startNewTicket() },
-            onShowAll: { model.showAllTickets() }
-        )
+            onShowAll: { model.showAllTickets() },
+            onRetry: { Task { await model.store.retry() } },
+            onDelete: { ids in model.confirmation = .deleteTickets(ids) }
+        ) { ids in
+            TicketMenu(model: model, ids: ids)
+        }
+    }
+
+    private func actions(for ticket: Ticket?, isCompact: Bool = false) -> TicketActions {
+        TicketActions(ticket: ticket, isCompact: isCompact, isWorking: model.isWorking) {
+            if let ticket { Task { await model.nextStep(of: ticket) } }
+        } onChangeStatus: { status in
+            if let ticket { Task { await model.setStatus(status, of: [ticket.id]) } }
+        }
+    }
+
+    private var confirmationTitle: String {
+        switch model.confirmation {
+        case .deleteTickets(let ids)?:
+            ids.count == 1 ? String(localized: "Delete \(ids[0])?", bundle: #bundle)
+                : String(localized: "Delete \(ids.count) tickets?", bundle: #bundle)
+        case .deleteBundle(let id)?: String(localized: "Delete \(id)?", bundle: #bundle)
+        case .deleteComment?: String(localized: "Delete this comment?", bundle: #bundle)
+        case .removeAttachment(_, let attachment)?: String(localized: "Remove \(attachment.name)?", bundle: #bundle)
+        case nil: ""
+        }
+    }
+
+    private func confirmationAction(_ confirmation: TicketConfirmation) -> String {
+        if case .removeAttachment = confirmation { return String(localized: "Remove", bundle: #bundle) }
+        return String(localized: "Delete", bundle: #bundle)
+    }
+
+    private func confirmationMessage(_ confirmation: TicketConfirmation) -> String {
+        switch confirmation {
+        case .deleteTickets: String(localized: "Their files and attachments move to the Trash.", bundle: #bundle)
+        case .deleteBundle: String(localized: "Its tickets are kept.", bundle: #bundle)
+        case .deleteComment: String(localized: "Its attachments move to the Trash.", bundle: #bundle)
+        case .removeAttachment: String(localized: "The file moves to the Trash.", bundle: #bundle)
+        }
     }
 
     /// The filter that applies, when it isn't All Tickets.
@@ -148,15 +210,45 @@ public struct TicketsRootView: View {
     }
 
     private func detail(of ticket: Ticket) -> some View {
-        TicketDetailView(
-            ticket: ticket,
-            bundle: model.bundle(of: ticket),
-            comment: Binding {
-                model.commentDraft(for: ticket.id)
-            } set: { text in
-                model.setCommentDraft(text, for: ticket.id)
+        TicketDetailView(ticket: ticket, model: model)
+    }
+}
+
+/// The context menu of the list's selected tickets: Set Status, Add to Bundle, Delete.
+private struct TicketMenu: View {
+    let model: TicketsModel
+    let ids: Set<Ticket.ID>
+
+    var body: some View {
+        let tickets = model.tickets.filter { ids.contains($0.id) }
+        if !tickets.isEmpty {
+            Menu(String(localized: "Set Status", bundle: #bundle)) {
+                ForEach(TicketStatus.allCases) { status in
+                    Button(status.title, systemImage: status.symbol) {
+                        Task { await model.setStatus(status, of: tickets.map(\.id)) }
+                    }
+                }
             }
-        )
+            if tickets.count == 1, let ticket = tickets.first {
+                let projectBundles = model.store.bundles(of: [ticket.projectID])
+                Menu(String(localized: "Add to Bundle", bundle: #bundle)) {
+                    ForEach(projectBundles.filter { !$0.ticketIDs.contains(ticket.id) }) { bundle in
+                        Button(bundle.title) { Task { await model.add(ticket, to: bundle) } }
+                    }
+                    Divider()
+                    Button(String(localized: "New Bundle…", bundle: #bundle)) { model.startNewBundle(with: [ticket.id]) }
+                }
+                ForEach(projectBundles.filter { $0.ticketIDs.contains(ticket.id) }) { bundle in
+                    Button(String(localized: "Remove from \(bundle.title)", bundle: #bundle)) {
+                        Task { await model.remove(ticket, from: bundle) }
+                    }
+                }
+            }
+            Divider()
+            Button(String(localized: "Delete…", bundle: #bundle), role: .destructive) {
+                model.confirmation = .deleteTickets(tickets.map(\.id))
+            }
+        }
     }
 }
 
@@ -204,7 +296,7 @@ private struct TicketSidebar: View {
                     ProjectIcon(member)
                 }
                 .badge(model.count(.project(member.id)))
-                .padding(.leading, CGFloat(Project.tree.depth(of: member.id) - Project.tree.depth(of: model.project.id)) * 14)
+                .padding(.leading, CGFloat(model.indent(of: member)) * 14)
                 .tag(TicketFilter.project(member.id))
                 .accessibilityIdentifier("tickets.sidebar.project.\(member.id)")
             }
@@ -219,9 +311,32 @@ private struct TicketSidebar: View {
                 BundleRow(bundle: bundle, done: model.doneCount(of: bundle))
                     .tag(TicketFilter.bundle(bundle.id))
                     .accessibilityIdentifier("tickets.sidebar.bundle.\(bundle.id)")
+                    .contextMenu {
+                        Button(String(localized: "Edit Bundle…", bundle: #bundle)) { model.startEditing(bundle) }
+                        Menu(String(localized: "Set Status", bundle: #bundle)) {
+                            ForEach(BundleStatus.allCases) { status in
+                                Button(status.title, systemImage: status.symbol) {
+                                    Task { await model.setStatus(status, of: bundle) }
+                                }
+                                .disabled(status == bundle.status)
+                            }
+                        }
+                        Divider()
+                        Button(String(localized: "Delete Bundle…", bundle: #bundle), role: .destructive) {
+                            model.confirmation = .deleteBundle(bundle.id)
+                        }
+                    }
             }
         } header: {
-            SectionHeader(title: String(localized: "Bundles", bundle: #bundle))
+            HStack {
+                SectionHeader(title: String(localized: "Bundles", bundle: #bundle))
+                Spacer()
+                Button(String(localized: "New Bundle", bundle: #bundle), systemImage: "plus") { model.startNewBundle() }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .help(String(localized: "New Bundle", bundle: #bundle))
+                    .accessibilityIdentifier("tickets.sidebar.newBundle")
+            }
         }
     }
 }
@@ -236,7 +351,7 @@ private struct SectionHeader: View {
     }
 }
 
-/// A bundle, with how many of its tickets are done.
+/// A bundle, its status, and how many of its tickets are done.
 private struct BundleRow: View {
     let bundle: TicketBundle
     let done: Int
@@ -244,8 +359,15 @@ private struct BundleRow: View {
     var body: some View {
         Label {
             VStack(alignment: .leading, spacing: 3) {
-                Text(verbatim: bundle.title)
-                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    Text(verbatim: bundle.title)
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    Image(systemName: bundle.status.symbol)
+                        .foregroundStyle(bundle.status.color)
+                        .help(bundle.status.title)
+                        .accessibilityLabel(bundle.status.title)
+                }
                 ProgressView(value: Double(done), total: Double(max(bundle.ticketIDs.count, 1)))
                     .progressViewStyle(.linear)
                     .controlSize(.mini)
@@ -290,7 +412,7 @@ private struct TicketFilterMenu: View {
                         } header: {
                             SectionHeader(title: String(localized: "Projects", bundle: #bundle))
                         }
-                    case .bundles:
+                    case .bundles where !model.bundles.isEmpty:
                         Section {
                             ForEach(model.bundles) { bundle in
                                 Text(verbatim: bundle.title)
@@ -300,6 +422,8 @@ private struct TicketFilterMenu: View {
                         } header: {
                             SectionHeader(title: String(localized: "Bundles", bundle: #bundle))
                         }
+                    case .bundles:
+                        EmptyView()
                     }
                 }
             }

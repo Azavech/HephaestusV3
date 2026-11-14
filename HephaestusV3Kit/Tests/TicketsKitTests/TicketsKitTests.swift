@@ -138,8 +138,8 @@ struct TicketListTests {
     func sectionOrder() {
         #expect(model("SHOP").filterSections == [.status, .projects, .bundles])
         #expect(model("ORD").filterSections == [.status, .bundles])
-        #expect(model("TLS").filterSections == [.status, .projects])
-        #expect(model("AZD").filterSections == [.status])
+        #expect(model("TLS").filterSections == [.status, .projects, .bundles])
+        #expect(model("AZD").filterSections == [.status, .bundles])
     }
 
     @Test("Counts cover the window's tickets before any filter")
@@ -238,9 +238,9 @@ struct TicketSelectionTests {
     @Test("A sub project's ticket shows its bundle in a parent's window")
     func bundleInParent() {
         let shop = model("SHOP")
-        #expect(shop.bundle(of: familyStore.ticket("ORD-2")!)?.id == "ORD-B1")
-        #expect(shop.bundle(of: familyStore.ticket("SHOP-1")!)?.id == "SHOP-B1")
-        #expect(shop.bundle(of: familyStore.ticket("PAY-1")!) == nil)
+        #expect(shop.bundles(of: familyStore.ticket("ORD-2")!).map(\.id) == ["ORD-B1"])
+        #expect(shop.bundles(of: familyStore.ticket("SHOP-1")!).map(\.id) == ["SHOP-B1"])
+        #expect(shop.bundles(of: familyStore.ticket("PAY-1")!).isEmpty)
     }
 }
 
@@ -280,18 +280,32 @@ struct NewTicketTests {
         #expect(model("ORD").newTicketProjects.map(\.id) == ["ORD"])
     }
 
-    @Test("A title of spaces only can't be created")
-    func blankTitle() {
-        let orders = model("ORD")
+    @Test("A title of spaces only can't be created; a created ticket is selected")
+    func blankTitle() async {
+        let store = SampleTicketStore()
+        let orders = TicketsModel(project: Project.sample("ORD")!, focus: nil, filter: .status(.done), store: store)
         orders.startNewTicket()
         orders.draft.title = "  \n "
         #expect(!orders.draft.canCreate)
-        orders.createNewTicket()
+        await orders.createNewTicket()
         #expect(orders.isComposing)
         orders.draft.title = " Slow search "
         #expect(orders.draft.canCreate)
-        orders.createNewTicket()
+        await orders.createNewTicket()
         #expect(!orders.isComposing)
+        #expect(orders.selectedTicket?.title == "Slow search")
+        #expect(orders.selectedTicket?.status == .draft)
+        #expect(orders.filter == .all)
+    }
+
+    @Test("A failed creation keeps the sheet open and shows why")
+    func failedCreation() async {
+        let orders = model("ORD")
+        orders.startNewTicket()
+        orders.draft.title = "Slow search"
+        await orders.createNewTicket()
+        #expect(orders.isComposing)
+        #expect(orders.failure == "This store doesn't change tickets.")
     }
 
     @Test("Cancel closes the sheet")
@@ -348,5 +362,104 @@ struct TicketsReaderTests {
     func sampleReader() {
         #expect(TicketsReader.read("ORD-142")?.action == "Read ticket ORD-142")
         #expect(TicketsReader.read("TKIT-4") != nil)
+    }
+}
+
+@Suite("Changes")
+struct TicketChangeTests {
+    private func orders() -> (TicketsModel, SampleTicketStore) {
+        let store = SampleTicketStore()
+        return (TicketsModel(project: Project.sample("ORD")!, focus: "ORD-141", store: store), store)
+    }
+
+    @Test("The next step moves a ticket one status forward; the status menu sets any")
+    func status() async {
+        let (model, store) = orders()
+        let draft = model.selectedTicket!
+        await model.nextStep(of: draft)
+        #expect(store.ticket("ORD-141")?.status == .created)
+        await model.setStatus(.done, of: ["ORD-141"])
+        #expect(model.selectedTicket?.status == .done)
+        await model.nextStep(of: model.selectedTicket!)
+        #expect(store.changes.count == 2)
+        #expect(TicketStatus.allCases.map(\.next) == [.created, .inProgress, .inReview, .done, nil])
+    }
+
+    @Test("A comment is sent with its files; the field empties only once it is added")
+    func comments() async {
+        let (model, store) = orders()
+        #expect(!model.canComment(on: "ORD-141"))
+        model.attach([URL(fileURLWithPath: "/tmp/a.log")], to: "ORD-141")
+        #expect(model.canComment(on: "ORD-141"))
+        model.setCommentDraft("Looks good", for: "ORD-141")
+        await model.sendComment(on: "ORD-141")
+        #expect(model.commentDraft(for: "ORD-141") == "")
+        #expect(model.files(for: "ORD-141").isEmpty)
+        #expect(store.changes == [.addComment("ORD-141", text: "Looks good", files: [URL(fileURLWithPath: "/tmp/a.log")])])
+        let failing = TicketsModel(project: Project.sample("ORD")!, focus: "ORD-2", store: familyStore)
+        failing.setCommentDraft("Kept", for: "ORD-2")
+        await failing.sendComment(on: "ORD-2")
+        #expect(failing.commentDraft(for: "ORD-2") == "Kept")
+        #expect(failing.failure != nil)
+    }
+
+    @Test("Editing saves the title, description, priority and labels together")
+    func editing() async {
+        let (model, store) = orders()
+        model.startEditing(model.selectedTicket!)
+        model.edit?.title = "Cursor pagination"
+        model.edit?.labels = "docs, , api "
+        model.edit?.priority = nil
+        await model.saveEditing()
+        #expect(model.edit == nil)
+        let ticket = store.ticket("ORD-141")!
+        #expect(ticket.title == "Cursor pagination" && ticket.labels == ["docs", "api"] && ticket.priority == nil)
+    }
+
+    @Test("Links keep the declared ones and add or remove one at a time")
+    func links() async {
+        let (model, store) = orders()
+        let ticket = model.selectedTicket!
+        #expect(model.linkCandidates(for: ticket).map(\.id).contains("ORD-142"))
+        #expect(await model.addLink(TicketLinkDraft(kind: .dependsOn, ticketID: "ORD-142"), to: ticket))
+        let linked = store.ticket("ORD-141")!
+        #expect(model.declaredLinks(of: linked) == [TicketLinkDraft(kind: .dependsOn, ticketID: "ORD-142")])
+        #expect(!model.linkCandidates(for: linked).map(\.id).contains("ORD-142"))
+        await model.removeLink(linked.links.first { $0.isDeclared }!, from: linked)
+        #expect(model.declaredLinks(of: store.ticket("ORD-141")!).isEmpty)
+    }
+
+    @Test("Deleting asks first, then clears the selection of a deleted ticket")
+    func deleting() async {
+        let (model, store) = orders()
+        model.confirmation = .deleteTickets(["ORD-141"])
+        await model.confirm(.deleteTickets(["ORD-141"]))
+        #expect(store.ticket("ORD-141") == nil)
+        #expect(model.selection != "ORD-141")
+    }
+
+    @Test("A new bundle is created from its tickets and selected in the sidebar")
+    func bundles() async {
+        let (model, store) = orders()
+        model.startNewBundle(with: ["ORD-141"])
+        #expect(model.bundleDraft?.ticketIDs == ["ORD-141"])
+        await model.saveBundle()
+        #expect(model.bundleDraft == nil)
+        guard case .bundle(let id)? = model.filter else { Issue.record("no bundle filter"); return }
+        #expect(store.allBundles.first { $0.id == id }?.ticketIDs == ["ORD-141"])
+        let bundle = store.allBundles.first { $0.id == id }!
+        await model.setStatus(.done, of: bundle)
+        #expect(store.allBundles.first { $0.id == id }?.status == .done)
+        await model.confirm(.deleteBundle(id))
+        #expect(model.filter == .all)
+    }
+
+    @Test("The store's phase shows as loading or failed in the list")
+    func phases() {
+        let loading = TicketsModel(project: Project.sample("ORD")!, focus: nil, store: SampleTicketStore(phase: .loading))
+        #expect(loading.listState == .loading)
+        #expect(loading.missingSelection == nil)
+        let failed = TicketsModel(project: Project.sample("ORD")!, focus: nil, store: SampleTicketStore(phase: .failed("Nope")))
+        #expect(failed.listState == .failed(message: "Nope"))
     }
 }

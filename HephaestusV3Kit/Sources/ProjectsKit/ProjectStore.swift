@@ -12,6 +12,14 @@ protocol ProjectStore {
     var unavailable: [ProjectDirectory.Unavailable] { get }
     /// What happened lately in one project's own tools, newest first.
     func activity(of projectID: Project.ID) -> [ActivityItem]
+    /// The ticket figures of a project with all its sub projects, as its Tickets window lists them.
+    func ticketTotals(of projectID: Project.ID) -> (open: Int, inReview: Int, drafts: Int)
+}
+
+extension ProjectStore {
+    func ticketTotals(of projectID: Project.ID) -> (open: Int, inReview: Int, drafts: Int) {
+        ProjectTree(projects).ticketTotals(of: projectID)
+    }
 }
 
 /// The app's projects, as the directory holds them. Their tools report no events yet.
@@ -24,6 +32,10 @@ struct DirectoryProjectStore: ProjectStore {
 
     func activity(of projectID: Project.ID) -> [ActivityItem] {
         []
+    }
+
+    func ticketTotals(of projectID: Project.ID) -> (open: Int, inReview: Int, drafts: Int) {
+        directory.ticketTotals(of: projectID)
     }
 }
 

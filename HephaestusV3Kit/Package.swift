@@ -39,6 +39,7 @@ let package = Package(
         // AZDesign by version, from its GitHub repo (workspace rule): bump the version to update it.
         .package(url: "git@github.com:Azavech/AZDesign.git", from: "0.4.0"),
         .package(url: "https://github.com/jpsim/Yams.git", from: "6.2.2"),
+        .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.9.0"),
     ],
     targets: [
         // Data, without UI: no SwiftUI, and nothing isolated to the main actor unless it says so.
@@ -52,6 +53,7 @@ let package = Package(
         .target(name: "MCPKit"),
         // Tickets and bundles: their files, rules and changes.
         .target(name: "TicketData", dependencies: ["FileStorage", "ProjectData"]),
+        .target(name: "TextFormats", dependencies: [.product(name: "Markdown", package: "swift-markdown")]),
 
         // Shared vocabulary: projects, tools, routes and the few components every tool uses.
         .target(name: "ToolsFoundation", dependencies: [design], resources: strings, swiftSettings: isolation),
@@ -62,7 +64,7 @@ let package = Package(
         // The tools. The Dashboard draws the grid and its edit mode; each tool provides the widgets of
         // its own data, and ToolsScenes hands them to it.
         toolTarget("DashboardsKit"),
-        toolTarget("TicketsKit"),
+        toolTarget("TicketsKit", data: ["TicketData", "TextFormats"]),
         toolTarget("ServiceMapKit"),
         toolTarget("ContractsKit"),
         toolTarget("BuildsKit"),
@@ -74,7 +76,7 @@ let package = Package(
         .target(
             name: "ToolsScenes",
             dependencies: [
-                "ToolsFoundation", "ProjectData", "FileStorage", "MCPKit", "ProjectsKit",
+                "ToolsFoundation", "ProjectData", "FileStorage", "MCPKit", "TicketData", "ProjectsKit",
                 "DashboardsKit", "TicketsKit", "ServiceMapKit", "ContractsKit", "BuildsKit", "MachinesKit", "ChatKit",
                 design,
             ],
@@ -87,6 +89,7 @@ let package = Package(
         testTarget("ProjectData", resources: [.copy("Fixtures")], settings: []),
         testTarget("MCPKit", settings: []),
         testTarget("TicketData", resources: [.copy("Fixtures")], settings: []),
+        testTarget("TextFormats", resources: [.copy("Fixtures")], settings: []),
         testTarget("ToolsFoundation"),
         testTarget("ProjectsKit"),
         testTarget("DashboardsKit"),

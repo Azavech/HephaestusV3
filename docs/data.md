@@ -592,8 +592,8 @@ Problem, Current Behavior, Expected, Change, Testing, Docs, in this order, each 
 the heading H when it matches `^\s*#*\s*H\s*:?\s*$`, any letter case; the lines are scanned once and each
 heading line of the next expected heading counts. Otherwise: `Description does not follow the ticket template:
 heading "<H>" is missing or out of order. Use the headings Problem, Current Behavior, Expected, Change, Testing,
-Docs in this order, each alone on its line.` The user's descriptions aren't checked; the New Ticket sheet
-starts with the template (`TicketRules.template`).
+Docs in this order, each alone on its line.` The user's descriptions aren't checked (`TicketRules.template`
+holds the template's text).
 
 **Status.** Statuses in order: Draft (**V3 addition**), To Do, In Progress, In Review, Done. A ticket starts
 To Do, or as a draft when the user creates it so; Claude's start To Do. The user may set any status at any

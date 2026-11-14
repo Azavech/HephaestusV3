@@ -4,13 +4,14 @@ import ToolsFoundation
 /// The toolbar's ticket actions: the status menu and the button for the next step.
 ///
 /// They stay in the toolbar when no ticket is selected, disabled, so the toolbar never shifts. The
-/// status menu's items have ⌃⌘1 to ⌃⌘5, in workflow order, and the next step has ⇧⌘↩. The actions
-/// are closures the example leaves empty.
+/// status menu's items have ⌃⌘1 to ⌃⌘5, in workflow order, and the next step has ⇧⌘↩.
 struct TicketActions: ToolbarContent {
     let ticket: Ticket?
     /// An iPhone's layout: the status as its icon alone, the next step as an icon with its name in the
     /// help tag, so the toolbar's buttons fit.
     var isCompact = false
+    /// While a change runs, the actions wait.
+    var isWorking = false
     var onNextStep: () -> Void = {}
     var onChangeStatus: (TicketStatus) -> Void = { _ in }
 
@@ -37,7 +38,7 @@ struct TicketActions: ToolbarContent {
                         .toolbarLabelPadding()
                 }
             }
-            .disabled(ticket == nil)
+            .disabled(ticket == nil || isWorking)
             .help(String(localized: "Change Status", bundle: #bundle))
             .accessibilityIdentifier("ticket.status.menu")
         }
@@ -55,7 +56,7 @@ struct TicketActions: ToolbarContent {
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.return, modifiers: [.shift, .command])
             .help(ticket?.status.nextStepHelp ?? nextStepTitle)
-            .disabled(ticket?.status.nextStepTitle == nil)
+            .disabled(ticket?.status.nextStepTitle == nil || isWorking)
             .accessibilityLabel(nextStepTitle)
             .accessibilityIdentifier("ticket.nextStep")
         }
