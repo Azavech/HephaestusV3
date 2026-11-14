@@ -169,3 +169,19 @@ which rules the app enforces, and never tells Claude how to work.
 | What may Claude do? | Read deployments, logs, events, Argo CD, the map and a request; restart, scale, sync and forward ports under a new **Operate deployments** (Never, Ask First, Always; Ask First by default). V2 gave these tools to chats only; V3's external token may call them too, as for every tool. | [MCP › Permissions](mcp.md#permissions) |
 | Which project's environments? | The tools take a `projectID` and an `environment`, since V3's tools aren't tied to a chat's project. | [MCP › Tools](mcp.md#tools) |
 | What about the status line? | A bar over the graph shows reading, a failure, or the sources' and Jaeger's problems; V2's request and trace counts aren't shown. | [UI › Service Map › States](ui/service-map.md#states) |
+
+## Phase 9: Virtual machines (14 November 2026)
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| Which machines come over? | V2's images and the user's machines, cloned in once (APFS clones, almost no space); V2's machines that Claude started are left. | [Data › Virtual machines › Import](data.md#import) |
+| What about Claude's own machines? | None: V3's Claude uses the user's machines through the `vm_` tools, under a new **Operate virtual machines** (Never, Ask First, Always; Ask First by default). A machine Claude creates is the user's, kept. V2's idle stop, join and Claude token aren't brought over. | [MCP › Virtual machines](mcp.md#tools) |
+| Which `vm_` tools? | V2's, without the setup tools (`vm_setup_recovery`, `vm_setup_finish`): the setup is the user's. `vm_create` is new (V2's `vm_start` created machines). No result carries the guest's password. | [MCP › Tools](mcp.md#tools) |
+| Where is the setup done? | In the window: an image waiting for setup offers **Set Up…**, and its setup view replaces the image's page, with V2's three steps, Type Password and Finish Setup. V2's Auto Setup chat isn't brought over. | [UI › Virtual Machines › Setup](ui/virtual-machines.md#setup) |
+| Where do Pause and Resume come from? | V3's design; the framework's pause and resume, never stored (V2 had none). | [Data › Machine lifecycle](data.md#machine-lifecycle) |
+| How is the guest's address found? | A fixed MAC address per machine (`vm.yml`'s `macAddress`, a V3 addition) looked up in macOS's DHCP leases. | [Data › Machine file](data.md#machine-file) |
+| What about snapshots, Linux and the CPU figure? | Not on the data folder's machines: the window hides Take Snapshot and the snapshot list for them, and shows three figures; the sample store keeps the design's. | [Future improvements](future-improvements.md#virtual-machines) |
+| Where do New Machine's defaults live? | Settings ▸ Virtual Machines, V2's `defaultVMCores`, `defaultVMMemoryGB`, `defaultVMDiskGB` in `settings.yml`. V2's default image isn't brought over (no tool picks an image by itself). | [UI › Virtual Machines › Settings](ui/virtual-machines.md#settings--virtual-machines) |
+| How is the agent built and bundled? | Its own package for macOS 12 (`GuestAgent/`), an Xcode tool target signed with the team, copied into `Contents/Helpers` by a script phase; version `3.0`; V2's `setEnv` and the install script's Claude CLI step dropped. | [Guest agent](guest-agent.md) |
+| How is image.yml written? | V2's format with mode 0600, since it holds the guest password. | [Data › Image file](data.md#image-file) |
+| What does deleting do? | V2's: a machine's or an image's folder is deleted, not moved to the Trash; an image takes its machines with it. Each asks first. | [UI › Virtual Machines › Alerts](ui/virtual-machines.md#alerts) |

@@ -1,6 +1,6 @@
 # Virtual Machines
 
-The Virtual Machines window manages the virtual machines on this Mac. People use them to test an app in a closed environment. There is one window for the whole Mac. It is not tied to a project, though a machine can name the project it tests. The sidebar lists the machines and the system images that new machines start from. The detail area shows the selected machine's screen or console, as large as the window allows. Beside it, an inspector shows what the machine runs on, its project and its snapshots. Selecting an image shows its page instead: its system, size, status and download. Like the tool windows, it changes layout as it narrows, from a Mac's to an iPad's to an iPhone's. All machines and images are sample data.
+The Virtual Machines window manages the virtual machines on this Mac. People use them to test an app in a closed environment. There is one window for the whole Mac. It is not tied to a project, though a machine can name the project it tests. The sidebar lists the machines and the system images that new machines start from. The detail area shows the selected machine's screen or console, as large as the window allows. Beside it, an inspector shows what the machine runs on, its project and its snapshots. Selecting an image shows its page instead: its system, size, status, then its download or install, its setup, or a button to make a machine from it. Like the tool windows, it changes layout as it narrows, from a Mac's to an iPad's to an iPhone's. The machines and images are those of the data folder, V2's brought over: macOS guests of the Virtualization framework, at most two running at once ([Data › Virtual machines](../data.md#virtual-machines)). The screenshots show the sample store, which keeps the design's Linux machine, CPU figure and snapshots.
 
 ![The Virtual Machines window with the Orders sandbox Linux machine selected: the list on the left, the console in the middle, the inspector on the right](images/machines-light.png)
 *The Orders sandbox machine, running Ubuntu 26.04: its console fills the middle, and the inspector shows its figures, address, project and two snapshots. 1100 × 760 points, Light Mode.*
@@ -16,7 +16,7 @@ The Virtual Machines window manages the virtual machines on this Mac. People use
 - **Route focus format.** The focus is the machine's id, for example `orders-sandbox`, `tools-test-mac`, `payments-replay` or `clean-mac`. An id that matches no machine shows **Machine Not Found** (see [States](#states)).
 - **A route with no id.** It brings the open window forward and keeps its selection. A window it opens selects the first machine, Orders sandbox.
 - **Opening it again.** When the window is opened anew, it selects the machine of the last route, or Orders sandbox if no route has named one.
-- **No route callers yet.** No tool or window sends `Route.machine` yet.
+- **No route callers yet.** No tool or window sends `Route.machine` yet: a chat's `vm_` tool-call rows have no item to open, machines not being a `ToolKind`.
 - **No project entry points.** The Projects window, the menu bar panel and the project switcher do not open this window. They are project-based, and this window is not.
 - **One window.** The scene is a single `Window` (`id` `machines`), so there is never more than one Virtual Machines window. It registers with `WindowDirectory` as `.machines` with no project. This is how routes and the menu find it instead of opening a second one. See [navigation.md](navigation.md) › window reuse.
 - **Launch and size.** The window does not open at launch (`.defaultLaunchBehavior(.suppressed)`). Its default size is 1100 × 760 points. Like the tool windows, it gets no narrower than 390 points and no lower than 420 points.
@@ -38,20 +38,21 @@ In the Mac and iPad layouts, the window is a two-column `NavigationSplitView`. T
 
 ## Toolbar
 
-The buttons sit together at the trailing end in the order listed. When an image is selected, or nothing is, only **New Machine** remains: the machine items and the inspector toggle belong to the machine detail. Every button shows only its symbol, and its tooltip gives its name.
+The buttons sit together at the trailing end in the order listed. When an image is selected, or nothing is, only **New Machine** remains: the machine items and the inspector toggle belong to the machine detail. Every button shows only its symbol, and its tooltip gives its name. A button acting on a machine is disabled while one of its actions runs, and while the machine starts or shuts down.
 
 | Item | Control | Symbol | Shortcut | Behavior | Layouts |
 | --- | --- | --- | --- | --- | --- |
 | Title | Navigation title and subtitle | None | None | **Virtual Machines**, with the selected machine's or image's name as the subtitle. In the iPhone layout, the list's title is **Virtual Machines**, and a page's title is the machine's or image's name, with no subtitle. The toolbar keeps the title at every width: the window has no project switcher to name it. | All |
 | Sidebar toggle | Button provided by `NavigationSplitView` | `sidebar.left` | None set by the window | Hides and shows the sidebar. In the iPad layout, showing the sidebar folds the inspector. | Mac, iPad |
 | Back | The stack's own button | None set by the window | None set by the window | Returns to the list and clears the selection. | iPhone, on a page |
-| **New Machine** | Button | `plus` | ⇧⌘N (File ▸ New Machine…) | Not wired yet. Tooltip: "New Machine (⇧⌘N)". Always shown beside the list; in the iPhone layout, on the list's page only. | All |
-| **Pause** | Button | `pause.fill` | None | Shown for a running machine. Not wired yet. Tooltip: "Pause". | All |
-| **Stop** | Button | `stop.fill` | None | Shown for a running machine. Not wired yet. Tooltip: "Stop". | All |
-| **Resume** / **Start** | Button | `play.fill` | None | Replaces Pause and Stop: **Resume** for a paused machine, **Start** for a stopped one. Not wired yet. Tooltip: "Resume" or "Start". | All |
-| **Take Snapshot** | Button | `camera.on.rectangle` | None | Disabled while the machine is stopped. Not wired yet. Tooltip: "Take Snapshot". | Mac, iPad; in **More Actions** on iPhone |
-| **Open Shell** | Button | `terminal` | None | Enabled only while the machine is running. Not wired yet. Tooltip: "Open Shell". | Mac, iPad; in **More Actions** on iPhone |
-| **More Actions** | Menu | `ellipsis.circle` | None | Holds **Take Snapshot** and **Open Shell**, each enabled as in the toolbar, so that an iPhone-wide toolbar keeps room for the title. Tooltip: "More Actions". | iPhone |
+| **New Machine** | Button | `plus` | ⇧⌘N (File ▸ New Machine…) | Opens the [New Machine sheet](#new-machine). Disabled while 2 machines, setups or installs run; its tooltip then reads "2 virtual machines are already running". Tooltip: "New Machine (⇧⌘N)". Always shown beside the list; in the iPhone layout, on the list's page only. | All |
+| **Type Password** | Button | `key` | None | Shown for a running machine whose image has a password: types it through the screen ([Type Password](#type-password)). Disabled while it types. | All |
+| **Pause** | Button | `pause.fill` | None | Shown for a running, starting or shutting-down machine; pauses it. Tooltip: "Pause". | All |
+| **Stop** | Button | `stop.fill` | None | Shown with **Pause**: shuts the guest down through its agent, waiting up to 60 seconds, or stops it at once without the agent. Tooltip: "Stop". | All |
+| **Resume** / **Start** | Button | `play.fill` | None | Replaces Pause and Stop: **Resume** for a paused machine, **Start** for a stopped one, disabled while 2 run. Tooltip: "Resume" or "Start". | All |
+| **Take Snapshot** | Button | `camera.on.rectangle` | None | The sample store only: the machines of the data folder have no snapshots yet ([Future improvements](../future-improvements.md#virtual-machines)). Disabled while the machine is stopped. | Mac, iPad; in **More Actions** on iPhone |
+| **Open Shell** | Button | `terminal` | None | Opens the [Open Shell sheet](#open-shell). Enabled while the machine runs with its agent connected; otherwise its tooltip reads "Open Shell: waiting for the guest agent". | Mac, iPad; in **More Actions** on iPhone |
+| **More Actions** | Menu | `ellipsis.circle` | None | Holds **Take Snapshot** (sample store) and **Open Shell**, each enabled as in the toolbar, so that an iPhone-wide toolbar keeps room for the title. Tooltip: "More Actions". | iPhone |
 | **Inspector** | Button | `sidebar.right` | None | Shows and hides the inspector. In the iPad layout, showing it folds the sidebar. In the iPhone layout, it opens the inspector as a sheet. Tooltip: "Hide Inspector" or "Show Inspector". Always the last item. | All |
 
 ## Machine list
@@ -62,7 +63,7 @@ The sidebar is a single-selection `List` with two sections. One selection covers
 
 - **Icon:** `laptopcomputer` for a macOS machine, `server.rack` for a Linux machine.
 - **Name:** the machine's name, with its system version under it in caption size and the secondary color (for example "Ubuntu 26.04" or "macOS 27.2").
-- **State:** the row's trailing badge shows **Running**, **Paused** or **Stopped** as plain text.
+- **State:** the row's trailing badge shows **Starting**, **Running**, **Paused**, **Shutting Down** or **Stopped** as plain text.
 
 With no machines, the section shows **No machines yet.** in the secondary text color. Selecting a machine shows its screen and inspector.
 
@@ -70,20 +71,22 @@ With no machines, the section shows **No machines yet.** in the secondary text c
 
 - **Icon:** `opticaldiscdrive`.
 - **Name:** the image's name.
-- **Second line:** for a ready image, its size with one decimal and its unit, written in the user's locale, in caption size and the secondary color (for example "18.4 GB"). For an image that is downloading, a mini progress bar.
+- **Second line:** for a ready image, its size with one decimal and its unit, written in the user's locale, in caption size and the secondary color (for example "18.4 GB"): the space its files take. For an image that is downloading or installing, a mini progress bar ("Downloading, 62%", "Installing, 40%" for VoiceOver). **Needs setup**, or **Setting up** while its setup machine runs, in the warning color; **Failed** in the danger color.
 
-The section is left out when there are no images. Selecting an image shows the image page.
+The section always shows, and ends with an **Add Image…** button (`plus.circle`, borderless, accent color), which opens the [Add Image sheet](#add-image). Selecting an image shows the image page.
 
 ## Machine screen
 
-The screen fills the detail column in both directions and clips its contents to that area. A virtual machine's display takes the size of its window, and the screen follows the window as it resizes (every window fills the room it gets, with no capped widths: the user's choice). The screen is a stand-in. According to the source, the real one will be the Virtualization framework's view.
+The screen fills the detail column in both directions and clips its contents to that area. A virtual machine's display takes the size of its window, and the screen follows the window as it resizes (every window fills the room it gets, with no capped widths: the user's choice).
+
+A machine of the data folder that runs, is paused, starts or shuts down shows the Virtualization framework's view (`VZVirtualMachineView`, wrapped by `VirtualMachineScreen`) on black: the user's mouse and keyboard drive the guest, system keys included (`capturesSystemKeys`), and the guest's display follows the view's size (`automaticallyReconfiguresDisplay`). A paused machine keeps the veil below. The sample store's machines show the stand-ins of this table:
 
 | Machine | What the screen shows |
 | --- | --- |
 | Running Linux | A console on the sunken surface (`surfaceSunken`): sample shell output for `cd orders && git pull`, `make migrate` and `go test ./...`. The prompt carries the machine's id (`ubuntu@orders-sandbox:~$`) and the last line ends in a block cursor. The text is in the code font, Fira Code, at callout size (see [foundations.md](foundations.md)). It is aligned to the top leading corner, with 16 points of padding. |
 | Running macOS | A desktop: a gradient from the accent color through the secondary accent to the info color, top leading to bottom trailing. Across the top is a menu bar strip on regular material with `apple.logo`, "Finder", "File" and "Edit". Near the bottom, 10 points from the edge, is a Liquid Glass dock with `folder`, `safari`, `hammer`, `terminal` and `gearshape`. The menu bar's words are part of the picture, like the console's text: they are shown as they are and not translated. |
 | Paused | The machine's screen as above, under a veil of the sunken surface color (`surfaceSunken`, AZDesign's color for inactive regions) at 60% opacity. A **Paused** label with `pause.fill` sits in a Liquid Glass capsule in the center. |
-| Stopped | The sunken surface with the `power` symbol (large title size, hidden from VoiceOver), **Stopped** (title 3 size) and a **Start** button (`play.fill`) stacked in the center. **Start** is not wired yet. |
+| Stopped | The sunken surface with the `power` symbol (large title size, hidden from VoiceOver), **Stopped** (title 3 size) and a **Start** button (`play.fill`) stacked in the center. **Start** starts the machine; it is disabled while 2 run. |
 
 **Two prominent styles.** The stopped screen's **Start** uses the glass prominent style (`.glassProminent`): it floats over the machine's screen, like the screen's other overlays, which is where Hephaestus V3 uses Liquid Glass (see [foundations.md](foundations.md) › Liquid Glass). The image page's **New Machine from This Image** sits on the page's own background, not over other content, so it uses the bordered prominent style (`.borderedProminent`).
 
@@ -114,16 +117,19 @@ From top to bottom:
    | **Cores** | The number of cores. |
    | **Memory** | The memory, with its unit, written in the user's locale (for example "8 GB"). |
    | **Disk** | The disk size, with its unit (for example "64 GB"). |
-   | **CPU** | The current CPU use, as a whole percentage. |
+   | **CPU** | The current CPU use, as a whole percentage. The sample store only: it isn't measured for the machines of the data folder, which show three figures. |
 
 3. **Details.** Two rows, each with the name on the leading side in the secondary text color and the value on the trailing side. A divider separates them. At the accessibility text sizes, each value goes under its name.
 
    | Row | Value | Action |
    | --- | --- | --- |
    | **Address** | The machine's IP address, in the system's monospaced font. **None while stopped** when the machine has no address. | The address text can be selected. |
-   | **Project** | The project the machine tests: its `ProjectIcon` and name. **None** when the machine names no project. | The name is a link-style button. It opens the Projects window with that project selected (`Route.project`), bringing the window forward if it is open. |
+   | **Project** | The project the machine tests (`vm.yml`'s `projectID`): its `ProjectIcon` and name, from the app's projects. **None** when the machine names no project, or a project this Mac doesn't have. | The name is a link-style button. It opens the Projects window with that project selected (`Route.project`), bringing the window forward if it is open. |
+   | **Agent** | **Connected** or **Not connected** while the machine runs; **Not running** while it is stopped. | None. |
 
-4. **Snapshots.** See the next section.
+   The **Address** is the guest's IP address, found in the DHCP leases of macOS's NAT; it appears a few seconds after the guest starts its network.
+4. **Snapshots.** The sample store only. See the next section.
+5. **Edit…** (`slider.horizontal.3`) opens the [Edit Machine sheet](#edit-machine); disabled unless the machine is stopped, its tooltip then reading "Stop the machine to edit it". **Delete Machine…** (`trash`, destructive) asks first ([Alerts](#alerts)).
 
 ## Snapshots
 
@@ -132,29 +138,104 @@ The **Snapshots** heading (headline, a header for accessibility) is followed by 
 - **Icon:** `clock.arrow.circlepath` in the accent color, hidden from accessibility.
 - **Name:** the snapshot's name.
 - **Date:** under the name, in caption size and the secondary color, formatted as day, abbreviated month, hour and minute in the user's locale (for example "10 Nov at 12:00").
-- **Restore:** a small button on the trailing side. Not wired yet. At the accessibility text sizes, it goes under the name and date.
+- **Restore:** a small button on the trailing side, sample data only. At the accessibility text sizes, it goes under the name and date.
 
 A machine with no snapshots shows **No snapshots yet.** in the secondary text color.
 
-To take a snapshot, use **Take Snapshot** (`camera.on.rectangle`) in the toolbar, or in **More Actions** in the iPhone layout. It is disabled while the machine is stopped and enabled while it is running or paused. Not wired yet.
+To take a snapshot, use **Take Snapshot** (`camera.on.rectangle`) in the toolbar, or in **More Actions** in the iPhone layout. It is disabled while the machine is stopped and enabled while it is running or paused. Snapshots are the sample store's only: the section and the button don't show for the machines of the data folder.
 
 ## Image page
 
-Selecting an image replaces the screen and inspector with the image's page, on the canvas background. The page takes the whole detail area: its contents line up on the leading edge, and its rows and download bar span its full width (every window fills the room it gets, with no capped widths: the user's choice). It has 24 points of padding and 20 points between groups, and it scrolls when the window is too low. From top to bottom:
+Selecting an image replaces the screen and inspector with the image's page, on the canvas background. While its setup machine runs, the [setup view](#setup) takes the page's place. The page takes the whole detail area: its contents line up on the leading edge, and its rows and bars span its full width (every window fills the room it gets, with no capped widths: the user's choice). It has 24 points of padding and 20 points between groups, and it scrolls when the window is too low. From top to bottom:
 
-1. **Header.** The image's system symbol (`laptopcomputer` or `server.rack`) in large title size and the accent color, hidden from VoiceOver, then the image's name in semibold title 2 size, a header for accessibility.
+1. **Header.** The image's system symbol (`laptopcomputer`) in large title size and the accent color, hidden from VoiceOver, then the image's name ("macOS 27.2.1") in semibold title 2 size, a header for accessibility.
 2. **Rows.** Three rows, laid out as the inspector's details, with dividers between them:
 
    | Row | Value |
    | --- | --- |
-   | **System** | macOS or Linux, shown as is. |
-   | **Size** | The image's size with one decimal and its unit, for example "18.4 GB". |
-   | **Status** | **Ready** or **Downloading**. |
+   | **System** | macOS, with its build: "macOS (26B131)". |
+   | **Size** | The space its files take, with one decimal and its unit; while it downloads, the IPSW's size. |
+   | **Status** | **Ready**, **Downloading**, **Installing**, **Needs setup** or **Failed**. |
 
-3. **Ready image.** A **New Machine from This Image** button (`plus`, bordered prominent style). Not wired yet.
-4. **Downloading image.** A progress bar across the page's width. Its label is the amount downloaded out of the image's size, for example "11.7 GB of 18.9 GB", and its current value is the percentage, for example "62%". A **Cancel Download** button follows, 12 points below. Not wired yet.
+3. **By state:**
+   - **Ready:** **New Machine from This Image** (`plus`, bordered prominent style) opens [New Machine](#new-machine) with the image chosen; disabled while 2 run.
+   - **Downloading or installing:** a progress bar across the page's width. Its label is the amount downloaded out of the IPSW's size, for example "11.7 GB of 18.9 GB", while downloading with a known size, else **Downloading** or **Installing macOS**; its current value is the percentage. **Cancel Download** follows, 12 points below: it asks, then deletes the image.
+   - **Needs setup:** "macOS is installed. Set it up once: complete Setup Assistant, turn off SIP and install the guest agent. Machines then start from it." in the secondary color, then **Set Up…** (`wrench.and.screwdriver`, bordered prominent), which starts the setup machine; disabled while 2 run. A failure shows the alert **Set Up failed**.
+   - **Failed:** the failure's message with `exclamationmark.triangle.fill`, in the danger color.
+4. **Guest Account.** A headline, a sentence ("The account created in Setup Assistant. Type Password types this password into the image's machines."), a **User name** field, a **Password** secure field and **Save Account**, enabled when a value changed. A refused value shows its message beside the button.
+5. **Delete Image…** (`trash`, destructive): asks first ([Alerts](#alerts)).
+
+![The image page of macOS 27.1, waiting for its setup: its rows, the explanation with Set Up…, the guest account and Delete Image…](images/machines-image.png)
+*An image waiting for its setup (sample store). 1100 × 760 points.*
 
 The window's subtitle shows the image's name, or the page's title does in the iPhone layout.
+
+## Setup
+
+The setup view shows an image's setup machine, booted on the image's own disk ([Data › Virtual machines › Setup](../data.md#setup)). It replaces the image page while the machine runs; leaving the image doesn't stop it. Its screen fills the leading side on black (**The setup machine's screen shows here.** before the framework's view is ready). Beside it, a column 300 points wide on the canvas, scrolling, with 16 points of padding; in the iPhone layout the column goes under the screen, at most 360 points high:
+
+1. **Set Up macOS *version***, a headline and a header.
+2. Numbered steps (the number in the accent color):
+   1. "Complete Setup Assistant: create an account and turn on automatic login."
+   2. "Turn off SIP:", **Restart in Recovery** (disabled while it restarts or the machine isn't running; a failure shows **Restart in Recovery failed**), then "In Recovery, open Utilities ▸ Terminal, run csrutil disable, then restart." in the secondary color.
+   3. "Install the agent: in Terminal, run", the command `sh "/Volumes/My Shared Files/install.sh"` in the code font on the sunken surface, selectable, then **Copy**, which reads **Copied** for 2 seconds, and "The guest shares no pasteboard with this Mac: type the command there." in caption size.
+3. **Type Password** ([Type Password](#type-password)), enabled while the machine runs and the image has a password.
+4. A divider, then the status line: `hourglass` with **Waiting for the agent…**, **Restarting in Recovery…**; `checkmark.circle.fill` with **Agent connected · SIP on**, or **Agent connected · SIP off** in the success color.
+5. **Finish Setup** (bordered prominent), enabled only with the agent connected and SIP off: shuts the guest down and makes the image Ready; a failure shows **Finish Setup failed**. **Stop** ends the setup; the image stays waiting for setup.
+
+These texts and the view's parts are V2's (the user's choices there), in V3's layout.
+
+![The setup view of macOS 27.1: the screen's place on the left, the three steps, Type Password, the agent's status and Finish Setup on the right](images/machines-setup.png)
+*The setup view, the agent connected with SIP off (sample store, so the screen's place reads its placeholder).*
+
+## Type Password
+
+Types the image's stored password into the guest through the machine's screen, as the user's keyboard does: the keys reach the guest's keyboard focus without the agent (Setup Assistant, the login window, a password dialog). The screen takes the window's keyboard focus, then each character's key is pressed on this Mac's keyboard layout, with Shift, Option or both as the character needs, 10 ms apart; Return isn't pressed. A character the layout can't type fails before any key is pressed: the alert **Type Password failed** with "The keyboard layout of this Mac cannot type “*c*”." (V2's `GuestKeyboard`.)
+
+## Sheets
+
+### New Machine
+
+A grouped form, at least 420 × 380 points, titled **New Machine**:
+
+- **Name** (prefilled with the image's name) and **Image**, a pop-up of the Ready images (the one chosen, else the first). With none: "No image is Ready: add an image and finish its setup first."
+- **Cores**, **Memory** and **Disk** steppers with their values, from Settings ▸ Virtual Machines' defaults: cores 2 to this Mac's, memory 4 GB to this Mac's, disk from the image's disk size to 2048 GB, by 8. Footer: "The disk starts as a clone of the image's and can only grow."
+- **Cancel** (Escape) and **Create** (Return), enabled with a name and an image.
+
+  ![The New Machine sheet: name, image, cores, memory and disk](images/machines-new.png)
+  *New Machine on macOS 27.2.*
+
+- Create makes the machine, starts it, selects it and closes the sheet; a refusal shows its message under the form, with a small progress indicator while it works. A machine made whose start failed is selected, stopped.
+
+### Edit Machine
+
+A stopped machine's **Name**, **Cores**, **Memory** and **Disk** (from its current size), footer "A larger disk grows the guest's container at the next start.", **Cancel** and **Save**.
+
+### Add Image
+
+Reads ipsw.me's list ("Reading the versions from ipsw.me…"), then a **Version** pop-up ("macOS 27.2.1 (26B131) · 18.4 GB", newest first) and "The IPSW is downloaded from Apple, then macOS is installed on a 32 GB disk. You finish its setup in the image's page." A list that can't be read shows **No Versions** with **Try Again** and the message. **Add** starts the download, selects the new image and closes the sheet.
+
+### Open Shell
+
+At least 560 × 380 points, titled **Shell of *name***: a **Command** field in the code font (Return runs it), **As root**, **Run**; the output below on the sunken surface, standard output then standard error in the code font, selectable, and "Exit status *n*", "Timed out", with "output cut at 1 MB" when cut, in the danger color when not 0. "Runs /bin/zsh -lc in the account's home folder, with a timeout of 60 seconds." and **Done** at the bottom.
+
+![The Open Shell sheet of Tools test Mac](images/machines-shell.png)
+*Open Shell, before a command.*
+
+## Alerts
+
+| Alert | When | Buttons |
+| --- | --- | --- |
+| **Delete “*name*”?** (confirmation dialog) | Delete Machine…, Delete Image…, Cancel Download | **Delete** (destructive), Cancel. The message: "A running machine stops at once. Its folder and disk are deleted, not moved to the Trash." for a machine; for an image, "The image's folder and its disk are deleted, not moved to the Trash." or "The image and its *n* machines are deleted, with their disks, not moved to the Trash." |
+| **Start failed**, **Stop failed**, **Pause failed**, **Delete failed**, **Set Up failed**, **Restart in Recovery failed**, **Finish Setup failed**, **Type Password failed** | The action failed | **OK**, with the message. |
+| ***name* stopped** | A machine or setup stopped by itself with a failure | **OK**, with the framework's message. Shown once. |
+
+## Settings ▸ Virtual Machines
+
+A tab of the Settings window (`desktopcomputer`): **New Machines**, three steppers, **Default cores** (2 to this Mac's), **Default memory** (4 GB to this Mac's) and **Default disk** (32 to 2048 GB, by 8), saved in `settings.yml` as they change ([Data › Virtual machines › Defaults](../data.md#defaults)). Footer: "New Machine starts with these values. An image's install and setup run with the cores and memory." A refusal shows under it.
+
+![Settings ▸ Virtual Machines: default cores, memory and disk](images/settings-machines.png)
+*Settings ▸ Virtual Machines with V2's defaults.* Identifiers: `settings.machines`, `settings.machines.cores`, `.memory`, `.disk`.
 
 ## States
 
@@ -168,10 +249,17 @@ The window's subtitle shows the image's name, or the page's title does in the iP
 | Inspector hidden | After **Inspector** is toggled off, and at first in the iPad layout | The screen takes the inspector's width as well. |
 | Image ready | macOS 27.2, Ubuntu 26.04 Server | The row shows the size. The page's **Status** reads **Ready**, and the page offers **New Machine from This Image**. |
 | Image downloading | macOS 27.3 beta, at 62% | The row shows a mini progress bar. The page's **Status** reads **Downloading**, and the page shows the progress bar, "11.7 GB of 18.9 GB" at 62%, and **Cancel Download**. |
+| Image installing | An image after its download | As downloading, **Installing** and **Installing macOS**. |
+| Image needs setup | macOS 27.1 | The row reads **Needs setup**; the page explains the setup and offers **Set Up…**. |
+| Setting up | The "Setting Up" preview | The row reads **Setting up**; the setup view replaces the page. |
+| Image failed | The "Image Failed" preview | The row reads **Failed**; the page shows the message. |
+| Starting, shutting down | A machine between states | Badges read **Starting** or **Shutting Down** (`info`); **Pause** and **Stop** are disabled. |
+| Two running | 2 machines, setups or installs run | **New Machine**, **Start**, **Set Up…** and **New Machine from This Image** are disabled. |
+| Agent not connected | A running machine before its agent connects, or without one | **Agent** reads **Not connected**; **Open Shell** is disabled. |
 | No selection | The list's selection is cleared, or the iPhone layout's list is showing. With machines, the Mac and iPad layouts open with a machine selected. | **No Machine Selected** with `desktopcomputer` and "Pick a machine or an image in the list.", centered on the canvas background. No subtitle. Only **New Machine** is in the toolbar. |
 | Unknown machine | A route names an id that no machine has | **Machine Not Found** with `desktopcomputer.trianglebadge.exclamationmark` and "No machine on this Mac has the id “*id*”.", centered on the canvas background. No row is selected in the list, and only **New Machine** is in the toolbar. |
 | No machines | The Mac has no machines (previews only: the sample data always has four) | **No machines yet.** under **Machines**, and **No Machine Selected** in the detail. With no images either, the **Images** section is left out. |
-| Sample only | Always | Every machine, image, figure, address and snapshot is sample data, and the screen is a stand-in. |
+| Sample store | Previews and screenshots | The sample machines and images, the stand-in screens, the CPU figure and snapshots. |
 
 ## Layouts
 
@@ -207,6 +295,7 @@ It is not a tool window: it is a `Window` scene rather than a `ToolWindowRoot`, 
 | No machines | `machines.noMachines` | **No machines yet.** |
 | Image row | `machines.image.<image id>`, for example `machines.image.macos-27-3-beta` | One element: the name and the size. While downloading, the progress bar reads "Downloading, 62%". |
 | **New Machine** | `machines.new` | Tooltip "New Machine". |
+| **Type Password** | `machines.typePassword` | Tooltip "Type the image's password into the machine". |
 | **Pause** | `machines.pause` | Tooltip "Pause". |
 | **Stop** | `machines.stop` | Tooltip "Stop". |
 | **Start** / **Resume** (toolbar) | `machines.start` | The label and tooltip change with the state. |
@@ -232,6 +321,20 @@ It is not a tool window: it is a `Window` scene rather than a `ToolWindowRoot`, 
 | Download progress | `machines.imageDetail.progress` | Reads the amount downloaded out of the size, and the percentage. |
 | **New Machine from This Image** | `machines.imageDetail.newMachine` | None. |
 | **Cancel Download** | `machines.imageDetail.cancelDownload` | None. |
+| **Set Up…** | `machines.imageDetail.setUp` | None. |
+| Failure | `machines.imageDetail.failure` | The message. |
+| Guest account | `machines.imageDetail.userName`, `machines.imageDetail.password`, `machines.imageDetail.saveAccount` | The fields and Save Account. |
+| **Delete Image…** | `machines.imageDetail.delete` | None. |
+| **Add Image…** | `machines.addImage.button` | In the list. |
+| **Agent** row | `machines.info.agent` | One element. |
+| **Edit…**, **Delete Machine…** | `machines.info.edit`, `machines.info.delete` | None. |
+| Setup view | `machines.setup`, `machines.setup.screen` | The screen is labeled "Screen of *name*". |
+| Setup controls | `machines.setup.recovery`, `machines.setup.command`, `machines.setup.copy`, `machines.setup.typePassword`, `machines.setup.status`, `machines.setup.finish`, `machines.setup.stop` | None. |
+| New Machine sheet | `machines.newMachine`, `.name`, `.image`, `.cancel`, `.confirm`; `machines.sheet.cores`, `.memory`, `.disk`, `machines.sheet.error` | None. |
+| Edit Machine sheet | `machines.editMachine`, `.name`, `.cancel`, `.confirm` | None. |
+| Add Image sheet | `machines.addImage`, `.version`, `.loading`, `.retry`, `.cancel`, `.confirm` | None. |
+| Open Shell sheet | `machines.shell`, `machines.shell.command`, `.root`, `.run`, `.output`, `.done` | Note: the sheet shares `machines.shell` with the toolbar button, each in its own window. |
+| Delete confirmation | `machines.delete.confirm` | The destructive button. |
 | No selection | `machines.noSelection` | **No Machine Selected** and its sentence. |
 | Unknown machine | `machines.notFound` | **Machine Not Found** and its sentence. |
 
@@ -241,7 +344,8 @@ It is not a tool window: it is a `Window` scene rather than a `ToolWindowRoot`, 
 
 ## Sample data and limits
 
-- **Sample machines.** There are four: `VirtualMachine.samples`, served by the sample machine store.
+- **Live data.** The window reads `LiveMachineStore`, over the app's `MachineHost` ([Architecture › MachineData](../architecture.md#machinedata)). Every control above is wired.
+- **Sample store.** The previews and screenshots use `SampleMachineStore`, whose actions change its data in memory:
 
   | Machine | System | State | Project |
   | --- | --- | --- | --- |
@@ -250,19 +354,10 @@ It is not a tool window: it is a `Window` scene rather than a `ToolWindowRoot`, 
   | Payments replay | Ubuntu 26.04 | Paused | Payments |
   | Clean macOS 27.1 | macOS 27.1 | Stopped | None |
 
-- **Sample images.** There are three: `MachineImage.samples`. They are macOS 27.2 (ready), Ubuntu 26.04 Server (ready) and macOS 27.3 beta (downloading, 62%).
+  and four images: macOS 27.2 (ready, with a guest account), Ubuntu 26.04 Server (ready), macOS 27.3 beta (downloading, 62%) and macOS 27.1 (needs setup).
 - **Sample dates.** Snapshot dates are relative to the sample clock, 11 November 2026 at 14:00.
-- **Stand-in screen.** The screen is drawn by the app. It is not a running machine.
-- **Not wired yet:**
-  - **New Machine**, **Pause**, **Stop**, **Start** and **Resume** (in the toolbar and on the stopped screen).
-  - **Take Snapshot**, **Open Shell** and **Restore**, in the toolbar or in **More Actions**.
-  - **New Machine from This Image** and **Cancel Download**.
-- **What works:**
-  - Selection in the list, and the iPhone layout's pages.
-  - The inspector toggle, and the layouts' folding of the sidebar and inspector.
-  - The **Project** link, which opens the Projects window on the project.
-  - Opening and bringing forward the window from the Window menu and from `Route.machine`, which selects its machine in the open window.
-- **Not linked yet.** Nothing links to a machine yet. No tool sends `Route.machine`, and the Projects window does not list a project's machines.
+- **Not on the data folder's machines:** Linux machines, snapshots (**Take Snapshot**, **Restore**) and the CPU figure stay sample data ([Future improvements](../future-improvements.md#virtual-machines)).
+- **Not checked on a real guest yet:** the install, the setup and the agent were tested with fakes only; a real IPSW download, install and setup, and a grown disk's first start, haven't been run (they need the owner's Mac time and network).
 
 ## Previews
 
@@ -274,6 +369,9 @@ The previews use the window's model with the sample store, at a fixed size. The 
 - "Stopped": Clean macOS 27.1 selected.
 - "Image Ready": the macOS 27.2 image selected.
 - "Downloading Image": the macOS 27.3 beta image selected.
+- "Image Needs Setup": the macOS 27.1 image selected.
+- "Setting Up": macOS 27.1's setup view, its agent connected with SIP off.
+- "Image Failed": an image whose download failed.
 - "No Selection": nothing selected.
 - "Machine Not Found": opened on an id that no machine has.
 - "Empty": no machines and no images.

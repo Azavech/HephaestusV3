@@ -1,41 +1,53 @@
 import AZDesign
 import AZDesignCode
+import MachineData
 import SwiftUI
 import ToolsFoundation
+import Virtualization
 
 /// A machine: its screen, as large as the window allows, its actions in the toolbar, and what it runs
 /// on in the inspector: beside the screen, or as a sheet over an iPhone's page.
 struct MachineDetail: View {
     let machine: VirtualMachine
     @Bindable var model: MachinesModel
+    @State private var keyboard = GuestKeyboard()
 
     var body: some View {
         Group {
             if model.layout == .phone {
-                MachineScreen(machine: machine)
+                screen
                     .sheet(isPresented: $model.showsInspectorSheet) {
                         inspectorSheet
                     }
             } else {
-                MachineScreen(machine: machine)
+                screen
                     .inspector(isPresented: inspectorShown) {
-                        MachineInfo(machine: machine)
+                        MachineInfo(machine: machine, model: model)
                             .inspectorColumnWidth(min: 260, ideal: 300, max: 400)
                     }
             }
         }
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                if machine.state.isRunning {
-                    Button(String(localized: "Pause", bundle: #bundle), systemImage: "pause.fill") {}
+                if machine.state.isRunning, let imageID = machine.imageID, model.image(imageID)?.hasPassword == true {
+                    TypePasswordButton(keyboard: keyboard, password: model.store.password(ofImage: imageID)) { message in
+                        model.alert = MachineAlert(title: String(localized: "Type Password failed", bundle: #bundle), message: message)
+                    }
+                    .accessibilityIdentifier("machines.typePassword")
+                }
+                if machine.state.isRunning || machine.state.isChanging {
+                    Button(String(localized: "Pause", bundle: #bundle), systemImage: "pause.fill") { model.pause(machine) }
                         .help(String(localized: "Pause", bundle: #bundle))
+                        .disabled(busy || machine.state.isChanging)
                         .accessibilityIdentifier("machines.pause")
-                    Button(String(localized: "Stop", bundle: #bundle), systemImage: "stop.fill") {}
+                    Button(String(localized: "Stop", bundle: #bundle), systemImage: "stop.fill") { model.stop(machine) }
                         .help(String(localized: "Stop", bundle: #bundle))
+                        .disabled(busy || machine.state.isChanging)
                         .accessibilityIdentifier("machines.stop")
                 } else if let start = machine.state.startAction {
-                    Button(start.title, systemImage: "play.fill") {}
+                    Button(start.title, systemImage: "play.fill") { model.start(machine) }
                         .help(start.title)
+                        .disabled(busy || (start == .start && !model.store.canStartAnother))
                         .accessibilityIdentifier("machines.start")
                 }
                 // An iPhone's toolbar has room for the state's buttons only: the rarer ones go in a menu.
@@ -71,18 +83,34 @@ struct MachineDetail: View {
         }
     }
 
-    private var snapshotButton: some View {
-        Button(String(localized: "Take Snapshot", bundle: #bundle), systemImage: "camera.on.rectangle") {}
-            .help(String(localized: "Take Snapshot", bundle: #bundle))
-            .disabled(!machine.state.allowsSnapshot)
-            .accessibilityIdentifier("machines.snapshot")
+    private var busy: Bool { model.isBusy(machine.id) }
+
+    private var screen: some View {
+        MachineScreen(machine: machine, virtualMachine: model.store.screen(machine.id), keyboard: keyboard,
+                      canStart: !busy && model.store.canStartAnother) {
+            model.start(machine)
+        }
     }
 
+    /// Snapshots are sample data only: the machines of the data folder have none yet.
+    @ViewBuilder private var snapshotButton: some View {
+        if model.store.offersSnapshots {
+            Button(String(localized: "Take Snapshot", bundle: #bundle), systemImage: "camera.on.rectangle") {}
+                .help(String(localized: "Take Snapshot", bundle: #bundle))
+                .disabled(!machine.state.allowsSnapshot)
+                .accessibilityIdentifier("machines.snapshot")
+        }
+    }
+
+    /// A command run by the guest agent: it needs the machine running and its agent connected.
     private var shellButton: some View {
-        Button(String(localized: "Open Shell", bundle: #bundle), systemImage: "terminal") {}
-            .help(String(localized: "Open Shell", bundle: #bundle))
-            .disabled(!machine.state.allowsShell)
-            .accessibilityIdentifier("machines.shell")
+        Button(String(localized: "Open Shell", bundle: #bundle), systemImage: "terminal") {
+            model.sheet = .shell(machine.id)
+        }
+        .help(machine.agentConnected || !machine.state.allowsShell ? String(localized: "Open Shell", bundle: #bundle)
+            : String(localized: "Open Shell: waiting for the guest agent", bundle: #bundle))
+        .disabled(!machine.state.allowsShell || !machine.agentConnected)
+        .accessibilityIdentifier("machines.shell")
     }
 
     /// The inspector beside the screen, shown and hidden through the model, which folds an iPad's
@@ -98,7 +126,7 @@ struct MachineDetail: View {
     /// An iPhone's inspector: the same details, over the page, with Done.
     private var inspectorSheet: some View {
         VStack(spacing: 0) {
-            MachineInfo(machine: machine)
+            MachineInfo(machine: machine, model: model)
             HStack {
                 Spacer()
                 Button(String(localized: "Done", bundle: #bundle, comment: "Closes a virtual machine's details")) {
@@ -113,11 +141,13 @@ struct MachineDetail: View {
     }
 }
 
-/// What a machine runs on, the project it tests, and its snapshots.
+/// What a machine runs on, the project it tests, its agent, its snapshots, then Edit and Delete.
 private struct MachineInfo: View {
     let machine: VirtualMachine
+    let model: MachinesModel
 
     @Environment(\.openRoute) private var openRoute
+    @Environment(\.projectDirectory) private var directory
 
     var body: some View {
         ScrollView {
@@ -143,14 +173,18 @@ private struct MachineInfo: View {
                         }
                         GridRow {
                             disk
-                            cpu
+                            if machine.cpuUsage != nil {
+                                cpu
+                            }
                         }
                     }
                     VStack(alignment: .leading, spacing: 14) {
                         cores
                         memory
                         disk
-                        cpu
+                        if machine.cpuUsage != nil {
+                            cpu
+                        }
                     }
                 }
 
@@ -169,7 +203,7 @@ private struct MachineInfo: View {
                     Divider()
                     // The project's name is a link of its own, so the row keeps its parts apart.
                     LabeledContent(String(localized: "Project", bundle: #bundle)) {
-                        if let projectID = machine.projectID, let project = Project.sample(projectID) {
+                        if let projectID = machine.projectID, let project = directory.project(projectID) {
                             Button {
                                 openRoute(.project(project.id))
                             } label: {
@@ -187,8 +221,46 @@ private struct MachineInfo: View {
                     }
                     .labeledContentStyle(.detailRow(combinesChildren: false))
                     .accessibilityIdentifier("machines.info.project")
+                    Divider()
+                    LabeledContent(String(localized: "Agent", bundle: #bundle)) {
+                        Text(agentText)
+                    }
+                    .labeledContentStyle(.detailRow)
+                    .accessibilityIdentifier("machines.info.agent")
                 }
 
+                if model.store.offersSnapshots {
+                    snapshots
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Button(String(localized: "Edit…", bundle: #bundle), systemImage: "slider.horizontal.3") {
+                        model.sheet = .editMachine(machine.id)
+                    }
+                    .help(machine.state == .stopped ? String(localized: "Edit the machine's name, cores, memory and disk", bundle: #bundle)
+                        : String(localized: "Stop the machine to edit it", bundle: #bundle))
+                    .disabled(machine.state != .stopped || model.isBusy(machine.id))
+                    .accessibilityIdentifier("machines.info.edit")
+                    Button(String(localized: "Delete Machine…", bundle: #bundle), systemImage: "trash", role: .destructive) {
+                        model.pendingDeletion = .machine(machine.id)
+                    }
+                    .disabled(model.isBusy(machine.id))
+                    .accessibilityIdentifier("machines.info.delete")
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityIdentifier("machines.info")
+    }
+
+    private var agentText: String {
+        if machine.state == .stopped { return String(localized: "Not running", bundle: #bundle, comment: "The guest agent of a stopped machine") }
+        return machine.agentConnected ? String(localized: "Connected", bundle: #bundle, comment: "The guest agent's state")
+            : String(localized: "Not connected", bundle: #bundle, comment: "The guest agent's state")
+    }
+
+    private var snapshots: some View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Snapshots", bundle: #bundle)
                         .font(.headline)
@@ -204,11 +276,6 @@ private struct MachineInfo: View {
                         }
                     }
                 }
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .accessibilityIdentifier("machines.info")
     }
 
     private var cores: some View {
@@ -227,7 +294,7 @@ private struct MachineInfo: View {
     }
 
     private var cpu: some View {
-        Figure(Text(machine.cpuUsage, format: .percent.precision(.fractionLength(0))), caption: Text("CPU", bundle: #bundle))
+        Figure(Text(machine.cpuUsage ?? 0, format: .percent.precision(.fractionLength(0))), caption: Text("CPU", bundle: #bundle))
             .accessibilityIdentifier("machines.info.cpu")
     }
 }
@@ -270,15 +337,27 @@ private struct SnapshotRow: View {
     }
 }
 
-/// The machine's screen, filling the window as a virtual machine's display does: the guest takes the
-/// window's size. Here a stand-in: a desktop for a Mac, a console for Linux, a placeholder while
-/// stopped. The real one is the Virtualization framework's view.
+/// The machine's screen, filling the window as a virtual machine's display does: the guest takes the window's
+/// size. A running machine of the data folder shows the Virtualization framework's view; the samples a stand-in, a
+/// desktop for a Mac, a console for Linux; a stopped machine a placeholder with Start.
 private struct MachineScreen: View {
     let machine: VirtualMachine
+    let virtualMachine: VZVirtualMachine?
+    let keyboard: GuestKeyboard
+    let canStart: Bool
+    let start: () -> Void
 
     var body: some View {
         ZStack {
             switch machine.state {
+            case _ where virtualMachine != nil && machine.state != .stopped:
+                Rectangle().fill(.black)
+                if let virtualMachine {
+                    VirtualMachineScreen(machine: virtualMachine, keyboard: keyboard)
+                }
+                if machine.state == .paused {
+                    pausedVeil
+                }
             case .stopped:
                 Rectangle().fill(.surfaceSunken)
                 VStack(spacing: 10) {
@@ -290,11 +369,12 @@ private struct MachineScreen: View {
                         .font(.title3)
                         .foregroundStyle(.textSecondary)
                     // Over the machine's screen, so in glass, as the screen's other overlays.
-                    Button(MachineStartAction.start.title, systemImage: "play.fill") {}
+                    Button(MachineStartAction.start.title, systemImage: "play.fill", action: start)
                         .buttonStyle(.glassProminent)
+                        .disabled(!canStart)
                         .accessibilityIdentifier("machines.screen.start")
                 }
-            case .running, .paused:
+            case .starting, .running, .paused, .stopping:
                 switch machine.system {
                 case .macOS:
                     DesktopStandIn()
@@ -302,16 +382,7 @@ private struct MachineScreen: View {
                     ConsoleStandIn(machineID: machine.id)
                 }
                 if machine.state == .paused {
-                    // A veil in the color of inactive regions: the machine is there, but doesn't run.
-                    Rectangle()
-                        .fill(Color.surfaceSunken.opacity(0.6))
-                        .accessibilityHidden(true)
-                    Label(machine.state.title, systemImage: "pause.fill")
-                        .font(.title3)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .glassEffect()
-                        .accessibilityIdentifier("machines.screen.paused")
+                    pausedVeil
                 }
             }
         }
@@ -320,6 +391,19 @@ private struct MachineScreen: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Screen of \(machine.name)", bundle: #bundle))
         .accessibilityIdentifier("machines.screen")
+    }
+
+    /// A veil in the color of inactive regions: the machine is there, but doesn't run.
+    @ViewBuilder private var pausedVeil: some View {
+        Rectangle()
+            .fill(Color.surfaceSunken.opacity(0.6))
+            .accessibilityHidden(true)
+        Label(machine.state.title, systemImage: "pause.fill")
+            .font(.title3)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .glassEffect()
+            .accessibilityIdentifier("machines.screen.paused")
     }
 }
 

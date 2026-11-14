@@ -180,7 +180,7 @@ A grouped form in a trailing column, 260 to 400 pt wide, 300 pt ideally.
 | Section | Contents |
 |---|---|
 | **In This Chat** | Every item the conversation attached or read, in the order it first came up. Each row: the tool's symbol, the item's title, the tool's name as a caption, and **Open**, which opens the item in its tool's window (help "Open *item* in *Tool*"). An item seen in two Service Map environments has a row for each. With none: "Items Claude reads or you attach show here." |
-| **Claude Can** | **Read tickets, services, contracts and builds**: Always (fixed text). **Change tickets**: Never, Ask First or Always; Ask First by default. **Change projects**: Never, Ask First or Always; Ask First by default. **Call APIs that change data**: Never, Ask First or Always; Ask First by default (a `GET` or `HEAD` call always runs). **Operate deployments** (restart, scale, Argo CD sync, port forwards): Never, Ask First or Always; Ask First by default. **Start builds**: Never or Ask First; Never by default. Footer: "Claude acts through each tool, as you would. Nothing it reads or changes goes around them." The same settings as [Settings ▸ Chat](#settings--chat). |
+| **Claude Can** | **Read tickets, services, contracts, builds and machines**: Always (fixed text). **Change tickets**: Never, Ask First or Always; Ask First by default. **Change projects**: Never, Ask First or Always; Ask First by default. **Call APIs that change data**: Never, Ask First or Always; Ask First by default (a `GET` or `HEAD` call always runs). **Operate deployments** (restart, scale, Argo CD sync, port forwards): Never, Ask First or Always; Ask First by default. **Operate virtual machines** (create, start, stop, shell, input, files): Never, Ask First or Always; Ask First by default. **Start builds**: Never or Ask First; Never by default. Footer: "Claude acts through each tool, as you would. Nothing it reads or changes goes around them." The same settings as [Settings ▸ Chat](#settings--chat). |
 | **Replies** | **Model**: a pop-up of the CLI's models (Default, Opus, Fable, Sonnet, Haiku until the CLI answers). **Effort**: Low, Medium, High, Extra High, Max, the levels the model has; hidden for a model without one. For the selected conversation, its own; with no conversation selected, those of new chats. A change applies to the running CLI at once. In previews: **Model**: None connected, and "Replies are samples until a model is connected." |
 
 The permissions are stored in the user defaults (`chat.ticketChanges`, `chat.projectChanges`, `chat.apiCalls`, `chat.clusterChanges`, `chat.buildStarts`) and the MCP server applies them to every chat's calls ([MCP › Permissions](../mcp.md#permissions)): Always runs the change, Ask First shows a card and waits, Never refuses it. A deletion (a ticket, a bundle, a comment, an attachment) or a project's removal asks first even under Always. **Start builds** covers re-running and cancelling runs: Never refuses them, Ask First shows a card.
@@ -377,11 +377,12 @@ The Settings window's **Chat** tab (`bubble.left.and.text.bubble.right`), at 520
 | | **Path**, text field in monospace | Empty | The CLI to run, absolute or from `~/`; its prompt is the path found, or "Found automatically". Return applies it. Stored as `claudePath` in `settings.yml`. |
 | | **Look Again**, button | — | Applies the path and looks for the CLI again, then reads its models. Disabled while looking. A path that can't be stored shows its reason beside it, in `danger`. |
 | | Footer | — | "Chats run Claude Code from this Mac. Empty, the app finds it in ~/.local/bin, /opt/homebrew/bin, /usr/local/bin, or your shell's PATH." |
-| **Claude Can** | **Read tickets, services, contracts and builds** | Always | Fixed text. |
+| **Claude Can** | **Read tickets, services, contracts, builds and machines** | Always | Fixed text. |
 | | **Change tickets**, pop-up: Never, Ask First, Always | Ask First | Shared with the Chat window's inspector; applied to every chat's calls. |
 | | **Change projects**, pop-up: Never, Ask First, Always | Ask First | The same, for adding projects and changing or removing them. |
 | | **Call APIs that change data**, pop-up: Never, Ask First, Always | Ask First | Claude's `api_call` with another method than `GET` or `HEAD`. |
 | | **Operate deployments**, pop-up: Never, Ask First, Always | Ask First | Claude's restarts, scales, Argo CD syncs and port forwards. |
+| | **Operate virtual machines**, pop-up: Never, Ask First, Always | Ask First | Claude's `vm_` tools that create, start, stop or act in a machine (`chat.machineChanges`). |
 | | **Start builds**, pop-up: Never, Ask First | Never | Shared with the inspector; applied to Claude's re-runs and cancels of runs. |
 | | Footer | — | "Claude acts through each tool, as you would. Nothing it reads or changes goes around them." |
 | **Replies** | **Model**, **Effort**, pop-ups | Default, High | The model and effort of new chats, stored as `chatModel` and `chatEffort` in `settings.yml`. Footer: "New chats start with these. Each chat keeps its own, in the Chat window's inspector." |
@@ -406,11 +407,13 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 | In This Chat row | `chat.inspector.reference.<item id>` | A container: title and tool name as one element, then **Open** |
 | In This Chat row's Open | `chat.inspector.reference.<item id>.open` | "Open"; help "Open *item* in *Tool*" |
 | Nothing in this chat | `chat.inspector.empty` | "Items Claude reads or you attach show here." |
-| Read (inspector) | `chat.inspector.permissions.reads` | "Read tickets, services, contracts and builds", "Always" |
+| Read (inspector) | `chat.inspector.permissions.reads` | "Read tickets, services, contracts, builds and machines", "Always" |
 | Change tickets (inspector) | `chat.inspector.permissions.tickets` | Pop-up button |
 | Call APIs (inspector) | `chat.inspector.permissions.apiCalls` | Pop-up button |
 | Start builds (inspector) | `chat.inspector.permissions.builds` | Pop-up button |
 | Change projects (inspector) | `chat.inspector.permissions.projects` | Pop-up button |
+| Operate deployments (inspector) | `chat.inspector.permissions.clusters` | Pop-up button |
+| Operate virtual machines (inspector) | `chat.inspector.permissions.machines` | Pop-up button |
 | Model (inspector) | `chat.inspector.model` | Pop-up button; in previews "Model", "None connected" |
 | Effort (inspector) | `chat.inspector.effort` | Pop-up button |
 
@@ -455,10 +458,13 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 | Element | Identifier | Label or notes |
 |---|---|---|
 | Panel switch | `settings.chat.showsPanel` | "Show the chat panel in tool windows" |
-| Read | `settings.chat.permissions.reads` | "Read tickets, services, contracts and builds", "Always" |
+| Read | `settings.chat.permissions.reads` | "Read tickets, services, contracts, builds and machines", "Always" |
 | Change tickets | `settings.chat.permissions.tickets` | Pop-up button |
 | Start builds | `settings.chat.permissions.builds` | Pop-up button |
 | Change projects | `settings.chat.permissions.projects` | Pop-up button |
+| Call APIs | `settings.chat.permissions.apiCalls` | Pop-up button |
+| Operate deployments | `settings.chat.permissions.clusters` | Pop-up button |
+| Operate virtual machines | `settings.chat.permissions.machines` | Pop-up button |
 | CLI status | `settings.chat.cli.status` | One element: "Status" and the CLI's version or why it can't run |
 | CLI path | `settings.chat.cli.path` | "Path" |
 | Look Again | `settings.chat.cli.lookAgain` | "Look Again" |

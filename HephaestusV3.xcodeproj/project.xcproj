@@ -14,28 +14,85 @@
     {
       "kind": "local",
       "path": "HephaestusV3Kit",
+    }, {
+      "kind": "local",
+      "path": "GuestAgent",
     },
   ],
   "files": [
     { "kind": "folder", "path": "HephaestusV3", "target-membership": [ "HephaestusV3" ] },
+    { "kind": "folder", "path": "HephaestusAgent", "target-membership": [ "HephaestusAgent" ] },
     {
       "kind": "group",
       "name": "Products",
       "children": [
         { "path": "<PRODUCTS>/HephaestusV3.app", "id": "F5B9A72EE589E1913A56EAE4", "type": "wrapper.application", "index": false },
+        { "path": "<PRODUCTS>/HephaestusAgent", "id": "9C41D2E07A3B5F1846E0C2A1", "type": "compiled.mach-o.executable", "index": false },
       ],
     },
   ],
   "targets": [
     {
+      "name": "HephaestusAgent",
+      "id": "3E8A61F04B2C9D7715A0E6B3",
+      "product": "Products/HephaestusAgent",
+      "product-type": "tool",
+      "build-phases": [
+        "compile-sources",
+        "frameworks",
+      ],
+      "package-product-members": [
+        {
+          "package": "GuestAgent",
+          "product-name": "GuestAgentKit",
+          "build-phase": { "build-phase": "frameworks" },
+        },
+      ],
+      "build-settings": {
+        "ARCHS": "arm64",
+        "CODE_SIGN_STYLE": "Automatic",
+        "DEVELOPMENT_TEAM": "USWJAJULN9",
+        "ENABLE_HARDENED_RUNTIME": "YES",
+        "MACOSX_DEPLOYMENT_TARGET": "12.0",
+        "PRODUCT_BUNDLE_IDENTIFIER": "fr.azavech.hephaestusv3.agent",
+        "PRODUCT_NAME": "$(TARGET_NAME)",
+        "SDKROOT": "macosx",
+        "SKIP_INSTALL": "YES",
+        "SWIFT_VERSION": "6.0",
+      },
+    }, {
       "name": "HephaestusV3",
       "id": "B44D4E60632C22075A57BA9B",
       "product": "Products/HephaestusV3.app",
       "product-type": "application",
+      "dependencies": [
+        "HephaestusAgent",
+      ],
       "build-phases": [
         "compile-sources",
         "frameworks",
         "resources",
+        {
+          "kind": "script",
+          "name": "Embed Guest Agent",
+          "input-paths": [
+            "$(BUILT_PRODUCTS_DIR)/HephaestusAgent",
+            "$(SRCROOT)/GuestAgent/install-agent.sh",
+          ],
+          "output-paths": [
+            "$(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/HephaestusAgent",
+            "$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/install-agent.sh",
+          ],
+          "shell": "/bin/sh",
+          "script": [
+            "# The guest agent, signed by its own target, and its install script (docs/guest-agent.md).",
+            "set -e",
+            "mkdir -p \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers\"",
+            "cp -f \"$BUILT_PRODUCTS_DIR/HephaestusAgent\" \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers/HephaestusAgent\"",
+            "cp -f \"$SRCROOT/GuestAgent/install-agent.sh\" \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/install-agent.sh\"",
+            "",
+          ],
+        },
       ],
       "package-product-members": [
         {

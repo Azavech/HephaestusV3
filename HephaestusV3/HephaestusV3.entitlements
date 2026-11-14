@@ -6,5 +6,7 @@
 	<array>
 		<string>group.fr.azavech.hephaestusv3</string>
 	</array>
+	<key>com.apple.security.virtualization</key>
+	<true/>
 </dict>
 </plist>

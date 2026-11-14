@@ -79,10 +79,10 @@ public struct ToolsScenes: Scene {
         .defaultSize(width: 600, height: 720)
         .defaultLaunchBehavior(.suppressed)
 
-        // Hidden until the Virtual Machines feature comes over from V2 (`AppData.machinesAvailable`).
+        // The Mac's images and virtual machines (`AppData.machinesAvailable`).
         Window(Text("Virtual Machines", bundle: #bundle), id: SceneID.machines) {
             routeHost {
-                MachinesRootView(focus: machineFocus)
+                MachinesRootView(focus: machineFocus, store: appData.machineStore)
                     .environment(\.focusRequest, machineFocusRequest)
                     .registersWindow(.machines, projectID: nil)
             }
@@ -108,6 +108,12 @@ public struct ToolsScenes: Scene {
                     .tabItem {
                         Label(String(localized: "MCP", bundle: #bundle, comment: "The Settings tab of the MCP server"), systemImage: "point.3.connected.trianglepath.dotted")
                     }
+                if AppData.machinesAvailable {
+                    MachineSettingsView(store: appData.machineStore)
+                        .tabItem {
+                            Label(String(localized: "Virtual Machines", bundle: #bundle), systemImage: "desktopcomputer")
+                        }
+                }
                 if AppData.availableTools.contains(.chat) {
                     ChatSettingsView()
                         .environment(\.chatStore, appData.chatStore)

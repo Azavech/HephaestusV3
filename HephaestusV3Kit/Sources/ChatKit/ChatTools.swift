@@ -43,6 +43,9 @@ public enum ChatGate {
         case .operateClusters:
             permission = rule(ChatPreferences.clusterChangesKey)
             refusal = "The user doesn't let Claude operate deployments from chats (Settings ▸ Chat)."
+        case .operateMachines:
+            permission = rule(ChatPreferences.machineChangesKey)
+            refusal = "The user doesn't let Claude operate virtual machines from chats (Settings ▸ Chat)."
         case .startBuilds:
             // Never by default; Ask First at most.
             permission = defaults.string(forKey: ChatPreferences.buildStartsKey) == ChangePermission.askFirst.rawValue ? .askFirst : .never

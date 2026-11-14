@@ -4,19 +4,14 @@ import Testing
 import ToolsFoundation
 @testable import MachinesKit
 
-/// Two machines and two images, in a fixed order.
-struct MockMachineStore: MachineStore {
-    var storedMachines: [VirtualMachine] = [
-        .mock(id: "alpha", state: .running),
-        .mock(id: "beta", state: .stopped),
-    ]
-    var storedImages: [MachineImage] = [
-        MachineImage(id: "ready-image", name: "Ready image", system: .macOS, sizeGB: 18.4, state: .ready),
-        MachineImage(id: "new-image", name: "New image", system: .linux, sizeGB: 2, state: .downloading(progress: 0.25)),
-    ]
-
-    func machines() -> [VirtualMachine] { storedMachines }
-    func images() -> [MachineImage] { storedImages }
+/// Two machines and two images, in a fixed order, in a sample store.
+@MainActor
+func MockMachineStore(storedMachines: [VirtualMachine] = [.mock(id: "alpha", state: .running), .mock(id: "beta", state: .stopped)],
+                      storedImages: [MachineImage] = [
+                          MachineImage(id: "ready-image", name: "Ready image", system: .macOS, sizeGB: 18.4, state: .ready),
+                          MachineImage(id: "new-image", name: "New image", system: .linux, sizeGB: 2, state: .downloading(progress: 0.25)),
+                      ]) -> SampleMachineStore {
+    SampleMachineStore(machines: storedMachines, images: storedImages, enforcesLimit: true)
 }
 
 extension VirtualMachine {
@@ -29,6 +24,7 @@ extension VirtualMachine {
 }
 
 @Suite("Machines window: selection and routes")
+@MainActor
 struct MachinesSelectionTests {
     @Test("A route's machine is selected when the window opens, and an iPhone's starts on its page")
     func focusAtOpening() {
@@ -85,7 +81,7 @@ struct MachinesSelectionTests {
     func imageContent() {
         let store = MockMachineStore()
         let model = MachinesModel(store: store, selection: .image("ready-image"))
-        #expect(model.content == .image(store.storedImages[0]))
+        #expect(model.content == .image(store.images[0]))
         #expect(model.content(of: .image("missing")) == .nothing)
         #expect(model.content(of: nil) == .nothing)
     }
@@ -219,10 +215,112 @@ struct MachineStateTests {
 
     @Test("The sample machines have unique ids, and the first is Orders sandbox, which a route with no id selects")
     func samples() {
-        let machines = SampleMachineStore().machines()
+        let machines = SampleMachineStore().machines
         #expect(Set(machines.map(\.id)).count == machines.count)
         #expect(machines.first?.id == "orders-sandbox")
-        let images = SampleMachineStore().images()
+        let images = SampleMachineStore().images
         #expect(Set(images.map(\.id)).count == images.count)
+    }
+}
+
+@Suite("Machines: actions")
+@MainActor
+struct MachineActionTests {
+    @Test("Start, Pause, Resume and Stop go through the store; the list follows it")
+    func lifecycle() async throws {
+        let store = MockMachineStore()
+        let model = MachinesModel(focus: "beta", store: store)
+        let beta = try #require(model.machine("beta"))
+        model.start(beta)
+        try await waitUntil { model.machine("beta")?.state == .running }
+        let running = try #require(model.machine("beta"))
+        model.pause(running)
+        try await waitUntil { model.machine("beta")?.state == .paused }
+        model.start(try #require(model.machine("beta")))
+        try await waitUntil { model.machine("beta")?.state == .running }
+        model.stop(try #require(model.machine("beta")))
+        try await waitUntil { model.machine("beta")?.state == .stopped }
+    }
+
+    @Test("A third machine can't start: the store refuses and the window shows its message")
+    func limit() async throws {
+        let store = MockMachineStore(storedMachines: [.mock(id: "a", state: .running), .mock(id: "b", state: .running), .mock(id: "c", state: .stopped)])
+        #expect(!store.canStartAnother)
+        let model = MachinesModel(focus: "c", store: store)
+        model.start(try #require(model.machine("c")))
+        try await waitUntil { model.alert != nil }
+        #expect(model.alert?.message == "2 virtual machines are already running.")
+        #expect(model.machine("c")?.state == .stopped)
+    }
+
+    @Test("Delete asks first, then deletes the machine and selects another")
+    func deletion() async throws {
+        let model = MachinesModel(focus: "alpha", store: MockMachineStore())
+        model.pendingDeletion = .machine("alpha")
+        #expect(model.machine("alpha") != nil)
+        model.confirmDeletion()
+        try await waitUntil { model.machine("alpha") == nil }
+        #expect(model.pendingDeletion == nil)
+        #expect(model.selection == .machine("beta"))
+    }
+
+    @Test("Deleting an image deletes its machines")
+    func imageDeletion() async throws {
+        var made = VirtualMachine.mock(id: "made", state: .stopped)
+        made.imageID = "ready-image"
+        let model = MachinesModel(store: MockMachineStore(storedMachines: [made]), selection: .image("ready-image"))
+        model.pendingDeletion = .image("ready-image")
+        model.confirmDeletion()
+        try await waitUntil { model.image("ready-image") == nil }
+        #expect(model.machines.isEmpty)
+    }
+
+    @Test("A machine that stopped with a failure shows its message once")
+    func failures() {
+        let store = SampleMachineStore(machines: [.mock(id: "alpha", state: .stopped)], images: [], failures: ["alpha": "The guest crashed."])
+        let model = MachinesModel(focus: "alpha", store: store)
+        model.showFailures()
+        #expect(model.alert?.title == "Alpha stopped")
+        #expect(model.alert?.message == "The guest crashed.")
+        #expect(store.failures.isEmpty)
+    }
+
+    @Test("The guest account: an empty value removes it")
+    func account() throws {
+        let store = MockMachineStore()
+        try store.setAccount("ready-image", userName: "tester", password: "secret")
+        #expect(store.images[0].userName == "tester")
+        #expect(store.images[0].hasPassword)
+        #expect(store.password(ofImage: "ready-image") == "secret")
+        try store.setAccount("ready-image", userName: nil, password: "")
+        #expect(store.images[0].userName == "tester")
+        #expect(!store.images[0].hasPassword)
+    }
+
+    @Test("Finish Setup needs the agent connected with SIP off, and nothing under way")
+    func finishSetup() {
+        #expect(ImageSetup(state: .running, agentConnected: true, sipOff: true, isRestarting: false).canFinish)
+        #expect(!ImageSetup(state: .running, agentConnected: true, sipOff: false, isRestarting: false).canFinish)
+        #expect(!ImageSetup(state: .running, agentConnected: false, sipOff: true, isRestarting: false).canFinish)
+        #expect(!ImageSetup(state: .running, agentConnected: true, sipOff: true, isRestarting: true).canFinish)
+        #expect(!ImageSetup(state: .stopping, agentConnected: true, sipOff: true, isRestarting: false).canFinish)
+    }
+
+    @Test("Starting and shutting down disable every action")
+    func changing() {
+        for state in [VirtualMachine.State.starting, .stopping] {
+            #expect(state.isChanging)
+            #expect(state.startAction == nil)
+            #expect(!state.allowsShell)
+            #expect(!state.allowsSnapshot)
+        }
+    }
+
+    /// Waits up to 2 seconds for the store's task to finish.
+    private func waitUntil(_ condition: () -> Bool) async throws {
+        for _ in 0..<200 where !condition() {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(condition())
     }
 }

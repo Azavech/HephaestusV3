@@ -12,16 +12,133 @@
         }
       }
     },
+    "%@ stopped" : {
+      "comment" : "Alert title: a virtual machine stopped with a failure"
+    },
+    "2 virtual machines are already running" : {
+
+    },
+    "A larger disk grows the guest's container at the next start." : {
+
+    },
+    "A running machine stops at once. Its folder and disk are deleted, not moved to the Trash." : {
+
+    },
+    "Add" : {
+
+    },
+    "Add Image" : {
+
+    },
+    "Add Image…" : {
+
+    },
     "Address" : {
+
+    },
+    "Agent" : {
+
+    },
+    "Agent connected · SIP off" : {
+
+    },
+    "Agent connected · SIP on" : {
+
+    },
+    "As root" : {
 
     },
     "CPU" : {
 
     },
+    "Cancel" : {
+
+    },
     "Cancel Download" : {
 
     },
+    "Claude wants to copy files of a virtual machine to this Mac" : {
+
+    },
+    "Claude wants to copy files of this Mac into a virtual machine" : {
+
+    },
+    "Claude wants to create and start the virtual machine %@" : {
+
+    },
+    "Claude wants to run a command as root in a virtual machine" : {
+
+    },
+    "Claude wants to run a command in a virtual machine" : {
+
+    },
+    "Claude wants to start a virtual machine" : {
+
+    },
+    "Claude wants to stop a virtual machine" : {
+
+    },
+    "Claude wants to store the guest account of an image" : {
+
+    },
+    "Claude wants to type in a virtual machine" : {
+
+    },
+    "Claude wants to use the mouse in a virtual machine" : {
+
+    },
+    "Command" : {
+
+    },
+    "Complete Setup Assistant: create an account and turn on automatic login." : {
+
+    },
+    "Connected" : {
+      "comment" : "The guest agent's state"
+    },
+    "Copied" : {
+
+    },
+    "Copied files into a virtual machine" : {
+
+    },
+    "Copied files out of a virtual machine" : {
+
+    },
+    "Copy" : {
+
+    },
     "Cores" : {
+
+    },
+    "Create" : {
+
+    },
+    "Created the virtual machine %@" : {
+
+    },
+    "Default cores" : {
+
+    },
+    "Default disk" : {
+
+    },
+    "Default memory" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete Image…" : {
+
+    },
+    "Delete Machine…" : {
+
+    },
+    "Delete failed" : {
+
+    },
+    "Delete “%@”?" : {
 
     },
     "Disk" : {
@@ -36,13 +153,64 @@
     "Downloading, %@" : {
 
     },
+    "Edit Machine" : {
+
+    },
+    "Edit the machine's name, cores, memory and disk" : {
+
+    },
+    "Edit…" : {
+
+    },
+    "Exit status %lld" : {
+
+    },
+    "Failed" : {
+      "comment" : "A system image's status"
+    },
+    "Finish Setup" : {
+
+    },
+    "Finish Setup failed" : {
+
+    },
+    "Guest Account" : {
+
+    },
     "Hide Inspector" : {
+
+    },
+    "Image" : {
 
     },
     "Images" : {
 
     },
+    "In Recovery, open Utilities ▸ Terminal, run csrutil disable, then restart." : {
+
+    },
     "Inspector" : {
+
+    },
+    "Install the agent: in Terminal, run" : {
+
+    },
+    "Installing" : {
+      "comment" : "A system image's status"
+    },
+    "Installing macOS" : {
+
+    },
+    "Installing, %@" : {
+
+    },
+    "Listed the virtual machine images" : {
+
+    },
+    "Listed the virtual machines" : {
+
+    },
+    "Looked at a virtual machine's screen" : {
 
     },
     "Machine Not Found" : {
@@ -57,6 +225,12 @@
     "More Actions" : {
 
     },
+    "Name" : {
+
+    },
+    "Needs setup" : {
+      "comment" : "A system image's status: installed, its setup isn't finished"
+    },
     "New Machine" : {
 
     },
@@ -66,10 +240,22 @@
     "New Machine from This Image" : {
 
     },
+    "New Machine starts with these values. An image's install and setup run with the cores and memory." : {
+
+    },
+    "New Machines" : {
+
+    },
     "New Machine…" : {
       "comment" : "File menu item, ⇧⌘N"
     },
     "No Machine Selected" : {
+
+    },
+    "No Versions" : {
+
+    },
+    "No image is Ready: add an image and finish its setup first." : {
 
     },
     "No machine on this Mac has the id “%@”." : {
@@ -87,10 +273,28 @@
     "None while stopped" : {
 
     },
+    "Not connected" : {
+      "comment" : "The guest agent's state"
+    },
+    "Not running" : {
+      "comment" : "The guest agent of a stopped machine"
+    },
+    "OK" : {
+
+    },
     "Open Shell" : {
 
     },
+    "Open Shell: waiting for the guest agent" : {
+
+    },
+    "Password" : {
+
+    },
     "Pause" : {
+
+    },
+    "Pause failed" : {
 
     },
     "Paused" : {
@@ -102,8 +306,26 @@
     "Project" : {
 
     },
+    "Ran a command in a virtual machine" : {
+
+    },
+    "Read a virtual machine's interface" : {
+
+    },
+    "Reading the versions from ipsw.me…" : {
+
+    },
     "Ready" : {
-      "comment" : "A system image's status: downloaded, new machines can start from it"
+      "comment" : "A system image's status: new machines can start from it"
+    },
+    "Restart in Recovery" : {
+
+    },
+    "Restart in Recovery failed" : {
+
+    },
+    "Restarting in Recovery…" : {
+
     },
     "Restore" : {
       "comment" : "Restores a virtual machine to this snapshot"
@@ -111,14 +333,44 @@
     "Resume" : {
       "comment" : "Resumes a paused virtual machine"
     },
+    "Run" : {
+
+    },
     "Running" : {
       "comment" : "A virtual machine's state"
+    },
+    "Runs /bin/zsh -lc in the account's home folder, with a timeout of 60 seconds." : {
+
+    },
+    "Save" : {
+
+    },
+    "Save Account" : {
+
     },
     "Screen of %@" : {
 
     },
+    "Set Up %@" : {
+
+    },
+    "Set Up failed" : {
+
+    },
+    "Set Up…" : {
+
+    },
+    "Setting up" : {
+
+    },
+    "Shell of %@" : {
+
+    },
     "Show Inspector" : {
 
+    },
+    "Shutting Down" : {
+      "comment" : "A virtual machine's state"
     },
     "Size" : {
 
@@ -129,14 +381,35 @@
     "Start" : {
       "comment" : "Starts a stopped virtual machine"
     },
+    "Start failed" : {
+
+    },
+    "Started a virtual machine" : {
+
+    },
+    "Starting" : {
+      "comment" : "A virtual machine's state"
+    },
     "Status" : {
 
     },
     "Stop" : {
 
     },
+    "Stop failed" : {
+
+    },
+    "Stop the machine to edit it" : {
+
+    },
     "Stopped" : {
       "comment" : "A virtual machine's state"
+    },
+    "Stopped a virtual machine" : {
+
+    },
+    "Stored an image's guest account" : {
+
     },
     "System" : {
 
@@ -144,7 +417,73 @@
     "Take Snapshot" : {
 
     },
+    "The IPSW is downloaded from Apple, then macOS is installed on a 32 GB disk. You finish its setup in the image's page." : {
+
+    },
+    "The account created in Setup Assistant. Type Password types this password into the image's machines." : {
+
+    },
+    "The disk starts as a clone of the image's and can only grow." : {
+
+    },
+    "The guest shares no pasteboard with this Mac: type the command there." : {
+
+    },
+    "The image and its %lld machines are deleted, with their disks, not moved to the Trash." : {
+
+    },
+    "The image's folder and its disk are deleted, not moved to the Trash." : {
+
+    },
+    "The keyboard layout of this Mac cannot type “%@”." : {
+
+    },
+    "The screen of the virtual machine is not shown." : {
+
+    },
+    "The setup machine's screen shows here." : {
+
+    },
+    "Timed out" : {
+
+    },
+    "Try Again" : {
+
+    },
+    "Turn off SIP:" : {
+
+    },
+    "Type Password" : {
+
+    },
+    "Type Password failed" : {
+
+    },
+    "Type the image's password into the machine" : {
+
+    },
+    "Typed in a virtual machine" : {
+
+    },
+    "Used the mouse in a virtual machine" : {
+
+    },
+    "User name" : {
+
+    },
+    "Version" : {
+
+    },
     "Virtual Machines" : {
+
+    },
+    "Waiting for the agent…" : {
+
+    },
+    "macOS is installed. Set it up once: complete Setup Assistant, turn off SIP and install the guest agent. Machines then start from it." : {
+
+    },
+    "output cut at 1 MB" : {
 
     }
   },

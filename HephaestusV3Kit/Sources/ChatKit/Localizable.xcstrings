@@ -211,6 +211,9 @@
     "Operate deployments" : {
 
     },
+    "Operate virtual machines" : {
+
+    },
     "Path" : {
       "comment" : "The Claude CLI's path"
     },
@@ -220,7 +223,7 @@
     "Read a chat" : {
       "comment" : "Claude read another chat's messages"
     },
-    "Read tickets, services, contracts and builds" : {
+    "Read tickets, services, contracts, builds and machines" : {
 
     },
     "Reading…" : {

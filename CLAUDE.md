@@ -11,7 +11,10 @@ applies here to `~/Developer/Apple/CLAUDE.md`.
 - `HephaestusV3Kit/`: all the code. One target per tool (`ProjectsKit`, `DashboardsKit`, `TicketsKit`,
   `ServiceMapKit`, `ContractsKit`, `BuildsKit`, `ChatKit`, `MachinesKit`), the shared vocabulary in
   `ToolsFoundation`, scenes and routes in `ToolsScenes`. Tools never depend on each other: they open one
-  another through a `Route`. The data targets (`FileStorage`, `ExternalTools`, `ProjectData`) have no UI.
+  another through a `Route`. The data targets (`FileStorage`, `ExternalTools`, `ProjectData` and one per feature,
+  such as `MachineData`) have no UI.
+- `GuestAgent/` and the `HephaestusAgent` target: the guest agent of the virtual machines, its own package for
+  macOS 12 guests, bundled in `Contents/Helpers` (`docs/guest-agent.md`); its tests run with `swift test` there.
 - `docs/architecture.md`: how the code is put together; `docs/data.md`: the files, V2's format and V3's
   additions; `docs/ui/`: the UI specification, window by window; `docs/decisions.md`: the defaults chosen at
   design time; `docs/future-improvements.md`: what comes later. All must be precise enough to rebuild the app

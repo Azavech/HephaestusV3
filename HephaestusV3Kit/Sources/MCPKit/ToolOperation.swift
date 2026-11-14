@@ -38,6 +38,9 @@ public enum ToolPermission: String, Sendable, Hashable, CaseIterable {
     case callAPIs
     /// Restarts, scales or syncs a Deployment, or forwards a port: Settings ▸ Chat › Operate deployments.
     case operateClusters
+    /// Creates, starts or stops a virtual machine, or acts in one (shell, input, files): Settings ▸ Chat ›
+    /// Operate virtual machines.
+    case operateMachines
 
     /// True for the permissions that change the user's data.
     public var changes: Bool { self != .read }

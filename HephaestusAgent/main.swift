@@ -1,0 +1,3 @@
+import GuestAgentKit
+
+GuestAgent.main()

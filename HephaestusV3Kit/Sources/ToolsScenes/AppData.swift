@@ -8,6 +8,8 @@ import ChatKit
 import DashboardsKit
 import ExternalTools
 import FileStorage
+import MachineData
+import MachinesKit
 import MCPKit
 import Observation
 import ProjectData
@@ -24,7 +26,7 @@ final class AppData {
     /// (docs/ui/navigation.md › Available tools). Previews show every tool.
     static let availableTools: Set<ToolKind> = Set(ToolKind.allCases)
     /// Whether the Virtual Machines window has come over.
-    static let machinesAvailable = false
+    static let machinesAvailable = true
 
     let session: ProjectSession
     let directory = ProjectDirectory(projects: [], state: .loading)
@@ -39,6 +41,10 @@ final class AppData {
     let contractStore: LiveContractStore
     /// The runs and releases of the projects' GitHub repositories, read with gh.
     let buildStore: LiveBuildStore
+    /// The images and virtual machines of the data folder, and the machines that run (docs/architecture.md › MachineData).
+    let machineHost: MachineHost
+    /// The machines as the Virtual Machines window shows them.
+    let machineStore: LiveMachineStore
     /// The chats and their Claude processes (docs/architecture.md › ChatData).
     let chats: ChatSession
     /// The chats as the Chat windows and panels show them.
@@ -77,6 +83,9 @@ final class AppData {
         buildStore = LiveBuildStore(cli: {
             GitHubCLI(gh: session.tools.gh, environment: session.tools.environment, runner: SystemProcessRunner.shared)
         }, temporary: downloads)
+        let host = MachineHost(dataFolder: DataFolder.resolve())
+        machineHost = host
+        machineStore = LiveMachineStore(host: host)
         let tokens = MCPTokens()
         self.tokens = tokens
         chats = ChatSession(projects: session, tokens: tokens, device: TicketSession.computerName())
@@ -99,15 +108,21 @@ final class AppData {
         follow()
         let chats = chats
         let maps = serviceMapStore
+        let machines = machineHost
         NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { _ in
             // The tools started for the projects end with the app, the chats' Claude processes too; the lock
             // goes with the process.
             SystemProcessRunner.shared.terminateAll()
-            MainActor.assumeIsolated { chats.stopAll() }
+            MainActor.assumeIsolated {
+                chats.stopAll()
+                // Every machine and setup stops at once, every download and install ends.
+                machines.stopAll()
+            }
             let forwards = maps.forwards
             Task { await forwards.stopAll() }
         }
         await session.start()
+        machineHost.load()
         await tickets.start()
         followTickets()
         await startMCP()
@@ -128,7 +143,8 @@ final class AppData {
         settingsPort = folder.readSettings().mcpPort
         externalToken = try? folder.externalToken(make: MCPTokens.generate)
         tokens.replace(with: Set([externalToken].compactMap { $0 }))
-        let registry = AppTools.registry(session: session, tickets: tickets, chats: chats, contracts: contractStore, maps: serviceMapStore) { [weak self] route in
+        let registry = AppTools.registry(session: session, tickets: tickets, chats: chats, contracts: contractStore, maps: serviceMapStore,
+                                          machines: machineHost) { [weak self] route in
             guard let open = self?.openRoute else { return false }
             open(route)
             return true

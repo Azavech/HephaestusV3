@@ -191,6 +191,7 @@ struct ChatPermissionsSection: View {
     @Binding var buildStarts: ChangePermission
     @AppStorage(ChatPreferences.apiCallsKey) private var apiCalls = ChangePermission.askFirst
     @AppStorage(ChatPreferences.clusterChangesKey) private var clusterChanges = ChangePermission.askFirst
+    @AppStorage(ChatPreferences.machineChangesKey) private var machineChanges = ChangePermission.askFirst
     let identifier: String
 
     var body: some View {
@@ -199,7 +200,7 @@ struct ChatPermissionsSection: View {
                 Text(ChangePermission.always.title)
                     .foregroundStyle(.textSecondary)
             } label: {
-                Text("Read tickets, services, contracts and builds", bundle: #bundle)
+                Text("Read tickets, services, contracts, builds and machines", bundle: #bundle)
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("\(identifier).reads")
@@ -227,6 +228,12 @@ struct ChatPermissionsSection: View {
                 }
             }
             .accessibilityIdentifier("\(identifier).clusters")
+            Picker(String(localized: "Operate virtual machines", bundle: #bundle), selection: $machineChanges) {
+                ForEach(ChangePermission.allCases) { permission in
+                    Text(permission.title).tag(permission)
+                }
+            }
+            .accessibilityIdentifier("\(identifier).machines")
             Picker(String(localized: "Start builds", bundle: #bundle), selection: $buildStarts) {
                 ForEach([ChangePermission.never, .askFirst]) { permission in
                     Text(permission.title).tag(permission)

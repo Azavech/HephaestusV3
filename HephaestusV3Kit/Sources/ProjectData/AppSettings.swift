@@ -16,6 +16,10 @@ public struct SettingsFile: Codable, Sendable, Hashable {
     public var chatModel: String?
     /// The effort of new chats; nil for `high`.
     public var chatEffort: String?
+    /// The cores, memory and disk new virtual machines start with (V2's keys); nil for 2 cores, 4 GB, 64 GB.
+    public var defaultVMCores: Int?
+    public var defaultVMMemoryGB: Int?
+    public var defaultVMDiskGB: Int?
     public var unknownKeys: YAMLMapping
 
     public init(schema: Int = 1, mcpPort: Int = SettingsFile.defaultMCPPort, claudePath: String? = nil, chatModel: String? = nil,
@@ -28,7 +32,8 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         self.unknownKeys = unknownKeys
     }
 
-    static let knownKeys: Set<String> = ["schema", "mcpPort", "claudePath", "chatModel", "chatEffort"]
+    static let knownKeys: Set<String> = ["schema", "mcpPort", "claudePath", "chatModel", "chatEffort", "defaultVMCores", "defaultVMMemoryGB",
+                                         "defaultVMDiskGB"]
 
     public init(from decoder: any Decoder) throws {
         let c = try MappingReader(decoder)
@@ -37,6 +42,9 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         claudePath = try c.optional("claudePath")
         chatModel = try c.optional("chatModel")
         chatEffort = try c.optional("chatEffort")
+        defaultVMCores = try c.optional("defaultVMCores")
+        defaultVMMemoryGB = try c.optional("defaultVMMemoryGB")
+        defaultVMDiskGB = try c.optional("defaultVMDiskGB")
         unknownKeys = try c.unknownKeys(known: Self.knownKeys)
     }
 
@@ -47,6 +55,9 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         try c.encodeIfPresent(claudePath, "claudePath")
         try c.encodeIfPresent(chatModel, "chatModel")
         try c.encodeIfPresent(chatEffort, "chatEffort")
+        try c.encodeIfPresent(defaultVMCores, "defaultVMCores")
+        try c.encodeIfPresent(defaultVMMemoryGB, "defaultVMMemoryGB")
+        try c.encodeIfPresent(defaultVMDiskGB, "defaultVMDiskGB")
         try c.encodeUnknownKeys(unknownKeys, known: Self.knownKeys)
     }
 

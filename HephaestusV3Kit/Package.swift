@@ -62,6 +62,9 @@ let package = Package(
         .target(name: "BuildData", dependencies: ["ExternalTools"]),
         // Chats: their files, the Claude CLI and its stream-json protocol, the chats' processes.
         .target(name: "ChatData", dependencies: ["FileStorage", "ExternalTools", "ProjectData", "MCPKit"]),
+        // Virtual machines: V2's image and machine files, ipsw.me, the download and install of macOS, disk
+        // clones, the Virtualization framework's machines and the guest agent's protocol.
+        .target(name: "MachineData", dependencies: ["FileStorage", "MCPKit", "ProjectData"]),
 
         // Shared vocabulary: projects, tools, routes and the few components every tool uses.
         .target(name: "ToolsFoundation", dependencies: [design], resources: strings, swiftSettings: isolation),
@@ -76,7 +79,7 @@ let package = Package(
         toolTarget("ServiceMapKit", data: ["ClusterData", "BuildData", "MCPKit", "ProjectData", "ExternalTools"]),
         toolTarget("ContractsKit", data: ["ContractData", "MCPKit", "ProjectData"]),
         toolTarget("BuildsKit", data: ["BuildData", "MCPKit", "ProjectData", "ExternalTools"]),
-        toolTarget("MachinesKit"),
+        toolTarget("MachinesKit", data: ["MachineData", "MCPKit", "ProjectData"]),
         // Claude as one more client of the tools: the Chat window and the panel beside each tool.
         toolTarget("ChatKit", data: ["ChatData", "MCPKit"]),
 
@@ -84,7 +87,7 @@ let package = Package(
         .target(
             name: "ToolsScenes",
             dependencies: [
-                "ToolsFoundation", "ProjectData", "FileStorage", "MCPKit", "TicketData", "ChatData", "BuildData", "ContractData", "ClusterData", "ProjectsKit",
+                "ToolsFoundation", "ProjectData", "FileStorage", "MCPKit", "TicketData", "ChatData", "BuildData", "ContractData", "ClusterData", "MachineData", "ProjectsKit",
                 "DashboardsKit", "TicketsKit", "ServiceMapKit", "ContractsKit", "BuildsKit", "MachinesKit", "ChatKit",
                 design,
             ],
@@ -102,6 +105,7 @@ let package = Package(
         testTarget("BuildData", settings: []),
         testTarget("ContractData", settings: []),
         testTarget("ClusterData", settings: []),
+        testTarget("MachineData", settings: []),
         testTarget("ToolsFoundation"),
         testTarget("ProjectsKit"),
         testTarget("DashboardsKit"),

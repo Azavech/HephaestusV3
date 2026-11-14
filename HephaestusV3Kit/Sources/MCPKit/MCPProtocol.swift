@@ -102,6 +102,11 @@ public struct MCPProtocol: Sendable {
         }
         do throws(ToolError) {
             let value = try await operation.run(arguments)
+            // An image result (`type` image, `data` in base 64, `mimeType`) is an image content item.
+            if let object = value.objectValue, object["type"]?.stringValue == "image", let data = object["data"]?.stringValue,
+               let mimeType = object["mimeType"]?.stringValue {
+                return ["content": [["type": "image", "data": .string(data), "mimeType": .string(mimeType)]], "isError": false]
+            }
             return Self.toolResult(value.text, isError: false)
         } catch {
             return Self.toolResult(error.message, isError: true)

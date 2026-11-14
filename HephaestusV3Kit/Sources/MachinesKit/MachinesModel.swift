@@ -1,29 +1,8 @@
 import AZDesign
 import Foundation
+import MachineData
 import Observation
 import ToolsFoundation
-
-/// Where the machines and images come from. The app and the previews use `SampleMachineStore`.
-protocol MachineStore {
-    /// The Mac's virtual machines, in the order the list shows them.
-    func machines() -> [VirtualMachine]
-    /// The system images new machines start from, in the order the list shows them.
-    func images() -> [MachineImage]
-}
-
-/// The sample machines and images, or others for a preview.
-struct SampleMachineStore: MachineStore {
-    private let sampleMachines: [VirtualMachine]
-    private let sampleImages: [MachineImage]
-
-    init(machines: [VirtualMachine] = VirtualMachine.samples, images: [MachineImage] = MachineImage.samples) {
-        sampleMachines = machines
-        sampleImages = images
-    }
-
-    func machines() -> [VirtualMachine] { sampleMachines }
-    func images() -> [MachineImage] { sampleImages }
-}
 
 /// What the Virtual Machines window shows.
 nonisolated enum MachineSelection: Hashable, Sendable {
@@ -49,9 +28,16 @@ final class MachinesModel {
     /// inspector at their default widths, 250 and 300 points, leave the screen 350.
     static let macWidth: CGFloat = 900
 
-    let machines: [VirtualMachine]
-    let images: [MachineImage]
+    let store: any MachineStore
     var selection: MachineSelection?
+    /// The sheet over the window.
+    var sheet: MachineSheet?
+    /// A failed action's alert.
+    var alert: MachineAlert?
+    /// Items an action is under way on: their buttons are disabled meanwhile.
+    private(set) var busy: Set<String> = []
+    /// A machine or image waiting for Delete's confirmation.
+    var pendingDeletion: MachineSelection?
     /// Opened on a machine a route named: an iPhone's layout starts on its page.
     let opensSelection: Bool
 
@@ -66,7 +52,7 @@ final class MachinesModel {
 
     /// The machines, with `focus` (a machine id) selected, or the first machine without one.
     convenience init(focus: String?, store: any MachineStore) {
-        let machines = store.machines()
+        let machines = store.machines
         self.init(
             store: store,
             selection: (focus ?? machines.first?.id).map(MachineSelection.machine),
@@ -75,10 +61,71 @@ final class MachinesModel {
     }
 
     init(store: any MachineStore, selection: MachineSelection?, opensSelection: Bool = false) {
-        machines = store.machines()
-        images = store.images()
+        self.store = store
         self.selection = selection
         self.opensSelection = opensSelection
+    }
+
+    /// The Mac's machines, as the store has them now.
+    var machines: [VirtualMachine] { store.machines }
+    /// The images, as the store has them now.
+    var images: [MachineImage] { store.images }
+
+    func image(_ id: MachineImage.ID?) -> MachineImage? { images.first { $0.id == id } }
+    func machine(_ id: VirtualMachine.ID?) -> VirtualMachine? { machines.first { $0.id == id } }
+
+    // MARK: Actions
+
+    /// Runs an action on an item, its buttons disabled until it ends; a failure shows `title`'s alert.
+    func perform(_ id: String, _ title: String, _ action: @escaping @MainActor () async throws -> Void) {
+        guard !busy.contains(id) else { return }
+        busy.insert(id)
+        Task {
+            defer { busy.remove(id) }
+            do {
+                try await action()
+            } catch {
+                alert = MachineAlert(title: title, message: error.localizedDescription)
+            }
+        }
+    }
+
+    func isBusy(_ id: String) -> Bool { busy.contains(id) }
+
+    func start(_ machine: VirtualMachine) {
+        perform(machine.id, String(localized: "Start failed", bundle: #bundle)) { [store] in
+            if machine.state == .paused { try await store.resume(machine.id) } else { try await store.start(machine.id) }
+        }
+    }
+
+    func stop(_ machine: VirtualMachine) {
+        perform(machine.id, String(localized: "Stop failed", bundle: #bundle)) { [store] in try await store.stop(machine.id) }
+    }
+
+    func pause(_ machine: VirtualMachine) {
+        perform(machine.id, String(localized: "Pause failed", bundle: #bundle)) { [store] in try await store.pause(machine.id) }
+    }
+
+    /// Deletes the item waiting for confirmation; the selection moves to the first machine.
+    func confirmDeletion() {
+        guard let pending = pendingDeletion else { return }
+        pendingDeletion = nil
+        switch pending {
+        case .machine(let id):
+            perform(id, String(localized: "Delete failed", bundle: #bundle)) { [store] in try await store.deleteMachine(id) }
+        case .image(let id):
+            perform(id, String(localized: "Delete failed", bundle: #bundle)) { [store] in try await store.deleteImage(id) }
+        }
+        if selection == pending { selection = machines.first { .machine($0.id) != pending }.map { .machine($0.id) } }
+    }
+
+    /// The failure a machine or setup stopped with, shown once.
+    func showFailures() {
+        guard alert == nil, let (id, message) = store.failures.first else { return }
+        store.clearFailure(id)
+        let name = machine(id)?.name ?? image(id)?.name ?? id
+        alert = MachineAlert(title: String(localized: "\(name) stopped", bundle: #bundle, comment: "Alert title: a virtual machine stopped with a failure"),
+                             message: message)
     }
 
     // MARK: Selection
@@ -161,4 +208,34 @@ extension MachinesModel {
     static func preview(_ selection: MachineSelection?, opensSelection: Bool = false) -> MachinesModel {
         MachinesModel(store: SampleMachineStore(), selection: selection, opensSelection: opensSelection)
     }
+
+    /// The sample machines, opened on `focus` as a route would, for the previews.
+    static func sample(focus: String? = nil) -> MachinesModel {
+        MachinesModel(focus: focus, store: SampleMachineStore())
+    }
+}
+
+/// A sheet of the Virtual Machines window.
+nonisolated enum MachineSheet: Identifiable, Hashable, Sendable {
+    /// New Machine, with an image chosen or not.
+    case newMachine(imageID: MachineImage.ID?)
+    case editMachine(VirtualMachine.ID)
+    case addImage
+    case shell(VirtualMachine.ID)
+
+    var id: String {
+        switch self {
+        case .newMachine(let image): "new.\(image ?? "")"
+        case .editMachine(let id): "edit.\(id)"
+        case .addImage: "addImage"
+        case .shell(let id): "shell.\(id)"
+        }
+    }
+}
+
+/// A failed action: its title and the store's message.
+nonisolated struct MachineAlert: Identifiable, Hashable, Sendable {
+    let id = UUID()
+    let title: String
+    let message: String
 }

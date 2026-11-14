@@ -41,7 +41,7 @@ every window as the `availableTools` environment value, and the menus read it di
 | Builds | The Builds window, its tile, Window ▸ Builds (⌘5), its menu bar button, the Dashboard's Recent Builds widget | Yes |
 | Contracts | The Contracts window, its tile, Window ▸ Contracts (⌘4), its menu bar button, for a service whose folder holds `openapi/contract.yaml` | Yes |
 | Service Map | The Service Map window, its tile, Window ▸ Service Map (⌘3), its menu bar button, the Dashboard's service widgets | Yes |
-| Virtual Machines | Its window | Not yet |
+| Virtual Machines | Its window, Window ▸ Virtual Machines (⌘7), Settings ▸ Virtual Machines | Yes |
 
 Previews and the screenshots of the spec show every tool: the environment value's default is all of them.
 
@@ -129,7 +129,7 @@ replace the items SwiftUI adds for each kind of window, which would open a tool 
 | **New Ticket…** | ⇧⌘N | Tickets | Opens the New Ticket sheet. |
 | **New Chat** | ⇧⌘N | The Chat window | Starts a new chat. |
 | **New Project…** | ⇧⌘N | The Projects window | Opens the [New Project](projects.md#new-project) sheet. |
-| **New Machine…** | ⇧⌘N | Virtual Machines | Not wired yet. |
+| **New Machine…** | ⇧⌘N | Virtual Machines | Opens the [New Machine](virtual-machines.md#new-machine) sheet. |
 | **New Item** | ⇧⌘N | Any other window | Disabled: the window creates nothing. |
 | **Add Existing Folder…** | ⌘O | The Projects window | Opens a folder panel ([Add Existing Folder](projects.md#add-existing-folder)). Disabled in other windows. |
 | **Project Settings…** | ⇧⌘, | A window with a project | Opens the key window's project's [Project Settings](project-settings.md), or brings it forward. Disabled without a project. |
@@ -147,8 +147,7 @@ replace the items SwiftUI adds for each kind of window, which would open a tool 
 | Chat | ⌘6 | Same |
 | Virtual Machines | ⌘7 | Always |
 
-Only the available tools and windows are listed ([Available tools](#available-tools)): today, Projects, the
-Dashboard and Tickets.
+Only the available tools and windows are listed ([Available tools](#available-tools)): today, all of them.
 The tool items act on the **key window's project**: the selection in the Projects window, or a tool
 window's project.
 

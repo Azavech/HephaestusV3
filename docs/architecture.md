@@ -8,7 +8,7 @@ how it behaves, and this page says how the code that draws it is built. [Data](d
 files. It links to those pages instead of repeating them. AZDesign documents its own APIs in its `docs/` folder; this page only names the ones the app
 uses and links to their pages.
 
-It describes the code as it is in `HephaestusV3Kit/Sources` on 13 November 2026. Where the code doesn't yet
+It describes the code as it is in `HephaestusV3Kit/Sources` on 14 November 2026. Where the code doesn't yet
 meet the workspace's rules (`~/Developer/Apple/CLAUDE.md`), [Open issues](#open-issues) lists it.
 
 ## Contents
@@ -18,7 +18,7 @@ meet the workspace's rules (`~/Developer/Apple/CLAUDE.md`), [Open issues](#open-
 3. [The Xcode project](#the-xcode-project)
 4. [The package](#the-package)
 5. [The data targets](#the-data-targets): [FileStorage](#filestorage), [ExternalTools](#externaltools),
-   [ProjectData](#projectdata), [MCPKit](#mcpkit), [TicketData](#ticketdata), [BuildData](#builddata), [ContractData](#contractdata), [ClusterData](#clusterdata), [ChatData](#chatdata), [TextFormats](text.md)
+   [ProjectData](#projectdata), [MCPKit](#mcpkit), [TicketData](#ticketdata), [BuildData](#builddata), [ContractData](#contractdata), [ClusterData](#clusterdata), [ChatData](#chatdata), [MachineData](#machinedata), [TextFormats](text.md); the [guest agent](guest-agent.md)
 6. [ToolsFoundation](#toolsfoundation)
 7. [ToolsScenes](#toolsscenes)
 8. [The tool kits](#the-tool-kits): [ProjectsKit](#projectskit), [DashboardsKit](#dashboardskit),
@@ -75,6 +75,9 @@ HephaestusV3/                    the repository root (GitHub: Azavech, private)
 ├─ HephaestusV3.xcodeproj/       project.xcproj, in Xcode 27.2's JSON format; the app's Package.resolved
 │                                in project.xcworkspace/xcshareddata/swiftpm/
 ├─ HephaestusV3/                 the app target's folder: HephaestusV3App.swift, HephaestusV3.entitlements
+├─ HephaestusAgent/              the guest agent's target: main.swift, which calls GuestAgent.main()
+├─ GuestAgent/                   the guest agent's package, for macOS 12 guests: GuestAgentKit, its tests,
+│                                and install-agent.sh ([Guest agent](guest-agent.md))
 ├─ HephaestusV3Kit/              the local package
 │  ├─ Package.swift
 │  ├─ Package.resolved           pins AZDesign's and Yams's versions for the package's own builds and tests
@@ -106,13 +109,24 @@ has no shared scheme files: Xcode creates the `HephaestusV3` scheme for the targ
 | --- | --- |
 | `configurations` | Debug, Release; `default-configuration` Release |
 | `localizations` | development `en`; supported `Base` |
-| `packages` | one local package, path `HephaestusV3Kit` |
-| `files` | the folder `HephaestusV3` (synchronized), a member of the target `HephaestusV3`; the group Products with `HephaestusV3.app` |
+| `packages` | two local packages, paths `HephaestusV3Kit` and `GuestAgent` |
+| `files` | the folders `HephaestusV3` and `HephaestusAgent` (synchronized), members of their targets; the group Products with `HephaestusV3.app` and `HephaestusAgent` |
 | `last-upgrade`, `last-swift-update` | 27.2 |
 
 **Target `HephaestusV3`**: product type application, product `Products/HephaestusV3.app`, build phases
-compile sources, frameworks and resources. The frameworks phase links the package product `ToolsScenes` of
-`HephaestusV3Kit`. The resources phase is empty: the target has no asset catalog.
+compile sources, frameworks, resources and the script **Embed Guest Agent**, and a dependency on the target
+`HephaestusAgent`. The frameworks phase links the package product `ToolsScenes` of `HephaestusV3Kit`. The
+resources phase is empty: the target has no asset catalog. The script (`/bin/sh`, its inputs and outputs declared
+for the user script sandbox) copies `$(BUILT_PRODUCTS_DIR)/HephaestusAgent` to `Contents/Helpers/HephaestusAgent`
+and `$(SRCROOT)/GuestAgent/install-agent.sh` to `Contents/Resources/install-agent.sh`; the app's signature seals
+them. (The JSON project format's copy-files phase needs a reference syntax Xcode doesn't document, so a script does
+the copy.)
+
+**Target `HephaestusAgent`**: product type tool, product `Products/HephaestusAgent`, build phases compile sources
+and frameworks; the frameworks phase links the package product `GuestAgentKit` of `GuestAgent`. Settings: `ARCHS`
+arm64, `MACOSX_DEPLOYMENT_TARGET` 12.0, `CODE_SIGN_STYLE` Automatic, `DEVELOPMENT_TEAM` USWJAJULN9,
+`ENABLE_HARDENED_RUNTIME` YES, `PRODUCT_BUNDLE_IDENTIFIER` `fr.azavech.hephaestusv3.agent`, `SKIP_INSTALL` YES,
+`SWIFT_VERSION` 6.0, `SDKROOT` macosx.
 
 | Build setting | Value | Why it matters |
 | --- | --- | --- |
@@ -122,7 +136,7 @@ compile sources, frameworks and resources. The frameworks phase links the packag
 | `GENERATE_INFOPLIST_FILE` | `YES` | No Info.plist file. |
 | `DEVELOPMENT_TEAM` | `USWJAJULN9` | The only team allowed (also set at project level). Never another. |
 | `CODE_SIGN_STYLE` | `Automatic` | Xcode makes the development profile, which carries the App Group. |
-| `CODE_SIGN_ENTITLEMENTS` | `HephaestusV3/HephaestusV3.entitlements` | The App Group. |
+| `CODE_SIGN_ENTITLEMENTS` | `HephaestusV3/HephaestusV3.entitlements` | The App Group and virtualization. |
 | `REGISTER_APP_GROUPS` | `YES` | Xcode registers the App Group with the team when it makes the profile. |
 | `ENABLE_APP_SANDBOX` | `NO` | The tools read project folders anywhere and run `git`, `ssh`, `kubectl` and, later, `gh` and `claude` with the login shell's environment: the owner turned the sandbox off. |
 | `ENABLE_HARDENED_RUNTIME` | `YES` | Needed for Developer ID and notarization. |
@@ -144,9 +158,13 @@ DEBUG`, `ENABLE_TESTABILITY = YES`, `ONLY_ACTIVE_ARCH = YES`, `DEBUG_INFORMATION
 `SWIFT_COMPILATION_MODE = wholemodule`, `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`,
 `ENABLE_NS_ASSERTIONS = NO`. The remaining settings are Xcode's template set of Clang and GCC warnings.
 
-**Entitlements**, `HephaestusV3/HephaestusV3.entitlements`: only `com.apple.security.application-groups` with
-the one group `group.fr.azavech.hephaestusv3`, whose container is the app's data folder ([Data › Data
-folder](data.md#data-folder)). The signed app also carries what Xcode adds: the application identifier
+### Entitlements
+
+`HephaestusV3/HephaestusV3.entitlements`: `com.apple.security.application-groups` with the one group
+`group.fr.azavech.hephaestusv3`, whose container is the app's data folder ([Data › Data folder](data.md#data-folder)),
+and `com.apple.security.virtualization`, which the Virtualization framework needs to run the virtual machines
+([Data › Virtual machines](data.md#virtual-machines)); the team's profile carries both, the capability added when
+the owner's Xcode refreshed it. The signed app also carries what Xcode adds: the application identifier
 `USWJAJULN9.fr.azavech.hephaestusv3`, the team identifier, and `get-task-allow` in Debug. The synchronized
 folder doesn't copy the entitlements file into the app.
 
@@ -200,6 +218,7 @@ Shared values in the manifest:
 | `BuildData` | gh's runs, jobs, logs and releases, and release downloads. | ExternalTools | `.target(name:, dependencies:)` |
 | `ContractData` | OpenAPI contracts, `$ref`, samples, requests, the HTTP client, stored values. | FileStorage, Yams | `.target(name:, dependencies:)` |
 | `ClusterData` | kubectl, Argo CD, port forwards, the service graph, Jaeger's traces. | ExternalTools, MCPKit, BuildData | `.target(name:, dependencies:)` |
+| `MachineData` | The virtual machines: V2's image and machine files, ipsw.me, the IPSW download and the install, disk clones and growth, the Virtualization framework's machines, the guest agent's protocol, the machine host. | FileStorage, MCPKit, ProjectData | `.target(name:, dependencies:)` |
 | `TextFormats` | Markdown to a block model and syntax highlighting, from HephaestusV2 without its markers ([Text](text.md)). | swift-markdown | `.target(name:, dependencies:)` |
 | `ToolsFoundation` | Shared vocabulary: projects, tools, routes, chat vocabulary, the Dashboard model, `ProjectIcon`. | AZDesign | `.target` |
 | `ProjectsKit` | The project selector: the Projects window, the project switcher, the menu bar panel; New Project, Project Settings, Settings ▸ Projects; the mapping of the app's projects; the project tools of the MCP server. | ToolsFoundation, AZDesign, AZDesignCode, ProjectData, ExternalTools, MCPKit | `toolTarget(_:data:)` |
@@ -208,9 +227,9 @@ Shared values in the manifest:
 | `ServiceMapKit` | The Service Map and its graph; the service widgets; the Service Map reader. | same | `toolTarget` |
 | `ContractsKit` | Contracts and the request builder; the contracts reader. | same | `toolTarget` |
 | `BuildsKit` | Builds; the Recent Builds widget; the builds reader. | same | `toolTarget` |
-| `MachinesKit` | The Virtual Machines window. | same | `toolTarget` |
+| `MachinesKit` | The Virtual Machines window, Settings ▸ Virtual Machines, the `vm_` tools. | same, plus MachineData, MCPKit, ProjectData | `toolTarget(data:)` |
 | `ChatKit` | The Chat window, the chat panel, Settings ▸ Chat, the shared chat store. | same | `toolTarget` |
-| `ToolsScenes` | Scenes, menu commands, route handling, the app's data (`AppData`), the MCP server's tools (`AppTools`) and Settings ▸ MCP. The only target that knows every tool. | ToolsFoundation, ProjectData, FileStorage, MCPKit, ProjectsKit, DashboardsKit, TicketsKit, ServiceMapKit, ContractsKit, BuildsKit, MachinesKit, ChatKit, AZDesign | `.target` |
+| `ToolsScenes` | Scenes, menu commands, route handling, the app's data (`AppData`), the MCP server's tools (`AppTools`) and Settings ▸ MCP. The only target that knows every tool. | ToolsFoundation, ProjectData, FileStorage, MCPKit, ProjectsKit, DashboardsKit, TicketsKit, ServiceMapKit, ContractsKit, BuildsKit, MachinesKit, ChatKit, the data targets, AZDesign | `.target` |
 
 Every UI target has `Localizable.xcstrings` as its only resource; the data targets have none, since their
 messages are technical details in English under a window's localized sentence. SwiftPM builds it into the bundle
@@ -219,7 +238,8 @@ messages are technical details in English under a window's localized sentence. S
 **Test targets**: `FileStorageTests`, `ExternalToolsTests`, `ProjectDataTests` (with the resource
 `.copy("Fixtures")`), `MCPKitTests`, `ToolsFoundationTests`, `ProjectsKitTests`, `DashboardsKitTests`, `TicketsKitTests`,
 `ServiceMapKitTests`, `ContractsKitTests`, `BuildsKitTests`, `MachinesKitTests`, `ChatKitTests`,
-`ToolsScenesTests`. Each depends only on its target, uses Swift Testing and `@testable import`.
+`ToolsScenesTests`, and `TicketDataTests`, `TextFormatsTests`, `ChatDataTests`, `BuildDataTests`, `ContractDataTests`,
+`ClusterDataTests`, `MachineDataTests`. The guest agent's package has its own, `GuestAgentKitTests`. Each depends only on its target, uses Swift Testing and `@testable import`.
 
 **Dependency rules**
 
@@ -604,6 +624,30 @@ ExternalTools, ProjectData and MCPKit. Source files in `Sources/ChatData/`:
 - **Testing.** Tests pass a `FakeLauncher` whose connections replay V2's captures (`ChatDataTests/Fixtures`)
   and record the lines written, and a runner that answers `--version`: no test starts Claude.
 
+### MachineData
+
+The virtual machines of [Data › Virtual machines](data.md#virtual-machines). No UI (it imports Virtualization),
+no default isolation; `MachineHost`, `MachineRun`, `MachineConfiguration`, `MachineInstaller`, the
+`GuestMachine` and `MachineBackend` protocols and their system implementations are `@MainActor`, as the
+framework's machines are. Depends on FileStorage, MCPKit (`JSONValue`) and ProjectData (`DataFolder`, the
+settings). Source files in `Sources/MachineData/`:
+
+| File | Contents |
+| --- | --- |
+| `MachineFiles.swift` | `ImageFile` (`State`), `MachineFile`, `MachineFolder` (the files of a folder, `diskGB`, `bytesOnDisk`), `MachineLibrary` (`images`, `machines`, `readImages`, `readMachines`, `write`, `createMachine`, `clone`, `v2Folder`, `importV2`) |
+| `MacOSVersions.swift` | `MacOSVersion`, `MacOSVersions` (`fetch`, `parse`, `compare`, `ListError`) |
+| `GuestDisk.swift` | V2's `GuestDisk` (`grow`, `growContainerCommand`), `PartitionTable`, `RecoveryMove`, `CRC32` |
+| `MachineVirtualization.swift` | `MachineFailure`, `MachineConfiguration` (`agentPort`, `isSupported`, `platform`, `make`, `createDisk`, `newMACAddress`), `MachineInstaller.install`, `IPSWDownload`, `DHCPLeases` |
+| `GuestAgent.swift` | `GuestAgentFrame`, `GuestAgentError`, `GuestAgentStatus`, `GuestAgentResponse`, `GuestAgentConnection` (`open`, `request`, `refreshStatus`, `shutDownGuest`, `close`) |
+| `GuestMachine.swift` | `GuestMachineEvent`, `GuestMachine`, `MachineBackend`, `SystemMachineBackend`, `MacGuestMachine` (the framework's machine, its socket listener, start and stop in order, pause, resume), `GuestTools` (`bundled(in:)`, `installCommand`, `fill`) |
+| `MachineHost.swift` | `MachineError` (`Kind`), `MachineDefaults` (ranges from this Mac), `MachineRun` (`State`, `agent`, `address`, `isRestarting`), `ShellResult`, `MachineHost` (`load`, `loadVersions`, `addImage`, `setAccount`, `deleteImage`, `startSetup`, `restartInRecovery`, `finishSetup`, `stopSetup`, `createMachine`, `start`, `stop`, `pause`, `resume`, `updateMachine`, `deleteMachine`, `setDefaults`, `stopAll`, `agentRequest`, `shell`, `screenshot`) |
+| `GuestFiles.swift` | `GuestShell` (`quote`, `path`, `isGuestPath`), `MachineHost.copyIn`, `copyOut` (8 MiB chunks, tar for folders) |
+
+`MachineHost` is `@Observable`: `images`, `machines`, `progress`, `downloadSizes`, `runs`, `setups`,
+`installing`, `versions`, `defaults`, `failures`. `AppData` makes one with the data folder and the system backend,
+loads it after the projects, and stops everything at quit. Tests pass a `FakeBackend` making `FakeGuest`s: no test
+downloads, installs or starts a machine.
+
 ## ToolsFoundation
 
 The vocabulary every target speaks. Its data types are `nonisolated public` value types, `Hashable` and
@@ -873,17 +917,20 @@ mapping, Mac widths) and `WindowDirectory.swift` (window reuse). Its only public
 | Projects | `Window(Text("Projects", bundle: #bundle), id:)` | `projects` | `ProjectsRootView(directory: appData.directory, session: appData.session, selection: $selectedProjectID)`, with `focusedSceneValue(\.activeProject, …)` and `registersWindow(.projects, projectID: selectedProjectID)` | 1040 × 680 | Opens |
 | Dashboard, Tickets, Service Map, Contracts, Builds, Chat | `WindowGroup(Text(tool.title), id: tool.windowID, for: ToolWindowValue.self)` | the tool's `windowID` | `ToolWindowRoot(tool:value:)` | 1240 × 820, 1180 × 760, 1320 × 840, 1120 × 740, 1180 × 720, 1180 × 780 | `.defaultLaunchBehavior(.suppressed)` |
 | Project Settings | `WindowGroup(Text("Project Settings", bundle: #bundle), id:, for: Project.ID.self)` | `projectSettings` | `ProjectSettingsWindow(session: appData.session, projectID:)`, with `registersWindow(.projectSettings, projectID:)` | 600 × 720 | Suppressed |
-| Virtual Machines | `Window(Text("Virtual Machines", bundle: #bundle), id:)` | `machines` | `MachinesRootView(focus: machineFocus)`, with `.environment(\.focusRequest, machineFocusRequest)` and `registersWindow(.machines, projectID: nil)` | 1100 × 760 | Suppressed |
+| Virtual Machines | `Window(Text("Virtual Machines", bundle: #bundle), id:)` | `machines` | `MachinesRootView(focus: machineFocus, store: appData.machineStore)`, with `.environment(\.focusRequest, machineFocusRequest)` and `registersWindow(.machines, projectID: nil)` | 1100 × 760 | Suppressed |
 | Menu bar | `MenuBarExtra(String(localized: "Open Project"), systemImage: "wrench.and.screwdriver")`, `.menuBarExtraStyle(.window)` | — | `ProjectLauncher(projects: appData.directory.projects)` | 360 × 460 (the panel's own) | Always present |
-| Settings | `Settings` | — | `TabView`: `ProjectsSettingsPane(session: appData.session)` labeled Projects (`folder`), then `ChatSettingsView()` labeled with Chat's title and symbol while Chat is available; `.frame(width: 520, height: 440)`, `.tint(.accent)` | 520 × 440 | — |
+| Settings | `Settings` | — | `TabView`: `ProjectsSettingsPane(session: appData.session)` labeled Projects (`folder`), `MCPSettingsPane(appData:)` labeled MCP, `MachineSettingsView(store: appData.machineStore)` labeled Virtual Machines (`desktopcomputer`) while the window is available, then `ChatSettingsView()` labeled with Chat's title and symbol while Chat is available; `.frame(width: 520, height: 440)`, `.tint(.accent)` | 520 × 440 | — |
 
 **`AppData`** (`AppData.swift`, `@MainActor @Observable`) is the app's data, created once as ToolsScenes'
 `@State`: `session = ProjectSession(dataFolder: DataFolder.resolve())` and `directory =
 ProjectDirectory(projects: [], state: .loading)`. `start()` runs once, from the first `RouteHost`'s `.task`:
 it starts following the session (`withObservationTracking { directory.update(from: session) }`, registered
 again after each change), adds an observer of `NSApplication.willTerminateNotification` that calls
-`SystemProcessRunner.shared.terminateAll()`, and awaits `session.start()`. `AppData.availableTools` (empty
-today) and `AppData.machinesAvailable` (false) say which tools and windows have come over from V2
+`SystemProcessRunner.shared.terminateAll()`, the chats' `stopAll()` and the machine host's `stopAll()`, awaits
+`session.start()`, then loads the machine host (`machineHost.load()`). `AppData` also holds `machineHost =
+MachineHost(dataFolder: DataFolder.resolve())` and `machineStore = LiveMachineStore(host:)`, and gives the host to
+the MCP registry's `vm_` tools. `AppData.availableTools` (every tool) and `AppData.machinesAvailable` (true) say
+which tools and windows have come over from V2
 ([Navigation › Available tools](ui/navigation.md#available-tools)): the Window menu lists only those, and
 `RouteHost` gives every view `\.availableTools` and `\.projectDirectory`. The tool windows read their project
 from the directory (`directory.project(value.projectID)`, `directory.tree.path(of:)`, the switcher's
@@ -1678,36 +1725,38 @@ Spec: [Virtual Machines](ui/virtual-machines.md). Not a tool: one window for the
 
 | File | Contents |
 | --- | --- |
-| `Machines.swift` | `VirtualMachine`, `MachineSnapshot`, `MachineImage`, `MachineStartAction`, their appearance, `StorageSize`, the samples |
-| `MachinesModel.swift` | `MachineStore`, `SampleMachineStore`, `MachineSelection`, `MachineDetailContent`, `MachinesModel` |
-| `MachinesRootView.swift` | `MachinesRootView`, `MachineList`, `MachineRow`, `ImageRow`, `pageName(_:layout:)` |
+| `Machines.swift` | `VirtualMachine` (`State`: `starting`, `running`, `paused`, `stopping`, `stopped`), `MachineSnapshot`, `MachineImage` (`State`: `ready`, `downloading`, `installing`, `needsSetup`, `failed`), `ImageSetup` (`canFinish`), `MachineStartAction`, their appearance, `StorageSize`, the samples |
+| `MachineStore.swift` | `MachineStore`, the `machineStore` environment entry, `LiveMachineStore` (over `MachineHost`), `SampleMachineStore` (`@Observable`, actions in memory) |
+| `MachinesModel.swift` | `MachineSelection`, `MachineDetailContent`, `MachinesModel`, `MachineSheet`, `MachineAlert` |
+| `MachinesRootView.swift` | `MachinesRootView` (sheets, alerts, the deletion dialog), `MachineList`, `MachineRow`, `ImageRow`, `pageName(_:layout:)` |
 | `MachineDetailView.swift` | `MachineDetail`, `MachineInfo`, `SnapshotRow`, `MachineScreen`, `DesktopStandIn`, `ConsoleStandIn` |
-| `ImageDetailView.swift` | `ImageDetail` |
+| `ImageDetailView.swift` | `ImageDetail`, `GuestAccountSection`, `ImageSetupView` |
+| `MachineScreenView.swift` | `VirtualMachineScreen` (`VZVirtualMachineView`), V2's `GuestKeyStroke`, `KeyboardLayoutKeys`, `GuestKeyboard` (Type Password), `TypePasswordButton` |
+| `MachineSheets.swift` | `NewMachineSheet`, `EditMachineSheet`, `AddImageSheet`, `ShellSheet` |
+| `MachineSettingsView.swift` | `MachineSettingsView` (Settings ▸ Virtual Machines) |
+| `MachineTools.swift` | `MachineTools.operations(host:)`, the sixteen `vm_` tools ([MCP](mcp.md#tools)) |
 
-**Public API**: `MachinesRootView(focus: String? = nil)`.
+**Public API**: `MachinesRootView(focus:store:)`, `LiveMachineStore(host:)`, `MachineSettingsView(store:)`,
+`MachineTools.operations(host:)`, `EnvironmentValues.machineStore`.
 
-**Types.** `VirtualMachine`: `id`, `name`, `system` (`macOS`, `linux`), `systemVersion`, `state` (`running`,
-`paused`, `stopped`), `cores`, `memoryGB`, `diskGB`, `address: String?`, `projectID: Project.ID?`, `cpuUsage`
-(0–1), `snapshots`. `MachineImage`: `id`, `name`, `system`, `sizeGB`, `state` (`ready`,
-`downloading(progress:)`). `StorageSize.formatted(gigabytes:fractionDigits:locale:)` uses a unit formatter.
-Samples: four machines (`orders-sandbox` first) and the images.
+**Store.** `MachineStore` (`AnyObject`, main actor): `machines`, `images`, `offersSnapshots`, `defaults`,
+`canStartAnother`, `failures`, `clearFailure`, and the actions, each `throws(MachineError)`: `versions`,
+`addImage`, `deleteImage`, `setAccount`, `password(ofImage:)`, `startSetup`, `restartInRecovery`, `finishSetup`,
+`stopSetup`, `createMachine`, `start`, `stop`, `pause`, `resume`, `updateMachine`, `deleteMachine`, `setDefaults`,
+`shell`, `screen(_:)` (the framework's machine for the screen), `minimumDiskGB(ofImage:)`. `LiveMachineStore` maps
+the host's files and runs to the window's values at each read, so the window follows the observable host.
 
-**Store.** `protocol MachineStore { func machines() -> [VirtualMachine]; func images() -> [MachineImage] }`;
-`SampleMachineStore(machines: = VirtualMachine.samples, images: = MachineImage.samples)`.
-
-**`MachinesModel`**: `macWidth = 900`, `machines`, `images`, `selection: MachineSelection?` (`.machine(id)`,
-`.image(id)`), `opensSelection`, `layout` (private set, `.mac` until measured), `showsSidebar`,
-`showsInspector` (private set), `showsInspectorSheet`. `convenience init(focus:store:)` selects the focus,
-else the first machine. `select(focus:)`, `content` and `content(of:) -> MachineDetailContent` (`.machine`,
-`.image`, `.machineNotFound(id)`, `.nothing`), `resize(to:)`, `apply(_:)` (a new layout shows its panes
-afresh), `isInspectorShown`, `toggleInspector()`, `setInspectorShown(_:)` and `setSidebarShown(_:)` (an iPad's
-shows one side column at a time).
+**`MachinesModel`**: `macWidth = 900`, `store`, `machines` and `images` (read from the store), `selection`,
+`sheet`, `alert`, `pendingDeletion`, `busy` (private set), `opensSelection`, the layout state. `perform(_:_:_:)` runs
+an action with its item marked busy and turns a failure into an alert; `start`, `stop`, `pause`,
+`confirmDeletion`, `showFailures`. `convenience init(focus:store:)` selects the focus, else the first machine.
+`select(focus:)`, `content`, `content(of:)`, `resize(to:)`, `apply(_:)`, `isInspectorShown`, `toggleInspector()`,
+`setInspectorShown(_:)`, `setSidebarShown(_:)`.
 
 **Root view.** It measures itself with `adaptiveWindow` (minimum 390 × 420) and passes each new layout to
 `model.apply`. `NavigationSplitView` (sidebar 220–320) or a `PhoneStack`. The inspector toggle uses
-`withMotion(.panel)`. ⇧⌘N is "New Machine…", with an empty action. A machine's project opens `.project(id)`.
-Routes reach it as described under [ToolsScenes](#routehost-and-route-handling): the initial `focus`, then
-`FocusRequest` values through `onFocusRequest`.
+`withMotion(.panel)`. ⇧⌘N opens New Machine. A machine's project opens `.project(id)`. Routes reach it as
+described under [ToolsScenes](#routehost-and-route-handling).
 
 ## Cross-cutting patterns
 
@@ -1875,7 +1924,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 529 tests). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 563 tests, and 5 in the guest agent's package). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
@@ -1899,7 +1948,9 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ServiceMapKitTests | Focus formats, Service Map model, Service Map reader, Service widgets, Formats | Focus parsing; opening environment and view; history, Back, Show All; taps; repeated routes; missing items; chat subject; summary; request order and sorting; graph contents; logs; reader per environment, details and suggestions; widget readings; durations, literals, stable layout. Uses `MockServiceMapStore`. |
 | ContractsKitTests | Opening, Route focus, Filter, Request, Responses, Reader and chat, Sample contracts | Opening selection and environment; repeated routes, filters cleared, drafts kept; sections and matching; examples, URLs, draft keeping, Send; duration formats; reader sentences and suggestions; sample contracts. Uses `MockContractStore`. |
 | BuildsKitTests | Focus, Model, Reader, Samples and logs, Recent Builds widget | Focus parsing; default selection, focus by mode, repeated routes, steps, mode selections, chat subject; reader text and owner repository; default steps, open jobs, log line kinds, sample releases; recent runs within 1–20. Uses `MockBuildStore`. |
-| MachinesKitTests | Machines window: selection and routes, Machines window: layouts, Machines: states and sizes | Opening and route selection, unknown machines, images; Mac width, layout by width, side columns per layout; actions per state; size and download formats; sample ids. Uses `MockMachineStore`. |
+| MachinesKitTests | Machines window: selection and routes, Machines window: layouts, Machines: states and sizes, Machines: actions | Opening and route selection, unknown machines, images; Mac width, layout by width, side columns per layout; actions per state, starting and shutting down; size and download formats; sample ids; start, pause, resume and stop through the store, the limit of 2 and its alert, deletions (an image's machines too), a failure shown once, the guest account, Finish Setup's condition. Uses a sample store (`MockMachineStore`). |
+| MachineDataTests | Virtual machine files, Guest disks, macOS versions, Guest addresses, Guest agent protocol, Machine host | V2's image.yml and vm.yml written byte for byte, earlier keys, lowercase ids, skipped folders and Claude's machines; a machine's clone; the import once; V2's disk growth (the recovery container moved, both tables, the MBR) and other layouts; ipsw.me's list and order; DHCP leases; frames and a connection over a socket pair; the host with a fake backend: an image's download, install and failures, the interrupted image, the setup and Finish Setup's SIP rule, the missing agent, New Machine's checks and the limit of 2, stop through the agent or at once, edits and the grown disk's container, a machine stopping by itself, deletions, the guest account, the defaults. |
+| GuestAgentKitTests (GuestAgent package) | Guest agent | The hello and status, SIP's parsing, exec (outputs, timeout, truncation, params), the file methods, unknown methods and V2's setEnv gone. Over a socket pair, `/bin/sh -c`, never as root. |
 | ChatKitTests | Chat store, Sample engine, Chat panel, Chat window, Chat wording | Starting and continuing conversations, empty messages, ordering, decisions; mentions and reads; attachments, sending, New Chat, the Chat window route, suggestions; window selection, grouping, new chat, sending; approval sentences, suggestion wording and identifiers, references, unique sample ids; the live store's turns from a transcript (users' items, calls worded by their tools, failed calls, cards and their channels, notices, streamed text); the gate's rules. Uses `MockChatEngine`, and a chat session without projects. |
 
 ToolsScenesTests check that docs/mcp.md lists exactly the registered tools, in order, with their
@@ -1919,7 +1970,7 @@ Where the code doesn't yet meet the workspace's rules, or the architecture is kn
   into it yet. When they come, each becomes a `Route` handled by `RouteHost`. Nothing sends `.machine(id)` yet.
 - **Sample stores are hard-wired in the hidden tools.** Their root views' public initializers build sample
   stores, and the readers read sample stores directly.
-- **Not wired yet**: New Machine, Contracts' Send, Builds' Refresh, the
+- **Not wired yet**: Contracts' Send, Builds' Refresh, the
   Service Map's time window and Live. The chat's permissions are stored but no engine reads them. Each
   window page lists its own.
 - **ToolsScenes has one suite**, the MCP documentation's; its scenes, routes, `WindowDirectory` and menus are

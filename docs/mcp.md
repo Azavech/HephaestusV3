@@ -150,6 +150,8 @@ insignificant white space, keys sorted.
 
 - `content` holds exactly one text item: the operation's result as JSON, keys sorted, slashes not escaped;
   `{}` for an empty result. Absent optional values are left out.
+- A result that is an image (`vm_screenshot`) is one image item instead: `{"type": "image", "data": <base 64>,
+  "mimeType": "image/png"}`. An operation returns it as a JSON object with `type` `image`, `data` and `mimeType`.
 - On failure, the text is the error's message alone, with `isError: true`. Every error has a code, for the
   logs: `notFound`, `invalid`, `conflict`, `forbidden`, `unavailable` or `internal`.
 
@@ -191,6 +193,7 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 | `renameChats` | `rename_chat` | runs | runs |
 | `startBuilds` | `rerun_run`, `cancel_run` | runs | Start builds: Ask First shows a card and waits; Never (the default) refuses |
 | `operateClusters` | `k8s_restart`, `k8s_scale`, `k8s_port_forward`, `k8s_stop_port_forward`, `argocd_sync` | runs | Operate deployments, as Change tickets |
+| `operateMachines` | `vm_set_account`, `vm_create`, `vm_start`, `vm_stop`, `vm_shell`, `vm_click`, `vm_drag`, `vm_scroll`, `vm_type`, `vm_key`, `vm_copy_in`, `vm_copy_out` | runs | Operate virtual machines, as Change tickets |
 | `callAPIs` | `api_call` | runs | an `operation` starting `GET ` or `HEAD ` runs; another follows Call APIs that change data, as Change tickets |
 | `changeTickets` | `create_ticket`, `update_ticket`, `set_ticket_status`, `add_comment`, `update_comment`, the bundle tools but `delete_bundle` | runs | Change tickets: Always runs; Ask First shows a card and waits; Never refuses |
 | `deleteTickets` | `delete_ticket`, `delete_comment`, `remove_attachment`, `delete_bundle` | runs | Change tickets Never refuses; otherwise a card, even under Always |
@@ -203,9 +206,10 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
   tickets from chats (Settings ▸ Chat).`, `The user doesn't let Claude change projects from chats (Settings ▸
   Chat).`, `The user doesn't let Claude start or cancel builds from chats (Settings ▸ Chat).`, `The user doesn't let
   Claude call APIs that change data from chats (Settings ▸ Chat).`, `The user doesn't let Claude operate deployments
-  from chats (Settings ▸ Chat).`, `The user didn't allow this call.`
+  from chats (Settings ▸ Chat).`, `The user doesn't let Claude operate virtual machines from chats (Settings ▸ Chat).`,
+  `The user didn't allow this call.`
 - The permissions are the user defaults `chat.ticketChanges` and `chat.projectChanges`: `never`, `askFirst`
-  (the default) or `always`; `chat.apiCalls` and `chat.clusterChanges`, the same; and `chat.buildStarts`: `never` (the default) or
+  (the default) or `always`; `chat.apiCalls`, `chat.clusterChanges` and `chat.machineChanges`, the same; and `chat.buildStarts`: `never` (the default) or
   `askFirst`.
 - The CLI runs every tool of the server without asking (`--allowedTools`): the gate is where the user's
   permissions hold, whatever the CLI's own settings say.
@@ -280,6 +284,8 @@ a project: Claude may read and change every project of this Mac, as the user can
 | `api_call` | ContractsKit | callAPIs | the contract's request, the app's HTTP client |
 | `k8s_status`, `k8s_logs`, `k8s_events`, `argocd_status`, `get_service_map`, `get_request` | ServiceMapKit | read | kubectl, Jaeger ([Data › Clusters](data.md#clusters)) |
 | `k8s_restart`, `k8s_scale`, `k8s_port_forward`, `k8s_stop_port_forward`, `argocd_sync` | ServiceMapKit | operateClusters | kubectl |
+| `vm_list_images`, `vm_list`, `vm_screenshot`, `vm_ui_tree` | MachinesKit | read | the machine host, the guest agent ([Data › Virtual machines](data.md#virtual-machines)) |
+| `vm_set_account`, `vm_create`, `vm_start`, `vm_stop`, `vm_shell`, `vm_click`, `vm_drag`, `vm_scroll`, `vm_type`, `vm_key`, `vm_copy_in`, `vm_copy_out` | MachinesKit | operateMachines | the machine host, the guest agent ([Guest agent](guest-agent.md)) |
 | `open_in_app` | ToolsScenes | read | a route ([Navigation › Routes](ui/navigation.md#routes)) |
 
 A project's JSON (`get_project`, `create_project`, `update_project`): `id`, `name`, `type` (`none`,
@@ -304,6 +310,14 @@ files on this Mac: absolute, `~/`, or relative to the project's folder. Errors m
 rule, `invalid`; an unknown project, ticket, bundle, comment or attachment, `notFound`; a change Claude may not
 make, `forbidden`; a file that can't be moved to the Trash, `unavailable`; a file that can't be written,
 `internal`. V2's `implement_ticket` and `implement_bundle` aren't brought over.
+
+**Virtual machines.** The `vm_` tools are the Virtual Machines window's actions, on the user's machines: a
+machine Claude creates is the user's, kept and listed as any other (V2's machines that Claude started and deleted
+at their stop aren't brought over, nor the setup tools `vm_setup_recovery` and `vm_setup_finish`: the setup is
+the user's, in the window). Errors map from `MachineError`'s kinds, with V2's messages ([Data › Virtual
+machines](data.md#virtual-machines)): `invalid`, `notFound`, `conflict`, `unavailable`, `internal`. The tools that
+act in a guest need the machine running and its guest agent connected ([Guest agent](guest-agent.md)). No result
+carries the guest account's password: Type Password in the window types it.
 
 ### list_projects
 
@@ -2000,6 +2014,633 @@ Input schema:
     "projectID",
     "environment",
     "requestID"
+  ],
+  "type" : "object"
+}
+```
+
+### vm_list_images
+
+- **Calls:** the machine host's images ([Data › Virtual machines](data.md#virtual-machines)).
+- **Result:** an array, each image's `id`, `version`, `build`, `state`, `progress` (0 to 1, while it downloads or installs), `failure`, `userName`, `hasPassword`, `settingUp`. The password itself is never returned.
+- **Errors:** none.
+
+Description:
+
+```text
+Returns the macOS images new virtual machines start from: id, version, build, state (downloading, installing, needsSetup, ready or failed), progress while it downloads or installs, the failure, and the guest account's user name. Only a ready image makes machines.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+
+  },
+  "type" : "object"
+}
+```
+
+### vm_list
+
+- **Calls:** the machine host's machines and the ones that run.
+- **Result:** an array, each machine's `id`, `name`, `imageID`, `version`, `state`, `cores`, `memoryGB`, `diskGB`, `address`, `agentConnected`, `startedAt`.
+- **Errors:** none.
+
+Description:
+
+```text
+Returns the virtual machines: id, name, imageID, macOS version, state (stopped, starting, running, paused or stopping), cores, memoryGB, diskGB, the guest's IP address, whether its guest agent is connected, and when it started. Shell, screen, input and file tools need it running with its agent connected.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+
+  },
+  "type" : "object"
+}
+```
+
+### vm_set_account
+
+- **Calls:** `MachineHost.setAccount`.
+- **Result:** `Stored.`
+- **Errors:** an unknown image (`notFound`); a value with a line break (`invalid`, `userName: use one line.`, `password: use one line.`).
+
+Description:
+
+```text
+Stores the guest account of an image, the one created in its Setup Assistant: an absent value keeps the stored one, an empty one removes it.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "imageID" : {
+      "description" : "An image's id, as vm_list_images gives it.",
+      "type" : "string"
+    },
+    "password" : {
+      "description" : "The account's password.",
+      "type" : "string"
+    },
+    "userName" : {
+      "description" : "The account's short name.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "imageID"
+  ],
+  "type" : "object"
+}
+```
+
+### vm_create
+
+- **Calls:** `MachineHost.createMachine`, then its start, as New Machine does.
+- **Result:** `id`, `name`.
+- **Errors:** V2's checks, in order: no Apple silicon (`unavailable`), the name (`invalid`, `name: use 1 to 100 characters on one line.`), an unknown image (`notFound`) or one not Ready (`conflict`), a value out of its range (`invalid`, `<param>: use a number from <min> to <max>.`), 2 already running (`conflict`); a start that fails (`unavailable`, the framework's message), the machine then staying, stopped.
+
+Description:
+
+```text
+Creates a virtual machine from a ready image and starts it. Its disk is a clone of the image's, grown to diskGB; cores, memoryGB and diskGB default to Settings ▸ Virtual Machines. At most 2 machines run at once.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "cores" : {
+      "description" : "Processor cores.",
+      "minimum" : 2,
+      "type" : "integer"
+    },
+    "diskGB" : {
+      "description" : "Disk size, in GB.",
+      "maximum" : 2048,
+      "minimum" : 32,
+      "type" : "integer"
+    },
+    "imageID" : {
+      "description" : "A ready image's id, as vm_list_images gives it.",
+      "type" : "string"
+    },
+    "memoryGB" : {
+      "description" : "Memory, in GB.",
+      "minimum" : 4,
+      "type" : "integer"
+    },
+    "name" : {
+      "description" : "The machine's name, 1 to 100 characters.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "name",
+    "imageID"
+  ],
+  "type" : "object"
+}
+```
+
+### vm_start
+
+- **Calls:** `MachineHost.resume` for a paused machine, else `MachineHost.start`.
+- **Result:** `Started.`
+- **Errors:** an unknown machine (`notFound`), one that runs (`conflict`), 2 already running (`conflict`), a start that fails (`unavailable`).
+
+Description:
+
+```text
+Starts a stopped virtual machine, or resumes a paused one. At most 2 machines run at once.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "id" : {
+      "description" : "A virtual machine's id, as vm_list gives it.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "id"
+  ],
+  "type" : "object"
+}
+```
+
+### vm_stop
+
+- **Calls:** `MachineHost.stop`.
+- **Result:** `Stopped.`
+- **Errors:** a machine that doesn't run (`conflict`).
+
+Description:
+
+```text
+Shuts a virtual machine down through its guest agent, waiting up to 60 seconds, or stops it at once without the agent. The machine keeps its disk.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "id" : {
+      "description" : "A virtual machine's id, as vm_list gives it.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "id"
+  ],
+  "type" : "object"
+}
+```
+
+### vm_shell
+
+- **Calls:** the agent's `exec` ([Guest agent › Methods](guest-agent.md#methods)).
+- **Result:** `exitStatus`, `timedOut`, `stdout`, `stderr`, `truncated`.
+- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`).
+
+Description:
+
+```text
+Runs a command in the guest with /bin/zsh -lc, in the account's home folder, as the account or as root. Returns exitStatus, timedOut, stdout, stderr and truncated (each output is cut at 1 MB).
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "asRoot" : {
+      "description" : "Run it with sudo, as root.",
+      "type" : "boolean"
+    },
+    "command" : {
+      "description" : "The command.",
+      "type" : "string"
+    },
+    "id" : {
+      "description" : "A virtual machine's id, as vm_list gives it.",
+      "type" : "string"
+    },
+    "timeout" : {
+      "description" : "Seconds before the command is killed; 60 by default.",
+      "maximum" : 3600,
+      "minimum" : 1,
+      "type" : "integer"
+    }
+  },
+  "required" : [
+    "id",
+    "command"
+  ],
+  "type" : "object"
+}
+```
+
+### vm_screenshot
+
+- **Calls:** the agent's `screenshot`.
+- **Result:** an image content item, `image/png` ([Tool results](#tool-results)).
+- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Screen Recording permission in the guest (`unavailable`, `The agent has no Screen Recording permission.`).
+
+Description:
+
+```text
+Returns the guest's main display as a PNG image. Coordinates of vm_click, vm_drag and vm_scroll are pixels of this image, from its top-left corner.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "id" : {
+      "description" : "A virtual machine's id, as vm_list gives it.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "id"
+  ],
+  "type" : "object"
+}
+```
+
+### vm_click
+
+- **Calls:** the agent's `click`.
+- **Result:** `{}`.
+- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Accessibility permission in the guest.
+
+Description:
+
+```text
+Clicks at a point of the guest's screen, in screenshot pixels.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "button" : {
+      "description" : "The mouse button; left by default.",
+      "enum" : [
+        "left",
+        "right"
+      ],
+      "type" : "string"
+    },
+    "count" : {
+      "description" : "1 for a click, 2 for a double click, 3 for a triple click.",
+      "maximum" : 3,
+      "minimum" : 1,
+      "type" : "integer"
+    },
+    "id" : {
+      "description" : "A virtual machine's id, as vm_list gives it.",
+      "type" : "string"
+    },
+    "x" : {
+      "description" : "Pixels from the left edge.",
+      "minimum" : 0,
+      "type" : "integer"
+    },
+    "y" : {
+      "description" : "Pixels from the top edge.",
+      "minimum" : 0,
+      "type" : "integer"
+    }
+  },
+  "required" : [
+    "id",
+    "x",
+    "y"
+  ],
+  "type" : "object"
+}
+```
+
+### vm_drag
+
+- **Calls:** the agent's `drag`.
+- **Result:** `{}`.
+- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Accessibility permission in the guest.
+
+Description:
+
+```text
+Drags with the left button from one point of the guest's screen to another, in screenshot pixels.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "fromX" : {
+      "minimum" : 0,
+      "type" : "integer"
+    },
+    "fromY" : {
+      "minimum" : 0,
+      "type" : "integer"
+    },
+    "id" : {
+      "description" : "A virtual machine's id, as vm_list gives it.",
+      "type" : "string"
+    },
+    "toX" : {
+      "minimum" : 0,
+      "type" : "integer"
+    },
+    "toY" : {
+      "minimum" : 0,
+      "type" : "integer"
+    }
+  },
+  "required" : [
+    "id",
+    "fromX",
+    "fromY",
+    "toX",
+    "toY"
+  ],
+  "type" : "object"
+}
+```
+
+### vm_scroll
+
+- **Calls:** the agent's `scroll`.
+- **Result:** `{}`.
+- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Accessibility permission in the guest.
+
+Description:
+
+```text
+Scrolls at a point of the guest's screen; positive deltas scroll down and right, in pixels.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "deltaX" : {
+      "type" : "integer"
+    },
+    "deltaY" : {
+      "type" : "integer"
+    },
+    "id" : {
+      "description" : "A virtual machine's id, as vm_list gives it.",
+      "type" : "string"
+    },
+    "x" : {
+      "minimum" : 0,
+      "type" : "integer"
+    },
+    "y" : {
+      "minimum" : 0,
+      "type" : "integer"
+    }
+  },
+  "required" : [
+    "id",
+    "x",
+    "y"
+  ],
+  "type" : "object"
+}
+```
+
+### vm_type
+
+- **Calls:** the agent's `type`.
+- **Result:** `{}`.
+- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Accessibility permission in the guest.
+
+Description:
+
+```text
+Types text where the guest's keyboard focus is, whatever its keyboard layout; a line break presses Return.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "id" : {
+      "description" : "A virtual machine's id, as vm_list gives it.",
+      "type" : "string"
+    },
+    "text" : {
+      "description" : "The text to type.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "id",
+    "text"
+  ],
+  "type" : "object"
+}
+```
+
+### vm_key
+
+- **Calls:** the agent's `key`.
+- **Result:** `{}`.
+- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); an unknown key (`unavailable`, `Unknown key <key>.`).
+
+Description:
+
+```text
+Presses a key with modifiers: a character of the guest's layout, or return, enter, tab, space, delete, forwardDelete, escape, left, right, up, down, home, end, pageUp, pageDown or f1 to f20.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "id" : {
+      "description" : "A virtual machine's id, as vm_list gives it.",
+      "type" : "string"
+    },
+    "key" : {
+      "description" : "The key.",
+      "type" : "string"
+    },
+    "modifiers" : {
+      "description" : "Held while the key is pressed.",
+      "items" : {
+        "enum" : [
+          "control",
+          "option",
+          "shift",
+          "command"
+        ],
+        "type" : "string"
+      },
+      "type" : "array"
+    }
+  },
+  "required" : [
+    "id",
+    "key"
+  ],
+  "type" : "object"
+}
+```
+
+### vm_ui_tree
+
+- **Calls:** the agent's `uiTree`, with 120 seconds to answer.
+- **Result:** `app`, `bundleID`, `pid`, `tree`.
+- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no such app (`unavailable`, `No running app named <app>.`).
+
+Description:
+
+```text
+Returns the Accessibility tree of an app of the guest, the frontmost one by default: each element's role, title, value, identifier, enabled, focused and frame in screenshot pixels.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "app" : {
+      "description" : "A bundle identifier or an app name.",
+      "type" : "string"
+    },
+    "id" : {
+      "description" : "A virtual machine's id, as vm_list gives it.",
+      "type" : "string"
+    },
+    "maxDepth" : {
+      "description" : "Levels of the tree; 40 by default.",
+      "maximum" : 200,
+      "minimum" : 1,
+      "type" : "integer"
+    }
+  },
+  "required" : [
+    "id"
+  ],
+  "type" : "object"
+}
+```
+
+### vm_copy_in
+
+- **Calls:** `MachineHost.copyIn`: a file through `writeFile`, 8 MiB at a time, with its permission bits; a folder's contents through a tar archive extracted in the guest.
+- **Result:** `Copied.`
+- **Errors:** a relative path (`invalid`); a missing source (`notFound`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); tar failing (`internal`).
+
+Description:
+
+```text
+Copies a file or a folder's contents of this Mac into the guest, as the guest's account.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "from" : {
+      "description" : "An absolute path on this Mac.",
+      "type" : "string"
+    },
+    "id" : {
+      "description" : "A virtual machine's id, as vm_list gives it.",
+      "type" : "string"
+    },
+    "to" : {
+      "description" : "An absolute path in the guest, or one starting with ~/.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "id",
+    "from",
+    "to"
+  ],
+  "type" : "object"
+}
+```
+
+### vm_copy_out
+
+- **Calls:** `MachineHost.copyOut`: a file through `readFile` into a partial file beside the destination, which then takes its place; a folder's contents through a tar archive.
+- **Result:** `Copied.`
+- **Errors:** a relative path (`invalid`); a missing source (`notFound`, `<path> does not exist in the guest.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); a destination that can't be written or tar failing (`internal`).
+
+Description:
+
+```text
+Copies a file or a folder's contents of the guest to this Mac; a file replaces one of the same name.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "from" : {
+      "description" : "An absolute path in the guest, or one starting with ~/.",
+      "type" : "string"
+    },
+    "id" : {
+      "description" : "A virtual machine's id, as vm_list gives it.",
+      "type" : "string"
+    },
+    "to" : {
+      "description" : "An absolute path on this Mac.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "id",
+    "from",
+    "to"
   ],
   "type" : "object"
 }

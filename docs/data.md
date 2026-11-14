@@ -34,6 +34,8 @@ a project's other files stay as V2 left them.
 | Chat transcript | `<project>/.hephaestus/chats/<CHAT-ID>.jsonl` | `ChatItem` on each line | Chat |
 | Chat MCP configuration | `<data folder>/Runtime/mcp/<CHAT-ID>.json` | — (JSON) | Chat |
 | Chat log | `<data folder>/Logs/claude-<CHAT-ID>.log` | — (text) | Chat |
+| Image file | `<data folder>/VirtualMachines/Images/<IMAGE-ID>/image.yml` | `ImageFile` | Virtual Machines |
+| Machine file | `<data folder>/VirtualMachines/Machines/<VM-ID>/vm.yml` | `MachineFile` | Virtual Machines |
 
 `<data folder>` is the App Group container, or the folder `HEPHAESTUS_DATA_DIR` names ([Data
 folder](#data-folder)).
@@ -127,12 +129,16 @@ The files that belong to this Mac rather than to a project.
 | `Runtime/mcp/<CHAT-ID>.json` | A running chat's MCP configuration, mode 0600, deleted when its process ends ([Chat processes](#chat-processes)). |
 | `Runtime/claude-cwd/` | The empty folder the CLI's model probe runs in. |
 | `Runtime/downloads/<UUID>/` | A release file gh downloads, before it moves into the Downloads folder; removed afterwards ([Builds › Downloads](#downloads)). |
+| `VirtualMachines/` | The images and machines ([Virtual machines › Storage](#storage)). |
+| `Runtime/guest/` | The guest agent and its install script, shared with a setup machine ([Virtual machines › Setup](#setup)). |
 | `Logs/claude-<CHAT-ID>.log` | A chat's CLI log: a line per launch, then the CLI's standard error; emptied at a launch once over 10 MB. |
 
 ## Import from HephaestusV2
 
 V3 replaces V2 and works on the same project folders. On its first launch it brings over what V2 kept on
-this Mac and nothing else: the list of top-level projects and the environment chosen for each service.
+this Mac and nothing else: the list of top-level projects and the environment chosen for each service. The
+stored contract values and the virtual machines come over the same way, each by its own rule ([Contracts › Stored
+values](#stored-values), [Virtual machines › Import](#import)).
 
 - **When**: when the data folder has no `registry.yml`. The import then writes one, even when there is
   nothing to import, so that it runs once: a list the user empties later never brings V2's projects back.
@@ -1192,6 +1198,198 @@ start V3 copies V2's `~/Library/Application Support/HephaestusV2/openapi-request
 missing. A missing or invalid file is empty. Claude's `api_call` uses the stored credentials and headers and
 never sees them.
 
+## Virtual machines
+
+macOS virtual machines on this Mac, V2's files and rules, run by the Virtualization framework inside the app's
+process (`MachineData`: `MachineHost`, `MachineLibrary`). Apple silicon only: elsewhere every start, install and
+setup fails with `Virtual machines need a Mac with Apple silicon.` The app carries the entitlement
+`com.apple.security.virtualization` ([Architecture › Entitlements](architecture.md#entitlements)).
+
+### Storage
+
+```
+<data folder>/VirtualMachines/
+  Images/<IMAGE-ID>/        an image: an uppercase UUID
+    image.yml               its metadata file, mode 0600 (V3: the file holds the guest account's password)
+    Restore.ipsw            the IPSW, while it downloads and installs
+    HardwareModel           the hardware model it was installed for
+    MachineIdentifier       its machine identifier
+    AuxiliaryStorage        its auxiliary storage
+    Disk.img                its disk, a sparse file of 32 GB
+  Machines/<VM-ID>/         a machine: an uppercase UUID
+    vm.yml                  its metadata file
+    HardwareModel, MachineIdentifier, AuxiliaryStorage    copies of the image's, then its own
+    Disk.img                an APFS clone of the image's disk, grown to its size, then its own
+<data folder>/Runtime/guest/   the folder shared with a setup machine: install.sh and hephaestus-agent
+```
+
+- A folder whose name isn't an uppercase UUID, or whose metadata file is missing, invalid or names another id, is
+  skipped. A file's `id` and `imageID` are read in uppercase (V2 wrote some in lowercase).
+- A machine whose `startedBy` isn't `user` (V2's machines that Claude started, left when V2 quit without stopping
+  them) is skipped, and not imported.
+- Deleting an image or a machine deletes its folder, not to the Trash: a disk there would keep its space.
+- An image's size in the window is the space its files take (`MachineFolder.bytesOnDisk`, allocated sizes): for
+  the sparse disk, what was written. A disk's size is `Disk.img`'s length in GB rounded up (`MachineFolder.diskGB`).
+- `GB` is 1024³ bytes everywhere: `memoryGB`, `diskGB`, the defaults and the sheets.
+
+### Image file
+
+`VirtualMachines/Images/<IMAGE-ID>/image.yml`, `ImageFile`, V2's format. V3 writes it with mode 0600.
+
+| Swift name | Key | Type | Required | Rules |
+| --- | --- | --- | --- | --- |
+| schema | `schema` | `Int` | no | `1` |
+| id | `id` | `String` | yes | The folder's name. |
+| version, build | `version`, `build` | `String` | yes | ipsw.me's, such as `27.2.1`, `26B131`. |
+| state | `state` | `String` | yes | `downloading`, `installing`, `needsSetup`, `ready`, `failed`. |
+| failure | `failure` | `String?` | written as `null` | The failure's message, one line. |
+| userName, password | `userName`, `password` | `String?` | written as `null` | The guest account, in clear (V2's choice: the password of a test computer). |
+| created | `created` | date | yes | |
+
+V2's earlier `cores` and `memoryGB` stay as unknown keys; `diskGB`, `progress` and `diskBytes` are dropped.
+
+```yaml
+schema: 1
+id: 5B8E7F60-3C1D-4A2B-9E8F-7A6B5C4D3E2F
+version: 27.2.1
+build: 26B131
+state: ready
+failure: null
+userName: null
+password: null
+created: 2026-11-09T14:03:00Z
+```
+
+### Machine file
+
+`VirtualMachines/Machines/<VM-ID>/vm.yml`, `MachineFile`, V2's format plus one key.
+
+| Swift name | Key | Type | Required | Rules |
+| --- | --- | --- | --- | --- |
+| schema | `schema` | `Int` | no | `1` |
+| id, name | `id`, `name` | `String` | yes | The name is one line of 1 to 100 characters, trimmed. |
+| imageID, version, build | `imageID`, `version`, `build` | `String` | yes | The image it was made from, as it was then. |
+| cores, memoryGB | `cores`, `memoryGB` | `Int` | yes | |
+| diskGB | `diskGB` | `Int?` | written as `null` | Absent for V2's earlier machines: their `Disk.img`'s size. |
+| growContainer | `growContainer` | `Bool` | no, `false` | True while the guest's container has to grow over a grown disk. |
+| startedBy | `startedBy` | `String` | no, `user` | V3 lists only `user`. |
+| projectID, chatID | `projectID`, `chatID` | `String?` | written as `null` | Kept as read; the inspector's Project row shows `projectID`'s project. |
+| created | `created` | date | yes | |
+| macAddress | `macAddress` | `String?` | **V3 addition**, written only when set | The network device's MAC address, `xx:xx:xx:xx:xx:xx`, made at the machine's creation or first start in V3, so its guest's address can be found. |
+
+`state` and `startedAt` are never stored: after a launch every machine is stopped. V2 files round-trip byte for
+byte while V3 hasn't given the machine a MAC address.
+
+### macOS versions
+
+`MacOSVersions.fetch`: `GET https://api.ipsw.me/v4/device/VirtualMac2,1?type=ipsw`, `Accept: application/json`,
+30 seconds. Each element of `firmwares` with a non-empty `version` and `buildid` and an `https` `url` is kept,
+the first of each build; `filesize` (0 when absent) and `sha256sum` (lowercase, kept only when 64 hexadecimal
+digits). Newest first: by version number by number (`27.2.1` before `27.2` before `26.6.2`), then by
+`releasedate`, then in the answer's order. A failure is `The macOS versions cannot be read from ipsw.me:
+<reason>.`, `<reason>` the network's message, `HTTP <status>` or `unexpected answer`. The host keeps the last list.
+
+### Adding an image
+
+`MachineHost.addImage(build:)`: the version must be in the list (`macOS build <build> not found.`); the image is
+written `downloading`, then downloaded and installed in the background.
+
+1. **Download** (`IPSWDownload`): to `Restore.ipsw` as the bytes arrive, no overall timeout, 60 seconds without
+   data fails. Progress: bytes over `Content-Length`, else the listed size. Not 200: `The download failed: HTTP
+   <status>.`; a SHA-256 that differs: `The downloaded file does not match its checksum.`
+2. **Install**: the state becomes `installing`, then waits for a place among the 2 that run, in the order the
+   installs began to wait. `MachineInstaller.install` reads the IPSW (`VZMacOSRestoreImage`), takes its most
+   featureful supported configuration (none: `This Mac cannot run macOS <version>.`; the default cores or memory
+   below its minimum: `macOS <version> needs at least <n> cores and <m> GB of memory.`), writes `HardwareModel`,
+   a new `MachineIdentifier`, `AuxiliaryStorage` and a sparse 32 GB `Disk.img`, and runs `VZMacOSInstaller` with
+   the default cores and memory. `Restore.ipsw` is deleted at the end, success or failure.
+3. The state becomes `needsSetup`.
+
+A failure sets `failed` with its message on one line; no retry: the user deletes the image. Quitting ends the
+downloads and installs; at the next launch an image still `downloading` or `installing` becomes `failed` with
+`The app quit before the image was ready.` and its IPSW is deleted. Cancel Download deletes the image.
+
+### Setup
+
+An image in `needsSetup` is set up once by the user, in the window's setup view ([UI › Virtual
+Machines](ui/virtual-machines.md#setup)). `MachineHost.startSetup` checks the image (`The image is not waiting for
+setup.`), the place (`2 virtual machines are already running.`) and the bundle's agent (`The guest agent is missing
+from the app bundle.`), fills `Runtime/guest/` with `install.sh` and `hephaestus-agent` (mode 755) from the bundle,
+and boots the image's own disk with the default cores and memory and the shared folder.
+
+- **Restart in Recovery**: shuts the guest down through the agent, else asks with the framework's stop request
+  (macOS asks in the guest); stops it at once after 30 seconds; starts it with `startUpFromMacOSRecovery`.
+- **Finish Setup**: only with the agent connected and SIP off (`The agent is not connected with SIP off.`): the
+  agent runs `/sbin/shutdown -h now` as root, the host waits up to 60 seconds, then stops it, and the image
+  becomes `ready`.
+- **Stop**: through the agent within 30 seconds, else at once; the image stays in `needsSetup`.
+
+V2's Auto Setup chat and its default image aren't brought over: no tool starts a setup.
+
+### Machine lifecycle
+
+| Operation | Rules |
+| --- | --- |
+| Create (`createMachine`) | In this order: Apple silicon; the name; the image exists (`Image <id> not found.`) and is Ready (`The image is not Ready.`); `cores` 2 to this Mac's cores, `memoryGB` 4 to its memory, `diskGB` the image's disk size to 2048 (`<param>: use a number from <min> to <max>.`); fewer than 2 running. Then the folder: copies of the platform files, a clone of the disk grown to `diskGB` ([Growing a disk](#growing-a-disk)), a new MAC address, `vm.yml`; a file that can't be written deletes the folder (`The virtual machine could not be created: <reason>.`). Then it starts; a start that fails leaves it stopped. |
+| Start | Fewer than 2 running; the machine made with its cores, memory, folder and MAC address, without a shared folder. |
+| Stop | Through the agent (`/sbin/shutdown -h now` as root), waiting up to 60 seconds, else at once, as a power cut. A paused machine stops at once. |
+| Pause, Resume | The framework's `pause()` and `resume()`; never stored. |
+| Edit (`updateMachine`) | Stopped only (`The virtual machine is running.`); the name; the ranges, `diskGB` from its current size. A larger disk grows `Disk.img` and sets `growContainer`. |
+| Delete | A running machine stops at once; the folder is deleted (`The virtual machine could not be deleted: <reason>.`). Deleting an image deletes its machines first. |
+
+- A machine that stops by itself (the guest shut down, or a failure) leaves those that run; a failure's message
+  is kept for the window, which shows it once (`MachineHost.failures`).
+- Quitting the app stops every machine and setup at once.
+- **Address**: every 3 seconds, up to 60 times, while it runs, the host looks up the machine's MAC address in
+  `/var/db/dhcpd_leases`, the last lease of it, the octets compared without their leading zeros (V3 addition).
+
+### Growing a disk
+
+V2's `GuestDisk.grow`: the file is extended (sparse); when it holds a GUID partition table whose last partition
+is `RecoveryOSContainer`, that partition moves to the new end (its end aligned on 4096 bytes, copied from its end
+to its start, blocks of zeros past the old end left unwritten), both copies of the table and the protective MBR
+are rewritten, the old backup is cleared. Another layout is only extended. At the next start with the agent
+connected, a machine with `growContainer` runs, as root, within 120 seconds:
+
+```
+/usr/sbin/diskutil apfs resizeContainer "$(/usr/sbin/diskutil info / | /usr/bin/awk -F': +' '/APFS Physical Store/ {print $2}')" 0
+```
+
+and `growContainer` becomes false once it succeeds.
+
+### Configuration
+
+`MachineConfiguration.make`: the platform from the folder's three files (`The hardware model of the image cannot
+be read.`, `This Mac cannot run the macOS of the image.`, `The machine identifier of the image cannot be read.`,
+`The auxiliary storage of the image is missing.`), the macOS boot loader, the cores and memory, one display of
+2560 × 1600 at 220 ppi (the window's view reconfigures it to its size), the disk as a virtio block device, a
+virtio network device behind NAT with the machine's MAC address, a Mac keyboard and a USB one, a Mac trackpad and a
+USB pointing device, an entropy device, a virtio socket device (the agent's port 47822) and, for a setup, the
+shared folder read-only with macOS's automount tag (`/Volumes/My Shared Files` in the guest).
+
+### Guest account
+
+Per image: `MachineHost.setAccount` takes `userName` and `password`, each optional: absent keeps, empty removes
+(`null`); the user name is trimmed; a line break is refused (`userName: use one line.`, `password: use one
+line.`). A call that changes nothing writes nothing.
+
+### Defaults
+
+`settings.yml`'s `defaultVMCores` (2), `defaultVMMemoryGB` (4) and `defaultVMDiskGB` (64), V2's keys
+([Settings file](#settings-file)): what New Machine starts with, and the cores and memory of an install and a
+setup. A value outside this Mac's range is brought into it where used.
+
+### Import
+
+`MachineLibrary.importV2`, at the first load, when the data folder has no `VirtualMachines/` yet: each folder of
+V2's `~/Library/Application Support/HephaestusV2/VirtualMachines/Images/` and `Machines/` named by a UUID is
+copied file by file with APFS clones (`clonefile`, a copy where cloning isn't possible), so the import takes
+almost no space; V2's Claude machines are left. It never runs again. V2's images keep V2's agent, which speaks the
+same protocol ([Guest agent](guest-agent.md)).
+
+Defaults chosen at design time: the image file's mode, the MAC address and the address lookup, the import by
+clone and its trigger, the Claude machines left out.
+
 ## Settings file
 
 `<data folder>/settings.yml`: the app's settings. V3's own file: V2's `settings.yml` isn't imported. Swift
@@ -1205,6 +1403,9 @@ and gives the defaults (`DataFolder.readSettings()`).
 | claudePath | `claudePath` | `String?` | no | absent | The Claude CLI the chats run: an absolute path or one from `~/`; absent finds it ([Chat processes › The CLI](#the-cli)). Written only when set. |
 | chatModel | `chatModel` | `String?` | no | absent | The model of new chats, a CLI model value such as `opus`; absent for `default`. Written only when set. |
 | chatEffort | `chatEffort` | `String?` | no | absent | The effort of new chats (`low`, `medium`, `xhigh`, `max`); absent for `high`. Written only when set. |
+| defaultVMCores | `defaultVMCores` | `Int?` | no | absent (2) | New machines' cores, 2 to this Mac's ([Virtual machines › Defaults](#defaults)). V2's key. Written only when not the default. |
+| defaultVMMemoryGB | `defaultVMMemoryGB` | `Int?` | no | absent (4) | New machines' memory in GB, 4 to this Mac's. V2's key. |
+| defaultVMDiskGB | `defaultVMDiskGB` | `Int?` | no | absent (64) | New machines' disk in GB, 32 to 2048. V2's key. |
 | unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
 
 ```yaml

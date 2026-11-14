@@ -25,13 +25,17 @@ Each would be a tool of its own, with its window and target, in the redesign.
 
 ## Virtual machines
 
-V3's Virtual Machines window was designed with two things V2 never had. They stay sample data until a
-later improvement builds them:
+V3's Virtual Machines window runs V2's macOS machines since Phase 9. It was designed with things V2 never had,
+which stay sample data (the window hides them for the data folder's machines) until a later improvement builds
+them:
 
 - **Linux machines**, with a console instead of a screen. V2's machines run macOS only, through
   Virtualization.framework with its guest agent (`docs/virtual-machines.md`,
   `Sources/HephaestusCore/VirtualMachines/`, `Sources/HephaestusAgent/`).
 - **Machine snapshots**: Take Snapshot and the inspector's snapshot list. V2 clones an image's disk to create
-  a machine (APFS clones) but keeps no snapshot of a running machine.
+  a machine (APFS clones) but keeps no snapshot of a running machine. A snapshot could be an APFS clone of the
+  disk with the framework's saved machine state (`saveMachineStateTo`).
+- **CPU use**: the inspector's CPU figure, which the framework doesn't give; the guest agent could report it.
+- **Opening a machine from a chat**: a `vm_` tool-call row has no item to open, machines not being a tool.
 
 See the window's page, [Virtual Machines](ui/virtual-machines.md).
