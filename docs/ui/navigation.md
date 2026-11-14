@@ -38,7 +38,8 @@ every window as the `availableTools` environment value, and the menus read it di
 | Dashboard | The Dashboard window, its tile, Window ▸ Dashboard (⌘1), its menu bar button; its widgets show as their tools come ([Dashboard › Which widgets show](dashboard.md#which-widgets-show)) | Yes |
 | Tickets | The Tickets window, its tile, Window ▸ Tickets (⌘2), its menu bar button | Yes |
 | Chat | The Chat window, its tile, Window ▸ Chat (⌘6), its menu bar button, the chat panel of the available tools' windows, Settings ▸ Chat | Yes |
-| Service Map, Contracts, Builds | Their tool windows | Not yet |
+| Builds | The Builds window, its tile, Window ▸ Builds (⌘5), its menu bar button, the Dashboard's Recent Builds widget | Yes |
+| Service Map, Contracts | Their tool windows | Not yet |
 | Virtual Machines | Its window | Not yet |
 
 Previews and the screenshots of the spec show every tool: the environment value's default is all of them.

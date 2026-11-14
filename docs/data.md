@@ -28,6 +28,7 @@ a project's other files stay as V2 left them.
 | Bundle file | `<project>/.hephaestus/bundle/<BUNDLE-ID>.yml` | `BundleFile` | Tickets |
 | Attachments | `<project>/.hephaestus/attachments/<TICKET-ID>/<id>-<name>` | — (any file) | Tickets |
 | Chat file | `<project>/.hephaestus/chats/<CHAT-ID>.yml` | `ChatFile` | Chat |
+| Builds | — (read from GitHub with gh, never stored) | — | Builds |
 | Chat transcript | `<project>/.hephaestus/chats/<CHAT-ID>.jsonl` | `ChatItem` on each line | Chat |
 | Chat MCP configuration | `<data folder>/Runtime/mcp/<CHAT-ID>.json` | — (JSON) | Chat |
 | Chat log | `<data folder>/Logs/claude-<CHAT-ID>.log` | — (text) | Chat |
@@ -123,6 +124,7 @@ The files that belong to this Mac rather than to a project.
 | `settings.yml`, `secrets.json` | The app's settings and the MCP server's token ([Settings file](#settings-file), [Secrets file](#secrets-file)). |
 | `Runtime/mcp/<CHAT-ID>.json` | A running chat's MCP configuration, mode 0600, deleted when its process ends ([Chat processes](#chat-processes)). |
 | `Runtime/claude-cwd/` | The empty folder the CLI's model probe runs in. |
+| `Runtime/downloads/<UUID>/` | A release file gh downloads, before it moves into the Downloads folder; removed afterwards ([Builds › Downloads](#downloads)). |
 | `Logs/claude-<CHAT-ID>.log` | A chat's CLI log: a line per launch, then the CLI's standard error; emptied at a launch once over 10 MB. |
 
 ## Import from HephaestusV2
@@ -988,6 +990,64 @@ after its current CLI turn. The turn's end writes `updated`.
 `<CHAT-ID>.yml` only; an invalid file, or one whose `id` differs from its name, is skipped), and again when the
 projects change or a batch of file events names a `chats/` folder. Transcripts aren't followed: a transcript
 changed outside the app shows when its chat is read again.
+
+## Builds
+
+Builds reads the workflow runs and releases of a project's GitHub repository with the GitHub CLI, `gh`, as V2
+did (V2's `docs/builds.md`), and keeps nothing: no file holds a run or a release ([UI › Builds](ui/builds.md)).
+The repository is the project's GitHub page as it resolves, `https://github.com/<owner>/<name>` (a sub project
+on its parent's settings has its parent's); a project without one has no runs: `Project <ID> has no GitHub
+page.`
+
+### gh calls
+
+`<repo>` is `github.com/<owner>/<name>`, so that a `GH_HOST` of the user's never sends a call elsewhere. Each
+option and its value are one argument; a run's id and a tag come after `--`.
+
+| Call | Command | Timeout |
+| --- | --- | --- |
+| Runs | `gh run list --repo=<repo> --limit=50 --json=conclusion,createdAt,databaseId,displayTitle,event,headBranch,headSha,number,startedAt,status,updatedAt,workflowName` | 30 s |
+| A run | `gh run view --repo=<repo> --json=<the same>,jobs -- <run id>` | 30 s |
+| A job's log | `gh run view --repo=<repo> --log --job=<job id>` | 60 s |
+| Re-run | `gh run rerun --repo=<repo> [--failed] -- <run id>` | 30 s |
+| Cancel | `gh run cancel --repo=<repo> -- <run id>` | 30 s |
+| Releases | `gh api repos/<owner>/<name>/releases?per_page=50`, then `gh release list --repo=<repo> --limit=50 --exclude-drafts --json=tagName,isLatest` for the latest | 30 s each |
+| A file | `gh release download --repo=<repo> --pattern=<asset> --dir=<folder> -- <tag>` | 30 min |
+
+- **gh** is the one the projects' tool lookup found in the login shell's `PATH` ([Loading](#loading)); it runs
+  with the login shell's environment without `HEPHAESTUS_*`, `CLICOLOR_FORCE`, `GH_FORCE_TTY`, `GH_DEBUG` and
+  `DEBUG`, plus `GH_PROMPT_DISABLED=1` and `GH_NO_UPDATE_NOTIFIER=1`, standard input empty; after its timeout,
+  SIGTERM to its process group, then SIGKILL 2 s later.
+- **Runs** are named by GitHub's id (`databaseId`); their `number` is the one GitHub shows (`#641`). A date gh
+  writes as `0001-01-01T00:00:00Z` is none, and so is an empty conclusion. A completed run lasts from its start
+  (`startedAt`, else `createdAt`) to `updatedAt`; another, to now. A job or step lasts from `startedAt` to
+  `completedAt`, or to now.
+- **Statuses**: `success` passed; `failure`, `timed_out`, `startup_failure` failed; `in_progress` running;
+  `queued`, `requested`, `waiting`, `pending` queued; any other completed run cancelled.
+- **Logs**: each line of gh's output is `<job>\t<step>\t<time> <text>`; the time is dropped and the lines are kept
+  by step name. gh gives a job's log once the job has completed.
+- **Releases**: GitHub's REST answer gives each release's `tag_name`, `name`, `body` (the notes), `draft`,
+  `prerelease`, `created_at`, `published_at` and `assets` (`name`, `size`); drafts are left out; the release
+  `gh release list` marks `isLatest` is the latest.
+
+### Failures
+
+| Case | Message |
+| --- | --- |
+| No GitHub page | `Project <ID> has no GitHub page.` |
+| No gh | `Install the GitHub CLI (gh) to see runs and releases.` |
+| gh exits with 4 (no login) | `Run gh auth login in Terminal to see runs and releases.` |
+| gh fails otherwise | `gh <command> failed: <reason>.`, the reason `timeout`, the first line of its standard error without final periods, or `exit code <n>` |
+| Output not as expected | `gh <command> returned unexpected output: <reason>.` |
+
+### Downloads
+
+A release file goes through a new folder of `<data folder>/Runtime/downloads/`, then moves into the Downloads
+folder: `/` and `:` replaced by `_`, the name trimmed, and ` (1)`, ` (2)`… before the extension when the name is
+taken. It gets the quarantine of a web download, with the file's URL
+(`https://github.com/<owner>/<name>/releases/download/<tag>/<asset>`) and the release's page, so that
+Gatekeeper checks it when it opens. The temporary folder is removed, also after a failure. `<asset>` in the
+pattern has `\` before each `\`, `*`, `?` and `[`.
 
 ## Settings file
 

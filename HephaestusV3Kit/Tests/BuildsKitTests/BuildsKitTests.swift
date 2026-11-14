@@ -3,13 +3,36 @@ import Testing
 import ToolsFoundation
 @testable import BuildsKit
 
-/// Runs and releases set by each test, for every project.
-struct MockBuildStore: BuildStore {
-    var runs: [WorkflowRun] = []
-    var releases: [Release] = []
+/// Runs and releases set by each test, for every project; the actions record what they were asked.
+final class MockBuildStore: BuildStore {
+    var runs: [WorkflowRun]
+    var releases: [Release]
+    var listedRuns: BuildLoad<[WorkflowRun]>?
+    private(set) var actions: [String] = []
 
-    func runs(of project: Project) -> [WorkflowRun] { runs }
-    func releases(of project: Project) -> [Release] { releases }
+    init(runs: [WorkflowRun] = [], releases: [Release] = [], listedRuns: BuildLoad<[WorkflowRun]>? = nil) {
+        self.runs = runs
+        self.releases = releases
+        self.listedRuns = listedRuns
+    }
+
+    func runs(of project: Project) -> BuildLoad<[WorkflowRun]> { listedRuns ?? .loaded(runs) }
+    func releases(of project: Project) -> BuildLoad<[Release]> { .loaded(releases) }
+    func run(_ id: WorkflowRun.ID, of project: Project) -> WorkflowRun? { runs.first { $0.id == id } }
+    func log(of step: StepReference, in run: WorkflowRun, of project: Project) -> BuildLoad<[String]> { .loaded(["\(step.job) \(step.step)"]) }
+    func refresh(_ project: Project, releases: Bool) async { actions.append(releases ? "refresh releases" : "refresh runs") }
+    func load(run id: WorkflowRun.ID, of project: Project) async { actions.append("load \(id)") }
+    func loadLog(of step: StepReference, in run: WorkflowRun, of project: Project) async { actions.append("log \(step.step)") }
+    func rerun(_ run: WorkflowRun, failedOnly: Bool, of project: Project) async throws(BuildActionError) {
+        actions.append("rerun \(run.id) \(failedOnly)")
+        throw BuildActionError(message: "HTTP 403")
+    }
+    func cancel(_ run: WorkflowRun, of project: Project) async throws(BuildActionError) { actions.append("cancel \(run.id)") }
+    func download(_ asset: String, of release: Release, of project: Project) async throws(BuildActionError) -> URL {
+        actions.append("download \(asset)")
+        return URL(fileURLWithPath: "/tmp/\(asset)")
+    }
+    func webURL(of run: WorkflowRun, in project: Project) -> URL? { nil }
 }
 
 private let project = Project.samples[0]
@@ -248,9 +271,9 @@ struct ReaderTests {
     @Test("A sub project reads the runs of its repository's owner")
     func subProject() throws {
         let toolsKit = try #require(Project.sample("TKIT"))
-        let reading = try #require(BuildsReader.read("58", project: toolsKit))
+        let reading = try #require(BuildsReader.read("58", project: toolsKit, store: nil))
         #expect(reading.detail == "Project switcher in tool windows · Passed · Build and Test on main")
-        #expect(BuildsReader.read("release:v0.3.0", project: toolsKit) != nil)
+        #expect(BuildsReader.read("release:v0.3.0", project: toolsKit, store: nil) != nil)
     }
 }
 
@@ -258,7 +281,8 @@ struct ReaderTests {
 struct SampleTests {
     @Test("The step shown first: the failed one, else the running one, else the last that passed")
     func defaultStep() throws {
-        let runs = SampleBuildStore().runs(of: try #require(Project.sample("ORD")))
+        let orders = try #require(Project.sample("ORD"))
+        let runs = try #require(SampleBuildStore().runs(of: orders).value)
         let failed = try #require(runs.first { $0.id == 1286 })
         #expect(failed.defaultStep == StepReference(job: "Test", step: "Run tests"))
         let running = try #require(runs.first { $0.id == 1288 })
@@ -297,10 +321,10 @@ struct SampleTests {
     @Test("Edge Gateway and Shop have no releases; ToolsKit shares Tools'")
     func releases() throws {
         let store = SampleBuildStore()
-        #expect(store.releases(of: try #require(Project.sample("GW"))).isEmpty)
-        #expect(store.releases(of: try #require(Project.sample("SHOP"))).isEmpty)
-        #expect(store.releases(of: try #require(Project.sample("TKIT"))).map(\.tag) == ["v0.3.0"])
-        #expect(store.runs(of: try #require(Project.sample("TKIT"))).first?.id == 58)
+        #expect(store.releases(of: try #require(Project.sample("GW"))).value?.isEmpty == true)
+        #expect(store.releases(of: try #require(Project.sample("SHOP"))).value?.isEmpty == true)
+        #expect(store.releases(of: try #require(Project.sample("TKIT"))).value?.map(\.tag) == ["v0.3.0"])
+        #expect(store.runs(of: try #require(Project.sample("TKIT"))).value?.first?.id == 58)
     }
 }
 
@@ -320,4 +344,70 @@ struct WidgetTests {
     func noRuns() {
         #expect(BuildsDashboardWidget.recentRuns(of: project, count: 5, store: MockBuildStore()).isEmpty)
     }
+}
+
+
+@Suite("Builds on gh")
+@MainActor
+struct LiveBuildsTests {
+    @Test("GitHub's statuses and conclusions map to the five statuses")
+    func statuses() {
+        #expect(RunStatus(status: "completed", conclusion: "success") == .success)
+        #expect(RunStatus(status: "completed", conclusion: "timed_out") == .failure)
+        #expect(RunStatus(status: "completed", conclusion: "skipped") == .cancelled)
+        #expect(RunStatus(status: "completed", conclusion: nil) == .cancelled)
+        #expect(RunStatus(status: "in_progress", conclusion: nil) == .running)
+        #expect(RunStatus(status: "waiting", conclusion: nil) == .queued)
+    }
+
+    @Test("Refresh reads the mode's list, then the selected run's jobs and its step's log")
+    func refresh() async {
+        let failed = run(5, .failure)
+        let store = MockBuildStore(runs: [failed])
+        let model = BuildsModel(project: project, focus: nil, store: store)
+        await model.refresh()
+        #expect(store.actions == ["refresh runs", "log Run tests"], "A run with jobs read isn't read again")
+        #expect(model.stepLog == .loaded(["Test Run tests"]))
+        model.mode = .releases
+        await model.refresh()
+        #expect(store.actions.last == "refresh releases")
+    }
+
+    @Test("A failed action shows its alert with the button's title and gh's reason")
+    func actions() async {
+        let store = MockBuildStore(runs: [run(5, .failure)])
+        let model = BuildsModel(project: project, focus: nil, store: store)
+        await model.rerun(failedOnly: true)
+        #expect(store.actions == ["rerun 5 true"])
+        #expect(model.failure?.title == "Re-run Failed Jobs failed" && model.failure?.message == "HTTP 403")
+        let release = Release(tag: "v1", title: "One", publishedAt: Date(), assets: ["a.zip"], isPrerelease: false, isLatest: true)
+        await model.download("a.zip", of: release)
+        #expect(model.download(of: "a.zip", in: release) == .saved(URL(fileURLWithPath: "/tmp/a.zip")))
+    }
+
+    @Test("A focus that names a run not read yet is applied once the runs are read")
+    func pendingFocus() async {
+        let store = MockBuildStore(runs: [], listedRuns: .loading)
+        let model = BuildsModel(project: project, focus: "7", store: store)
+        #expect(model.selectedRunID == nil)
+        store.runs = [run(9), run(7)]
+        store.listedRuns = nil
+        await model.refresh()
+        #expect(model.selectedRunID == 7)
+    }
+
+    @Test("gh's runs map to the window's: GitHub's id, the number shown, durations")
+    func mapping() throws {
+        let json = #"{"conclusion":"success","createdAt":"2026-11-07T21:27:00Z","databaseId":99,"displayTitle":"T","event":"push","headBranch":"main","headSha":"0123456789","number":7,"startedAt":"2026-11-07T21:27:00Z","status":"completed","updatedAt":"2026-11-07T21:28:05Z","workflowName":"CI","jobs":[]}"#
+        let run = LiveBuildStore.run(try JSONDecoder().decode(GitHubRunForTests.self, from: Data(json.utf8)).run)
+        #expect(run.id == 99 && run.displayNumber == 7 && run.commit == "0123456" && run.duration == 65 && run.hasJobs)
+    }
+}
+
+import BuildData
+
+/// Decodes a run through BuildData's own type.
+private struct GitHubRunForTests: Decodable {
+    let run: GitHubRun
+    init(from decoder: any Decoder) throws { run = try GitHubRun(from: decoder) }
 }

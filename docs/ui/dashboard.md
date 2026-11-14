@@ -150,7 +150,7 @@ setting when that is not empty, otherwise the kind's title. The symbol shows in 
 | --- | --- | --- | --- | --- |
 | **Project** | `folder` | The fields checked in its settings, in this order: the project's name (title 2, semibold); its identifier (monospaced, secondary); `Type: Service`, `App` or `Library`; its folder (callout, monospaced, secondary, one line truncated in the middle, selectable). | None | Title, Fields |
 | **Tickets** | `checklist` | One count per checked status, side by side in workflow order: the number (title, semibold) above the status's symbol in its color and its name. With **Include sub projects** checked and a project that has sub projects, the counts cover the project and all its descendants, under the caption "Sub projects included". | None | Title, Statuses, Include sub projects |
-| **Recent Builds** | `hammer` | The newest runs of the project's repository, as the Builds window lists them, at most **Number**: the run's status symbol in its color, its title, `#<number> · <workflow>` (one localized string), and its start date and time (for example `11 Nov at 13:54`). "No builds yet." when there is none. | Opens the run in Builds (focus: the run number). Tooltip "Open the run in Builds". | Title, Number |
+| **Recent Builds** | `hammer` | The newest runs of the project's repository, as the Builds window lists them, at most **Number**: the run's status symbol in its color, its title, `#<number> · <workflow>` (one localized string), and its start date and time (for example `11 Nov at 13:54`). "No builds yet." when there is none. | Opens the run in Builds (focus: the run's id). Tooltip "Open the run in Builds". The runs are read with gh when the widget shows, then every 30 s. | Title, Number |
 | **Instances** | `shippingbox` | The pods of the project's service in the Dashboard's environment ([Instances widget](#instances-widget)). | None | Title |
 | **Service Graph** | `point.3.connected.trianglepath.dotted` | The environment's whole service map, laid out and drawn as the Service Map draws it, with the project's own service as its focus. Fitted to the widget at 150% at most; it cannot be zoomed or panned. Its arrows count the calls in the time window: colored by that count, and labeled in compact form (`360K`) from 50% zoom, as the previous app's widget did. | Opens the Service Map. Tooltip "Open the Service Map". The widget reads as one button. | Title |
 | **Busiest Calls** | `arrow.right.arrow.left` | The arrows with at least one call in the time window, most calls first, ties in graph order, at most **Number**: `<from> → <to>` (one localized string), the target's kind in secondary color when it is not a service, and the number of calls in compact form (`756K`) in the arrow's color on the Service Map. "No calls in the window." when there is none. | None | Title, Number |
@@ -180,7 +180,7 @@ tools](navigation.md#available-tools)); until then it is hidden (default chosen 
 | --- | --- |
 | Project | Always. |
 | Tickets | Tickets is available: today. |
-| Recent Builds | Builds is available (Phase 6). |
+| Recent Builds | Builds is available: since Phase 6. |
 | Instances | The Service Map is available (Phase 8). |
 | Service Graph, Busiest Calls, Failed Requests, Requests per Minute | The Service Map is available and the project's Service Map can be read: it is a service with environments. |
 | Recent Chats, Cost | Never: V2's widgets, kept in the project file with their settings. |

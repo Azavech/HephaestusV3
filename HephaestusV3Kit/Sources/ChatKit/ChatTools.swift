@@ -34,6 +34,10 @@ public enum ChatGate {
         case .removeProjects:
             permission = rule(ChatPreferences.projectChangesKey) == .never ? .never : .askFirst
             refusal = "The user doesn't let Claude change projects from chats (Settings ▸ Chat)."
+        case .startBuilds:
+            // Never by default; Ask First at most.
+            permission = defaults.string(forKey: ChatPreferences.buildStartsKey) == ChangePermission.askFirst.rawValue ? .askFirst : .never
+            refusal = "The user doesn't let Claude start or cancel builds from chats (Settings ▸ Chat)."
         }
         switch permission {
         case .always:

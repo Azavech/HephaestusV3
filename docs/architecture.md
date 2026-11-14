@@ -18,7 +18,7 @@ meet the workspace's rules (`~/Developer/Apple/CLAUDE.md`), [Open issues](#open-
 3. [The Xcode project](#the-xcode-project)
 4. [The package](#the-package)
 5. [The data targets](#the-data-targets): [FileStorage](#filestorage), [ExternalTools](#externaltools),
-   [ProjectData](#projectdata), [MCPKit](#mcpkit), [TicketData](#ticketdata), [ChatData](#chatdata), [TextFormats](text.md)
+   [ProjectData](#projectdata), [MCPKit](#mcpkit), [TicketData](#ticketdata), [BuildData](#builddata), [ChatData](#chatdata), [TextFormats](text.md)
 6. [ToolsFoundation](#toolsfoundation)
 7. [ToolsScenes](#toolsscenes)
 8. [The tool kits](#the-tool-kits): [ProjectsKit](#projectskit), [DashboardsKit](#dashboardskit),
@@ -197,6 +197,7 @@ Shared values in the manifest:
 | `MCPKit` | The MCP server: JSON values, input schemas, tool operations and their registry, JSON-RPC, HTTP on 127.0.0.1, tokens. | — | `.target(name:)` |
 | `TicketData` | The ticket, bundle and attachment files and their rules: the `TicketLibrary` actor and the `TicketSession`. | FileStorage, ProjectData | `.target(name:, dependencies:)` |
 | `ChatData` | The chat files, the Claude CLI and its protocol, the chats' processes: the `ChatSession`. | FileStorage, ExternalTools, ProjectData, MCPKit | `.target(name:, dependencies:)` |
+| `BuildData` | gh's runs, jobs, logs and releases, and release downloads. | ExternalTools | `.target(name:, dependencies:)` |
 | `TextFormats` | Markdown to a block model and syntax highlighting, from HephaestusV2 without its markers ([Text](text.md)). | swift-markdown | `.target(name:, dependencies:)` |
 | `ToolsFoundation` | Shared vocabulary: projects, tools, routes, chat vocabulary, the Dashboard model, `ProjectIcon`. | AZDesign | `.target` |
 | `ProjectsKit` | The project selector: the Projects window, the project switcher, the menu bar panel; New Project, Project Settings, Settings ▸ Projects; the mapping of the app's projects; the project tools of the MCP server. | ToolsFoundation, AZDesign, AZDesignCode, ProjectData, ExternalTools, MCPKit | `toolTarget(_:data:)` |
@@ -258,7 +259,7 @@ Commit both `Package.resolved` files with it.
 ## The data targets
 
 Targets without UI hold the data code that V3 brings over from HephaestusV2: `FileStorage`, `ExternalTools`,
-`ProjectData`, `MCPKit`, `TicketData`, `ChatData` and `TextFormats`. They import no SwiftUI, have no default isolation (a `@MainActor`
+`ProjectData`, `MCPKit`, `TicketData`, `ChatData`, `BuildData` and `TextFormats`. They import no SwiftUI, have no default isolation (a `@MainActor`
 session type says so itself), and keep shared state in `Mutex`es and actors. Each feature wires them into its
 windows as it comes over ([Open issues](#open-issues)).
 
@@ -524,6 +525,19 @@ isolation. Source files in `Sources/TicketData/`:
   in-app project changes. Its changes forward to the library as the user on this Mac (`device` is
   `SCDynamicStoreCopyComputerName`) and keep the snapshot they return when its revision is higher. The MCP
   tools use `library` directly with the actor `.claude(chat:)`, then call `refresh()`.
+
+### BuildData
+
+The gh calls of [Data › Builds](data.md#builds). No UI, no default isolation. Depends on ExternalTools. Source
+files in `Sources/BuildData/`:
+
+| File | Contents |
+| --- | --- |
+| `GitHubCLI.swift` | `GitHubRepository` (`init?(page:)`, `repoArgument`, `webURL`), `BuildError` (`unavailable`, `unexpected`, `storage`; `noPage`, `noGH`, `noLogin`), `GitHubCLI` (`gh`, `environment`, `runner`, `childEnvironment`, `run(_:_:timeout:)`, `reason`) |
+| `GitHubBuilds.swift` | `GitHubRun`, `GitHubJob`, `GitHubStep`, `gitHubDuration`, `GitHubRelease`, `GitHubAsset` (all `Decodable` from gh's JSON), `StepLogs.parse`, `GitHubBuilds` (`runs`, `run`, `log(job:)`, `rerun`, `cancel`, `releases`, `download`, `pattern(forAsset:)`, the move and the quarantine) |
+
+Tests pass a fake `ProcessRunning` that answers gh's calls from a script and records them: no test reaches
+GitHub.
 
 ### ChatData
 
@@ -863,7 +877,7 @@ apply to the whole app. macOS restores the tool windows open at quit, with their
 ### RouteHost and route handling
 
 `private struct RouteHost<Content: View>` reads `@Environment(\.openWindow)` and gives its content three
-things: `.environment(\.openRoute, …)`, `.environment(\.toolReader, appToolReader)` and `.tint(.accent)`.
+things: `.environment(\.openRoute, …)`, `.environment(\.toolReader, appToolReader(…))`, `.environment(\.buildStore, …)` and `.tint(.accent)`.
 Its `OpenRouteAction` is the one place where routes are opened:
 
 | Route | Handling |
@@ -877,15 +891,16 @@ Behavior is specified in [Navigation › Routes and Window reuse](ui/navigation.
 
 ### The tool reader
 
-`private let appToolReader = ToolReader { reference in … }` finds the sample project of
-`reference.projectID` (nil if none), then dispatches on `reference.tool`:
+`appToolReader(directory:tickets:builds:)` makes the `ToolReader` every window gets: it finds the project of
+`reference.projectID` in the app's directory (else a sample project; nil if none), then dispatches on
+`reference.tool`:
 
 | Tool | Read function |
 | --- | --- |
-| `.tickets` | `TicketsReader.read(reference.focus)` |
+| `.tickets` | `TicketsReader.read(reference.focus, store: appData.ticketStore)` |
 | `.serviceMap` | `ServiceMapReader.read(reference.focus, environment: reference.environment, project: project)` |
 | `.contracts` | `ContractsReader.read(reference.focus, project: project)` |
-| `.builds` | `BuildsReader.read(reference.focus, project: project)` |
+| `.builds` | `BuildsReader.read(reference.focus, project: project, store: appData.buildStore)` |
 | `.dashboard`, `.chat` | nil |
 
 ### WindowDirectory
@@ -1320,7 +1335,7 @@ Spec: [Tickets](ui/tickets.md). Data: `TicketData` ([TicketData](#ticketdata)) a
 | `SampleTickets.swift` | `Ticket.samples` (18 tickets), `TicketBundle.samples` |
 
 **Public API**: `TicketsRootView(project:focus:store:directory:)`, `TicketTools.operations(tickets:projects:)`, `LiveTicketStore(session:)` with
-`counts() -> [Project.ID: TicketCounts]`, `EnvironmentValues.ticketStore`, `TicketsReader.read(_:)`,
+`counts() -> [Project.ID: TicketCounts]`, `EnvironmentValues.ticketStore`, `TicketsReader.read(_:store:)`,
 `TicketsDashboardWidget(widget:context:)`.
 
 **Store.** `@MainActor protocol TicketStore`: `phase` (`loading`, `ready`, `failed`), `tickets(of:)`,
@@ -1358,7 +1373,7 @@ from the store (`tickets`, `bundles`) and the directory (`family`, `indent(of:)`
 | Bundles | `startNewBundle(with:)`, `startEditing(_ bundle:)`, `bundleCandidates(in:)`, `saveBundle()`, `add(_:to:)`, `remove(_:from:)`, `setStatus(_:of: bundle)` |
 | New Ticket | `newTicketProjects`, `defaultNewTicketProjectID`, `startNewTicket()`, `cancelNewTicket()`, `createNewTicket()` (creates, closes the sheet, selects the ticket and clears a filter that hides it) |
 
-**Reader.** `TicketsReader.read(_:)` still reads from `SampleTicketStore` until Chat comes over. `detail(of:)`
+**Reader.** `TicketsReader.read(_:store:)` reads the app's `LiveTicketStore` (the samples without one). `detail(of:)`
 has one sentence per status and priority, and one per status without a priority.
 
 **Widget.** `TicketsDashboardWidget` counts with `store.count(…, tree:)` over the environment's directory; it
@@ -1494,44 +1509,61 @@ operation and applies `onFocusRequest`. Without a contract it shows "No Contract
 
 ### BuildsKit
 
-Spec: [Builds](ui/builds.md).
+Spec: [Builds](ui/builds.md). Data: `BuildData` ([BuildData](#builddata)). Depends on BuildData, MCPKit,
+ProjectData and ExternalTools.
 
 | File | Contents |
 | --- | --- |
-| `Builds.swift` | `RunStatus`, `WorkflowRun`, `Job`, `Step`, `Release`, `StepReference`, their appearance, `elapsedText(_:)`, `LogLineKind`, the samples and logs |
-| `BuildsModel.swift` | `BuildStore`, `SampleBuildStore`, `BuildsFocus`, `BuildsModel` |
+| `Builds.swift` | `RunStatus` (and `init(status:conclusion:)` from GitHub's values), `WorkflowRun`, `Job`, `Step`, `Release`, `StepReference`, their appearance, `elapsedText(_:)`, `LogLineKind`, the samples and logs |
+| `BuildStore.swift` | `BuildLoad`, `BuildStore` (protocol), `BuildActionError`, `SampleBuildStore`, `LiveBuildStore`, `EnvironmentValues.buildStore` |
+| `BuildsModel.swift` | `BuildsFocus`, `BuildsModel` |
+| `BuildTools.swift` | `BuildTools` (the seven MCP tools and their wording for the chat) |
 | `BuildsReader.swift` | `BuildsReader` |
 | `BuildsRootView.swift` | `BuildsRootView` and its rows, tables, inspectors, `LogPane`, `ReleaseNotes` |
 | `BuildsDashboardWidget.swift` | `BuildsDashboardWidget` |
 
-**Public API**: `BuildsRootView(project: Project, focus: String? = nil)`,
-`BuildsReader.read(_ focus: String, project: Project) -> ToolReading?`, `BuildsDashboardWidget(widget:context:)`.
+**Public API**: `BuildsRootView(project:focus:store: LiveBuildStore)`, `LiveBuildStore(cli:temporary:downloads:)`,
+`BuildsReader.read(_:project:store: LiveBuildStore?)`, `BuildsDashboardWidget(widget:context:)` (reads
+`\.buildStore`), `BuildTools.operations(projects:runner:)`.
 
-**Types.** `RunStatus`: `success`, `failure`, `running`, `queued`, `cancelled`. `WorkflowRun` (`id` = run
-number, `title`, `workflow`, `branch`, `commit`, `status`, `startedAt`, `duration` in seconds, `jobs`;
-`defaultStep`: the failed step, else the running one, else the last that passed; `step(_:)`). `Job` and `Step`
-(`name` as id, `status`, `duration`). `Release` (`tag` as id, `title`, `publishedAt`, `assets`, `isPrerelease`,
-`isLatest`, `notes`). `StepReference` (`job`, `step`). `LogLineKind(_ line:)`: `error`, `detail`, `quiet`,
-`plain`, by how the line starts.
+**Types.** `RunStatus`: `success`, `failure`, `running`, `queued`, `cancelled`. `WorkflowRun` (`id`: GitHub's id,
+a sample's number; `number`, `displayNumber`; `title`, `workflow`, `branch`, `commit`, `event`, `status`,
+`startedAt`, `duration` in seconds, `jobs`, `hasJobs`; `defaultStep`: the failed step, else the running one,
+else the last that passed; `step(_:)`). `Job` (`name` as id, `status`, `duration`, `steps`, `jobID`) and `Step`.
+`Release` (`tag` as id, `title`, `publishedAt`, `assets`, `isPrerelease`, `isLatest`, `notes`). `StepReference`
+(`job`, `step`). `LogLineKind(_ line:)`: `error`, `detail`, `quiet`, `plain`, by how the line starts.
 
 **Focus.** `BuildsFocus`: `.run(Int)` or `.release(String)`; `releasePrefix = "release:"`. `init?(_:)` accepts
 ASCII digits for a run, or `release:` and a non-empty tag; `focus` writes it back.
 
-**Store.** `protocol BuildStore { runs(of: Project) -> [WorkflowRun]; releases(of: Project) -> [Release] }`,
-newest first. `SampleBuildStore` reads `WorkflowRun.samples(for:)` and `Release.samples(for:)` of the
-repository's owner: the first sample project with the same `repository`, so ToolsKit shows Tools' builds.
+**Stores.** `protocol BuildStore` (`@MainActor`, a class): `runs(of:)` and `releases(of:)` as `BuildLoad`
+(`loading`, `loaded`, `failed(message)`), `run(_:of:)` (with its jobs once read), `log(of:in:of:)`,
+`refresh(_:releases:)`, `load(run:of:)`, `loadLog(of:in:of:)`, `rerun(_:failedOnly:of:)`, `cancel(_:of:)`,
+`download(_:of:of:)`, `webURL(of:in:)`.
 
-**`BuildsModel`**, `init(project:focus:store:)`: `Mode` (`runs`, `releases`), `project`, `runs`, `releases`,
-`mode`, `selectedRunID` (setting another run shows its `defaultStep`), `selectedReleaseID`, `selectedStep`,
-`pageOnOpen: Mode?` (the mode a focus picked, which starts on its page at iPhone width), `currentRun`,
-`currentRelease`, `currentStep`, `select(focus:)` (switches mode; a focus that names nothing changes nothing),
-`chatSubject` (the run in Runs, the release in Releases).
+- `LiveBuildStore` (`@Observable`, one for the app, made by `AppData` with gh and the environment of the
+  projects' tool lookup) keeps per repository (`owner/name`) the runs, the releases, the runs' details by id
+  and the jobs' logs by job id, nothing on disk. A refresh of a key already reading is skipped; a run whose
+  status changed is read again with its details. It maps `GitHubRun` and `GitHubRelease` to the window's types.
+- `SampleBuildStore` reads the samples of the repository's owner: the first sample project with the same
+  `repository`, so ToolsKit shows Tools' builds; its actions fail with an alert.
 
-**Reader.** `BuildsReader.read` reads the repository owner's runs and releases. `reference(_ run:in:)` titles
-it "Run <n>"; `reference(_ release:in:)` "Release <tag>" with focus `release:<tag>`.
+**`BuildsModel`**, `init(project:focus:store:)`: `Mode`, `project`, `store`, `runsLoad`, `releasesLoad`, `runs`,
+`releases`, `mode`, `selectedRunID` (another run shows its `defaultStep`), `selectedReleaseID`, `selectedStep`,
+`pageOnOpen`, `isRefreshing`, `isActing`, `downloads`, `failure`, `currentRun`, `currentRelease`,
+`currentStep`, `stepLog`, `select(focus:)` (a focus naming nothing read yet waits for the lists), `chatSubject`,
+`refresh()`, `loadSelectedRun()`, `loadLog()`, `rerun(failedOnly:)`, `cancel()`, `webURL`, `download(_:of:)`.
+The root view runs `refresh()` in a `.task(id: mode)` loop every 30 s, and `loadSelectedRun()` and `loadLog()`
+in `.task(id:)`s on the selection.
+
+**Reader.** `BuildsReader.read` reads the store's runs and releases (the samples without a store).
+`reference(_ run:in:)` titles it "Run <number>" with the run's id as focus; `reference(_ release:in:)` "Release
+<tag>" with focus `release:<tag>`.
 
 **Widget.** `BuildsDashboardWidget.recentRuns(of:count:store:)` lists the newest runs within 1–20; a row opens
-`.tool(.builds, project:, focus: "<number>")`, except in edit mode.
+`.tool(.builds, project:, focus: "<id>")`, except in edit mode. It reads the app's store, refreshing it when it
+shows and every 30 s.
+
 
 **Root view.** One body per `WindowLayout`: `.mac` is a `VSplitView` of the table over the log or notes with an
 always-open `.inspector` (280–440); `.pad` is a `VSplitView` of the table over an `HSplitView` of the log or
@@ -1815,7 +1847,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 505 tests). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 516 tests). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
@@ -1825,6 +1857,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ExternalToolsTests | Child processes, The login shell's environment, Finding the tools, git ssh and kubectl | Output, status, input, folder, environment, signals, missing executables; the timeout ending a whole process group; `terminateAll`; `env -0` parsing and every capture outcome; `PATH` lookup and the git stub; the commands, arguments, parsing and failures of git, ssh and kubectl. Uses `FakeRunner`. |
 | MCPKitTests | JSON values and schemas, JSON-RPC, HTTP, Server | Number kinds and sorted output; every validation message in order; the classification table; initialize, ping, unknown methods and the version header; tools/list and tools/call results, errors and validation; heads, chunked and sized bodies and their limits; bearer tokens; a real listener on a free port answering with the token and refusing the rest. |
 | ProjectDataTests | Project file, Dashboard widgets, Registry and current environments, Data folder, Import from HephaestusV2, Rules and GitHub, Loading, Outside changes, Creating opening and removing, Inherited settings, Current environment, GitHub page, Session | V2's complete project file written back byte for byte; every V2 example round-tripping with all its keys; defaults; environments, base URLs and overrides; V3's additions; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; the import's list, skips, choices, single run and missing V2; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints; loading depth first with every issue; data folder files set aside; outside changes (changed, invalid, renamed identifier, deleted and returning files, the registry, own writes, relevance); create, open and remove with their refusals and sub projects; update with its write rules; inheritance on, off, nested and across types; the current environment chosen, renamed, removed and forgotten; GitHub pages from origins, aliases, typed pages and parents, `.git/config`; the session's start, lock, changes and a real outside change. Fixtures: V2's examples. Uses `FakeRunner`.; Dashboard widgets: keys of another kind kept, V3's Recent Builds, unknown kinds and statuses refused, each write rule with its message, stored widgets written back as they are, repeated ids. |
+| BuildDataTests | gh, Builds from gh | Repositories from GitHub pages; gh's environment and V2's failure messages; runs, a run's jobs and steps, logs by step (CR LF included), re-run and cancel after `--`; releases without drafts, the latest marked; a download's pattern, free name and temporary folder. A fake runner answers gh. |
 | ChatDataTests | Chat files, Transcripts, Stream mapping, Chats on the Claude CLI, Launching the CLI | V2's chat file written back byte for byte, V3's `origin`, the kinds' rules; replay (add, update, lines skipped), lines written by V3, the LF after a line cut short; V2's captures of Claude Code 2.1.309 mapped to items with V2's ids, streamed text, the CLI's permission request, compaction lines, results after Stop; the CLI located in order, its version and models; a first message (arguments without prompt, hooks or the CLI's tools, the MCP configuration and its chat token, the attached line), a turn replayed to idle, the app's card and the CLI's request answered, Stop, an exit in error, a missing session started again, model and effort. A `FakeLauncher` replays the captures; nothing starts Claude. |
 | TicketDataTests | Ticket and bundle files, Ticket library | V2's complete ticket and bundle written back byte for byte; defaults, the creation entry and unknown keys; numbers from the counters, skipping existing files; provisional titles and the title, description and status messages; Claude's descriptions taken as written; drafts; link rules 1–7 with their messages and inverse links; history entries in order and changes that write nothing; Claude's status limits; the Complete and Reopened rules, Claude's bundle limits and the Complete rule at load; deletion order and the Trash; comments and their files; attachment copies, names, limits and paths; outside changes, invalid files and removals. Fixtures: V2's examples. Uses a test Trash folder. |
 | TextFormatsTests | Language detection, Token kinds, Word lists, Highlighter fixtures, Tokenizer edge cases, Markdown block model, Links, Heading anchors, Ticket and bundle ids, Linked ids, Soft line breaks | V2's suites without the markers and the HTML output: every tokenizer against its fixtures and the word lists of [Text](text.md); the block model of every Markdown feature; links, images and path resolution read from [Text](text.md); ids. Fixtures: V2's highlighting examples (without the 1 MB ones). |

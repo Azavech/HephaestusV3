@@ -6,8 +6,9 @@ import ToolsFoundation
 /// API; here, from the sample tickets.
 public enum TicketsReader {
     /// `focus` is a ticket id, e.g. `ORD-142`. Nil when no ticket has that id.
-    public static func read(_ focus: String) -> ToolReading? {
-        read(focus, store: SampleTicketStore())
+    public static func read(_ focus: String, store: LiveTicketStore?) -> ToolReading? {
+        if let store { return read(focus, store: store as any TicketStore) }
+        return read(focus, store: SampleTicketStore())
     }
 
     static func read(_ focus: String, store: any TicketStore) -> ToolReading? {

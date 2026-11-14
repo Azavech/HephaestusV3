@@ -129,3 +129,16 @@ which rules the app enforces, and never tells Claude how to work.
 | In which language are the app's lines? | English, as stored in the transcript, as V2 stored them; the rows' and cards' wording is the tools', in the user's language. | [Data › Chat items](data.md#chat-items) |
 | How many transcripts stay in memory? | Those of chats open in a window and of running chats, plus at most 12 others, the oldest read dropped first (keep RAM low). | [Data › Chat transcript file](data.md#chat-transcript-file) |
 | What happens to the sample engine? | It stays for previews and the documentation's captures only. | [UI › Chat › Samples](ui/chat.md#samples) |
+
+## Phase 6: Builds (14 November 2026)
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| What names a run? | GitHub's id (`databaseId`), which is unique; routes, `get_run` and the window use it, and the window shows the run's `number` (`#641`), as GitHub does. A run's number repeats across workflows. | [Data › Builds](data.md#builds) |
+| How are releases read? | `gh api …/releases?per_page=50`, which gives notes and files in one call, so the Assets column needs no call per release; `gh release list` tells the latest. V2 read each release with `gh release view`. | [Data › gh calls](data.md#gh-calls) |
+| Where do step logs come from? | `gh run view --log --job=<id>`, read when a step is picked, kept until the window's next read of that run; a job's log exists once it has completed. V2 showed no logs. | [UI › Builds › Step log](ui/builds.md#step-log) |
+| How does V3's single Re-run button carry V2's three? | Re-run runs all jobs; with failed jobs it is a menu button whose click re-runs the failed ones and whose menu offers both; Cancel Run takes its place while the run is queued or running. | [UI › Builds › Run details](ui/builds.md#run-details) |
+| What may Claude do in Builds? | Read runs, jobs, logs and releases (seven tools); re-run and cancel under **Start builds** (Never by default, or Ask First); no downloads. | [MCP › Permissions](mcp.md#permissions) |
+| When does the Dashboard's Recent Builds read? | When it shows, then every 30 s, as the window. | [UI › Dashboard](ui/dashboard.md) |
+| What does the chat's reader read now? | Tickets and Builds read the app's data (Tickets did read its samples until now); the Service Map and Contracts keep their samples until their phases. | [UI › Chat › How Claude reaches the tools](ui/chat.md#how-claude-reaches-the-tools) |
+| What about the Projects window's Builds tile and activity? | They keep the samples' text for sample projects, and "Workflow runs and releases on GitHub" otherwise: reading every project's runs for a tile would call gh for each project. | [UI › Projects](ui/projects.md) |

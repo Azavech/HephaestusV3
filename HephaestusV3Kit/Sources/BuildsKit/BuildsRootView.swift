@@ -1,3 +1,4 @@
+import AppKit
 import AZDesign
 import AZDesignCode
 import SwiftUI
@@ -20,8 +21,8 @@ public struct BuildsRootView: View {
     ///
     /// The runs are those of the project's repository: a sub project in its parent's repository, as
     /// ToolsKit in the Tools app's, shows the same runs as its parent.
-    public init(project: Project, focus: String? = nil) {
-        self.init(model: BuildsModel(project: project, focus: focus, store: SampleBuildStore()))
+    public init(project: Project, focus: String? = nil, store: LiveBuildStore) {
+        self.init(model: BuildsModel(project: project, focus: focus, store: store))
     }
 
     init(model: BuildsModel) {
@@ -45,6 +46,24 @@ public struct BuildsRootView: View {
         .onChange(of: model.chatSubject, initial: true) { _, subject in
             reportChatSubject(subject)
         }
+        // The shown mode's list is read when it shows, then every 30 s while it does.
+        .task(id: model.mode) {
+            while !Task.isCancelled {
+                await model.refresh()
+                try? await Task.sleep(for: .seconds(30))
+            }
+        }
+        .task(id: model.selectedRunID) {
+            await model.loadSelectedRun()
+        }
+        .task(id: model.selectedStep) {
+            await model.loadLog()
+        }
+        .alert(model.failure?.title ?? "", isPresented: Binding(get: { model.failure != nil }, set: { if !$0 { model.failure = nil } })) {
+            Button(String(localized: "OK", bundle: #bundle)) { model.failure = nil }
+        } message: {
+            Text(verbatim: model.failure?.message ?? "")
+        }
         .toolbar {
             if layout == .phone {
                 // An iPhone's toolbar has room for a menu, not for both segments.
@@ -59,9 +78,17 @@ public struct BuildsRootView: View {
                 }
             }
             ToolbarItem(placement: .primaryAction) {
-                Button(String(localized: "Refresh", bundle: #bundle), systemImage: "arrow.clockwise") {}
+                if model.isRefreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityIdentifier("builds.refresh")
+                } else {
+                    Button(String(localized: "Refresh", bundle: #bundle), systemImage: "arrow.clockwise") {
+                        Task { await model.refresh() }
+                    }
                     .help(String(localized: "Refresh", bundle: #bundle))
                     .accessibilityIdentifier("builds.refresh")
+                }
             }
             ChatPanelToolbarItem()
         }
@@ -170,7 +197,7 @@ public struct BuildsRootView: View {
                 } page: { id in
                     if let run = model.runs.first(where: { $0.id == id }) {
                         VSplitView {
-                            RunInspector(run: run, selectedStep: $model.selectedStep)
+                            RunInspector(run: run, selectedStep: $model.selectedStep, model: model)
                                 .id(run.id)
                                 .frame(minHeight: 180, idealHeight: 300, maxHeight: .infinity)
                             log(of: run)
@@ -192,7 +219,7 @@ public struct BuildsRootView: View {
                 } page: { id in
                     if let release = model.releases.first(where: { $0.id == id }) {
                         VSplitView {
-                            ReleaseInspector(release: release)
+                            ReleaseInspector(release: release, model: model)
                                 .frame(minHeight: 180, idealHeight: 280, maxHeight: .infinity)
                             ReleaseNotes(release: release)
                                 .frame(minHeight: 140, idealHeight: 300, maxHeight: .infinity)
@@ -218,7 +245,7 @@ public struct BuildsRootView: View {
         switch model.mode {
         case .runs:
             if let run = model.currentRun {
-                RunInspector(run: run, selectedStep: $model.selectedStep)
+                RunInspector(run: run, selectedStep: $model.selectedStep, model: model)
                     .id(run.id)
             } else {
                 ContentUnavailableView(String(localized: "No Run Selected", bundle: #bundle), systemImage: ToolKind.builds.symbol)
@@ -226,7 +253,7 @@ public struct BuildsRootView: View {
             }
         case .releases:
             if let release = model.currentRelease {
-                ReleaseInspector(release: release)
+                ReleaseInspector(release: release, model: model)
             } else {
                 ContentUnavailableView(String(localized: "No Release Selected", bundle: #bundle), systemImage: "tag")
                     .accessibilityIdentifier("builds.inspector.noRelease")
@@ -237,7 +264,7 @@ public struct BuildsRootView: View {
     /// The log of the step picked in the run's details.
     @ViewBuilder private func log(of run: WorkflowRun?) -> some View {
         if let run, let selectedStep = model.selectedStep, let found = run.step(selectedStep) {
-            LogPane(run: run, job: found.job, step: found.step)
+            LogPane(run: run, job: found.job, step: found.step, lines: model.stepLog)
         } else {
             ContentUnavailableView(
                 String(localized: "No Step Selected", bundle: #bundle), systemImage: "text.alignleft",
@@ -261,20 +288,59 @@ public struct BuildsRootView: View {
         }
     }
 
-    private var noRuns: some View {
-        empty(
-            String(localized: "No Runs", bundle: #bundle),
-            description: String(localized: "This project's repository has no workflow runs yet.", bundle: #bundle)
-        )
-        .accessibilityIdentifier("builds.noRuns")
+    /// No runs to show: on their way, can't be read, or none.
+    @ViewBuilder private var noRuns: some View {
+        switch model.runsLoad {
+        case .loading:
+            loading(String(localized: "Reading the runs…", bundle: #bundle))
+        case .failed(let message):
+            unavailable(String(localized: "Can't Show the Runs", bundle: #bundle), message)
+        case .loaded:
+            empty(
+                String(localized: "No Runs", bundle: #bundle),
+                description: String(localized: "This project's repository has no workflow runs yet.", bundle: #bundle)
+            )
+            .accessibilityIdentifier("builds.noRuns")
+        }
     }
 
-    private var noReleases: some View {
-        empty(
-            String(localized: "No Releases", bundle: #bundle),
-            description: String(localized: "This project's repository has no releases yet.", bundle: #bundle)
-        )
-        .accessibilityIdentifier("builds.noReleases")
+    @ViewBuilder private var noReleases: some View {
+        switch model.releasesLoad {
+        case .loading:
+            loading(String(localized: "Reading the releases…", bundle: #bundle))
+        case .failed(let message):
+            unavailable(String(localized: "Can't Show the Releases", bundle: #bundle), message)
+        case .loaded:
+            empty(
+                String(localized: "No Releases", bundle: #bundle),
+                description: String(localized: "This project's repository has no releases yet.", bundle: #bundle)
+            )
+            .accessibilityIdentifier("builds.noReleases")
+        }
+    }
+
+    private func loading(_ text: String) -> some View {
+        ProgressView(text)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(.canvas)
+            .accessibilityIdentifier("builds.loading")
+    }
+
+    /// gh can't read the list: why, and Try Again.
+    private func unavailable(_ title: String, _ message: String) -> some View {
+        ContentUnavailableView {
+            Label(title, systemImage: "exclamationmark.triangle")
+        } description: {
+            Text(verbatim: message)
+        } actions: {
+            Button(String(localized: "Try Again", bundle: #bundle)) {
+                Task { await model.refresh() }
+            }
+            .accessibilityIdentifier("builds.tryAgain")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.canvas)
+        .accessibilityIdentifier("builds.unavailable")
     }
 
     private func empty(_ title: String, description: String) -> some View {
@@ -297,7 +363,7 @@ private struct CompactRunRow: View {
                 Text(verbatim: run.title)
                     .foregroundStyle(.textPrimary)
                     .lineLimit(2)
-                Text("#\(String(run.id)) · \(run.workflow) · \(run.branch)", bundle: #bundle, comment: "A run's number, workflow and branch: #1288 · CI · fix/payments-backoff")
+                Text("#\(String(run.displayNumber)) · \(run.workflow) · \(run.branch)", bundle: #bundle, comment: "A run's number, workflow and branch: #1288 · CI · fix/payments-backoff")
                     .font(.caption)
                     .foregroundStyle(.textSecondary)
                     .lineLimit(1)
@@ -363,7 +429,7 @@ private struct RunsTable: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: run.title)
                         .lineLimit(1)
-                    Text("#\(String(run.id)) · \(run.commit)", bundle: #bundle, comment: "A run's number and commit: #641 · 8e7ccf3")
+                    Text("#\(String(run.displayNumber)) · \(run.commit)", bundle: #bundle, comment: "A run's number and commit: #641 · 8e7ccf3")
                         .font(.caption.monospaced())
                         .foreground(.textSecondary, onSelection: .secondary)
                 }
@@ -446,6 +512,9 @@ private struct ReleasesTable: View {
 private struct RunInspector: View {
     let run: WorkflowRun
     @Binding var selectedStep: StepReference?
+    let model: BuildsModel
+
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         ScrollView {
@@ -457,18 +526,47 @@ private struct RunInspector: View {
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(.textPrimary)
                         .accessibilityAddTraits(.isHeader)
-                    Text("#\(String(run.id)) · \(run.workflow) · \(run.branch) · \(run.commit)", bundle: #bundle, comment: "Where a run ran: its number, workflow, branch and commit")
+                    Text("#\(String(run.displayNumber)) · \(run.workflow) · \(run.branch) · \(run.commit)", bundle: #bundle, comment: "Where a run ran: its number, workflow, branch and commit")
                         .font(.caption.monospaced())
                         .foregroundStyle(.textSecondary)
                         .textSelection(.enabled)
                 }
 
                 HStack {
-                    Button(String(localized: "Re-run", bundle: #bundle), systemImage: "arrow.clockwise") {}
-                        .disabled(run.status == .running)
+                    if run.status == .running || run.status == .queued {
+                        Button(String(localized: "Cancel Run", bundle: #bundle), systemImage: "xmark.circle") {
+                            Task { await model.cancel() }
+                        }
+                        .disabled(model.isActing)
+                        .accessibilityIdentifier("builds.inspector.cancel")
+                    } else if run.jobs.contains(where: { $0.status == .failure }) {
+                        // A run with failed jobs runs those again, or every job from the menu.
+                        Menu {
+                            Button(String(localized: "Re-run Failed Jobs", bundle: #bundle)) { Task { await model.rerun(failedOnly: true) } }
+                            Button(String(localized: "Re-run All Jobs", bundle: #bundle)) { Task { await model.rerun(failedOnly: false) } }
+                        } label: {
+                            Label(String(localized: "Re-run", bundle: #bundle), systemImage: "arrow.clockwise")
+                        } primaryAction: {
+                            Task { await model.rerun(failedOnly: true) }
+                        }
+                        .fixedSize()
+                        .disabled(model.isActing)
+                        .help(String(localized: "Re-run Failed Jobs", bundle: #bundle))
                         .accessibilityIdentifier("builds.inspector.rerun")
-                    Button(String(localized: "Open on GitHub", bundle: #bundle), systemImage: "arrow.up.forward.square") {}
+                    } else {
+                        Button(String(localized: "Re-run", bundle: #bundle), systemImage: "arrow.clockwise") {
+                            Task { await model.rerun(failedOnly: false) }
+                        }
+                        .disabled(model.isActing)
+                        .help(String(localized: "Re-run All Jobs", bundle: #bundle))
+                        .accessibilityIdentifier("builds.inspector.rerun")
+                    }
+                    if let url = model.webURL {
+                        Button(String(localized: "Open on GitHub", bundle: #bundle), systemImage: "arrow.up.forward.square") {
+                            openURL(url)
+                        }
                         .accessibilityIdentifier("builds.inspector.openOnGitHub")
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -554,9 +652,9 @@ private struct LogPane: View {
     let run: WorkflowRun
     let job: Job
     let step: Step
+    let lines: BuildLoad<[String]>
 
     var body: some View {
-        let lines = step.log(in: run)
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: step.status.symbol)
@@ -571,13 +669,17 @@ private struct LogPane: View {
                 Text(verbatim: step.name)
                     .fontWeight(.semibold)
                     .foregroundStyle(.textPrimary)
-                Text("#\(String(run.id))", bundle: #bundle, comment: "A run's number: #641")
+                Text("#\(String(run.displayNumber))", bundle: #bundle, comment: "A run's number: #641")
                     .monospacedDigit()
                     .foregroundStyle(.textSecondary)
                 Spacer()
                 elapsedText(step.duration)
                     .foregroundStyle(.textSecondary)
-                Button(String(localized: "Copy Log", bundle: #bundle), systemImage: "doc.on.doc") {}
+                Button(String(localized: "Copy Log", bundle: #bundle), systemImage: "doc.on.doc") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString((lines.value ?? []).joined(separator: "\n"), forType: .string)
+                }
+                    .disabled(lines.value?.isEmpty ?? true)
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
                     .help(String(localized: "Copy Log", bundle: #bundle))
@@ -587,6 +689,32 @@ private struct LogPane: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             Divider()
+            switch lines {
+            case .loading:
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.surfaceSunken)
+                    .accessibilityIdentifier("builds.log.loading")
+            case .failed(let message):
+                ContentUnavailableView(String(localized: "No Log", bundle: #bundle, comment: "A step's log can't be shown"), systemImage: "text.alignleft",
+                                       description: Text(verbatim: message))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.surfaceSunken)
+                    .accessibilityIdentifier("builds.log.failure")
+            case .loaded(let lines) where lines.isEmpty:
+                ContentUnavailableView(String(localized: "No Log", bundle: #bundle, comment: "A step's log can't be shown"), systemImage: "text.alignleft",
+                                       description: Text("This step wrote nothing.", bundle: #bundle))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.surfaceSunken)
+                    .accessibilityIdentifier("builds.log.empty")
+            case .loaded(let lines):
+                lineGrid(lines)
+            }
+        }
+        .accessibilityIdentifier("builds.log")
+    }
+
+    private func lineGrid(_ lines: [String]) -> some View {
             ScrollView([.vertical, .horizontal]) {
                 Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 3) {
                     ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
@@ -608,8 +736,6 @@ private struct LogPane: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(.surfaceSunken)
             .accessibilityIdentifier("builds.log.lines")
-        }
-        .accessibilityIdentifier("builds.log")
     }
 
     private func color(of kind: LogLineKind) -> Color {
@@ -662,6 +788,7 @@ private struct ReleaseNotes: View {
 /// A release: its tag, title, date and assets.
 private struct ReleaseInspector: View {
     let release: Release
+    let model: BuildsModel
 
     var body: some View {
         ScrollView {
@@ -699,12 +826,29 @@ private struct ReleaseInspector: View {
                             .font(.callout)
                             .foregroundStyle(.textPrimary)
                             Spacer()
-                            Button(String(localized: "Download", bundle: #bundle), systemImage: "arrow.down.circle") {}
+                            switch model.download(of: asset, in: release) {
+                            case .running?:
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .accessibilityIdentifier("builds.inspector.download.\(asset)")
+                            case .saved(let file)?:
+                                Button(String(localized: "Show in Finder", bundle: #bundle), systemImage: "magnifyingglass") {
+                                    NSWorkspace.shared.activateFileViewerSelecting([file])
+                                }
+                                .labelStyle(.iconOnly)
+                                .buttonStyle(.borderless)
+                                .help(String(localized: "Show in Finder", bundle: #bundle))
+                                .accessibilityIdentifier("builds.inspector.showInFinder.\(asset)")
+                            case nil:
+                                Button(String(localized: "Download", bundle: #bundle), systemImage: "arrow.down.circle") {
+                                    Task { await model.download(asset, of: release) }
+                                }
                                 .labelStyle(.iconOnly)
                                 .buttonStyle(.borderless)
                                 .help(String(localized: "Download", bundle: #bundle))
                                 .accessibilityLabel(String(localized: "Download \(asset)", bundle: #bundle, comment: "The button that downloads a release's file, named"))
                                 .accessibilityIdentifier("builds.inspector.download.\(asset)")
+                            }
                         }
                     }
                 }

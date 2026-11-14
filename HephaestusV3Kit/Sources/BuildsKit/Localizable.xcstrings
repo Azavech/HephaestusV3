@@ -131,8 +131,32 @@
     "Branch" : {
 
     },
+    "Can't Show the Releases" : {
+
+    },
+    "Can't Show the Runs" : {
+
+    },
+    "Cancel Run" : {
+
+    },
+    "Cancel Run failed" : {
+
+    },
     "Cancelled" : {
       "comment" : "The status of a run, a job or a step"
+    },
+    "Cancelled a run of %@" : {
+
+    },
+    "Claude wants to cancel a run of %@" : {
+
+    },
+    "Claude wants to re-run a run of %@" : {
+
+    },
+    "Claude wants to re-run the failed jobs of a run of %@" : {
+
     },
     "Copy Log" : {
 
@@ -142,6 +166,9 @@
     },
     "Download %@" : {
       "comment" : "The button that downloads a release's file, named"
+    },
+    "Download failed" : {
+
     },
     "Duration" : {
 
@@ -154,6 +181,15 @@
     },
     "Latest" : {
       "comment" : "A release that is the latest"
+    },
+    "Listed the releases of %@" : {
+
+    },
+    "Listed the runs of %@" : {
+
+    },
+    "No Log" : {
+      "comment" : "A step's log can't be shown"
     },
     "No Release Selected" : {
 
@@ -179,6 +215,9 @@
     "No notes." : {
       "comment" : "A release without notes"
     },
+    "OK" : {
+
+    },
     "Open on GitHub" : {
 
     },
@@ -200,7 +239,28 @@
     "Queued" : {
       "comment" : "The status of a run, a job or a step"
     },
+    "Re-ran a run of %@" : {
+
+    },
+    "Re-ran the failed jobs of a run of %@" : {
+
+    },
     "Re-run" : {
+
+    },
+    "Re-run All Jobs" : {
+
+    },
+    "Re-run All Jobs failed" : {
+
+    },
+    "Re-run Failed Jobs" : {
+
+    },
+    "Re-run Failed Jobs failed" : {
+
+    },
+    "Read a run of %@" : {
 
     },
     "Read release %@" : {
@@ -208,6 +268,15 @@
     },
     "Read run %@" : {
       "comment" : "A read of a run, by its number"
+    },
+    "Read the log of a run of %@" : {
+
+    },
+    "Reading the releases…" : {
+
+    },
+    "Reading the runs…" : {
+
     },
     "Refresh" : {
 
@@ -230,7 +299,19 @@
     "Runs" : {
 
     },
+    "Sample releases have no files to download." : {
+
+    },
+    "Sample runs can't be cancelled." : {
+
+    },
+    "Sample runs can't run again." : {
+
+    },
     "Show" : {
+
+    },
+    "Show in Finder" : {
 
     },
     "Started" : {
@@ -242,13 +323,22 @@
     "Tag" : {
 
     },
+    "The log shows once the job has finished." : {
+
+    },
     "This project's repository has no releases yet." : {
 
     },
     "This project's repository has no workflow runs yet." : {
 
     },
+    "This step wrote nothing." : {
+
+    },
     "Title" : {
+
+    },
+    "Try Again" : {
 
     },
     "Was run %@ slower than usual?" : {

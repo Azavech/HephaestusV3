@@ -1,5 +1,7 @@
 import AppKit
 import ChatData
+import BuildData
+import BuildsKit
 import ChatKit
 import DashboardsKit
 import ExternalTools
@@ -18,7 +20,7 @@ import ToolsFoundation
 final class AppData {
     /// The tools whose feature has come over from HephaestusV2; the others are hidden in the running app
     /// (docs/ui/navigation.md › Available tools). Previews show every tool.
-    static let availableTools: Set<ToolKind> = [.dashboard, .tickets, .chat]
+    static let availableTools: Set<ToolKind> = [.dashboard, .tickets, .builds, .chat]
     /// Whether the Virtual Machines window has come over.
     static let machinesAvailable = false
 
@@ -29,6 +31,8 @@ final class AppData {
     let ticketStore: LiveTicketStore
     /// The Dashboards of the loaded projects, kept in their project files.
     let dashboardStore: LiveDashboardStore
+    /// The runs and releases of the projects' GitHub repositories, read with gh.
+    let buildStore: LiveBuildStore
     /// The chats and their Claude processes (docs/architecture.md › ChatData).
     let chats: ChatSession
     /// The chats as the Chat windows and panels show them.
@@ -60,6 +64,11 @@ final class AppData {
         tickets = TicketSession(projects: session)
         ticketStore = LiveTicketStore(session: tickets)
         dashboardStore = LiveDashboardStore(session: session)
+        let session = session
+        let downloads = (DataFolder.resolve()?.url ?? FileManager.default.temporaryDirectory).appendingPathComponent("Runtime/downloads", isDirectory: true)
+        buildStore = LiveBuildStore(cli: {
+            GitHubCLI(gh: session.tools.gh, environment: session.tools.environment, runner: SystemProcessRunner.shared)
+        }, temporary: downloads)
         let tokens = MCPTokens()
         self.tokens = tokens
         chats = ChatSession(projects: session, tokens: tokens, device: TicketSession.computerName())

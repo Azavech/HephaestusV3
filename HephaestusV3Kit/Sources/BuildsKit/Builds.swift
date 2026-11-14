@@ -9,11 +9,27 @@ enum RunStatus: Sendable {
     case running
     case queued
     case cancelled
+
+    /// GitHub's `status` and `conclusion` (docs/ui/builds.md › Runs table): success; failure, timed out or
+    /// startup failure; running; queued, requested, waiting or pending; anything else completed is cancelled.
+    nonisolated init(status: String, conclusion: String?) {
+        switch status {
+        case "in_progress": self = .running
+        case "queued", "requested", "waiting", "pending": self = .queued
+        case "completed":
+            switch conclusion {
+            case "success": self = .success
+            case "failure", "timed_out", "startup_failure": self = .failure
+            default: self = .cancelled
+            }
+        default: self = .queued
+        }
+    }
 }
 
-/// A CI workflow run. In the real suite it is read from GitHub; here it is sample data.
+/// A CI workflow run, read from GitHub with gh, or a sample.
 struct WorkflowRun: Identifiable, Hashable, Sendable {
-    /// The run number.
+    /// GitHub's id of the run; a sample's number.
     let id: Int
     /// The head commit's message.
     let title: String
@@ -25,6 +41,15 @@ struct WorkflowRun: Identifiable, Hashable, Sendable {
     /// In seconds.
     let duration: Int
     let jobs: [Job]
+    /// Its number in its workflow, as GitHub shows it (`#641`); 0 for a sample, whose id is its number.
+    var number = 0
+    /// What started it: `push`, `pull_request`…; empty for a sample.
+    var event = ""
+    /// Whether its jobs are read: a run of the list has none until its details are read.
+    var hasJobs = true
+
+    /// The number shown: `641` of `#641`.
+    var displayNumber: Int { number == 0 ? id : number }
 }
 
 struct Job: Identifiable, Hashable, Sendable {
@@ -33,6 +58,8 @@ struct Job: Identifiable, Hashable, Sendable {
     let status: RunStatus
     let duration: Int
     let steps: [Step]
+    /// GitHub's id of the job, which reads its log; 0 for a sample.
+    var jobID = 0
 }
 
 struct Step: Identifiable, Hashable, Sendable {

@@ -54,6 +54,8 @@ let package = Package(
         // Tickets and bundles: their files, rules and changes.
         .target(name: "TicketData", dependencies: ["FileStorage", "ProjectData"]),
         .target(name: "TextFormats", dependencies: [.product(name: "Markdown", package: "swift-markdown")]),
+        // Builds: gh's runs, jobs, logs and releases of a project's GitHub repository.
+        .target(name: "BuildData", dependencies: ["ExternalTools"]),
         // Chats: their files, the Claude CLI and its stream-json protocol, the chats' processes.
         .target(name: "ChatData", dependencies: ["FileStorage", "ExternalTools", "ProjectData", "MCPKit"]),
 
@@ -69,7 +71,7 @@ let package = Package(
         toolTarget("TicketsKit", data: ["TicketData", "TextFormats", "MCPKit"]),
         toolTarget("ServiceMapKit"),
         toolTarget("ContractsKit"),
-        toolTarget("BuildsKit"),
+        toolTarget("BuildsKit", data: ["BuildData", "MCPKit", "ProjectData", "ExternalTools"]),
         toolTarget("MachinesKit"),
         // Claude as one more client of the tools: the Chat window and the panel beside each tool.
         toolTarget("ChatKit", data: ["ChatData", "MCPKit"]),
@@ -78,7 +80,7 @@ let package = Package(
         .target(
             name: "ToolsScenes",
             dependencies: [
-                "ToolsFoundation", "ProjectData", "FileStorage", "MCPKit", "TicketData", "ChatData", "ProjectsKit",
+                "ToolsFoundation", "ProjectData", "FileStorage", "MCPKit", "TicketData", "ChatData", "BuildData", "ProjectsKit",
                 "DashboardsKit", "TicketsKit", "ServiceMapKit", "ContractsKit", "BuildsKit", "MachinesKit", "ChatKit",
                 design,
             ],
@@ -93,6 +95,7 @@ let package = Package(
         testTarget("TicketData", resources: [.copy("Fixtures")], settings: []),
         testTarget("TextFormats", resources: [.copy("Fixtures")], settings: []),
         testTarget("ChatData", resources: [.copy("Fixtures")], settings: []),
+        testTarget("BuildData", settings: []),
         testTarget("ToolsFoundation"),
         testTarget("ProjectsKit"),
         testTarget("DashboardsKit"),

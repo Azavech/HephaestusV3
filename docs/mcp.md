@@ -17,7 +17,7 @@ function the window calls ([Architecture › MCPKit](architecture.md#mcpkit)). T
 | JSON-RPC methods | `initialize`, `ping`, `tools/list`, `tools/call`; every notification is accepted and ignored |
 | Server name | `hephaestus`, so Claude names the tools `mcp__hephaestus__<tool>` |
 | Authentication | `Authorization: Bearer <token>` with the external token ([Authentication](#authentication)) |
-| Tools | [Tools](#tools): 25 today |
+| Tools | [Tools](#tools): 32 today |
 | Instructions to Claude | None: no `instructions` in `initialize`, no system prompt, no skills ([What Claude reads](#what-claude-reads)) |
 
 ## Server lifecycle
@@ -189,6 +189,7 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 | --- | --- | --- | --- |
 | `read` | the `list_` and `get_` tools, `open_in_app` | runs | runs |
 | `renameChats` | `rename_chat` | runs | runs |
+| `startBuilds` | `rerun_run`, `cancel_run` | runs | Start builds: Ask First shows a card and waits; Never (the default) refuses |
 | `changeTickets` | `create_ticket`, `update_ticket`, `set_ticket_status`, `add_comment`, `update_comment`, the bundle tools but `delete_bundle` | runs | Change tickets: Always runs; Ask First shows a card and waits; Never refuses |
 | `deleteTickets` | `delete_ticket`, `delete_comment`, `remove_attachment`, `delete_bundle` | runs | Change tickets Never refuses; otherwise a card, even under Always |
 | `changeProjects` | `create_project`, `update_project` | runs | Change projects, as Change tickets |
@@ -198,9 +199,10 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
   user answers, Stop, or the chat's process ends. The CLI waits up to `MCP_TOOL_TIMEOUT`, 30 minutes.
 - A refusal is a tool error (`forbidden`) with one of these messages: `The user doesn't let Claude change
   tickets from chats (Settings ▸ Chat).`, `The user doesn't let Claude change projects from chats (Settings ▸
-  Chat).`, `The user didn't allow this call.`
+  Chat).`, `The user doesn't let Claude start or cancel builds from chats (Settings ▸ Chat).`, `The user didn't
+  allow this call.`
 - The permissions are the user defaults `chat.ticketChanges` and `chat.projectChanges`: `never`, `askFirst`
-  (the default) or `always`. `chat.buildStarts` waits for the Builds tools.
+  (the default) or `always`; and `chat.buildStarts`: `never` (the default) or `askFirst`.
 - The CLI runs every tool of the server without asking (`--allowedTools`): the gate is where the user's
   permissions hold, whatever the CLI's own settings say.
 
@@ -268,6 +270,8 @@ a project: Claude may read and change every project of this Mac, as the user can
 | `create_bundle`, `update_bundle`, `set_bundle_status`, `delete_bundle` | TicketsKit | changeTickets (`delete_bundle`: deleteTickets) | `TicketLibrary`, as Claude |
 | `list_chats`, `get_chat` | ChatKit | read | the chat session |
 | `rename_chat` | ChatKit | renameChats | `ChatSession.rename` |
+| `list_runs`, `get_run`, `get_run_log`, `list_releases`, `get_release` | BuildsKit | read | gh ([Data › Builds](data.md#builds)) |
+| `rerun_run`, `cancel_run` | BuildsKit | startBuilds | gh |
 | `open_in_app` | ToolsScenes | read | a route ([Navigation › Routes](ui/navigation.md#routes)) |
 
 A project's JSON (`get_project`, `create_project`, `update_project`): `id`, `name`, `type` (`none`,
@@ -1212,6 +1216,254 @@ Input schema:
   "required" : [
     "chatID",
     "title"
+  ],
+  "type" : "object"
+}
+```
+
+### list_runs
+
+- **Calls:** `gh run list` ([Data › Builds › gh calls](data.md#gh-calls)).
+- **Result:** an array of runs: `id` (GitHub's), `number`, `title`, `workflow`, `branch`, `commit`, `event`, `status`, `conclusion`, `created`, `started`, `updated`; absent values left out.
+- **Errors:** an unknown project (`notFound`); the project without a GitHub page, no gh, no login, or gh failing (`unavailable`, with the messages of [Data › Builds](data.md#builds)); gh's output not as expected (`internal`).
+
+Description:
+
+```text
+Returns the newest 50 workflow runs of the project's GitHub repository, of every branch and workflow, newest first: id, number, title, workflow, branch, commit, event, status, conclusion and dates. A sub project on its parent's settings has its parent's repository.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID"
+  ],
+  "type" : "object"
+}
+```
+
+### get_run
+
+- **Calls:** `gh run view` with `jobs`.
+- **Result:** the run, with `jobs`: each `name`, `status`, `conclusion`, `started`, `completed` and `steps` (`number`, `name`, `status`, `conclusion`, `started`, `completed`).
+- **Errors:** an unknown project (`notFound`); the project without a GitHub page, no gh, no login, or gh failing (`unavailable`, with the messages of [Data › Builds](data.md#builds)); gh's output not as expected (`internal`). A run that doesn't exist fails with gh's reason.
+
+Description:
+
+```text
+Returns one workflow run with its jobs and their steps, each with its status, conclusion and dates.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    },
+    "runID" : {
+      "description" : "The run's id on GitHub, as list_runs gives it.",
+      "type" : "integer"
+    }
+  },
+  "required" : [
+    "projectID",
+    "runID"
+  ],
+  "type" : "object"
+}
+```
+
+### get_run_log
+
+- **Calls:** `gh run view` for the run's jobs, then `gh run view --log --job=<job id>`.
+- **Result:** an array, one element per step (or the one named): `step`, `lines` (at most the last 2000, without GitHub's times), `truncated`.
+- **Errors:** an unknown project (`notFound`); the project without a GitHub page, no gh, no login, or gh failing (`unavailable`, with the messages of [Data › Builds](data.md#builds)); gh's output not as expected (`internal`). An unknown job or step (`notFound`); a job still running fails with gh's reason.
+
+Description:
+
+```text
+Returns the log of one job of a completed run, step by step; with step, that step's only. At most the last 2000 lines of each step. The log exists once the job has completed.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "job" : {
+      "description" : "The job's name, as get_run gives it.",
+      "type" : "string"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    },
+    "runID" : {
+      "description" : "The run's id on GitHub, as list_runs gives it.",
+      "type" : "integer"
+    },
+    "step" : {
+      "description" : "A step's name, as get_run gives it.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID",
+    "runID",
+    "job"
+  ],
+  "type" : "object"
+}
+```
+
+### rerun_run
+
+- **Calls:** `gh run rerun`, with `--failed` when `failedOnly`.
+- **Result:** `{"rerun": <run id>}`.
+- **Errors:** an unknown project (`notFound`); the project without a GitHub page, no gh, no login, or gh failing (`unavailable`, with the messages of [Data › Builds](data.md#builds)); gh's output not as expected (`internal`). A chat's call follows Start builds ([Permissions](#permissions)).
+
+Description:
+
+```text
+Runs every job of a completed workflow run again, or with failedOnly only its failed jobs.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "failedOnly" : {
+      "description" : "Only the jobs that failed.",
+      "type" : "boolean"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    },
+    "runID" : {
+      "description" : "The run's id on GitHub, as list_runs gives it.",
+      "type" : "integer"
+    }
+  },
+  "required" : [
+    "projectID",
+    "runID"
+  ],
+  "type" : "object"
+}
+```
+
+### cancel_run
+
+- **Calls:** `gh run cancel`.
+- **Result:** `{"cancelled": <run id>}`.
+- **Errors:** an unknown project (`notFound`); the project without a GitHub page, no gh, no login, or gh failing (`unavailable`, with the messages of [Data › Builds](data.md#builds)); gh's output not as expected (`internal`). A chat's call follows Start builds.
+
+Description:
+
+```text
+Cancels a queued or running workflow run.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    },
+    "runID" : {
+      "description" : "The run's id on GitHub, as list_runs gives it.",
+      "type" : "integer"
+    }
+  },
+  "required" : [
+    "projectID",
+    "runID"
+  ],
+  "type" : "object"
+}
+```
+
+### list_releases
+
+- **Calls:** `gh api repos/<owner>/<name>/releases` and `gh release list` (for the latest).
+- **Result:** an array of releases: `tag`, `name`, `latest`, `prerelease`, `created`, `published`, `assets` (`name`, `size`); drafts left out.
+- **Errors:** an unknown project (`notFound`); the project without a GitHub page, no gh, no login, or gh failing (`unavailable`, with the messages of [Data › Builds](data.md#builds)); gh's output not as expected (`internal`).
+
+Description:
+
+```text
+Returns the newest 50 published releases of the project's GitHub repository, newest first: tag, name, whether it is the latest or a pre-release, dates and the names and sizes of its files, without notes.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID"
+  ],
+  "type" : "object"
+}
+```
+
+### get_release
+
+- **Calls:** as `list_releases`.
+- **Result:** the release, as `list_releases` gives it, with `notes`.
+- **Errors:** an unknown project (`notFound`); the project without a GitHub page, no gh, no login, or gh failing (`unavailable`, with the messages of [Data › Builds](data.md#builds)); gh's output not as expected (`internal`). An unknown tag (`notFound`, `Release <tag> not found.`).
+
+Description:
+
+```text
+Returns one published release with its notes and its files.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    },
+    "tag" : {
+      "description" : "The release's tag, such as v1.4.0.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID",
+    "tag"
   ],
   "type" : "object"
 }

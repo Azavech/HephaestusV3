@@ -2,13 +2,13 @@ import Foundation
 import ToolsFoundation
 
 /// The Builds tool's read function for other clients, the chat among them: what a run or a release
-/// is, in a line, and the questions worth asking about it. In the real suite it answers from the
-/// tool's API; here, from the sample runs and releases.
+/// is, in a line, and the questions worth asking about it, from the runs and releases the app has read
+/// (the samples in previews).
 public enum BuildsReader {
     /// `focus` names a run of `project`'s repository by its number, `1288`, or a release by its tag,
     /// `release:v1.4.0`. Nil when it names neither.
-    public static func read(_ focus: String, project: Project) -> ToolReading? {
-        read(focus, project: project, store: SampleBuildStore())
+    public static func read(_ focus: String, project: Project, store: LiveBuildStore?) -> ToolReading? {
+        read(focus, project: project, store: store ?? SampleBuildStore())
     }
 
     /// As the Builds window reads them: the runs and releases of the repository's owner, which a sub
@@ -16,14 +16,14 @@ public enum BuildsReader {
     static func read(_ focus: String, project: Project, store: any BuildStore) -> ToolReading? {
         switch BuildsFocus(focus) {
         case .run(let number)?:
-            guard let run = store.runs(of: project).first(where: { $0.id == number }) else { return nil }
+            guard let run = store.runs(of: project).value?.first(where: { $0.id == number }) else { return nil }
             return ToolReading(
-                action: String(localized: "Read run \(String(run.id))", bundle: #bundle, comment: "A read of a run, by its number"),
+                action: String(localized: "Read run \(String(run.displayNumber))", bundle: #bundle, comment: "A read of a run, by its number"),
                 detail: detail(of: run),
                 suggestions: suggestions(for: run)
             )
         case .release(let tag)?:
-            guard let release = store.releases(of: project).first(where: { $0.id == tag }) else { return nil }
+            guard let release = store.releases(of: project).value?.first(where: { $0.id == tag }) else { return nil }
             return ToolReading(
                 action: String(localized: "Read release \(release.tag)", bundle: #bundle, comment: "A read of a release, by its tag"),
                 detail: detail(of: release),
@@ -38,7 +38,7 @@ public enum BuildsReader {
     static func reference(_ run: WorkflowRun, in project: Project) -> ChatReference {
         ChatReference(
             tool: .builds, projectID: project.id, focus: BuildsFocus.run(run.id).focus,
-            title: String(localized: "Run \(String(run.id))", bundle: #bundle, comment: "A run, by its number, as a chat names it")
+            title: String(localized: "Run \(String(run.displayNumber))", bundle: #bundle, comment: "A run, by its number, as a chat names it")
         )
     }
 
@@ -80,7 +80,7 @@ public enum BuildsReader {
 
     /// What to ask about a run in its state: why it failed only when it did.
     static func suggestions(for run: WorkflowRun) -> [String] {
-        let number = String(run.id)
+        let number = String(run.displayNumber)
         let changes = String(localized: "What changed in run \(number)?", bundle: #bundle, comment: "A question to ask the chat about a run")
         return switch run.status {
         case .failure: [String(localized: "Why did run \(number) fail?", bundle: #bundle, comment: "A question to ask the chat about a failed run"), changes]

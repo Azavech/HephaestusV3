@@ -140,15 +140,19 @@ public struct ToolsScenes: Scene {
 }
 
 /// Reads an item through the tool it belongs to: each tool's own read function, as any client of
-/// the tool would call it.
-private let appToolReader = ToolReader { reference in
-    guard let project = Project.sample(reference.projectID) else { return nil }
-    switch reference.tool {
-    case .tickets: return TicketsReader.read(reference.focus)
-    case .serviceMap: return ServiceMapReader.read(reference.focus, environment: reference.environment, project: project)
-    case .contracts: return ContractsReader.read(reference.focus, project: project)
-    case .builds: return BuildsReader.read(reference.focus, project: project)
-    case .dashboard, .chat: return nil
+/// the tool would call it. Tickets and Builds read the app's data; the Service Map and Contracts read their
+/// samples until their phases.
+@MainActor
+func appToolReader(directory: ProjectDirectory, tickets: LiveTicketStore?, builds: LiveBuildStore?) -> ToolReader {
+    ToolReader { reference in
+        guard let project = directory.project(reference.projectID) ?? Project.sample(reference.projectID) else { return nil }
+        switch reference.tool {
+        case .tickets: return TicketsReader.read(reference.focus, store: tickets)
+        case .serviceMap: return ServiceMapReader.read(reference.focus, environment: reference.environment, project: project)
+        case .contracts: return ContractsReader.read(reference.focus, project: project)
+        case .builds: return BuildsReader.read(reference.focus, project: project, store: builds)
+        case .dashboard, .chat: return nil
+        }
     }
 }
 
@@ -220,7 +224,8 @@ private struct RouteHost<Content: View>: View {
     var body: some View {
         content
             .environment(\.openRoute, openRouteAction)
-            .environment(\.toolReader, appToolReader)
+            .environment(\.toolReader, appToolReader(directory: appData.directory, tickets: appData.ticketStore, builds: appData.buildStore))
+            .environment(\.buildStore, appData.buildStore)
             .environment(\.projectDirectory, appData.directory)
             .environment(\.ticketStore, appData.ticketStore)
             .environment(\.dashboardStore, appData.dashboardStore)
@@ -243,6 +248,7 @@ private struct ToolWindowRoot: View {
     @Environment(\.ticketStore) private var ticketStore
     @Environment(\.dashboardStore) private var dashboardStore
     @Environment(\.chatStore) private var chatStore
+    @Environment(\.buildStore) private var buildStore
 
     /// Whether this window shows the chat panel; each window keeps its own, across launches.
     @SceneStorage("chatPanelShown") private var chatPanelShown = false
@@ -381,7 +387,10 @@ private struct ToolWindowRoot: View {
             }
         case .serviceMap: ServiceMapRootView(project: project, focus: focus)
         case .contracts: ContractsRootView(project: project, focus: focus)
-        case .builds: BuildsRootView(project: project, focus: focus)
+        case .builds:
+            if let buildStore {
+                BuildsRootView(project: project, focus: focus, store: buildStore)
+            }
         case .chat:
             if let chatStore {
                 ChatRootView(project: project, focus: focus, store: chatStore, directory: directory)

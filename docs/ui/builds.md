@@ -1,6 +1,7 @@
 # Builds
 
-The Builds window shows the CI of one project's repository: its workflow runs and its releases. For the run
+The Builds window shows the CI of one project's repository: its workflow runs and its releases, read from
+GitHub with the GitHub CLI, `gh`, which the user installs and logs in to ([Data › Builds](../data.md#builds)). For the run
 picked it shows the run's details, its jobs and their steps, and under the table the log of one step. For
 the release picked it shows its details and assets, and its notes under the table. The details are always
 open: at the window's right on a Mac, beside the log under the table on an iPad (the user's choice).
@@ -28,7 +29,7 @@ Every project has Builds, whatever its kind ([Tools per project](navigation.md#t
 
 | Focus | Selects | Example |
 | --- | --- | --- |
-| A run number | The run, in **Runs** | `1288` |
+| A run's id on GitHub (`databaseId`; a sample's number) | The run, in **Runs** | `11873246123`, `1288` |
 | `release:` and a tag | The release, in **Releases** | `release:v1.4.0` |
 
 A focus that names no run or release of the repository opens the window on its newest run, and changes
@@ -51,9 +52,14 @@ The window keeps its state otherwise: the other mode's selection stays as it was
 for last time selects it again, even after the user has picked another. At iPhone width the item's page
 opens.
 
-**Which runs.** The window shows the runs and releases of the project's repository. A sub project kept in
-its parent's repository shows its parent's: ToolsKit, inside the Tools app's repository, shows the runs and
-releases of Tools.
+**Which runs.** The window shows the newest 50 runs, of every branch and workflow, and the newest 50 published
+releases of the project's GitHub repository: its GitHub page as it resolves, so a sub project on its parent's
+settings shows its parent's. In the samples, ToolsKit, inside the Tools app's repository, shows the runs and
+releases of Tools. A focus that names a run not read yet is applied once the list is read.
+
+**Refresh.** The shown mode's list is read when the window shows it, then every 30 s while it does, counted from
+the end of the last read; then the selected run's jobs (again while it runs) and its step's log. **Refresh**
+reads at once; a re-run or a cancel reads again once done. The lists keep what they show while a read runs.
 
 The window opens at 1180 × 720 pt.
 
@@ -85,7 +91,7 @@ The chat panel, when shown, sits at the right edge. See [Layouts](#layouts).
 | Project switcher | Button with a popover | The project's icon | — | Moves the window to another project. See [Project switcher](components.md#project-switcher). | Mac, iPad, iPhone |
 | Back | The stack's own button | — | — | Returns to the list and clears the selection. | iPhone, on a page |
 | **Runs** / **Releases** | Picker "Show": segmented in the toolbar's middle; a menu labeled with the current mode on an iPhone | — | — | Switches between the runs and the releases. | Mac, iPad (segmented); iPhone (menu) |
-| **Refresh** | Button | `arrow.clockwise` | — | Reloads the runs and releases. **Not wired yet.** Help: "Refresh". | Mac, iPad, iPhone |
+| **Refresh** | Button | `arrow.clockwise` | — | Reads the shown mode's list again; a small spinner takes its place while it reads. Help: "Refresh". | Mac, iPad, iPhone |
 | **Chat** | `ChatPanelToolbarItem` | `sidebar.right` | ⌃⌘C | Shows or hides the chat panel. Always the last item (the user's choice). See [Chat panel button](components.md#chat-panel-button). | Mac, iPad, iPhone |
 
 There is no button for the details: they are always open (the user's choice). The window's title, "Builds",
@@ -136,9 +142,14 @@ The details scroll, with 16 pt padding. Identifier: `builds.inspector.run`.
 - **Title**: the head commit's message, in `title3` semibold, with the header trait.
 - **Where it ran**: "#641 · CI · main · 8e7ccf3" (number, workflow, branch, commit), in `caption`
   monospaced, `textSecondary`, selectable.
-- **Re-run** (`arrow.clockwise`): runs the workflow again. **Not wired yet.** Disabled while the run is
-  running.
-- **Open on GitHub** (`arrow.up.forward.square`): opens the run on GitHub. **Not wired yet.**
+- **Re-run** (`arrow.clockwise`), for a completed run: runs every job again (help "Re-run All Jobs"). When
+  some job failed, it is a menu button whose click runs the failed jobs again (help "Re-run Failed Jobs") and
+  whose menu offers **Re-run Failed Jobs** and **Re-run All Jobs**.
+- **Cancel Run** (`xmark.circle`), in its place while the run is queued or running.
+- While one of these runs, they are disabled; a failure shows the alert "Re-run Failed Jobs failed", "Re-run
+  All Jobs failed" or "Cancel Run failed" with gh's reason.
+- **Open on GitHub** (`arrow.up.forward.square`): opens `https://github.com/<owner>/<name>/actions/runs/<id>`
+  in the browser. Not shown for a sample.
 - **Jobs**: a heading in `subheadline` semibold, secondary, with the header trait, over one disclosure row
   per job.
 
@@ -161,7 +172,7 @@ step, otherwise its last passed step. A click on another step in the details cha
 **Header row**, in `callout`, with 14 pt horizontal and 8 pt vertical padding: the step's status symbol, the
 job's name (secondary), `chevron.forward`, the step's name (semibold), the run number such as "#641"
 (secondary), then at the right the step's duration and **Copy Log** (`doc.on.doc`, icon only, help
-"Copy Log"). **Copy Log** is **not wired yet**.
+"Copy Log"), which copies the step's lines; disabled while the log has none.
 
 **Lines**, under a divider, on the `surfaceSunken` color: a line number (secondary, right-aligned) and the
 line, in Fira Code at the `callout` size, with its ligatures (AZDesign's code font). Lines don't wrap: the
@@ -175,8 +186,12 @@ between the columns, 3 pt between lines. Identifier: `builds.log.lines`.
 | `=== RUN` | `textSecondary` |
 | Anything else | `textPrimary` |
 
-A queued step's log reads "Waiting for a runner.", and a cancelled step's "The run was cancelled before this
-step started." A running step's log ends with "…".
+**Reading.** gh gives a job's log once the job has completed: while it reads, a small spinner fills the pane
+(`builds.log.loading`); a job still running reads "No Log" and "The log shows once the job has finished.", and
+a failed read "No Log" with gh's reason (`builds.log.failure`); a step that wrote nothing reads "No Log" and
+"This step wrote nothing." (`builds.log.empty`). GitHub's time at the start of each line is left out. In the
+samples, a queued step's log reads "Waiting for a runner.", a cancelled step's "The run was cancelled before
+this step started.", and a running step's ends with "…".
 
 ## Releases table
 
@@ -207,7 +222,9 @@ an iPhone's page. Identifier: `builds.inspector.release`.
 - The publication date and time, in `caption`, secondary.
 - **Assets**: a heading in `subheadline` semibold, secondary, with the header trait, over one row per
   asset: `doc.zipper` and the file name, monospaced, then **Download** (`arrow.down.circle`, icon only,
-  help "Download"). **Download** is **not wired yet**. "No assets." when there are none.
+  help "Download"), which saves the file in the Downloads folder ([Data › Builds › Downloads](../data.md#downloads)):
+  a small spinner while it saves, then **Show in Finder** (`magnifyingglass`), which reveals the file, until the
+  window closes. A failure shows the alert "Download failed" with gh's reason. "No assets." when there are none.
 
 ## States
 
@@ -216,6 +233,8 @@ an iPhone's page. Identifier: `builds.inspector.release`.
 | **Runs** | The repository has runs. | The runs table over the step log, the run's details at the right. |
 | **No Runs** | The repository has no runs, as in the **No Runs** preview. | In place of the table and the log: "No Runs" (`hammer`): "This project's repository has no workflow runs yet." On a Mac the details read "No Run Selected"; on an iPad and an iPhone the message fills the window. |
 | **No Releases** | **Releases** mode, and the repository has no releases (Edge Gateway and Shop in the samples, as in the **No Releases** preview). | "No Releases" (`hammer`): "This project's repository has no releases yet." On a Mac the details read "No Release Selected"; on an iPad and an iPhone the message fills the window. |
+| **Reading** | The list isn't read yet. | "Reading the runs…" or "Reading the releases…" with a spinner, in place of the table (`builds.loading`). |
+| **Can't Show the Runs** / **Can't Show the Releases** | gh can't read the list: no GitHub page, no gh, no login, or gh failed. | `exclamationmark.triangle`, the title, the reason ([Data › Builds › Failures](../data.md#failures)), and **Try Again**, which reads again (`builds.unavailable`, `builds.tryAgain`). |
 | **No Run Selected** | No run is selected. | In the details: "No Run Selected" (`hammer`). |
 | **No Step Selected** | No step is selected, or no run is. | In the log pane: "No Step Selected" (`text.alignleft`): "Pick a step in the run's details to read its log." |
 | **No Release Selected** | **Releases** mode with no release selected. | In the notes pane and the details: "No Release Selected" (`tag`). |
@@ -252,7 +271,9 @@ The chat panel's subject is the selected item of the mode shown:
 
 The next message carries the subject as a chip. Switching modes changes the subject.
 
-**What Claude reads**, through `BuildsReader.read(_:project:)`, from the same runs and releases as the
+**What Claude reads**: Claude calls the Builds MCP tools (`list_runs`, `get_run`, `get_run_log`, `list_releases`,
+`get_release`, and with the user's permission `rerun_run` and `cancel_run`; [MCP](../mcp.md#tools)). The chat's
+rows and suggestions come from `BuildsReader.read(_:project:store:)`, from the same runs and releases as the
 window, those of the repository's owner. Each detail line is one localized sentence with the values in it.
 
 | Item | Action | Detail |
@@ -309,8 +330,10 @@ See [Chat](chat.md).
 
 ## Sample data and limits
 
-- **Sample runs and releases.** Runs and releases are sample data (`WorkflowRun.samples(for:)`,
-  `Release.samples(for:)`). In the real suite they are read from GitHub. Each repository has a few named
+- **Live data.** The app reads runs and releases from GitHub with gh (`LiveBuildStore`); nothing is stored.
+  Builds is every project's tool, but only a project with a GitHub page has runs.
+- **Sample runs and releases.** Previews and captures use sample data (`WorkflowRun.samples(for:)`,
+  `Release.samples(for:)`, `SampleBuildStore`). Each repository has a few named
   runs over a few weeks of ordinary history. The commit hashes are computed from the run numbers.
 - **Jobs.** Every run has the jobs Lint (Check out, Lint) and Test (Check out, Set up toolchain, Build, Run
   tests). CI and Release runs add Image (Build image, Push image).
@@ -319,7 +342,7 @@ See [Chat](chat.md).
 - **Releases**: Orders has three (one pre-release), Payments, Tools and AZDesign one each. Edge Gateway and
   Shop have none.
 - **Running runs don't advance.** Their duration stays "Running".
-- **Not wired yet:** **Refresh**, **Re-run**, **Open on GitHub**, **Copy Log** and **Download**.
+- **Samples can't act**: their Re-run, Cancel and Download show an alert, and they have no Open on GitHub.
 
 ## Previews
 

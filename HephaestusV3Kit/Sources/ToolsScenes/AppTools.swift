@@ -1,3 +1,4 @@
+import BuildsKit
 import ChatData
 import ChatKit
 import Foundation
@@ -16,7 +17,7 @@ enum AppTools {
     static func registry(session: ProjectSession, tickets: TicketSession, chats: ChatSession,
                          open: @escaping @MainActor (Route) -> Bool) -> ToolRegistry {
         ToolRegistry(ProjectTools.operations(session: session) + TicketTools.operations(tickets: tickets, projects: session)
-            + ChatTools.operations(chats: chats, projects: session)
+            + ChatTools.operations(chats: chats, projects: session) + BuildTools.operations(projects: session)
             + [openInApp(session: session, tickets: tickets, open: open)])
     }
 

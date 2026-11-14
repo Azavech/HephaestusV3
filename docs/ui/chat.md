@@ -89,6 +89,7 @@ Each call Claude makes to one of the app's tools shows as one row on a `surfaceS
 | A ticket or bundle change | Commented on ORD-142; Moved ORD-142 to In Progress; Created a ticket in ORD; Changed ORD-142; Deleted ORD-142… | — | The ticket |
 | `list_projects`, `get_project`, a project change | Listed the projects; Read project ORD; Added the project Web; Changed the settings of ORD; Removed ORD from Hephaestus | — | None |
 | `list_chats`, `get_chat`, `rename_chat` | Listed the chats of ORD; Read a chat; Renamed a chat “…” | — | The project's Chat window, for the list |
+| The Builds tools | Listed the runs of ORD; Read a run of ORD; Read the log of a run of ORD; Re-ran the failed jobs of a run of ORD; Cancelled a run of ORD; Listed the releases of ORD; Read release v1.4.0 | The run's one-line answer from Builds | The run or the release in Builds |
 | `open_in_app` | Opened a window of Hephaestus | — | None |
 | A tool of the CLI (in V2's chats) | Used Bash | Its result's first line when it failed | None |
 
@@ -113,6 +114,7 @@ A change Claude wants to make shows as a card, when the user's permissions say A
   | `delete_ticket` | Claude wants to delete ORD-142 |
   | The bundle tools | Claude wants to create a bundle in ORD; … to change bundle ORD-B2; … to move bundle ORD-B2 to Done; … to delete bundle ORD-B2 |
   | `create_project`, `update_project`, `remove_project` | Claude wants to add the project Web; Claude wants to change the settings of ORD; Claude wants to remove ORD from Hephaestus |
+  | `rerun_run`, `cancel_run` | Claude wants to re-run a run of ORD; Claude wants to re-run the failed jobs of a run of ORD; Claude wants to cancel a run of ORD |
   | A tool of the CLI (its own request) | Claude wants to use Write |
 
 - **Preview.** What it would write, selectable, at most 20 lines, on a `surfaceSunken` box: a comment's text; a new ticket's title and description; a ticket change's new title, priority, labels and description; a bundle's title and tickets; a project's identifier and folder, or the settings it changes; for a removal, "The project's folder and files stay on this Mac."; for a request of the CLI, its input as JSON. None for a deletion or a status change.
@@ -178,7 +180,7 @@ A grouped form in a trailing column, 260 to 400 pt wide, 300 pt ideally.
 | **Claude Can** | **Read tickets, services, contracts and builds**: Always (fixed text). **Change tickets**: Never, Ask First or Always; Ask First by default. **Change projects**: Never, Ask First or Always; Ask First by default. **Start builds**: Never or Ask First; Never by default. Footer: "Claude acts through each tool, as you would. Nothing it reads or changes goes around them." The same settings as [Settings ▸ Chat](#settings--chat). |
 | **Replies** | **Model**: a pop-up of the CLI's models (Default, Opus, Fable, Sonnet, Haiku until the CLI answers). **Effort**: Low, Medium, High, Extra High, Max, the levels the model has; hidden for a model without one. For the selected conversation, its own; with no conversation selected, those of new chats. A change applies to the running CLI at once. In previews: **Model**: None connected, and "Replies are samples until a model is connected." |
 
-The permissions are stored in the user defaults (`chat.ticketChanges`, `chat.projectChanges`, `chat.buildStarts`) and the MCP server applies them to every chat's calls ([MCP › Permissions](../mcp.md#permissions)): Always runs the change, Ask First shows a card and waits, Never refuses it. A deletion (a ticket, a bundle, a comment, an attachment) or a project's removal asks first even under Always. Start builds waits for the Builds tools.
+The permissions are stored in the user defaults (`chat.ticketChanges`, `chat.projectChanges`, `chat.buildStarts`) and the MCP server applies them to every chat's calls ([MCP › Permissions](../mcp.md#permissions)): Always runs the change, Ask First shows a card and waits, Never refuses it. A deletion (a ticket, a bundle, a comment, an attachment) or a project's removal asks first even under Always. **Start builds** covers re-running and cancelling runs: Never refuses them, Ask First shows a card.
 
 ## How Claude reaches the tools
 
@@ -200,7 +202,7 @@ The panel also reads its attached item before the first message, through `toolRe
 | Contracts | `ContractsReader.read(_:project:)` | operationId: `createOrder` | Method and path · summary · contract title and version |
 | Dashboard, Chat | None | — | — |
 
-Today the app's MCP tools are those of Projects, Tickets and Chat; the Service Map, Builds and Contracts bring theirs in their phases, and their panels show only once those tools are available.
+Today the app's MCP tools are those of Projects, Tickets, Chat and Builds; the Service Map and Contracts bring theirs in their phases, and their panels show only once those tools are available. Tickets and Builds read the app's data; the Service Map and Contracts readers answer from their samples until then.
 
 ### Samples
 
@@ -375,7 +377,7 @@ The Settings window's **Chat** tab (`bubble.left.and.text.bubble.right`), at 520
 | **Claude Can** | **Read tickets, services, contracts and builds** | Always | Fixed text. |
 | | **Change tickets**, pop-up: Never, Ask First, Always | Ask First | Shared with the Chat window's inspector; applied to every chat's calls. |
 | | **Change projects**, pop-up: Never, Ask First, Always | Ask First | The same, for adding projects and changing or removing them. |
-| | **Start builds**, pop-up: Never, Ask First | Never | Shared with the inspector. Applied once Builds brings its tools. |
+| | **Start builds**, pop-up: Never, Ask First | Never | Shared with the inspector; applied to Claude's re-runs and cancels of runs. |
 | | Footer | — | "Claude acts through each tool, as you would. Nothing it reads or changes goes around them." |
 | **Replies** | **Model**, **Effort**, pop-ups | Default, High | The model and effort of new chats, stored as `chatModel` and `chatEffort` in `settings.yml`. Footer: "New chats start with these. Each chat keeps its own, in the Chat window's inspector." |
 
@@ -468,7 +470,6 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 - **Chats.** The app's chats are the projects' `.hephaestus/chats/`, V2's included. V2's chats of every kind are listed and shown; their items V3 doesn't bring over (question pickers, images Claude showed) don't show. There is no delete, no rename in the window (Claude can rename with `rename_chat`), and no file attachments in the composer.
 - **Claude.** The CLI runs with no system prompt from the app, no hooks, no skills and none of its own tools ([Decisions › V2's prompts](../decisions.md#v2s-prompts)); the user's own Claude Code settings and CLAUDE.md files apply as they do in a terminal.
 - **Samples.** Previews and captures use five sample conversations, about Orders (three), Payments and Shop, and the sample engine. Their replies are written as if a model had answered, so they carry no **Sample reply** caption, and their reads are fixed text, not read live. Their Service Map reads were seen in Staging.
-- **Start builds** is stored and applies once Builds brings its tools.
 
 ## Previews
 

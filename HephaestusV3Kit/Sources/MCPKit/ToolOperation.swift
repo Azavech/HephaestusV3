@@ -31,6 +31,8 @@ public enum ToolPermission: String, Sendable, Hashable, CaseIterable {
     case removeProjects
     /// Renames a chat: always allowed.
     case renameChats
+    /// Re-runs or cancels a workflow run: Settings ▸ Chat › Start builds.
+    case startBuilds
 
     /// True for the permissions that change the user's data.
     public var changes: Bool { self != .read }

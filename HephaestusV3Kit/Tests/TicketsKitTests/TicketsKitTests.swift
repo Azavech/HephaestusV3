@@ -360,8 +360,8 @@ struct TicketsReaderTests {
 
     @Test("The public reader answers from the sample tickets")
     func sampleReader() {
-        #expect(TicketsReader.read("ORD-142")?.action == "Read ticket ORD-142")
-        #expect(TicketsReader.read("TKIT-4") != nil)
+        #expect(TicketsReader.read("ORD-142", store: nil)?.action == "Read ticket ORD-142")
+        #expect(TicketsReader.read("TKIT-4", store: nil) != nil)
     }
 }
 

@@ -9,29 +9,46 @@ public struct BuildsDashboardWidget: View {
     let widget: DashboardWidget
     let project: Project
     let editing: Bool
-    let store: any BuildStore
+    /// The store of previews and tests; nil reads the app's.
+    let fixedStore: (any BuildStore)?
 
     @Environment(\.openRoute) private var openRoute
+    @Environment(\.buildStore) private var appStore
 
     public init(widget: DashboardWidget, context: DashboardContext) {
-        self.init(widget: widget, context: context, store: SampleBuildStore())
+        self.init(widget: widget, context: context, store: nil)
     }
 
-    init(widget: DashboardWidget, context: DashboardContext, store: any BuildStore) {
+    init(widget: DashboardWidget, context: DashboardContext, store: (any BuildStore)?) {
         self.widget = widget
         self.project = context.project
         self.editing = context.editing
-        self.store = store
+        self.fixedStore = store
+    }
+
+    private var store: any BuildStore {
+        fixedStore ?? appStore ?? SampleBuildStore()
     }
 
     /// The newest runs of `project`'s repository, as the Builds window lists them, at most `count`
     /// (kept within the widget's 1–20).
     static func recentRuns(of project: Project, count: Int, store: any BuildStore) -> [WorkflowRun] {
         let limit = min(max(count, DashboardWidget.countRange.lowerBound), DashboardWidget.countRange.upperBound)
-        return Array(store.runs(of: project).prefix(limit))
+        return Array((store.runs(of: project).value ?? []).prefix(limit))
     }
 
     public var body: some View {
+        content
+            // The runs are read when the widget shows, then every 30 s while it does.
+            .task(id: project.id) {
+                while !Task.isCancelled {
+                    await store.refresh(project, releases: false)
+                    try? await Task.sleep(for: .seconds(30))
+                }
+            }
+    }
+
+    @ViewBuilder private var content: some View {
         let runs = Self.recentRuns(of: project, count: widget.count, store: store)
         VStack(alignment: .leading, spacing: 8) {
             if runs.isEmpty {
@@ -52,7 +69,7 @@ public struct BuildsDashboardWidget: View {
                         Text(verbatim: run.title)
                             .foregroundStyle(.textPrimary)
                             .lineLimit(1)
-                        Text("#\(String(run.id)) · \(run.workflow)", bundle: #bundle, comment: "A run's number and workflow, in a list of runs: #641 · CI")
+                        Text("#\(String(run.displayNumber)) · \(run.workflow)", bundle: #bundle, comment: "A run's number and workflow, in a list of runs: #641 · CI")
                             .font(.callout)
                             .foregroundStyle(.textSecondary)
                             .lineLimit(1)
