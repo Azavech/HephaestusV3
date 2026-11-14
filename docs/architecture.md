@@ -410,6 +410,10 @@ The files of [Data](data.md). Source files in `Sources/ProjectData/`:
 | `V2Import.swift` | `V2Import`: `runIfNeeded(into:from:ownWrites:)`, `Result`, `defaultV2Folder(homeDirectory:)`, `v2ProjectIdentifier` |
 | `ProjectRules.swift` | `ProjectRules`, `ProjectRuleError` |
 | `GitHub.swift` | `GitHubPage`, `GitRemote` (`init?(remoteURL:)`, `isGitHubHost`, `gitHubPage(resolvedHostName:)`) |
+| `ProjectSnapshot.swift` | `ProjectSnapshot` (`revision`, `projects`, `issues`, `project(_:)`, `project(atRoot:)`, `family(of:)`), `LoadedProject` (`root`, `file`, `parentID`, `depth`, `childIDs`, `resolved`, `fileIssue`), `ResolvedSettings`, `ProjectIssue` (`path`, `source`, `reason`) |
+| `ProjectError.swift` | `ProjectError` |
+| `ProjectLibrary.swift` | `ProjectLibrary` (`load()`, `handle(_:)`, `watchedFolders`, `setTools(_:)`, `refreshOrigins()`, `create(_:)`, `open(folder:)`, `update(_:_:)`, `remove(_:)`, `setCurrentEnvironment(_:to:)`), `NewProject`, `ProjectChange` |
+| `ProjectSession.swift` | `ProjectSession` (`phase`, `snapshot`, `importResult`, `shell`, `tools`, `isLookingUpTools`, `kubectl`, `start()`, `lookUpTools()`, `stop()`, and the changes) |
 
 - **File types.** Each is a `Codable`, `Sendable`, `Hashable` struct whose `init(from:)` reads with a
   `MappingReader` and whose `encode(to:)` writes with a `MappingWriter`, key by key in the order of its table
@@ -423,6 +427,25 @@ The files of [Data](data.md). Source files in `Sources/ProjectData/`:
   order; `CurrentEnvironmentsFile.projects` likewise.
 - **Equality** compares every field, the kept and unknown keys included: a file that decodes to the value in
   memory is no change.
+- **`ProjectLibrary`** is an actor holding the registry, the choices, the loaded projects (a node per
+  identifier: root, file, parent, depth, children), the issues, the file issues, the origins by folder and
+  the host names by SSH alias. `load()` and every change call `rebuild()`, which loads the whole tree again
+  from the registry and the files (cheap: a project file is small), keeping the version loaded before of a
+  project whose file became invalid; `publish()` then builds the snapshot, resolving each project
+  ([Data › Resolution](data.md#resolution)), and gives it a new revision only when it differs from the last.
+  `handle(_:)` and `refreshOrigins()` return nil when nothing changed. Changes throw `ProjectError`: `rule`
+  (a `ProjectRuleError`), `storage` (a `StorageError`), `noDataFolder`, `noProject(path:)`,
+  `alreadyContainsProject(path:)`, `folderMissing(path:)`, `notInsideParent(parentName:)`,
+  `projectNotLoaded(_:)`, `unknownEnvironment(_:)`. The rules are in [Data › Changes](data.md#changes).
+- **`ProjectSession`** is `@MainActor @Observable`: the windows observe `phase` (`starting`, `ready`,
+  `failed(ProjectError)`), `snapshot`, `importResult`, `shell` and `tools`, and call its async throwing
+  changes, which forward to the library and keep the snapshot they return (a snapshot is kept only when its
+  revision is higher). `start()` runs the order of [Data › Loading](data.md#loading); it consumes the
+  `FileEventHub`'s batches in a task, hands each to `handle(_:)`, and updates the watched folders after each
+  change. `lookUpTools()` captures the shell, looks the tools up, gives them to the library and reads the
+  origins. `stop()` stops the streams, ends the running tools and releases the lock. `kubectl` is the
+  tools' kubectl for the settings' suggestions. Tests give it a temporary data folder, a fake runner and a
+  hub with short delays.
 
 ## ToolsFoundation
 
@@ -1565,7 +1588,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 310 tests). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 341 tests). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
@@ -1573,7 +1596,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | --- | --- | --- |
 | FileStorageTests | YAML coding, Dates, Atomic writes, Own writes the folder lock and the Trash, File events | Kept keys written back in order and layout; read rules (UTF-8, root mapping, keys twice, YAML errors); BOM and CR LF; defaults and required keys; schema; dates read and written; quoting and literal blocks; atomic writes (modes, links, failures, leftovers); own writes; the lock; a test Trash; `YAMLFile`; batches by quiet and maximum delay; one real FSEvents stream in a temporary folder; flag kinds. |
 | ExternalToolsTests | Child processes, The login shell's environment, Finding the tools, git ssh and kubectl | Output, status, input, folder, environment, signals, missing executables; the timeout ending a whole process group; `terminateAll`; `env -0` parsing and every capture outcome; `PATH` lookup and the git stub; the commands, arguments, parsing and failures of git, ssh and kubectl. Uses `FakeRunner`. |
-| ProjectDataTests | Project file, Registry and current environments, Data folder, Import from HephaestusV2, Rules and GitHub | V2's complete project file written back byte for byte; every V2 example round-tripping with all its keys; defaults; environments, base URLs and overrides; V3's additions; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; the import's list, skips, choices, single run and missing V2; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints. Fixtures: V2's examples. |
+| ProjectDataTests | Project file, Registry and current environments, Data folder, Import from HephaestusV2, Rules and GitHub, Loading, Outside changes, Creating opening and removing, Inherited settings, Current environment, GitHub page, Session | V2's complete project file written back byte for byte; every V2 example round-tripping with all its keys; defaults; environments, base URLs and overrides; V3's additions; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; the import's list, skips, choices, single run and missing V2; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints; loading depth first with every issue; data folder files set aside; outside changes (changed, invalid, renamed identifier, deleted and returning files, the registry, own writes, relevance); create, open and remove with their refusals and sub projects; update with its write rules; inheritance on, off, nested and across types; the current environment chosen, renamed, removed and forgotten; GitHub pages from origins, aliases, typed pages and parents, `.git/config`; the session's start, lock, changes and a real outside change. Fixtures: V2's examples. Uses `FakeRunner`. |
 | ToolsFoundationTests | Routes, Strings, Inherited settings | Each `FocusRequest` is new; `ChatReference.route` and ids per environment; shared titles from the catalog; unique tool shortcuts; inherited environments. |
 | ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`. |
 | DashboardsKitTests | What the Dashboard shows, Edit mode, Steps of the keyboard and VoiceOver, Settings, Saving | Sample, default and saved lists; hidden service widgets; toolbar environment and time window; a change in every window of a project; list order; titles; Done, remove, add, first save, drags; every step and its limits; title, checkbox and Number rules; lenient decoding; keys. Uses `MockDashboardLayoutStore`. |

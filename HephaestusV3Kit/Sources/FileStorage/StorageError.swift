@@ -3,7 +3,7 @@ import Yams
 
 /// What went wrong with a file or a folder. Messages name the path and never quote a file's content;
 /// they are technical details, shown under a localized sentence of the window that hit them.
-public enum StorageError: Error, Equatable, Sendable, CustomStringConvertible {
+public enum StorageError: Error, Hashable, Sendable, CustomStringConvertible {
     /// The file breaks a read rule (docs/data.md › Read rules).
     case invalidFile(path: String, reason: String)
     /// The file can't be read: it is missing, or the system refused it.

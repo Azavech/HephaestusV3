@@ -408,6 +408,75 @@ projects:
   DEMOAPI: local
 ```
 
+## Loading
+
+When the app starts (`ProjectSession.start`, [Architecture › ProjectData](architecture.md#projectdata)):
+
+1. The data folder is created when missing, and its lock taken.
+2. The import from V2 runs, once ([Import from HephaestusV2](#import-from-hephaestusv2)).
+3. `registry.yml` is read; a missing one is created empty, an invalid one set aside as `registry.yml.invalid`
+   and recreated empty. `current-environments.yml` is read; a missing one gives no choice, an invalid one is
+   set aside and gives no choice.
+4. The projects load: the registry's entries in order, each followed by its sub projects, depth first, in
+   `subprojects` order. Temporary files a crash left in a `.hephaestus/` folder are deleted. An entry is
+   skipped, and reported with its reason (`ProjectIssue`), when:
+
+   | Reason | When |
+   | --- | --- |
+   | `invalidEntry` | A registry entry isn't an absolute path, or a `subprojects` entry isn't a relative path. |
+   | `folderMissing` | The folder doesn't exist. |
+   | `fileMissing` | The folder has no `.hephaestus/project.yml`. |
+   | `invalidFile(reason:)` | The project file breaks a read rule ([Validation](#validation)). |
+   | `identifierInUse(identifier:by:)` | A project loaded before it has its identifier. It loads once that project is removed. |
+
+   The entry stays where it is: the project loads as soon as its folder and file are fine. A folder reached
+   twice (through a symbolic link) loads once.
+5. The files are watched ([Outside changes](#outside-changes)).
+6. Then, without holding the windows: the login shell's environment is captured, the tools are looked up,
+   and the `origin` of each loaded folder is read ([GitHub page](#github-page)).
+
+Invalid project files are never renamed or rewritten at load: they belong to the project's repository.
+
+## Changes
+
+Every change goes through `ProjectLibrary`, one at a time, and gives a new snapshot. Files are written with
+[Atomic writes](#atomic-writes), a referenced file before the file that refers to it.
+
+| Change | Rules | Order of the writes |
+| --- | --- | --- |
+| **Create** (`NewProject`) | Name: one line, 1–100 characters, trimmed. Identifier: uppercased, 2–8 letters A–Z, used by no loaded project. With a parent: the folder is strictly inside the parent's folder (`Choose a folder inside “<parent name>”.`), checked before anything is written. The folder is created when missing and `createsFolder` is set; otherwise it must exist. A folder that already holds a project is refused: open it instead. The new file has `created` = now, the name, the identifier and the type; every other key takes its default. | 1. the project file and `.gitignore` 2. the parent's `subprojects` (the given parent, else the innermost loaded project whose folder holds it), or the registry |
+| **Open** (a folder) | A folder already loaded gives its project. Otherwise it must hold a valid project file whose identifier no loaded project uses. Registry entries that its file lists as its descendants, at any depth, leave the registry: they load under it. | 1. `.gitignore` 2. the innermost loaded project's `subprojects`, or the registry |
+| **Update** (`ProjectChange`) | Only the values the change sets: name; type; color (a tint, or `#RRGGBB` uppercased, or none); icon (trimmed, none when empty); docs folder (a relative path, not `.hephaestus` or inside it); GitHub page (validated, none when empty); Use parent settings; graph; the whole list of the project's own environments; all its changes to inherited environments. An environment or a change equal to a stored one is written back as it is, even when a hand edit made it break a rule; any other is checked ([Validation](#validation)), its names trimmed, a change that sets nothing dropped. An own environment can't take a name another environment has, inherited ones included. | the project file, then `current-environments.yml` when a choice follows a rename or is forgotten |
+| **Remove** | The project and its loaded sub projects leave the app: its entry leaves the parent's `subprojects` or the registry, and their chosen environments are forgotten. No file of theirs changes. | 1. the parent's project file, or the registry 2. `current-environments.yml` |
+| **Choose the current environment** | One of the project's environments as they apply. | `current-environments.yml` |
+
+## Resolution
+
+What a project's settings are once inheritance applies (`ResolvedSettings`):
+
+- **Environments.** A project that isn't a service (`goService`) has none. A sub project that uses its
+  parent's settings first has its parent's environments, as the parent resolves them (so also those the
+  parent inherits), each with the sub project's change of its name applied: the URL, port, certificate
+  setting, deployment, Jaeger and Argo CD application it sets replace the parent's; the name, namespace and
+  kubeconfig file stay the parent's. Then come its own environments, in order, except those whose name an
+  inherited environment has: they stay in the file, left out. A change for a name no inherited environment
+  has is kept and ignored. A top-level project, and a sub project that doesn't use its parent's settings,
+  has only its own. `inheritedEnvironments` are the parent's, without the changes.
+- **Current environment.** The environment chosen in `current-environments.yml` while the project has it;
+  otherwise the first; none without environments. After a change, a chosen environment that the change
+  renamed (an environment of the list whose name changed at the same place, the list keeping its length)
+  stays chosen under its new name, in the project and in the sub projects that inherit it; one a project no
+  longer has is forgotten, so that a later environment of that name doesn't become current again. A rename
+  made in `project.yml` outside the app counts as a removal.
+- **GitHub page.** A sub project that uses its parent's settings has its parent's page, which may come from
+  the parent's parent. Otherwise the typed `githubPage`; otherwise the page of the project's `origin` remote
+  ([GitHub page](#github-page)), read with `git config --get remote.origin.url` in its folder, and for an SSH
+  host alias with `ssh -G <alias>`. Until the origins are read, and without git, there is no origin page;
+  without ssh, an alias stays unresolved. `originGithubPage` is the project's own origin page, the field's
+  placeholder.
+- **Graph.** Never for a project that isn't a service; the parent's, as the parent resolves it, while a sub
+  project uses its parent's settings; otherwise its own `graphEnabled`.
+
 ## Unknown keys
 
 V3 keeps every key it doesn't use, so that a file written by V2, by a later version or by hand keeps them
@@ -501,7 +570,22 @@ each change as if it had made it.
   thousand files is one batch; a stream of changes still shows within 2 seconds.
 - **Own changes**: a file whose SHA-256 equals V3's last write of that path is ignored, and so is the absence
   of a file V3 removed.
-- What each file's change does is given with the feature that reads the file.
+- **Watched folders**: the data folder and the folder of each top-level project, and of each registry entry
+  that didn't load (so that it loads when it appears); sub projects lie inside their parent's folder. The set
+  follows each change.
+- **What a batch reloads.** A batch matters when it holds a project file, a `.hephaestus` folder,
+  `registry.yml`, `current-environments.yml`, a `.git/config`, a project's folder or one holding it created,
+  moved or removed, or dropped events (`mustRescan`, `rootChanged`). Then the registry and the choices are read
+  again when their files changed (an invalid or missing one leaves the version in memory, written again at
+  the next change), and every project loads again ([Loading](#loading)), with these rules:
+  - A file that decodes to the value in memory changes nothing: no new snapshot.
+  - A project file that became invalid, or whose `id` changed, leaves the version loaded before: the project
+    shows a file issue with the reason (`LoadedProject.fileIssue`); the next change V3 makes writes the version
+    in memory over it.
+  - A missing project file unloads the project and its sub projects; their entries stay, and they load again
+    when the file comes back.
+  - A changed registry loads the added folders and unloads the removed ones.
+  - A changed `.git/config` reads the origins again.
 
 ## Conformance tests
 

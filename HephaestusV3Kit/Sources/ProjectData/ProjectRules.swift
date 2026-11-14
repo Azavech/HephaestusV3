@@ -131,7 +131,7 @@ public enum ProjectRules {
 /// the English message of the logs and of Claude's tools.
 public enum ProjectRuleError: Error, Sendable, Hashable, CustomStringConvertible {
     case identifierFormat
-    case identifierInUse(String)
+    case identifierInUse(identifier: String, by: String)
     case nameLength(field: String)
     case relativePath(field: String)
     case url(field: String)
@@ -141,12 +141,13 @@ public enum ProjectRuleError: Error, Sendable, Hashable, CustomStringConvertible
     case argoCDApplication(field: String)
     case kubeconfig(field: String)
     case githubPage
+    case color
     case duplicateEnvironment(String)
 
     public var description: String {
         switch self {
         case .identifierFormat: "identifier: use 2 to 8 letters A–Z."
-        case let .identifierInUse(identifier): "identifier: \(identifier) is already used by another project."
+        case let .identifierInUse(identifier, name): "\(identifier) is already used by “\(name)”."
         case let .nameLength(field): "\(field): use 1 to 100 characters on one line."
         case let .relativePath(field): "\(field): use a relative path with / separators and no empty, . or .. component."
         case let .url(field): "\(field): use an absolute http or https URL."
@@ -156,6 +157,7 @@ public enum ProjectRuleError: Error, Sendable, Hashable, CustomStringConvertible
         case let .argoCDApplication(field): "\(field): use an Argo CD application as <name> or <namespace>/<name>."
         case let .kubeconfig(field): "\(field): use a kubeconfig file as an absolute path or a path starting with ~/."
         case .githubPage: "githubPage: use a page of the form https://github.com/<owner>/<name>."
+        case .color: "color: use a tint or a color of the form #RRGGBB."
         case let .duplicateEnvironment(name): "An environment named “\(name)” already exists."
         }
     }
