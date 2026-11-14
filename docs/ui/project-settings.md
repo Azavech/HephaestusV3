@@ -47,7 +47,7 @@ file changed outside the app) shows in every field but the one being edited.
 | **Name** | Text field | `name` | One line, 1–100 characters once trimmed: "Enter a name of 1 to 100 characters." |
 | **Identifier** | Read-only text, monospaced, selectable | `id` | Help: "The identifier is set at creation and cannot be changed." |
 | **Type** | Pop-up: Service, App, Library, Other, each with its symbol | `type` | Changing it keeps the environments in the file; only a service shows them. |
-| **Tint** | Pop-up: Purple, Pink, Cyan, Green, Orange, each with a dot of its color | `color`, written as the tint's name (`accent`, `accentSecondary`, `info`, `success`, `warning`) | A `#RRGGBB` color shows as the nearest tint until a tint is picked. |
+| **Tint** | Pop-up: Purple, Pink, Cyan, Green, Orange, each with a dot of its color: a 12-point circle drawn into an image that isn't a template (`TintSwatch`), since a menu draws symbols as templates in its own single color | `color`, written as the tint's name (`accent`, `accentSecondary`, `info`, `success`, `warning`) | A `#RRGGBB` color shows as the nearest tint until a tint is picked. |
 | **Icon** | Text field, monospaced, then the symbol it names; the kind's symbol as placeholder | `icon` | An SF Symbol of this Mac: "<name> is not an SF Symbol of this Mac."; empty removes the icon. |
 | **Folder** | The path, monospaced, middle-truncated, selectable, and **Show in Finder** | The project's folder | — |
 | **Parent** | `<name> (<ID>)` | The parent | Sub projects only. |

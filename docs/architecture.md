@@ -1177,7 +1177,7 @@ The project selector. Spec: [Projects](ui/projects.md), [Menu bar](ui/menu-bar.m
 | `NewProjectSheet.swift` | `NewProjectSheet` |
 | `ProjectsSettingsView.swift` | `ProjectsSettingsPane` (public), `ProjectsSettingsView` |
 | `ProjectSettingsModel.swift` | `ProjectSettingsBackend` (`ProjectSession` conforms), `ProjectSettingsModel` |
-| `ProjectSettingsView.swift` | `ProjectSettingsWindow` (public), the form, `PreviewSettingsBackend`, `previewSettings(_:)` |
+| `ProjectSettingsView.swift` | `ProjectSettingsWindow` (public), the form, `PreviewSettingsBackend`, `previewSettings(_:)`, `TintSwatch` (the Tint menu's colored dots, non-template images) |
 | `ProjectsModel.swift` | `ProjectsModel`, `ProjectEnvironments`, `ActivityEntry`, `OverviewGrid` |
 | `ProjectPickerModel.swift` | `ProjectPickerModel` |
 | `ActivityItem.swift` | `ActivityItem`, its tone colors and samples |
@@ -1928,7 +1928,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 561 tests, and 5 in the guest agent's package). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 562 tests, and 5 in the guest agent's package). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 

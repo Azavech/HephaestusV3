@@ -118,7 +118,7 @@ private struct ProjectSettingsForm: View {
                     Label {
                         Text(verbatim: tint.title)
                     } icon: {
-                        Image(systemName: "circle.fill").foregroundStyle(tint.color)
+                        TintSwatch.image(tint.color)
                     }
                     .tag(tint)
                 }
@@ -508,4 +508,24 @@ func previewSettings(_ id: Project.ID) -> ProjectSettingsWindow {
 
 #Preview("Largest Text", traits: .largestText, .fixedLayout(width: 600, height: 900)) {
     previewSettings("ORD")
+}
+
+/// A tint's swatch in a menu. A menu draws a symbol as a template, in its own single color, so a symbol styled with
+/// the tint shows in the menu's accent: the swatch is drawn into an image that isn't a template. Its color is the
+/// tint's dynamic color, resolved each time the menu draws, so it follows Light and Dark Mode.
+enum TintSwatch {
+    static func image(_ color: Color, diameter: CGFloat = 12) -> Image {
+        Image(nsImage: nsImage(color, diameter: diameter))
+    }
+
+    static func nsImage(_ color: Color, diameter: CGFloat = 12) -> NSImage {
+        let fill = NSColor(color)
+        let image = NSImage(size: NSSize(width: diameter, height: diameter), flipped: false) { rect in
+            fill.setFill()
+            NSBezierPath(ovalIn: rect.insetBy(dx: 0.5, dy: 0.5)).fill()
+            return true
+        }
+        image.isTemplate = false
+        return image
+    }
 }
