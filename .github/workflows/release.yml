@@ -1,0 +1,109 @@
+# Builds, signs, notarizes and publishes a release of Hephaestus V3, then deploys the install page
+# (docs/release.md). Run it from the Actions tab, or: gh workflow run release.yml -f version=1.0.0
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "The version to release, X.Y.Z, such as 1.0.0"
+        required: true
+        type: string
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  release:
+    runs-on: xcode-27
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode
+        run: |
+          # The project uses Xcode 27.2's JSON format: the newest Xcode 27 of the runner, 27.2 at least.
+          xcode=$(ls -d /Applications/Xcode_27*.app 2> /dev/null | sort -V | tail -1)
+          [ -n "$xcode" ] || xcode=/Applications/Xcode.app
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+          version=$(xcodebuild -version | awk 'NR == 1 { print $2 }')
+          major=${version%%.*}; rest=${version#*.}; minor=${rest%%.*}
+          if [ "$major" -lt 27 ] || { [ "$major" -eq 27 ] && [ "${minor:-0}" -lt 2 ]; }; then
+            echo "Xcode 27.2 or later is needed; the runner has $version." >&2
+            exit 1
+          fi
+
+      - name: Reach AZDesign
+        env:
+          AZDESIGN_READ_TOKEN: ${{ secrets.AZDESIGN_READ_TOKEN }}
+        run: |
+          # The package fetches AZDesign over SSH (git@github.com:Azavech/AZDesign.git); the runner reads it over HTTPS
+          # with a token that can read that repository only.
+          [ -n "$AZDESIGN_READ_TOKEN" ] || { echo "AZDESIGN_READ_TOKEN is not set (docs/release.md)." >&2; exit 1; }
+          git config --global url."https://x-access-token:${AZDESIGN_READ_TOKEN}@github.com/Azavech/AZDesign".insteadOf "git@github.com:Azavech/AZDesign"
+
+      - name: Check the release doesn't exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            echo "Release v$VERSION exists already." >&2
+            exit 1
+          fi
+
+      - name: Test
+        env:
+          SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH: "4"
+        run: |
+          (cd HephaestusV3Kit && swift test)
+          (cd GuestAgent && swift test)
+
+      - name: Build, sign and notarize
+        id: build
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.MACOS_PROVISIONING_PROFILE_BASE64 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+          NOTARY_KEY_P8_BASE64: ${{ secrets.NOTARY_KEY_P8_BASE64 }}
+        run: scripts/build-release.sh --version "$VERSION"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DMG: ${{ steps.build.outputs.dmg }}
+          SHA256: ${{ steps.build.outputs.sha256 }}
+          BUILD: ${{ steps.build.outputs.build }}
+        run: |
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+          gh release create "v$VERSION" "$DMG" --title "Hephaestus V3 $VERSION ($BUILD)" \
+            --notes "Built from $(git rev-parse --short HEAD). SHA-256 of the disk image: $SHA256"
+
+      - name: Upload the install page
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/site
+
+      - name: Deploy the install page
+        id: deployment
+        uses: actions/deploy-pages@v4

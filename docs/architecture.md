@@ -71,7 +71,9 @@ The architecture rests on a few rules:
 ```
 HephaestusV3/                    the repository root (GitHub: Azavech, private)
 ├─ CLAUDE.md                     what applies to this repository only
-├─ .gitignore                    .DS_Store, xcuserdata/, .build/, .swiftpm/, DerivedData/
+├─ .gitignore                    .DS_Store, xcuserdata/, .build/, .swiftpm/, DerivedData/, build/
+├─ .github/workflows/release.yml the release workflow ([Release](release.md))
+├─ site/index.html               the install page's template
 ├─ HephaestusV3.xcodeproj/       project.xcproj, in Xcode 27.2's JSON format; the app's Package.resolved
 │                                in project.xcworkspace/xcshareddata/swiftpm/
 ├─ HephaestusV3/                 the app target's folder: HephaestusV3App.swift, HephaestusV3.entitlements
@@ -90,7 +92,8 @@ HephaestusV3/                    the repository root (GitHub: Azavech, private)
 │  ├─ future-improvements.md     V2's features not brought over yet
 │  └─ ui/                        the UI specification and its images/
 └─ scripts/
-   └─ sync-strings.sh            fills the String Catalogs and checks the bundles
+   ├─ sync-strings.sh            fills the String Catalogs and checks the bundles
+   └─ build-release.sh           builds, signs, notarizes a release, its .dmg and the install page
 ```
 
 `HephaestusV3Kit/.build/` and `HephaestusV3Kit/.swiftpm/` are generated and ignored. `sync-strings.sh` builds
@@ -1920,6 +1923,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 | See a view's states | Open the view's file, the canvas shows its `#Preview`s | — |
 | Fill the String Catalogs and check bundles | — | Build first, then `scripts/sync-strings.sh <derived data>` (or no argument to build into `HephaestusV3Kit/.build/strings`) |
 | Check the project file after a hand edit | — | `xcrun xcprojformatter --update HephaestusV3.xcodeproj` |
+| Release | Actions ▸ Release ▸ Run workflow on GitHub | `gh workflow run release.yml -f version=X.Y.Z`; locally, `scripts/build-release.sh --version X.Y.Z --unsigned` checks the pipeline ([Release](release.md)) |
 
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.

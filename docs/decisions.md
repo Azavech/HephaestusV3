@@ -185,3 +185,19 @@ which rules the app enforces, and never tells Claude how to work.
 | How is the agent built and bundled? | Its own package for macOS 12 (`GuestAgent/`), an Xcode tool target signed with the team, copied into `Contents/Helpers` by a script phase; version `3.0`; V2's `setEnv` and the install script's Claude CLI step dropped. | [Guest agent](guest-agent.md) |
 | How is image.yml written? | V2's format with mode 0600, since it holds the guest password. | [Data › Image file](data.md#image-file) |
 | What does deleting do? | V2's: a machine's or an image's folder is deleted, not moved to the Trash; an image takes its machines with it. Each asks first. | [UI › Virtual Machines › Alerts](ui/virtual-machines.md#alerts) |
+
+## Phase 10: Release (14 November 2026)
+
+The owner chose the install page without V2's updater, releases built by GitHub Actions, and the page on GitHub
+Pages.
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| When does a release build? | Only when asked (Actions ▸ Release, with the version), since every phase is pushed. V2 released on every push to `main`. | [Release › Running a release](release.md#running-a-release) |
+| How are versions numbered? | The version is the workflow's input; the build is the commit count, as V2's. No conventional-commit bumps: V3's commits don't follow them. | [Release › Build script](release.md#build-script) |
+| What if the secrets are missing? | The workflow fails. V2 signed ad-hoc then; the workspace wants Developer ID and notarization for the Mac. | same |
+| How is the app signed? | Built unsigned by Xcode, then signed by the script with the Developer ID identity and a Developer ID profile (the App Group needs it), agent first, as V2's script did. | same |
+| How does the runner fetch AZDesign? | A read-only token for that repository, through a git URL rewrite. | [Release › Workflow](release.md#workflow) |
+| Where is the `.dmg`? | On the page itself and on the GitHub release; the page holds the latest only. | [Release › Install page](release.md#install-page) |
+| What does the page show? | The app, its version, the download, the steps, a note for iPhone and iPad, the SHA-256; `noindex`. | same |
+| Is there CI on pushes? | No: only the release runs tests on the runner. | [Release](release.md) |
