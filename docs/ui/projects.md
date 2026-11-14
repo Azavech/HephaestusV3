@@ -241,11 +241,11 @@ project of the selected project. The rules are those of [Data › Changes](../da
 | **Type** | Pop-up: Service, App, Library, Other | Service when the project's folder holds `go.mod`, else Other, until the user picks one | — |
 | **Parent Project** (New Project) | Pop-up: None, a divider, every project indented by depth | The innermost project whose folder holds the project's folder, else None, until the user picks one | Picking a project moves the location to its folder. |
 | **Folder** | Segmented control: **New Folder**, **Existing Folder** | New Folder; Existing Folder after Create Project Here… | — |
-| **Location** (New Folder) | The path, monospaced, and **Choose…** (a folder panel) | The folder holding the selected project's top-level folder; without a selection, `~/Developer` when it exists, else the home folder | — |
 | **Folder Name** (New Folder) | Text field | The name, `/` and `:` made `-`, trimmed, without leading dots, until the user types in the field, and again from the next change of the name once it is cleared | 1–255 UTF-8 bytes, no `/`, not starting with `.`: "Enter a folder name without “/” that does not start with “.”." |
-| **Folder** (Existing Folder) | The path and **Choose…** | None, or the folder of Create Project Here… | "Choose a folder." while none |
-| **Project Folder** | The resulting path, monospaced, secondary | — | With a parent: the folder must be inside the parent's: "Choose a folder inside “<parent>”." |
+| **Project Folder** | The project's folder in full, monospaced, secondary, on up to two lines, and **Choose…** (a folder panel). With **New Folder**, Choose… picks the folder that will hold it, and the folder name is added to it; with **Existing Folder**, the folder itself. | New Folder: inside the folder holding the selected project's top-level folder; without a selection, `~/Developer` when it exists, else the home folder; a parent's folder once a parent is picked. Existing Folder: none ("—"), or the folder of Create Project Here… | Existing Folder without a folder: "Choose a folder."; with a parent: the folder must be inside the parent's: "Choose a folder inside “<parent>”." |
 
+- There is no separate location row: the Project Folder row shows where the project goes, in full, and its
+  **Choose…** changes it (the owner's choice: a location and the resulting path showed the same path twice).
 - When the user picked **None** for a folder inside a project, a note says: "This folder is inside
   “<name>”: the new project becomes its sub project."
 - **Create** (default button) is enabled when every row keeps its rule. It creates the folder when needed,

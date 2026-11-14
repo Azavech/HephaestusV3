@@ -64,24 +64,18 @@ struct NewProjectSheet: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .accessibilityIdentifier("newProject.folderMode")
+                    // One path row: the project's folder, and Choose… for where it goes (a new folder's location) or
+                    // which folder it is (an existing one).
                     switch model.folderMode {
                     case .newFolder:
-                        pathRow(String(localized: "Location", bundle: #bundle), path: model.location.path, choice: .location)
                         TextField(String(localized: "Folder Name", bundle: #bundle),
                                   text: Binding { model.folderName } set: { model.setFolderName($0) })
                             .accessibilityIdentifier("newProject.folderName")
+                        projectFolderRow(choice: .location)
                     case .existingFolder:
-                        pathRow(String(localized: "Folder", bundle: #bundle), path: model.existingFolder?.path, choice: .existingFolder)
+                        projectFolderRow(choice: .existingFolder)
                     }
                     message(model.folderMessage)
-                    LabeledContent(String(localized: "Project Folder", bundle: #bundle)) {
-                        Text(verbatim: model.projectFolder ?? "—")
-                            .monospaced()
-                            .lineLimit(2)
-                            .truncationMode(.middle)
-                            .foregroundStyle(.textSecondary)
-                    }
-                    .accessibilityIdentifier("newProject.projectFolder")
                     if let inside = model.insideProject {
                         Text("This folder is inside “\(inside.name)”: the new project becomes its sub project.", bundle: #bundle)
                             .font(.callout)
@@ -116,20 +110,25 @@ struct NewProjectSheet: View {
         .accessibilityIdentifier("newProject.parent")
     }
 
-    private func pathRow(_ title: String, path: String?, choice: NewProjectModel.FolderChoice) -> some View {
-        LabeledContent(title) {
+    /// The project's folder, in full, and Choose…: for a new folder, the folder that will hold it (the folder name is
+    /// added to it); for an existing folder, the folder itself.
+    private func projectFolderRow(choice: NewProjectModel.FolderChoice) -> some View {
+        LabeledContent(String(localized: "Project Folder", bundle: #bundle)) {
             HStack(spacing: 8) {
-                Text(verbatim: path ?? "")
+                Text(verbatim: model.projectFolder ?? "—")
                     .monospaced()
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .truncationMode(.middle)
                     .foregroundStyle(.textSecondary)
                 Button(String(localized: "Choose…", bundle: #bundle)) {
                     model.chooseFolder(for: choice)
                 }
+                .help(choice == .location ? String(localized: "Choose the folder that will hold the project's folder", bundle: #bundle)
+                    : String(localized: "Choose the project's folder", bundle: #bundle))
                 .accessibilityIdentifier("newProject.choose")
             }
         }
+        .accessibilityIdentifier("newProject.projectFolder")
     }
 
     @ViewBuilder private func message(_ text: String?) -> some View {
