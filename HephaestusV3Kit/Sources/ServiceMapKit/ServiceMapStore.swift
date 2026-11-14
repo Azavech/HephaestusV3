@@ -165,20 +165,24 @@ public final class LiveServiceMapStore: ServiceMapStore {
         return Pod(name: pod.name, readyContainers: pod.ready ? 1 : 0, containers: 1, status: pod.phase, restarts: pod.restarts, age: age, node: nil)
     }
 
-    /// A read as the window shows it: services, Clusters as databases and buckets as external services; arrows with
+    /// A read as the window shows it: services, Clusters as databases, and buckets; arrows with
     /// their calls per second; the requests with their spans; the requests' log lines.
+    /// The node kind of a box of the graph: a postgres Cluster is a database, a bucket a bucket.
+    static func kind(of box: ServiceGraph.Kind) -> ServiceNode.Kind {
+        switch box {
+        case .service: .service
+        case .database: .database
+        case .bucket: .bucket
+        }
+    }
+
     static func map(_ read: ServiceMapRead, window: TimeWindow) -> ServiceMap {
         let seconds = Double(window.minutes * 60)
         let nodes = read.graph.boxes.map { box -> ServiceNode in
             let figures = read.activity.figures[box.id] ?? ServiceActivity.Figures()
             let health: DeploymentEnvironment.Health = box.kind != .service ? .healthy
                 : box.ready == 0 && box.replicas > 0 ? .down : box.ready < box.replicas ? .degraded : .healthy
-            let kind: ServiceNode.Kind = switch box.kind {
-            case .service: .service
-            case .database: .database
-            case .bucket: .external
-            }
-            return ServiceNode(id: box.id, kind: kind, requestsPerSecond: Double(figures.requests) / seconds, p95: figures.p95Ms,
+            return ServiceNode(id: box.id, kind: kind(of: box.kind), requestsPerSecond: Double(figures.requests) / seconds, p95: figures.p95Ms,
                                errorRate: figures.requests == 0 ? 0 : Double(figures.errors) / Double(figures.requests),
                                readyPods: box.ready, pods: box.replicas, health: health,
                                throughput: figures.series.map { Double($0) / (seconds / 30) })

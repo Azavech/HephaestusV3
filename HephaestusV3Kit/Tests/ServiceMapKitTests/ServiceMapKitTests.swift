@@ -498,3 +498,16 @@ struct FormatTests {
         #expect(first.rings["ext"] == "api")
     }
 }
+
+@Suite("Node kinds")
+struct NodeKindTests {
+    @Test("A bucket of the live graph is a Bucket node, drawn as V2 drew it; not an external service")
+    func bucket() {
+        #expect(LiveServiceMapStore.kind(of: .bucket) == .bucket)
+        #expect(LiveServiceMapStore.kind(of: .database) == .database)
+        #expect(LiveServiceMapStore.kind(of: .service) == .service)
+        #expect(ServiceNode.Kind.bucket.title == "Bucket")
+        #expect(ServiceNode.Kind.bucket.symbol == "externaldrive.connected.to.line.below")
+        #expect(!ServiceNode.Kind.bucket.isService)
+    }
+}

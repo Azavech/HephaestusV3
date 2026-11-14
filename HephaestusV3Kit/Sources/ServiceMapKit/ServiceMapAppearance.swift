@@ -13,6 +13,7 @@ extension ServiceNode.Kind {
         case .worker: String(localized: "Worker", bundle: #bundle, comment: "A kind of node on the service map")
         case .database: String(localized: "Database", bundle: #bundle, comment: "A kind of node on the service map")
         case .queue: String(localized: "Queue", bundle: #bundle, comment: "A kind of node on the service map")
+        case .bucket: String(localized: "Bucket", bundle: #bundle, comment: "A kind of node on the service map: a service's object storage bucket")
         case .external: String(localized: "External", bundle: #bundle, comment: "A kind of node on the service map: a service outside the cluster")
         case .client: String(localized: "Client", bundle: #bundle, comment: "A kind of node on the service map: who sent a request")
         }
@@ -26,6 +27,7 @@ extension ServiceNode.Kind {
         case .worker: "gearshape.2"
         case .database: "cylinder.split.1x2"
         case .queue: "envelope.arrow.triangle.branch"
+        case .bucket: "externaldrive.connected.to.line.below"
         case .external: "globe"
         case .client: "person"
         }

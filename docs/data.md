@@ -1087,7 +1087,7 @@ The owner's rules:
   `The sources of <deployment> cannot be read: <reason>.` and is tried again at the next read.
 - **Databases**: a service has `<service>-postgres` when `postgres.enabled` of its values file is `true`, `yes` or
   `on` (any case), or its `go.mod` requires `…/yc-shared/gormpg` (or a major version). **Buckets**:
-  `<service>-bucket`, an external node, from `s3.enabled` or `…/yc-shared/s3store`.
+  `<service>-bucket`, a bucket node, from `s3.enabled` or `…/yc-shared/s3store`.
 - **Arrows**: a service calls another when its `go.mod` requires the other's repository module, or one below it;
   it calls its database and its bucket. Services first, by name, then the databases and buckets.
 

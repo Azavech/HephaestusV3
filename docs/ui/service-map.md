@@ -1,6 +1,6 @@
 # Service Map
 
-The Service Map shows the services of a project's namespace and how they call each other, after the service map of AWS X-Ray. Round nodes stand for the services and for the databases, queues and external services they call; curved arrows stand for the calls, colored by their traffic. Under the graph, a table lists the namespace's recent requests, newest first. Beside both, the details show the service in focus or the request selected. A click on a service focuses the graph on it. A request shows only its path, from a Client node. A right-click, **Back** or ⌘[ goes back to the view before. The map reads the environment's cluster with kubectl, the services' sources on GitHub with gh, and the traces of its Jaeger ([Data › Clusters](../data.md#clusters)); the previews and captures use sample data (see [Sample data and limits](#sample-data-and-limits)).
+The Service Map shows the services of a project's namespace and how they call each other, after the service map of AWS X-Ray. Round nodes stand for the services and for the databases, queues, buckets and external services they call; curved arrows stand for the calls, colored by their traffic. Under the graph, a table lists the namespace's recent requests, newest first. Beside both, the details show the service in focus or the request selected. A click on a service focuses the graph on it. A request shows only its path, from a Client node. A right-click, **Back** or ⌘[ goes back to the view before. The map reads the environment's cluster with kubectl, the services' sources on GitHub with gh, and the traces of its Jaeger ([Data › Clusters](../data.md#clusters)); the previews and captures use sample data (see [Sample data and limits](#sample-data-and-limits)).
 
 ![The Service Map of Orders in Staging, focused on orders-api, in light appearance](images/servicemap-light.png)
 *Orders in Staging, opened on its own service, orders-api. The summary, zoom controls and legend float over the graph. The recent requests are under the graph, and the details of orders-api are on the right.*
@@ -72,6 +72,7 @@ Each node is a circle 54 points across at 100% zoom, filled with the surface col
 | Worker | `gearshape.2` | Yes | By the layout's forces | Below the node |
 | Database | `cylinder.split.1x2` | No | On the ring of the first service that calls it | On the outer side, with the kind under it |
 | Queue | `envelope.arrow.triangle.branch` | No | On the ring of the first service that calls it | On the outer side, with the kind under it |
+| Bucket | `externaldrive.connected.to.line.below` (V2's) | No | On the ring of the first service that calls it | On the outer side, with the kind under it |
 | External | `globe` | No | On the ring of the first service that calls it | On the outer side, with the kind under it |
 | Client | `person` | No | In a request view only, before the first service | Below the node, named `client`, with the request's route under it |
 
@@ -84,11 +85,11 @@ Each node is a circle 54 points across at 100% zoom, filled with the surface col
   | Degraded | Warning, 2.5 points |
   | Down | Danger, 2.5 points |
   | Healthy service | Secondary text color at 80% opacity, 1.5 points |
-  | Healthy database, queue, external service or Client | Secondary text color at 40% opacity, 1.5 points |
+  | Healthy database, queue, bucket, external service or Client | Secondary text color at 40% opacity, 1.5 points |
 
   Border widths follow the zoom but never go below half their size.
-- **Name.** The node's id, 12 points at 100% zoom and never smaller than 9 points. It is semibold for services and the Client, regular for other nodes. Names are hidden below 30% zoom, where the nodes are too close for them. Hovering a node always shows a tooltip with its name. For a database, queue or external service, the tooltip adds its kind, for example "orders-db, Database".
-- **Kind line.** A database, queue or external service shows its kind under its name ("Database"), in the secondary color, at 10 points (never below 8). When arrow labels are shown, the label of the arrow from its service follows the kind in that arrow's color, for example "Database · 210/s". That arrow is too short to carry its own label.
+- **Name.** The node's id, 12 points at 100% zoom and never smaller than 9 points. It is semibold for services and the Client, regular for other nodes. Names are hidden below 30% zoom, where the nodes are too close for them. Hovering a node always shows a tooltip with its name. For a database, queue, bucket or external service, the tooltip adds its kind, for example "orders-db, Database".
+- **Kind line.** A database, queue, bucket or external service shows its kind under its name ("Database"), in the secondary color, at 10 points (never below 8). When arrow labels are shown, the label of the arrow from its service follows the kind in that arrow's color, for example "Database · 210/s". That arrow is too short to carry its own label.
 - **Name side.** A node on a ring puts its name on the side away from its service. The name goes on the right or left when the node is mostly to that side of its service, and above or below otherwise.
 - **Client route.** Under the Client's name, in monospaced type and in the color of the Client's arrow: `<METHOD> <path> · <status>`, for example `POST /orders/8812/checkout · 504`.
 
@@ -117,7 +118,7 @@ The scale is relative to the arrows shown. A focus therefore colors its arrows a
 
 Node positions come from this algorithm:
 
-- **Rings.** A database, queue or external service that a service calls sits on the ring of the first service that calls it, 95 points from that service's center. A crowded ring grows so that two of its nodes stay 110 points apart. Each ring node goes into the widest gap left by its service's arrows and by the ring nodes already placed. The gaps are searched every 5 degrees, starting straight up. Ring nodes go above or beside their service, never below, where the service's name hangs, unless the ring has no room left there. A ring with no room for its nodes one by one is spread evenly around its service.
+- **Rings.** A database, queue, bucket or external service that a service calls sits on the ring of the first service that calls it, 95 points from that service's center. A crowded ring grows so that two of its nodes stay 110 points apart. Each ring node goes into the widest gap left by its service's arrows and by the ring nodes already placed. The gaps are searched every 5 degrees, starting straight up. Ring nodes go above or beside their service, never below, where the service's name hangs, unless the ring has no room left there. A ring with no room for its nodes one by one is spread evenly around its service.
 - **Groups.** Services linked by calls in either direction form a group, together with their rings. An arrow to or from a ring node counts as its service's arrow. A node that nothing links to stands alone as its own group.
 - **Forces.** Each group is laid out on its own by a force-directed layout (Fruchterman and Reingold): services push each other away, a call pulls its two services together, and a weak pull toward the group's center keeps them close. There are no columns: a service is placed by its calls, not by its depth in the call chain. Nodes are then pushed apart until no two are closer than 130 points, except a ring node and its service. A service with a ring keeps the ring's room free.
 - **Arrangement.** The group with the most services goes in the middle. Each other group goes as close to its center as it can, with at least 200 points between the rectangles around the groups' nodes.
@@ -133,7 +134,7 @@ Node positions come from this algorithm:
 | Action | Result |
 | --- | --- |
 | Pinch | Zooms around the point where the pinch started, which stays under the pointer. |
-| Drag the background | Pans the graph. The drag starts after 3 points of movement. A drag that starts on a database, queue, external service or the Client pans too. |
+| Drag the background | Pans the graph. The drag starts after 3 points of movement. A drag that starts on a database, queue, bucket, external service or the Client pans too. |
 | **Zoom Out** (`minus.magnifyingglass`) / **Zoom In** (`plus.magnifyingglass`) | Zoom out or in by 25% around the center of the graph. The buttons are icon-only, with tooltips "Zoom Out" and "Zoom In". |
 | **Fit** | Shows every node with its name, at 150% at most, clear of the overlays (58 points at the top, 54 at the bottom). Tooltip "Show every node". |
 
@@ -149,7 +150,7 @@ Node positions come from this algorithm:
 | Service in focus | The service, the nodes it calls, the services that call it, and the arrows to and from it | A click on a service node, a row of the details' **Calls** or **Timeline**, a `service:` route, or opening a sub project | That service |
 | Request | A Client node and the nodes the request went through, with only the calls it made | Selecting a row of the requests table, or a `request:` route | That request |
 
-- **Click.** A click on a gateway, service or worker focuses on it. A click on a database, queue, external service or the Client does nothing, and so does a click on the background. Such a node can still be focused from the details' **Calls** and **Timeline** rows and from a `service:` route, such as the Activity entry `service:stripe`.
+- **Click.** A click on a gateway, service or worker focuses on it. A click on a database, queue, bucket, external service or the Client does nothing, and so does a click on the background. Such a node can still be focused from the details' **Calls** and **Timeline** rows and from a `service:` route, such as the Activity entry `service:stripe`.
 - **Request view.** The Client's arrow goes into the request's first service. Each later service is called by the closest earlier service whose span contains its own. Each caller and callee pair gets one arrow. Arrow labels and colors are durations, and the legend reads **Faster** to **Slowest**.
 - **Back.** A right-click anywhere on the graph, **Back** in the zoom controls, or ⌘[ goes back to the view before. Every new view keeps the one it replaced, so going back walks the views in reverse order and ends at the whole namespace. A request replaces the request shown instead of stacking on it: after moving from request to request, by clicking rows or with the arrow keys, going back returns to the view the first request was opened from. A right-click opens no context menu.
 - **Show All.** Goes straight to the whole namespace and forgets the views before it.
@@ -348,9 +349,9 @@ Text comes from the Service Map's own String Catalog. Counts agree with their nu
 ## Sample data and limits
 
 - **Live maps.** The app reads each environment with `LiveServiceMapStore`: services, databases (postgres
-  Clusters) and buckets (as external services) from the Deployments and their sources; calls, figures, requests and
-  log lines from Jaeger's traces. The sources don't tell gateways, workers or queues: a live map shows services,
-  databases and external services. Logs are those of the requests' span events.
+  Clusters) and buckets from the Deployments and their sources; calls, figures, requests and
+  log lines from Jaeger's traces. The sources don't tell gateways, workers, queues or outside services: a live
+  map shows services, databases and buckets. Logs are those of the requests' span events.
 - **Samples.** Previews and captures use the sample namespaces (`SampleServiceMapStore`): Local, Staging and
   Production, with gateways, workers, queues and a Production-only service; their numbers are fixed.
 

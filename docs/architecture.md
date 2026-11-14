@@ -1519,7 +1519,7 @@ graph's code is `GraphLayout.swift`, `GraphMapView.swift`, `GraphColorScale.swif
 
 **Types.** `ServiceMap`: `nodes`, `calls`, `requests`, `logs`; `node(_:)`, `request(_:)`, `services` (nodes
 whose kind `isService`), `serviceCount(of:)`, `calls(of:)`. `ServiceNode`: `id`, `kind` (`gateway`, `service`,
-`worker`, `database`, `queue`, `external`, `client`; `isService` for the first three), `requestsPerSecond`,
+`worker`, `database`, `queue`, `bucket`, `external`, `client`; `isService` for the first three), `requestsPerSecond`,
 `p95` (ms), `errorRate`, `readyPods`, `pods`, `health`, `throughput: [Double]`; `hasPods`; `ServiceNode.client`.
 `ServiceCall` (`from`, `to`, `requestsPerSecond`, `errorRate`; `graphArrow`, `count(in:)`, `windowArrow(_:)`).
 `GraphArrow` (`from`, `to`, `weight`, `label`, `spokenLabel`; `id` `"<from>→<to>"`). `ServiceRequest` (`id`,

@@ -256,6 +256,9 @@
     "Back to the view before (⌘[ or a right-click on the graph)" : {
 
     },
+    "Bucket" : {
+      "comment" : "A kind of node on the service map: a service's object storage bucket"
+    },
     "Busiest" : {
       "comment" : "The high end of the graph's color scale"
     },

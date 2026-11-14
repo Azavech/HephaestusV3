@@ -65,7 +65,7 @@ extension ServiceMap {
             node("reports-worker", .worker, rps: 4, p95: 9_000, pods: 1),
             node("exports-worker", .worker, rps: 2, p95: 4_000, pods: 1),
             node("warehouse-db", .database, rps: 8, p95: 1_200, pods: 1),
-            node("reports-bucket", .external, rps: 3, p95: 90, pods: 0),
+            node("reports-bucket", .bucket, rps: 3, p95: 90, pods: 0),
             node("audit-worker", .worker, rps: 60, p95: 6, pods: 2),
             node("audit-events", .queue, rps: 60, p95: 2, pods: 1),
             node("audit-db", .database, rps: 60, p95: 3, pods: 1),

@@ -45,6 +45,8 @@ struct ServiceNode: Identifiable, Hashable, Sendable {
         case worker
         case database
         case queue
+        /// An object storage bucket of a service (`s3.enabled`, or yc-shared's `s3store`), as V2 drew it.
+        case bucket
         case external
         /// The client that sent a request: the entry point of the view of a request.
         case client
@@ -54,7 +56,7 @@ struct ServiceNode: Identifiable, Hashable, Sendable {
         var isService: Bool {
             switch self {
             case .gateway, .service, .worker: true
-            case .database, .queue, .external, .client: false
+            case .database, .queue, .bucket, .external, .client: false
             }
         }
     }
