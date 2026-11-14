@@ -104,6 +104,10 @@ public struct ToolsScenes: Scene {
                     .tabItem {
                         Label(String(localized: "Projects", bundle: #bundle), systemImage: "folder")
                     }
+                MCPSettingsPane(appData: appData)
+                    .tabItem {
+                        Label(String(localized: "MCP", bundle: #bundle, comment: "The Settings tab of the MCP server"), systemImage: "point.3.connected.trianglepath.dotted")
+                    }
                 if AppData.availableTools.contains(.chat) {
                     ChatSettingsView()
                         .tabItem {
@@ -168,52 +172,58 @@ private struct RouteHost<Content: View>: View {
         self.content = content()
     }
 
+    /// Opens a route: brings forward the window that shows it, or opens one (docs/ui/navigation.md › Routes).
+    private var openRouteAction: OpenRouteAction {
+        OpenRouteAction { [openWindow, $selectedProjectID, $machineFocus, $machineFocusRequest] route in
+            let windows = WindowDirectory.shared
+            /// The Projects window on `id`: the open one, or a new one.
+            @MainActor func showProjects(_ id: Project.ID) {
+                $selectedProjectID.wrappedValue = id
+                if !windows.bringForward(role: .projects, projectID: nil) {
+                    openWindow(id: SceneID.projects)
+                    WindowDirectory.activate()
+                }
+            }
+            switch route {
+            case .project(let id):
+                showProjects(id)
+            case .projectWindow(let id):
+                if !windows.bringForward(role: nil, projectID: id) {
+                    showProjects(id)
+                }
+            case .tool(let tool, let projectID, let focus):
+                if !windows.bringForward(role: .tool(tool), projectID: projectID, focus: focus) {
+                    openWindow(id: tool.windowID, value: ToolWindowValue(projectID: projectID, focus: focus))
+                    WindowDirectory.activate()
+                }
+            case .projectSettings(let id):
+                if !windows.bringForward(role: .projectSettings, projectID: id) {
+                    openWindow(id: SceneID.projectSettings, value: id)
+                    WindowDirectory.activate()
+                }
+            case .machine(let id):
+                // A new window opens on the machine; an open one is asked to select it.
+                $machineFocus.wrappedValue = id
+                if windows.bringForward(role: .machines, projectID: nil) {
+                    if let id {
+                        $machineFocusRequest.wrappedValue = FocusRequest(id)
+                    }
+                } else {
+                    openWindow(id: SceneID.machines)
+                    WindowDirectory.activate()
+                }
+            }
+        }
+    }
+
     var body: some View {
         content
-            .environment(\.openRoute, OpenRouteAction { [openWindow, $selectedProjectID, $machineFocus, $machineFocusRequest] route in
-                let windows = WindowDirectory.shared
-                /// The Projects window on `id`: the open one, or a new one.
-                @MainActor func showProjects(_ id: Project.ID) {
-                    $selectedProjectID.wrappedValue = id
-                    if !windows.bringForward(role: .projects, projectID: nil) {
-                        openWindow(id: SceneID.projects)
-                        WindowDirectory.activate()
-                    }
-                }
-                switch route {
-                case .project(let id):
-                    showProjects(id)
-                case .projectWindow(let id):
-                    if !windows.bringForward(role: nil, projectID: id) {
-                        showProjects(id)
-                    }
-                case .tool(let tool, let projectID, let focus):
-                    if !windows.bringForward(role: .tool(tool), projectID: projectID, focus: focus) {
-                        openWindow(id: tool.windowID, value: ToolWindowValue(projectID: projectID, focus: focus))
-                        WindowDirectory.activate()
-                    }
-                case .projectSettings(let id):
-                    if !windows.bringForward(role: .projectSettings, projectID: id) {
-                        openWindow(id: SceneID.projectSettings, value: id)
-                        WindowDirectory.activate()
-                    }
-                case .machine(let id):
-                    // A new window opens on the machine; an open one is asked to select it.
-                    $machineFocus.wrappedValue = id
-                    if windows.bringForward(role: .machines, projectID: nil) {
-                        if let id {
-                            $machineFocusRequest.wrappedValue = FocusRequest(id)
-                        }
-                    } else {
-                        openWindow(id: SceneID.machines)
-                        WindowDirectory.activate()
-                    }
-                }
-            })
+            .environment(\.openRoute, openRouteAction)
             .environment(\.toolReader, appToolReader)
             .environment(\.projectDirectory, appData.directory)
             .environment(\.availableTools, AppData.availableTools)
             .task {
+                if appData.openRoute == nil { appData.openRoute = openRouteAction }
                 await appData.start()
             }
             .tint(.accent)

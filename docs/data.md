@@ -22,6 +22,8 @@ a project's other files stay as V2 left them.
 | Git ignore file | `<project>/.hephaestus/.gitignore` | — (text) | Foundation |
 | Registry file | `<data folder>/registry.yml` | `RegistryFile` | Foundation |
 | Current environments file | `<data folder>/current-environments.yml` | `CurrentEnvironmentsFile` | Foundation |
+| Settings file | `<data folder>/settings.yml` | `SettingsFile` | MCP server |
+| Secrets file | `<data folder>/secrets.json` | — (JSON object) | MCP server |
 | Tickets, bundles, attachments | `<project>/.hephaestus/ticket/`, `bundle/`, `attachments/` | — | Tickets (not yet read) |
 | Chats | `<project>/.hephaestus/chats/` | — | Chat (not yet read) |
 
@@ -476,6 +478,38 @@ What a project's settings are once inheritance applies (`ResolvedSettings`):
   placeholder.
 - **Graph.** Never for a project that isn't a service; the parent's, as the parent resolves it, while a sub
   project uses its parent's settings; otherwise its own `graphEnabled`.
+
+## Settings file
+
+`<data folder>/settings.yml`: the app's settings. V3's own file: V2's `settings.yml` isn't imported. Swift
+type `SettingsFile`. A missing file gives the defaults; an invalid one is set aside as `settings.yml.invalid`
+and gives the defaults (`DataFolder.readSettings()`).
+
+| Swift name | Key | Type | Required | Default | Rules |
+| --- | --- | --- | --- | --- | --- |
+| schema | `schema` | `Int` | no | `1` | |
+| mcpPort | `mcpPort` | `Int` | no | `47830` | The MCP server's port on 127.0.0.1: 1024–65535 (`SettingsFile.isPort`). `HEPHAESTUS_MCP_PORT` replaces it while set, without changing the file ([MCP](mcp.md#server-lifecycle)). |
+| unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
+
+```yaml
+schema: 1
+mcpPort: 47830
+```
+
+## Secrets file
+
+`<data folder>/secrets.json`, mode 0600: one JSON object, written with two-space indentation, keys sorted,
+slashes not escaped, and a final line break. Not in the Keychain, as V2 did, so that a rebuilt app doesn't ask
+for access.
+
+| Key | Value |
+| --- | --- |
+| `schema` | `1` |
+| `mcpExternalToken` | The MCP server's external token: 64 lowercase hexadecimal characters ([MCP › Authentication](mcp.md#authentication)). |
+
+- `DataFolder.externalToken(make:)` reads the token; when the file is missing, isn't a JSON object, or holds no
+  valid token, it makes one and writes it, the file's other keys kept. `replaceExternalToken(with:)` writes a
+  new one the same way. The mode is set to 0600 after each write.
 
 ## Unknown keys
 

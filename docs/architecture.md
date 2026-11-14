@@ -18,7 +18,7 @@ meet the workspace's rules (`~/Developer/Apple/CLAUDE.md`), [Open issues](#open-
 3. [The Xcode project](#the-xcode-project)
 4. [The package](#the-package)
 5. [The data targets](#the-data-targets): [FileStorage](#filestorage), [ExternalTools](#externaltools),
-   [ProjectData](#projectdata)
+   [ProjectData](#projectdata), [MCPKit](#mcpkit)
 6. [ToolsFoundation](#toolsfoundation)
 7. [ToolsScenes](#toolsscenes)
 8. [The tool kits](#the-tool-kits): [ProjectsKit](#projectskit), [DashboardsKit](#dashboardskit),
@@ -44,6 +44,7 @@ ProjectData                      the data folder, the import from V2, the projec
 ├─ FileStorage                   YAML in V2's layout, atomic writes, the lock, the Trash, file events
 │  └─ Yams                       YAML parsing and emitting (third party, approved by the owner)
 └─ ExternalTools                 child processes, the login shell's environment, git, ssh, kubectl
+MCPKit                           the MCP server: JSON-RPC over HTTP on 127.0.0.1, the tool registry
 AZDesign (package, by version)   colors, motion, components, styles, adaptive layout, preview traits
 AZDesignCode (same package)      Fira Code for code views
 ```
@@ -192,9 +193,10 @@ Shared values in the manifest:
 | --- | --- | --- | --- |
 | `FileStorage` | Files: YAML in V2's layout, atomic writes, own writes, the folder lock, the Trash, file events. | Yams | `.target(name:, dependencies: [yams])` |
 | `ExternalTools` | Child processes: process groups and timeouts, the login shell's environment, the tools' lookup, git, ssh, kubectl. | — | `.target(name:)` |
-| `ProjectData` | The data folder, the import from HephaestusV2, the project files and their rules. | FileStorage, ExternalTools | `.target(name:, dependencies:)` |
+| `ProjectData` | The data folder, the import from HephaestusV2, the project files and their rules, the settings and secrets files. | FileStorage, ExternalTools | `.target(name:, dependencies:)` |
+| `MCPKit` | The MCP server: JSON values, input schemas, tool operations and their registry, JSON-RPC, HTTP on 127.0.0.1, tokens. | — | `.target(name:)` |
 | `ToolsFoundation` | Shared vocabulary: projects, tools, routes, chat vocabulary, the Dashboard model, `ProjectIcon`. | AZDesign | `.target` |
-| `ProjectsKit` | The project selector: the Projects window, the project switcher, the menu bar panel; New Project, Settings ▸ Projects; the mapping of the app's projects. | ToolsFoundation, AZDesign, AZDesignCode, ProjectData, ExternalTools | `toolTarget(_:data:)` |
+| `ProjectsKit` | The project selector: the Projects window, the project switcher, the menu bar panel; New Project, Project Settings, Settings ▸ Projects; the mapping of the app's projects; the project tools of the MCP server. | ToolsFoundation, AZDesign, AZDesignCode, ProjectData, ExternalTools, MCPKit | `toolTarget(_:data:)` |
 | `DashboardsKit` | The Dashboard's grid, edit mode, settings and saving; the Project widget. | same | `toolTarget` |
 | `TicketsKit` | Tickets; the Tickets widget; the tickets reader. | same | `toolTarget` |
 | `ServiceMapKit` | The Service Map and its graph; the service widgets; the Service Map reader. | same | `toolTarget` |
@@ -202,16 +204,16 @@ Shared values in the manifest:
 | `BuildsKit` | Builds; the Recent Builds widget; the builds reader. | same | `toolTarget` |
 | `MachinesKit` | The Virtual Machines window. | same | `toolTarget` |
 | `ChatKit` | The Chat window, the chat panel, Settings ▸ Chat, the shared chat store. | same | `toolTarget` |
-| `ToolsScenes` | Scenes, menu commands, route handling, the app's data (`AppData`). The only target that knows every tool. | ToolsFoundation, ProjectData, ProjectsKit, DashboardsKit, TicketsKit, ServiceMapKit, ContractsKit, BuildsKit, MachinesKit, ChatKit, AZDesign | `.target` |
+| `ToolsScenes` | Scenes, menu commands, route handling, the app's data (`AppData`), the MCP server's tools (`AppTools`) and Settings ▸ MCP. The only target that knows every tool. | ToolsFoundation, ProjectData, FileStorage, MCPKit, ProjectsKit, DashboardsKit, TicketsKit, ServiceMapKit, ContractsKit, BuildsKit, MachinesKit, ChatKit, AZDesign | `.target` |
 
 Every UI target has `Localizable.xcstrings` as its only resource; the data targets have none, since their
 messages are technical details in English under a window's localized sentence. SwiftPM builds it into the bundle
 `HephaestusV3Kit_<Target>.bundle`, which Foundation's `#bundle` macro resolves to in that target's code.
 
 **Test targets**: `FileStorageTests`, `ExternalToolsTests`, `ProjectDataTests` (with the resource
-`.copy("Fixtures")`), `ToolsFoundationTests`, `ProjectsKitTests`, `DashboardsKitTests`, `TicketsKitTests`,
-`ServiceMapKitTests`, `ContractsKitTests`, `BuildsKitTests`, `MachinesKitTests`, `ChatKitTests`. Each depends
-only on its target, uses Swift Testing and `@testable import`. ToolsScenes has no test target.
+`.copy("Fixtures")`), `MCPKitTests`, `ToolsFoundationTests`, `ProjectsKitTests`, `DashboardsKitTests`, `TicketsKitTests`,
+`ServiceMapKitTests`, `ContractsKitTests`, `BuildsKitTests`, `MachinesKitTests`, `ChatKitTests`,
+`ToolsScenesTests`. Each depends only on its target, uses Swift Testing and `@testable import`.
 
 **Dependency rules**
 
@@ -448,6 +450,38 @@ The files of [Data](data.md). Source files in `Sources/ProjectData/`:
   origins. `stop()` stops the streams, ends the running tools and releases the lock. `kubectl` is the
   tools' kubectl for the settings' suggestions. Tests give it a temporary data folder, a fake runner and a
   hub with short delays.
+
+### MCPKit
+
+The MCP server of [MCP](mcp.md). No UI, no default isolation. Source files in `Sources/MCPKit/`:
+
+| File | Contents |
+| --- | --- |
+| `JSONValue.swift` | `JSONValue` (`null`, `bool`, `int`, `double`, `string`, `array`, `object`): `parse(_:)` (`JSONSerialization`, fragments allowed; a number is a boolean when it is a `CFBoolean`, an integer when it isn't a float type or is a float with an integral value below 9.2e18), `data` and `text` (sorted keys, slashes not escaped), `init(encoding:)` (`JSONEncoder` with sorted keys), accessors, `subscript(key:)`, `removingNullMembers`, literals |
+| `ToolSchema.swift` | `ToolSchema` (`object`, `string`, `integer`, `boolean`, `array` builders; `json`; `violation(of:)`, the validation of [MCP › Argument validation](mcp.md#argument-validation)) |
+| `ToolOperation.swift` | `ToolError` (`code`, `message`), `ToolPermission` (`read`, `change`), `ToolOperation` (`name`, `description`, `inputSchema`, `permission`, `run: @Sendable (JSONValue) async throws(ToolError) -> JSONValue`, `listing`), `ToolRegistry` (`operations`, `names`, `subscript(name:)`; names unique), `JSONValue.string(_:)` |
+| `MCPProtocol.swift` | `MCPReply` (`json`, `accepted`, `unsupportedVersion`), `MCPProtocol` (`supportedVersions`, `serverName`, `handle(body:protocolVersions:)`) |
+| `HTTP.swift` | `HTTPHead`, `HTTPResponse` (the rejections' texts, `data`), `HTTPParser` (`head(in:)`, `body(of:in:)`, the limits) |
+| `MCPTokens.swift` | `MCPTokens` (`replace(with:)`, `accepts(_:)` in constant time, `generate()` with `SecRandomCopyBytes`, `bearer(_:)`) |
+| `MCPServer.swift` | `MCPServer` (actor: `state`, `states`, `start(port:)`, `stop()`), the private `MCPConnection` and `OneShot` |
+
+- **Operations.** A kit declares its tools as `ToolOperation`s whose `run` is a `@MainActor` closure calling
+  the same function its window calls (ProjectsKit's `ProjectTools.operations(session:)`). ToolsScenes gathers
+  them in order (`AppTools.registry(session:open:)`), adds `open_in_app`, and hands the registry to an
+  `MCPProtocol`. `MCPProtocol.call` validates the arguments, runs the operation with `null` members removed,
+  and wraps its JSON, or its error's message, in a tool result.
+- **The server** binds an `NWListener` whose `requiredLocalEndpoint` is `127.0.0.1:<port>` (local endpoint
+  reuse allowed) on a private dispatch queue; `start(port:)` awaits the listener's `ready` or `failed` state
+  through a `OneShot`, five attempts a second apart. Each connection reads with `receive(minimumIncompleteLength: 1,
+  maximumLength: 65536)`, raced against a 60-second sleep, parses the head, checks it
+  ([MCP › HTTP transport](mcp.md#http-transport)), sends `100 Continue` when asked, reads the body, answers,
+  and loops until a response closes it.
+- **AppData** (ToolsScenes) starts it once the projects are loaded: the port from `settings.yml` or
+  `HEPHAESTUS_MCP_PORT`, the external token from `secrets.json` (made when missing), the registry, the app's
+  `CFBundleShortVersionString` as version. It follows `states` into `mcpState`, and offers `changePort(to:)`,
+  `regenerateToken()` and `addCommand`. `open_in_app` calls `AppData.openRoute`, the route action of the
+  first window that appeared. **Settings ▸ MCP** is `MCPSettingsPane(appData:)` over `MCPSettingsView`, a
+  view on plain values with its previews ("Listening", "Failed, Dark", "Port From Environment").
 
 ## ToolsFoundation
 
@@ -1677,7 +1711,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 355 tests). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 368 tests). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
@@ -1685,9 +1719,11 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | --- | --- | --- |
 | FileStorageTests | YAML coding, Dates, Atomic writes, Own writes the folder lock and the Trash, File events | Kept keys written back in order and layout; read rules (UTF-8, root mapping, keys twice, YAML errors); BOM and CR LF; defaults and required keys; schema; dates read and written; quoting and literal blocks; atomic writes (modes, links, failures, leftovers); own writes; the lock; a test Trash; `YAMLFile`; batches by quiet and maximum delay; one real FSEvents stream in a temporary folder; flag kinds. |
 | ExternalToolsTests | Child processes, The login shell's environment, Finding the tools, git ssh and kubectl | Output, status, input, folder, environment, signals, missing executables; the timeout ending a whole process group; `terminateAll`; `env -0` parsing and every capture outcome; `PATH` lookup and the git stub; the commands, arguments, parsing and failures of git, ssh and kubectl. Uses `FakeRunner`. |
+| MCPKitTests | JSON values and schemas, JSON-RPC, HTTP, Server | Number kinds and sorted output; every validation message in order; the classification table; initialize, ping, unknown methods and the version header; tools/list and tools/call results, errors and validation; heads, chunked and sized bodies and their limits; bearer tokens; a real listener on a free port answering with the token and refusing the rest. |
 | ProjectDataTests | Project file, Registry and current environments, Data folder, Import from HephaestusV2, Rules and GitHub, Loading, Outside changes, Creating opening and removing, Inherited settings, Current environment, GitHub page, Session | V2's complete project file written back byte for byte; every V2 example round-tripping with all its keys; defaults; environments, base URLs and overrides; V3's additions; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; the import's list, skips, choices, single run and missing V2; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints; loading depth first with every issue; data folder files set aside; outside changes (changed, invalid, renamed identifier, deleted and returning files, the registry, own writes, relevance); create, open and remove with their refusals and sub projects; update with its write rules; inheritance on, off, nested and across types; the current environment chosen, renamed, removed and forgotten; GitHub pages from origins, aliases, typed pages and parents, `.git/config`; the session's start, lock, changes and a real outside change. Fixtures: V2's examples. Uses `FakeRunner`. |
+| ToolsScenesTests | MCP documentation | docs/mcp.md's tools, descriptions and input schemas equal the registry's. |
 | ToolsFoundationTests | Routes, Strings, Inherited settings | Each `FocusRequest` is new; `ChatReference.route` and ids per environment; shared titles from the catalog; unique tool shortcuts; inherited environments. |
-| ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker, Projects from the app's data, New Project, Projects window on the app's data, Project Settings | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`.; the mapping of kinds, tints and environments; New Project's following fields, rules, type and parent from the folder, sub project folders and default location; the loading, empty and unavailable states; the selection after a removal and at load.; Project Settings' fields, rules and messages, environments added, renamed and removed, pending fields applied together, and inherited environments changed in the sub project's changes. |
+| ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker, Projects from the app's data, New Project, Projects window on the app's data, Project Settings, Project tools | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`.; the mapping of kinds, tints and environments; New Project's following fields, rules, type and parent from the folder, sub project folders and default location; the loading, empty and unavailable states; the selection after a removal and at load.; Project Settings' fields, rules and messages, environments added, renamed and removed, pending fields applied together, and inherited environments changed in the sub project's changes.; the five project tools through JSON-RPC on a real session, their refusals and `~/` expansion. |
 | DashboardsKitTests | What the Dashboard shows, Edit mode, Steps of the keyboard and VoiceOver, Settings, Saving | Sample, default and saved lists; hidden service widgets; toolbar environment and time window; a change in every window of a project; list order; titles; Done, remove, add, first save, drags; every step and its limits; title, checkbox and Number rules; lenient decoding; keys. Uses `MockDashboardLayoutStore`. |
 | TicketsKitTests | The store, The list, Selection and route focus, Comments, New Ticket, The reader | Store queries and counts; grouping, filters, counts, bundles; default selection, focus, repeated routes, hidden and missing tickets, chat subject; comment drafts; the sheet's project and validation; reader sentences and suggestions. Uses `MockTicketStore`. |
 | ServiceMapKitTests | Focus formats, Service Map model, Service Map reader, Service widgets, Formats | Focus parsing; opening environment and view; history, Back, Show All; taps; repeated routes; missing items; chat subject; summary; request order and sorting; graph contents; logs; reader per environment, details and suggestions; widget readings; durations, literals, stable layout. Uses `MockServiceMapStore`. |
@@ -1696,7 +1732,8 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | MachinesKitTests | Machines window: selection and routes, Machines window: layouts, Machines: states and sizes | Opening and route selection, unknown machines, images; Mac width, layout by width, side columns per layout; actions per state; size and download formats; sample ids. Uses `MockMachineStore`. |
 | ChatKitTests | Chat store, Sample engine, Chat panel, Chat window, Chat wording | Starting and continuing conversations, empty messages, ordering, decisions; mentions and reads; attachments, sending, New Chat, the Chat window route, suggestions; window selection, grouping, new chat, sending; approval sentences, suggestion wording and identifiers, references, unique sample ids. Uses `MockChatEngine`. |
 
-ToolsScenes has no tests: scenes, routes, `WindowDirectory` and the menus are checked by running the app.
+ToolsScenesTests check that docs/mcp.md lists exactly the registered tools, in order, with their
+descriptions and input schemas; scenes, routes, `WindowDirectory` and the menus are checked by running the app.
 
 ## Open issues
 
@@ -1716,4 +1753,5 @@ Where the code doesn't yet meet the workspace's rules, or the architecture is kn
   next step, Comment, New Ticket's Create (closes the sheet only), Contracts' Send, Builds' Refresh, the
   Service Map's time window and Live. The chat's permissions are stored but no engine reads them. Each
   window page lists its own.
-- **ToolsScenes is untested** by unit tests.
+- **ToolsScenes has one suite**, the MCP documentation's; its scenes, routes, `WindowDirectory` and menus are
+  checked by running the app.

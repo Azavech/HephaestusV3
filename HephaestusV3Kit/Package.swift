@@ -48,12 +48,14 @@ let package = Package(
         .target(name: "ExternalTools"),
         // The data folder, the import from HephaestusV2 and the project files.
         .target(name: "ProjectData", dependencies: ["FileStorage", "ExternalTools"]),
+        // The MCP server: JSON-RPC over HTTP on 127.0.0.1, serving the tools' operations to Claude.
+        .target(name: "MCPKit"),
 
         // Shared vocabulary: projects, tools, routes and the few components every tool uses.
         .target(name: "ToolsFoundation", dependencies: [design], resources: strings, swiftSettings: isolation),
 
         // The project selector: the Projects window, the switcher of every tool window, the menu bar panel.
-        toolTarget("ProjectsKit", data: ["ProjectData", "ExternalTools"]),
+        toolTarget("ProjectsKit", data: ["ProjectData", "ExternalTools", "MCPKit"]),
 
         // The tools. The Dashboard draws the grid and its edit mode; each tool provides the widgets of
         // its own data, and ToolsScenes hands them to it.
@@ -70,7 +72,7 @@ let package = Package(
         .target(
             name: "ToolsScenes",
             dependencies: [
-                "ToolsFoundation", "ProjectData", "ProjectsKit",
+                "ToolsFoundation", "ProjectData", "FileStorage", "MCPKit", "ProjectsKit",
                 "DashboardsKit", "TicketsKit", "ServiceMapKit", "ContractsKit", "BuildsKit", "MachinesKit", "ChatKit",
                 design,
             ],
@@ -81,6 +83,7 @@ let package = Package(
         testTarget("FileStorage", settings: []),
         testTarget("ExternalTools", settings: []),
         testTarget("ProjectData", resources: [.copy("Fixtures")], settings: []),
+        testTarget("MCPKit", settings: []),
         testTarget("ToolsFoundation"),
         testTarget("ProjectsKit"),
         testTarget("DashboardsKit"),
@@ -90,5 +93,6 @@ let package = Package(
         testTarget("BuildsKit"),
         testTarget("MachinesKit"),
         testTarget("ChatKit"),
+        testTarget("ToolsScenes"),
     ]
 )

@@ -4,8 +4,35 @@
     "Add Existing Folder…" : {
       "comment" : "File menu item, ⌘O"
     },
+    "Claude Code in Terminal" : {
+
+    },
+    "Command" : {
+
+    },
+    "Copy" : {
+
+    },
+    "Copy Command" : {
+
+    },
+    "Enter a port from 1024 to 65535." : {
+
+    },
+    "External Token" : {
+
+    },
+    "HEPHAESTUS_MCP_PORT sets the port to %@ while the app runs." : {
+
+    },
     "Hide Chat Panel" : {
 
+    },
+    "Listening on 127.0.0.1:%@" : {
+
+    },
+    "MCP" : {
+      "comment" : "The Settings tab of the MCP server"
     },
     "New Builds Window" : {
 
@@ -34,10 +61,19 @@
     "No Project" : {
 
     },
+    "Not listening: %@" : {
+
+    },
+    "Not running" : {
+
+    },
     "Open Project" : {
 
     },
     "Open this window from the Projects window." : {
+
+    },
+    "Port" : {
 
     },
     "Project Settings" : {
@@ -49,7 +85,31 @@
     "Projects" : {
 
     },
+    "Regenerate" : {
+
+    },
+    "Regenerate failed: %@" : {
+
+    },
+    "Regenerate the external token?" : {
+
+    },
+    "Regenerate…" : {
+
+    },
+    "Run the command in Terminal to give Claude Code the tools of Hephaestus V3. After Regenerate or a new port, run “claude mcp remove hephaestus” first." : {
+
+    },
+    "Server" : {
+
+    },
     "Show Chat Panel" : {
+
+    },
+    "Status" : {
+
+    },
+    "Terminal sessions that use the current token stop working until you add the server again." : {
 
     },
     "Virtual Machines" : {

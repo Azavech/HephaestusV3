@@ -41,3 +41,16 @@ chosen at design time" beside it. Newest phase last.
 | How is the connection to a cluster checked? | By listing its namespaces with the kubeconfig file, which also gives the suggestions. | same |
 | What may an inherited environment's Name field do? | Nothing: it shows the parent's name, disabled, as V2. | same |
 | May a copy of a stored environment skip the write rules? | No: each stored environment keeps at most one equal environment as it is; a copy is checked, so two environments can't share a name. V2 let an exact copy through. | [Data › Changes](data.md#changes) |
+
+## Phase 2: MCP server (14 November 2026)
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| Which port? | 47830, V3's own, so that V3 doesn't collide with a V2 still installed (47820). | [MCP › Overview](mcp.md#overview) |
+| Which server name? | `hephaestus`, as V2: Claude's tool names stay `mcp__hephaestus__<tool>`. | same |
+| Which tokens? | The external token only; the chats' tokens come with Chat. | [MCP › Authentication](mcp.md#authentication) |
+| Where do the operations live? | In each kit, beside the window whose functions they call; MCPKit knows no kit and no UI, and ToolsScenes gathers the registry. | [Architecture › MCPKit](architecture.md#mcpkit) |
+| What do the results look like? | V2's shapes with V3's names (`folder` for V2's `rootPath`, `library` added to the types, a tint accepted as `color`); absent values are left out rather than `null`. | [MCP › Tools](mcp.md#tools) |
+| What does `open_in_app` open? | Only what V3 has: a project in the Projects window, or its settings; each feature adds its kinds. | [MCP › open_in_app](mcp.md#open_in_app) |
+| Where is the port kept? | `settings.yml`, V3's own settings file, created with this first setting. | [Data › Settings file](data.md#settings-file) |
+| Does Settings show the whole token? | No: its first 8 characters; Copy copies it whole. | [MCP › Settings ▸ MCP](mcp.md#settings--mcp) |

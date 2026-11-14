@@ -16,7 +16,7 @@ and the menus and shortcuts that reach them.
 | **Chat** | One per project | ⌘6, a tile, the menu bar panel, the chat panel | 1180 × 780 pt | [Chat](chat.md) |
 | **Virtual Machines** | One window | ⌘7 (Window menu) | 1100 × 760 pt | [Virtual Machines](virtual-machines.md) |
 | **Project Settings** | One per project | ⇧⌘, (File menu), the Projects window's More menu | 600 × 720 pt | [Project Settings](project-settings.md) |
-| **Settings** | One window | ⌘, | 520 × 440 pt | [Projects › Settings ▸ Projects](projects.md#settings--projects), [Chat › Settings](chat.md) |
+| **Settings** | One window | ⌘, | 520 × 440 pt | Tabs: [Projects](projects.md#settings--projects), [MCP](../mcp.md#settings--mcp), [Chat](chat.md) (once Chat comes over) |
 | **Menu bar panel** | Menu bar item | The `wrench.and.screwdriver` icon | 360 × 460 pt | [Menu bar](menu-bar.md) |
 
 - Tool windows don't open at launch. macOS restores those that were open when the app quit.
