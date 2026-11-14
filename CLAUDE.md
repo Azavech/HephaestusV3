@@ -17,8 +17,7 @@ applies here to `~/Developer/Apple/CLAUDE.md`.
   macOS 12 guests, bundled in `Contents/Helpers` (`docs/guest-agent.md`); its tests run with `swift test` there.
 - `docs/architecture.md`: how the code is put together; `docs/data.md`: the files, V2's format and V3's
   additions; `docs/ui/`: the UI specification, window by window; `docs/decisions.md`: the defaults chosen at
-  design time; `docs/future-improvements.md`: what comes later; `docs/release.md`: the release workflow (GitHub
-  releases, signed ad-hoc, not notarized: the owner's choice). All must be precise enough to rebuild the app
+  design time; `docs/future-improvements.md`: what comes later; `docs/release.md`: the release workflow. All must be precise enough to rebuild the app
   from them: every change updates its pages, and its screenshots, in the same commit.
 - V2's files stay compatible: read them as V2 wrote them, keep every key V3 doesn't use, and mark each
   addition to the format as a V3 addition in `docs/data.md`.
@@ -31,3 +30,6 @@ applies here to `~/Developer/Apple/CLAUDE.md`.
   use temporary folders only: never the user's projects, data folder, Trash or shell, and no live Claude calls.
 - Signed builds use `xcodebuild` (the `xcode` MCP server can't sign this app); after a capability change,
   add `-allowProvisioningUpdates`.
+- Releases: GitHub Actions builds an ad-hoc signed `.dmg` on demand and attaches it to a GitHub release
+  (`docs/release.md`). The owner set aside the workspace's Developer ID, notarization and install page rule for
+  this app: don't bring them back unless the owner asks.
