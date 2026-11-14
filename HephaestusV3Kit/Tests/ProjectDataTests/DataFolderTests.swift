@@ -6,15 +6,40 @@ import Testing
 
 @Suite("Data folder")
 struct DataFolderTests {
-    @Test("HEPHAESTUS_DATA_DIR names the folder; otherwise the App Group container")
+    @Test("HEPHAESTUS_DATA_DIR names the folder; otherwise HephaestusV3 in Application Support")
     func resolve() {
-        let container = URL(fileURLWithPath: "/containers/group", isDirectory: true)
-        #expect(DataFolder.resolve(environment: ["HEPHAESTUS_DATA_DIR": "/dev/data"], container: { _ in container })?.url.path == "/dev/data")
-        #expect(DataFolder.resolve(environment: ["HEPHAESTUS_DATA_DIR": "relative"], container: { _ in container })?.url == container)
-        var asked: String?
-        #expect(DataFolder.resolve(environment: [:], container: { asked = $0; return container })?.url == container)
-        #expect(asked == "group.fr.azavech.hephaestusv3")
-        #expect(DataFolder.resolve(environment: [:], container: { _ in nil }) == nil)
+        let support = URL(fileURLWithPath: "/support", isDirectory: true)
+        #expect(DataFolder.resolve(environment: ["HEPHAESTUS_DATA_DIR": "/dev/data"], applicationSupport: support)?.url.path == "/dev/data")
+        #expect(DataFolder.resolve(environment: ["HEPHAESTUS_DATA_DIR": "relative"], applicationSupport: support)?.url.path == "/support/HephaestusV3")
+        #expect(DataFolder.resolve(environment: [:], applicationSupport: support)?.url.path == "/support/HephaestusV3")
+        #expect(DataFolder.resolve(environment: [:], applicationSupport: nil) == nil)
+    }
+
+    @Test("The App Group container's data is copied once, without the system's Library, and left in place")
+    func migrate() throws {
+        try withTemporaryFolder { root in
+            let container = root.appendingPathComponent("group", isDirectory: true)
+            try FileManager.default.createDirectory(at: container.appendingPathComponent("Library/Caches"), withIntermediateDirectories: true)
+            try FileManager.default.createDirectory(at: container.appendingPathComponent("VirtualMachines/Images"), withIntermediateDirectories: true)
+            try Data("projects: []\n".utf8).write(to: container.appendingPathComponent("registry.yml"))
+            let folder = DataFolder(url: root.appendingPathComponent("Support/HephaestusV3"))
+            #expect(folder.migrateFromAppGroup(container: container))
+            #expect(try String(contentsOf: folder.registryFile, encoding: .utf8) == "projects: []\n")
+            #expect(FileManager.default.fileExists(atPath: folder.url.appendingPathComponent("VirtualMachines/Images").path))
+            #expect(!FileManager.default.fileExists(atPath: folder.url.appendingPathComponent("Library").path))
+            #expect(FileManager.default.fileExists(atPath: container.appendingPathComponent("registry.yml").path))
+            // Never again once the folder exists, and nothing from an empty, missing or unreadable container.
+            #expect(!folder.migrateFromAppGroup(container: container))
+            let other = DataFolder(url: root.appendingPathComponent("Other/HephaestusV3"))
+            #expect(!other.migrateFromAppGroup(container: nil))
+            #expect(!other.migrateFromAppGroup(container: root.appendingPathComponent("missing")))
+            let empty = root.appendingPathComponent("empty/Library", isDirectory: true)
+            try FileManager.default.createDirectory(at: empty, withIntermediateDirectories: true)
+            #expect(!other.migrateFromAppGroup(container: empty.deletingLastPathComponent()))
+            #expect(!FileManager.default.fileExists(atPath: other.url.path))
+            let leftovers = try FileManager.default.contentsOfDirectory(atPath: folder.url.deletingLastPathComponent().path)
+            #expect(leftovers == ["HephaestusV3"])
+        }
     }
 
     @Test("The folder is created with mode 0700, and its lock is exclusive")

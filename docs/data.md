@@ -37,7 +37,7 @@ a project's other files stay as V2 left them.
 | Image file | `<data folder>/VirtualMachines/Images/<IMAGE-ID>/image.yml` | `ImageFile` | Virtual Machines |
 | Machine file | `<data folder>/VirtualMachines/Machines/<VM-ID>/vm.yml` | `MachineFile` | Virtual Machines |
 
-`<data folder>` is the App Group container, or the folder `HEPHAESTUS_DATA_DIR` names ([Data
+`<data folder>` is `~/Library/Application Support/HephaestusV3/`, or the folder `HEPHAESTUS_DATA_DIR` names ([Data
 folder](#data-folder)).
 
 ## Conventions
@@ -109,11 +109,17 @@ when the name has fewer than two (`ProjectRules.suggestedIdentifier(fromName:)`)
 
 The files that belong to this Mac rather than to a project.
 
-- **Location**: the App Group container, `~/Library/Group Containers/group.fr.azavech.hephaestusv3/`
-  (`FileManager.containerURL(forSecurityApplicationGroupIdentifier:)`), as the workspace rule wants an app's
-  data in its App Group. The environment variable `HEPHAESTUS_DATA_DIR`, set to an absolute path, names
-  another folder for development; a relative value is ignored. A build without the App Group entitlement has
-  no data folder (`DataFolder.resolve()` returns nil).
+- **Location**: `~/Library/Application Support/HephaestusV3/` (`DataFolder.resolve()`). The environment
+  variable `HEPHAESTUS_DATA_DIR`, set to an absolute path, names another folder for development; a relative value
+  is ignored. Until 14 November 2026 the folder was the App Group container
+  (`~/Library/Group Containers/group.fr.azavech.hephaestusv3/`), as the workspace rule wants. The owner moved it:
+  macOS lets only a copy whose signature comes with a provisioning profile granting the group use that container,
+  and the releases are signed ad-hoc ([Release](release.md)).
+- **Copy from the App Group**: at launch, before anything reads the folder, when it doesn't exist yet and the App
+  Group container can be read and holds something besides the system's `Library`, its items are copied (APFS
+  clones them) into a sibling folder that then takes the folder's name (`DataFolder.migrateFromAppGroup`). The
+  container is left as it was. A release copy can't read it, so the copy is made by a development build, signed
+  with the team's profile. The app keeps the App Group entitlement for that copy only.
 - **Creation**: the folder is created with its missing parents, mode 0700.
 - **Lock**: the app holds an exclusive, non-blocking `flock(2)` on the folder while it runs, so that a second
   copy of the app, from another build for example, never writes the same files. The system releases it when

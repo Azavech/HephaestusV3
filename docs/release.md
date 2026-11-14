@@ -74,5 +74,5 @@ V3 onto Applications. macOS refuses to open an app that isn't notarized on its f
 Open, or System Settings ▸ Privacy & Security ▸ Open Anyway, or `xattr -dr com.apple.quarantine
 /Applications/HephaestusV3.app`.
 
-Not checked yet: whether macOS asks for access to the App Group container (the data folder) from an ad-hoc signed
-copy, which has no provisioning profile granting the group.
+An ad-hoc signed copy can't use the App Group container: macOS refuses it ("Operation not permitted") without
+asking. The data folder is therefore in Application Support ([Data › Data folder](data.md#data-folder)).

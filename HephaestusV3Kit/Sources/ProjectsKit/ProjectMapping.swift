@@ -139,7 +139,7 @@ public enum ProjectMessages {
     public static func message(_ error: ProjectError) -> String {
         switch error {
         case .noDataFolder:
-            String(localized: "This copy of Hephaestus V3 has no data folder: it was built without its App Group.", bundle: #bundle)
+            String(localized: "This copy of Hephaestus V3 has no data folder: it can't find the Application Support folder.", bundle: #bundle)
         case .storage(.folderInUse):
             String(localized: "Another copy of Hephaestus V3 is using its data. Quit it, then open this one again.", bundle: #bundle)
         case .storage(let error):

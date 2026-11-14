@@ -198,3 +198,4 @@ or notarization.
 | How is the app signed? | Ad-hoc, with its entitlements, agent first, as V2's releases were without their secrets. | same |
 | How does the runner fetch AZDesign? | A read-only deploy key of AZDesign, stored as the secret `AZDESIGN_DEPLOY_KEY`. | [Release › Setup](release.md#setup) |
 | Is there CI on pushes? | No: only a release runs the tests on the runner. | [Release](release.md) |
+| Where is the data folder? | `~/Library/Application Support/HephaestusV3/`, by the owner's choice: an ad-hoc signed copy can't use the App Group container. Its data is copied once from there by a development build. | [Data › Data folder](data.md#data-folder) |

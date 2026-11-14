@@ -7,7 +7,9 @@ time, in the redesign: until a feature's turn, its windows run on sample data. T
 applies here to `~/Developer/Apple/CLAUDE.md`.
 
 - `HephaestusV3.xcodeproj`: the thin app target in `HephaestusV3/`, bundle ID `fr.azavech.hephaestusv3`, App
-  Group `group.fr.azavech.hephaestusv3` (the data folder), sandbox off, Hardened Runtime on.
+  Group `group.fr.azavech.hephaestusv3` (only to copy the old data once), sandbox off, Hardened Runtime on. The data
+  folder is `~/Library/Application Support/HephaestusV3/`: the owner moved it out of the App Group so that the
+  ad-hoc signed releases can use it.
 - `HephaestusV3Kit/`: all the code. One target per tool (`ProjectsKit`, `DashboardsKit`, `TicketsKit`,
   `ServiceMapKit`, `ContractsKit`, `BuildsKit`, `ChatKit`, `MachinesKit`), the shared vocabulary in
   `ToolsFoundation`, scenes and routes in `ToolsScenes`. Tools never depend on each other: they open one

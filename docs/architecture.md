@@ -138,7 +138,7 @@ arm64, `MACOSX_DEPLOYMENT_TARGET` 12.0, `CODE_SIGN_STYLE` Automatic, `DEVELOPMEN
 | `GENERATE_INFOPLIST_FILE` | `YES` | No Info.plist file. |
 | `DEVELOPMENT_TEAM` | `USWJAJULN9` | The only team allowed (also set at project level). Never another. |
 | `CODE_SIGN_STYLE` | `Automatic` | Xcode makes the development profile, which carries the App Group. |
-| `CODE_SIGN_ENTITLEMENTS` | `HephaestusV3/HephaestusV3.entitlements` | The App Group and virtualization. |
+| `CODE_SIGN_ENTITLEMENTS` | `HephaestusV3/HephaestusV3.entitlements` | The App Group (kept so a development build can copy the old data folder) and virtualization. |
 | `REGISTER_APP_GROUPS` | `YES` | Xcode registers the App Group with the team when it makes the profile. |
 | `ENABLE_APP_SANDBOX` | `NO` | The tools read project folders anywhere and run `git`, `ssh`, `kubectl` and, later, `gh` and `claude` with the login shell's environment: the owner turned the sandbox off. |
 | `ENABLE_HARDENED_RUNTIME` | `YES` | Needed for Developer ID and notarization. |
@@ -163,7 +163,8 @@ DEBUG`, `ENABLE_TESTABILITY = YES`, `ONLY_ACTIVE_ARCH = YES`, `DEBUG_INFORMATION
 ### Entitlements
 
 `HephaestusV3/HephaestusV3.entitlements`: `com.apple.security.application-groups` with the one group
-`group.fr.azavech.hephaestusv3`, whose container is the app's data folder ([Data › Data folder](data.md#data-folder)),
+`group.fr.azavech.hephaestusv3`, whose container was the app's data folder until 14 November 2026 and is now only
+read once, to copy that data to Application Support ([Data › Data folder](data.md#data-folder)),
 and `com.apple.security.virtualization`, which the Virtualization framework needs to run the virtual machines
 ([Data › Virtual machines](data.md#virtual-machines)); the team's profile carries both, the capability added when
 the owner's Xcode refreshed it. The signed app also carries what Xcode adds: the application identifier
@@ -1927,7 +1928,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 563 tests, and 5 in the guest agent's package). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 564 tests, and 5 in the guest agent's package). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 

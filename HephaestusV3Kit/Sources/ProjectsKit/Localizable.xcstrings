@@ -491,7 +491,7 @@
     "The project's folder and files stay on this Mac." : {
 
     },
-    "This copy of Hephaestus V3 has no data folder: it was built without its App Group." : {
+    "This copy of Hephaestus V3 has no data folder: it can't find the Application Support folder." : {
 
     },
     "This folder is inside “%@”: the new project becomes its sub project." : {

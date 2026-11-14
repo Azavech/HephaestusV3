@@ -161,6 +161,7 @@ public final class MachineHost {
     /// interrupted.
     public func load() {
         guard let library else { return }
+        defaults = MachineDefaults(dataFolder?.readSettings() ?? SettingsFile())
         if let v2Folder { library.importV2(from: v2Folder) }
         images = library.readImages()
         machines = library.readMachines()

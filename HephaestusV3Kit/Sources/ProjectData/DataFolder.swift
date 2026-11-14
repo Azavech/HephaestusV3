@@ -4,11 +4,14 @@ import Foundation
 /// The app's data folder: the files that belong to this Mac rather than to a project, such as the list
 /// of projects (docs/data.md › Data folder).
 ///
-/// It is the App Group container, `~/Library/Group Containers/group.fr.azavech.hephaestusv3/`, or the
-/// folder that `HEPHAESTUS_DATA_DIR` names (development). Tests always pass a temporary folder.
+/// It is `~/Library/Application Support/HephaestusV3/`, or the folder that `HEPHAESTUS_DATA_DIR` names
+/// (development). Earlier builds kept it in the App Group container, copied once from there
+/// (`migrateFromAppGroup`). Tests always pass a temporary folder.
 public struct DataFolder: Sendable, Hashable {
-    /// The App Group whose container holds the data.
+    /// The App Group whose container held the data before 14 November 2026.
     public static let appGroup = "group.fr.azavech.hephaestusv3"
+    /// The folder's name in Application Support.
+    public static let folderName = "HephaestusV3"
     /// The environment variable that names another folder.
     public static let overrideVariable = "HEPHAESTUS_DATA_DIR"
 
@@ -18,16 +21,47 @@ public struct DataFolder: Sendable, Hashable {
         self.url = url.standardizedFileURL
     }
 
-    /// The app's folder: `HEPHAESTUS_DATA_DIR` when it is set to an absolute path, else the App Group
-    /// container; nil when the app has neither (a build without the App Group).
+    /// The app's folder: `HEPHAESTUS_DATA_DIR` when it is set to an absolute path, else
+    /// `<Application Support>/HephaestusV3/`; nil without an Application Support folder.
     public static func resolve(
         environment: [String: String] = ProcessInfo.processInfo.environment,
-        container: (String) -> URL? = { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: $0) }
+        applicationSupport: URL? = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
     ) -> DataFolder? {
         if let path = environment[overrideVariable], path.hasPrefix("/") {
             return DataFolder(url: URL(fileURLWithPath: path, isDirectory: true))
         }
-        return container(appGroup).map(DataFolder.init(url:))
+        return applicationSupport.map { DataFolder(url: $0.appendingPathComponent(folderName, isDirectory: true)) }
+    }
+
+    /// The App Group container of earlier builds, when the system gives one.
+    public static var appGroupContainer: URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)
+    }
+
+    /// Copies the data of earlier builds once: when this folder doesn't exist yet and `container` can be read and
+    /// holds something besides the system's `Library`. Each item is copied (APFS clones it) into a sibling
+    /// folder that then takes this folder's name, so an interrupted copy leaves nothing half done. The container
+    /// is left as it is. Returns whether it copied. A copy whose signature has no profile granting the App Group
+    /// can't read the container (macOS refuses), and copies nothing.
+    @discardableResult
+    public func migrateFromAppGroup(container: URL? = DataFolder.appGroupContainer) -> Bool {
+        let manager = FileManager.default
+        guard let container, !manager.fileExists(atPath: url.path),
+              let items = try? manager.contentsOfDirectory(atPath: container.path) else { return false }
+        let data = items.filter { $0 != "Library" && $0 != ".DS_Store" && !$0.hasPrefix(".com.apple") }
+        guard !data.isEmpty else { return false }
+        let staging = url.deletingLastPathComponent().appendingPathComponent(".\(url.lastPathComponent).copying-\(UUID().uuidString)")
+        do {
+            try manager.createDirectory(at: staging, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            for item in data {
+                try manager.copyItem(at: container.appendingPathComponent(item), to: staging.appendingPathComponent(item))
+            }
+            try manager.moveItem(at: staging, to: url)
+            return true
+        } catch {
+            try? manager.removeItem(at: staging)
+            return false
+        }
     }
 
     /// `registry.yml`: the top-level projects.

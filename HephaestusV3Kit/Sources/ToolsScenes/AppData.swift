@@ -72,6 +72,8 @@ final class AppData {
     var mcpPort: Int { environmentPort ?? settingsPort }
 
     init() {
+        // The data of earlier builds, kept in the App Group container, is copied once before anything reads the folder.
+        DataFolder.resolve()?.migrateFromAppGroup()
         session = ProjectSession(dataFolder: DataFolder.resolve())
         tickets = TicketSession(projects: session)
         ticketStore = LiveTicketStore(session: tickets)
