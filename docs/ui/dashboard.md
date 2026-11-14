@@ -356,8 +356,9 @@ menu.*
 ## Saving
 
 Dashboards are saved per project in the user defaults, under the key `dashboard.<project id>` (for example
-`dashboard.ORD`): the widget list with positions and settings, the environment and the time window. (The
-previous app kept them in the project file; the user defaults are this proof of concept's store.) Only values the user changed are saved. A change shows at once in every Dashboard window of
+`dashboard.ORD`): the widget list with positions and settings, the environment and the time window. (V2 kept
+them in the project file, and they move there when the Dashboard comes over from V2; until then the user
+defaults are its store.) Only values the user changed are saved. A change shows at once in every Dashboard window of
 that project and survives a relaunch. A project with nothing saved shows its sample layout or the default
 list, the environment rule's choice, and **1 hour**.
 

@@ -16,10 +16,14 @@ func toolTarget(_ name: String) -> Target {
     .target(name: name, dependencies: ["ToolsFoundation", design, code], resources: strings, swiftSettings: isolation)
 }
 
-/// A target's unit tests, in Swift Testing.
-func testTarget(_ name: String) -> Target {
-    .testTarget(name: "\(name)Tests", dependencies: [.target(name: name)], swiftSettings: isolation)
+/// A target's unit tests, in Swift Testing. The data targets' tests keep their targets' default isolation
+/// (`settings: []`).
+func testTarget(_ name: String, resources: [Resource]? = nil, settings: [SwiftSetting] = isolation) -> Target {
+    .testTarget(name: "\(name)Tests", dependencies: [.target(name: name)], resources: resources, swiftSettings: settings)
 }
+
+/// YAML, approved by the owner: the format of the `.hephaestus/` files and of the app's data folder.
+let yams: Target.Dependency = .product(name: "Yams", package: "Yams")
 
 let package = Package(
     name: "HephaestusV3Kit",
@@ -33,8 +37,17 @@ let package = Package(
     dependencies: [
         // AZDesign by version, from its GitHub repo (workspace rule): bump the version to update it.
         .package(url: "git@github.com:Azavech/AZDesign.git", from: "0.4.0"),
+        .package(url: "https://github.com/jpsim/Yams.git", from: "6.2.2"),
     ],
     targets: [
+        // Data, without UI: no SwiftUI, and nothing isolated to the main actor unless it says so.
+        // Files: YAML in V2's layout, atomic writes, own writes, the folder lock, the Trash, file events.
+        .target(name: "FileStorage", dependencies: [yams]),
+        // Child processes: process groups and timeouts, the login shell's environment, git, ssh, kubectl.
+        .target(name: "ExternalTools"),
+        // The data folder, the import from HephaestusV2 and the project files.
+        .target(name: "ProjectData", dependencies: ["FileStorage", "ExternalTools"]),
+
         // Shared vocabulary: projects, tools, routes and the few components every tool uses.
         .target(name: "ToolsFoundation", dependencies: [design], resources: strings, swiftSettings: isolation),
 
@@ -64,6 +77,9 @@ let package = Package(
             swiftSettings: isolation
         ),
 
+        testTarget("FileStorage", settings: []),
+        testTarget("ExternalTools", settings: []),
+        testTarget("ProjectData", resources: [.copy("Fixtures")], settings: []),
         testTarget("ToolsFoundation"),
         testTarget("ProjectsKit"),
         testTarget("DashboardsKit"),

@@ -1,0 +1,42 @@
+schema: 1
+id: API
+name: Orders API
+created: 2026-10-31T10:00:00Z
+type: goService
+graphEnabled: true
+environments:
+- name: local
+  url: http://127.0.0.1
+  port: 8080
+  allowInvalidCertificates: false
+  namespace: null
+  deployment: null
+  jaeger: null
+  argoCDApplication: null
+  kubeconfig: null
+- name: staging
+  url: https://staging.example.com
+  port: null
+  allowInvalidCertificates: true
+  namespace: orders
+  deployment: orders-api
+  jaeger: tracing/jaeger
+  argoCDApplication: argocd/orders-staging
+  kubeconfig: ~/.kube/staging.yaml
+dashboardWidgets:
+- id: 2D4F6A8C-1B3E-4D5F-8A7B-9C0E1F2A3B4C
+  kind: serviceGraph
+  title: ''
+  column: 0
+  row: 0
+  width: 16
+  height: 8
+- id: 3E5A7B9D-2C4F-4E6A-8B9C-0D1E2F3A4B5C
+  kind: failedRequests
+  title: Errors
+  column: 16
+  row: 0
+  width: 8
+  height: 8
+  count: 10
+dashboardGraphWindow: day

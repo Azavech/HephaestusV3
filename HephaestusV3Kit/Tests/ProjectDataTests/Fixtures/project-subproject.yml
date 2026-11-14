@@ -1,0 +1,31 @@
+schema: 1
+id: WRK
+name: Orders worker
+created: 2026-10-31T11:00:00Z
+type: goService
+useParentSettings: true
+environments:
+- name: replay
+  url: http://127.0.0.1
+  port: 9090
+  allowInvalidCertificates: false
+  namespace: null
+  deployment: null
+  jaeger: null
+  argoCDApplication: null
+  kubeconfig: null
+environmentOverrides:
+  local:
+    url: null
+    port: 8081
+    allowInvalidCertificates: null
+    deployment: null
+    jaeger: null
+    argoCDApplication: null
+  staging:
+    url: https://worker.staging.example.com
+    port: null
+    allowInvalidCertificates: false
+    deployment: orders-worker
+    jaeger: null
+    argoCDApplication: argocd/orders-worker-staging

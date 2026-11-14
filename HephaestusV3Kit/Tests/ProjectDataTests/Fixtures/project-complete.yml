@@ -1,0 +1,103 @@
+schema: 1
+id: HEPH
+name: Hephaestus V2
+created: 2026-10-31T12:00:00Z
+type: swiftApplication
+color: '#34C759'
+icon: hammer
+nextTicketNumber: 15
+nextBundleNumber: 3
+docsPath: docs
+githubPage: https://github.com/example/hephaestus
+useParentSettings: true
+subprojects:
+- backend
+- apps/ios
+webTabs:
+- id: 0F8E2A3B-5C4D-4E6F-8A7B-9C0D1E2F3A4B
+  title: example/hephaestus
+  url: https://github.com/example/hephaestus
+  locked: true
+  originalURL: https://github.com/example/hephaestus
+  githubTab: page
+- id: 1A2B3C4D-5E6F-4A7B-8C9D-0E1F2A3B4C5D
+  title: Workflow runs · example/hephaestus
+  url: https://github.com/example/hephaestus/actions/workflows/ci.yml
+  locked: true
+  originalURL: https://github.com/example/hephaestus/actions
+  githubTab: ci
+- id: 7C9E6679-7425-40DE-944B-E07FC1F90AE7
+  title: Pull requests
+  url: https://github.com/pulls
+  locked: true
+  originalURL: https://github.com/
+- id: A1C2E3F4-5B6D-4E7F-8091-A2B3C4D5E6F7
+  title: Local server
+  url: http://localhost:8080/
+  locked: false
+  originalURL: null
+skills:
+- release-notes
+chatDefaults:
+  model: opus
+  effort: high
+  permissionMode: manual
+  ultracode: false
+  contextWindow: auto
+environments: []
+environmentOverrides: {}
+dashboardWidgets:
+- id: 00000000-0000-0000-0000-000000000001
+  kind: project
+  title: ''
+  column: 0
+  row: 0
+  width: 12
+  height: 4
+  fields:
+  - name
+  - identifier
+  - folder
+- id: 00000000-0000-0000-0000-000000000002
+  kind: tickets
+  title: Own tickets
+  column: 12
+  row: 0
+  width: 12
+  height: 4
+  statuses:
+  - todo
+  - in_progress
+  - review
+  includeSubprojects: false
+- id: 9B2F4C1D-3E5A-4F6B-8C7D-0E1F2A3B4C5D
+  kind: recentChats
+  title: Ticket chats
+  column: 0
+  row: 4
+  width: 16
+  height: 5
+  chatCount: 3
+  chatKinds:
+  - ticket
+- id: 00000000-0000-0000-0000-000000000004
+  kind: cost
+  title: ''
+  column: 16
+  row: 4
+  width: 8
+  height: 3
+  includeSubprojects: true
+deletedChats:
+- id: 5B8C2D4E-6F7A-4B9C-8D1E-2F3A4B5C6D7E
+  title: Plan the release
+  kind: ticket
+  ticket: HEPH-9
+  bundle: null
+  costUSD: 1.2475
+  deleted: 2026-10-31T16:20:00Z
+commentAnswers:
+- ticket: HEPH-12
+  title: Locked web tabs close with Command-W
+  costUSD: 0.0841
+  date: 2026-10-31T12:21:40Z

@@ -1,11 +1,11 @@
 # Hephaestus V3 — Architecture
 
-How the app's code is put together: the Xcode project, the package and its targets, the shared vocabulary,
-the scenes and routes, each tool's models and stores, and the patterns every target follows. The owner's
+How the app's code is put together: the Xcode project, the package and its targets, the data targets, the
+shared vocabulary, the scenes and routes, each tool's models and stores, and the patterns every target follows. The owner's
 rule is that everything can be rebuilt straight from the documentation. This page and the
 [UI specification](ui/README.md) together are that documentation: the UI pages say what each window shows and
-how it behaves, and this page says how the code that draws it is built. It links to the UI pages instead of
-repeating them. AZDesign documents its own APIs in its `docs/` folder; this page only names the ones the app
+how it behaves, and this page says how the code that draws it is built. [Data](data.md) is the contract of the
+files. It links to those pages instead of repeating them. AZDesign documents its own APIs in its `docs/` folder; this page only names the ones the app
 uses and links to their pages.
 
 It describes the code as it is in `HephaestusV3Kit/Sources` on 13 November 2026. Where the code doesn't yet
@@ -17,14 +17,16 @@ meet the workspace's rules (`~/Developer/Apple/CLAUDE.md`), [Open issues](#open-
 2. [Repository layout](#repository-layout)
 3. [The Xcode project](#the-xcode-project)
 4. [The package](#the-package)
-5. [ToolsFoundation](#toolsfoundation)
-6. [ToolsScenes](#toolsscenes)
-7. [The tool kits](#the-tool-kits): [ProjectsKit](#projectskit), [DashboardsKit](#dashboardskit),
+5. [The data targets](#the-data-targets): [FileStorage](#filestorage), [ExternalTools](#externaltools),
+   [ProjectData](#projectdata)
+6. [ToolsFoundation](#toolsfoundation)
+7. [ToolsScenes](#toolsscenes)
+8. [The tool kits](#the-tool-kits): [ProjectsKit](#projectskit), [DashboardsKit](#dashboardskit),
    [TicketsKit](#ticketskit), [ServiceMapKit](#servicemapkit), [ContractsKit](#contractskit),
    [BuildsKit](#buildskit), [ChatKit](#chatkit), [MachinesKit](#machineskit)
-8. [Cross-cutting patterns](#cross-cutting-patterns)
-9. [Building, testing and running](#building-testing-and-running)
-10. [Open issues](#open-issues)
+9. [Cross-cutting patterns](#cross-cutting-patterns)
+10. [Building, testing and running](#building-testing-and-running)
+11. [Open issues](#open-issues)
 
 ## Overview
 
@@ -38,7 +40,11 @@ HephaestusV3 (app target)        @main HephaestusV3App: its body is ToolsScenes(
    ├─ MachinesKit                the Virtual Machines window
    │    each kit: ToolsFoundation + AZDesign + AZDesignCode
    └─ ToolsFoundation            shared vocabulary; depends on AZDesign only
-AZDesign (local package)         colors, motion, components, styles, adaptive layout, preview traits
+ProjectData                      the data folder, the import from V2, the project files   (not used by the app yet)
+├─ FileStorage                   YAML in V2's layout, atomic writes, the lock, the Trash, file events
+│  └─ Yams                       YAML parsing and emitting (third party, approved by the owner)
+└─ ExternalTools                 child processes, the login shell's environment, git, ssh, kubectl
+AZDesign (package, by version)   colors, motion, components, styles, adaptive layout, preview traits
 AZDesignCode (same package)      Fira Code for code views
 ```
 
@@ -55,6 +61,9 @@ The architecture rests on a few rules:
   function (`ToolReader`), never by looking into a window.
 - **Models and stores.** Each window keeps its state and logic in an `@Observable` model. A model gets its
   data from a store protocol. The app and the previews use sample stores; the tests use mocks.
+- **Data without UI.** The data targets import no SwiftUI and are not isolated to the main actor. They read
+  and write HephaestusV2's files ([Data](data.md)) and run the command-line tools. Each feature, as it comes
+  over from V2, gets a live store built on them beside its sample store.
 
 ## Repository layout
 
@@ -64,14 +73,17 @@ HephaestusV3/                    the repository root (GitHub: Azavech, private)
 ├─ .gitignore                    .DS_Store, xcuserdata/, .build/, .swiftpm/, DerivedData/
 ├─ HephaestusV3.xcodeproj/       project.xcproj, in Xcode 27.2's JSON format; the app's Package.resolved
 │                                in project.xcworkspace/xcshareddata/swiftpm/
-├─ HephaestusV3/                 the app target's folder: HephaestusV3App.swift only
+├─ HephaestusV3/                 the app target's folder: HephaestusV3App.swift, HephaestusV3.entitlements
 ├─ HephaestusV3Kit/              the local package
 │  ├─ Package.swift
-│  ├─ Package.resolved           pins AZDesign's version for the package's own builds and tests
+│  ├─ Package.resolved           pins AZDesign's and Yams's versions for the package's own builds and tests
 │  ├─ Sources/<Target>/          Swift files, and Localizable.xcstrings, for each target
-│  └─ Tests/<Target>Tests/       Swift Testing suites, one folder per tested target
+│  └─ Tests/<Target>Tests/       Swift Testing suites, one folder per tested target; ProjectDataTests/Fixtures/
 ├─ docs/
 │  ├─ architecture.md            this page
+│  ├─ data.md                    the files: formats, rules, the data folder, the import from V2
+│  ├─ decisions.md               the defaults chosen at design time while bringing V2 over
+│  ├─ future-improvements.md     V2's features not brought over yet
 │  └─ ui/                        the UI specification and its images/
 └─ scripts/
    └─ sync-strings.sh            fills the String Catalogs and checks the bundles
@@ -94,7 +106,7 @@ has no shared scheme files: Xcode creates the `HephaestusV3` scheme for the targ
 | `configurations` | Debug, Release; `default-configuration` Release |
 | `localizations` | development `en`; supported `Base` |
 | `packages` | one local package, path `HephaestusV3Kit` |
-| `files` | the folder `HephaestusV3`, a member of the target `HephaestusV3`; the group Products with `HephaestusV3.app` |
+| `files` | the folder `HephaestusV3` (synchronized), a member of the target `HephaestusV3`; the group Products with `HephaestusV3.app` |
 | `last-upgrade`, `last-swift-update` | 27.2 |
 
 **Target `HephaestusV3`**: product type application, product `Products/HephaestusV3.app`, build phases
@@ -108,8 +120,10 @@ compile sources, frameworks and resources. The frameworks phase links the packag
 | `PRODUCT_NAME` | `$(TARGET_NAME)` | `HephaestusV3.app`. |
 | `GENERATE_INFOPLIST_FILE` | `YES` | No Info.plist file. |
 | `DEVELOPMENT_TEAM` | `USWJAJULN9` | The only team allowed (also set at project level). Never another. |
-| `CODE_SIGN_STYLE` | `Automatic` | |
-| `ENABLE_APP_SANDBOX` | `YES` | The sandbox comes from this setting; there is no entitlements file and no extra capability. |
+| `CODE_SIGN_STYLE` | `Automatic` | Xcode makes the development profile, which carries the App Group. |
+| `CODE_SIGN_ENTITLEMENTS` | `HephaestusV3/HephaestusV3.entitlements` | The App Group. |
+| `REGISTER_APP_GROUPS` | `YES` | Xcode registers the App Group with the team when it makes the profile. |
+| `ENABLE_APP_SANDBOX` | `NO` | The tools read project folders anywhere and run `git`, `ssh`, `kubectl` and, later, `gh` and `claude` with the login shell's environment: the owner turned the sandbox off. |
 | `ENABLE_HARDENED_RUNTIME` | `YES` | Needed for Developer ID and notarization. |
 | `SDKROOT` | `macosx` | Mac only. |
 | `MACOSX_DEPLOYMENT_TARGET` | `27.0` | Minimum OS 27: no availability checks. |
@@ -129,7 +143,13 @@ DEBUG`, `ENABLE_TESTABILITY = YES`, `ONLY_ACTIVE_ARCH = YES`, `DEBUG_INFORMATION
 `SWIFT_COMPILATION_MODE = wholemodule`, `DEBUG_INFORMATION_FORMAT = dwarf-with-dsym`,
 `ENABLE_NS_ASSERTIONS = NO`. The remaining settings are Xcode's template set of Clang and GCC warnings.
 
-**The entry point**, `HephaestusV3/HephaestusV3App.swift`, is the whole target:
+**Entitlements**, `HephaestusV3/HephaestusV3.entitlements`: only `com.apple.security.application-groups` with
+the one group `group.fr.azavech.hephaestusv3`, whose container is the app's data folder ([Data › Data
+folder](data.md#data-folder)). The signed app also carries what Xcode adds: the application identifier
+`USWJAJULN9.fr.azavech.hephaestusv3`, the team identifier, and `get-task-allow` in Debug. The synchronized
+folder doesn't copy the entitlements file into the app.
+
+**The entry point**, `HephaestusV3/HephaestusV3App.swift`, is the rest of the target:
 
 ```swift
 import SwiftUI
@@ -153,20 +173,26 @@ struct HephaestusV3App: App {
 | `defaultLocalization` | `"en"` |
 | `platforms` | `.macOS("27.0")` |
 | `products` | one library, `ToolsScenes`, of the target `ToolsScenes` |
-| `dependencies` | `.package(url: "git@github.com:Azavech/AZDesign.git", from: "0.4.0")`: AZDesign by version, from its GitHub repo over SSH. `Package.resolved` pins the exact version (0.4.0, revision `b0db917`) |
+| `dependencies` | `.package(url: "git@github.com:Azavech/AZDesign.git", from: "0.4.0")`: AZDesign by version, from its GitHub repo over SSH. `.package(url: "https://github.com/jpsim/Yams.git", from: "6.2.2")`: Yams, the YAML library the owner approved. `Package.resolved` pins the exact versions (AZDesign 0.4.0, revision `b0db917`; Yams 6.2.2, revision `a27b21e`) |
 
 Shared values in the manifest:
 
-- `isolation: [SwiftSetting] = [.defaultIsolation(MainActor.self)]`, given to every target, tests included.
+- `isolation: [SwiftSetting] = [.defaultIsolation(MainActor.self)]`, given to every UI target and its tests;
+  the data targets and their tests have no default isolation.
 - `design = .product(name: "AZDesign", package: "AZDesign")` and `code = .product(name: "AZDesignCode", package: "AZDesign")`.
 - `strings: [Resource] = [.process("Localizable.xcstrings")]`, given to every non-test target.
 - `toolTarget(_ name:)` makes `.target(name:, dependencies: ["ToolsFoundation", design, code], resources: strings, swiftSettings: isolation)`.
-- `testTarget(_ name:)` makes `.testTarget(name: "\(name)Tests", dependencies: [.target(name: name)], swiftSettings: isolation)`.
+- `testTarget(_ name:, resources: [Resource]? = nil, settings: [SwiftSetting] = isolation)` makes
+  `.testTarget(name: "\(name)Tests", dependencies: [.target(name: name)], resources: resources, swiftSettings: settings)`.
+- `yams = .product(name: "Yams", package: "Yams")`.
 
 **Targets**
 
 | Target | Purpose | Dependencies | Made with |
 | --- | --- | --- | --- |
+| `FileStorage` | Files: YAML in V2's layout, atomic writes, own writes, the folder lock, the Trash, file events. | Yams | `.target(name:, dependencies: [yams])` |
+| `ExternalTools` | Child processes: process groups and timeouts, the login shell's environment, the tools' lookup, git, ssh, kubectl. | — | `.target(name:)` |
+| `ProjectData` | The data folder, the import from HephaestusV2, the project files and their rules. | FileStorage, ExternalTools | `.target(name:, dependencies:)` |
 | `ToolsFoundation` | Shared vocabulary: projects, tools, routes, chat vocabulary, the Dashboard model, `ProjectIcon`. | AZDesign | `.target` |
 | `ProjectsKit` | The project selector: the Projects window, the project switcher, the menu bar panel. | ToolsFoundation, AZDesign, AZDesignCode | `toolTarget` |
 | `DashboardsKit` | The Dashboard's grid, edit mode, settings and saving; the Project widget. | same | `toolTarget` |
@@ -178,10 +204,12 @@ Shared values in the manifest:
 | `ChatKit` | The Chat window, the chat panel, Settings ▸ Chat, the shared chat store. | same | `toolTarget` |
 | `ToolsScenes` | Scenes, menu commands, route handling. The only target that knows every tool. | ToolsFoundation, ProjectsKit, DashboardsKit, TicketsKit, ServiceMapKit, ContractsKit, BuildsKit, MachinesKit, ChatKit, AZDesign | `.target` |
 
-Every non-test target has `Localizable.xcstrings` as its only resource. SwiftPM builds it into the bundle
+Every UI target has `Localizable.xcstrings` as its only resource; the data targets have none, since their
+messages are technical details in English under a window's localized sentence. SwiftPM builds it into the bundle
 `HephaestusV3Kit_<Target>.bundle`, which Foundation's `#bundle` macro resolves to in that target's code.
 
-**Test targets**: `ToolsFoundationTests`, `ProjectsKitTests`, `DashboardsKitTests`, `TicketsKitTests`,
+**Test targets**: `FileStorageTests`, `ExternalToolsTests`, `ProjectDataTests` (with the resource
+`.copy("Fixtures")`), `ToolsFoundationTests`, `ProjectsKitTests`, `DashboardsKitTests`, `TicketsKitTests`,
 `ServiceMapKitTests`, `ContractsKitTests`, `BuildsKitTests`, `MachinesKitTests`, `ChatKitTests`. Each depends
 only on its target, uses Swift Testing and `@testable import`. ToolsScenes has no test target.
 
@@ -193,8 +221,12 @@ only on its target, uses Swift Testing and `@testable import`. ToolsScenes has n
 - ToolsFoundation depends on AZDesign only, not on AZDesignCode.
 - System frameworks: SwiftUI, Foundation and Observation everywhere; Charts in ServiceMapKit
   (`MapInspector.swift`, `ServiceMapDashboardWidgets.swift`); AppKit in ToolsScenes (`WindowDirectory.swift`),
-  DashboardsKit (`DashboardRootView.swift`) and ServiceMapKit (`GraphCanvasView.swift`). No third-party
-  dependency.
+  DashboardsKit (`DashboardRootView.swift`) and ServiceMapKit (`GraphCanvasView.swift`). The data targets use
+  Foundation, Darwin, Synchronization, CryptoKit (`AtomicFile`) and CoreServices (FSEvents).
+- **Third-party code**: only what the owner approved. Yams, in FileStorage alone: no other target imports it,
+  and FileStorage's API shows none of its types except `RawYAML`'s conversions.
+- The data targets never import SwiftUI, AppKit or AZDesign; ProjectData depends on FileStorage and
+  ExternalTools only.
 
 **AZDesign APIs the app uses.** AZDesign comes by version from its GitHub repo; every API below is in its
 release 0.4.0. Its reference pages (`docs/` in the AZDesign repo) document each API (the Docs column).
@@ -215,6 +247,182 @@ Commit both `Package.resolved` files with it.
 | Styles | `.badge(_:)`, `.tintedIcon(_:)` (label styles); `.detailRow`, `.detailRow(combinesChildren:)`, `.stacked` (labeled content styles); `.suggestion` (button style) | Most kits | `styles.md` |
 | Modifiers | `foreground(_:onSelection:)`, `toolbarLabelPadding()` | Most kits | `styles.md` |
 | Preview traits | `.appChrome`, `.padLayout`, `.phoneLayout`, `.largestText` | Every kit's previews | `layout.md` |
+
+## The data targets
+
+Three targets without UI hold the data code that V3 brings over from HephaestusV2. They import no SwiftUI,
+have no default isolation, and keep shared state in `Mutex`es and actors. Today they are built and tested but
+no window uses them yet: each feature wires them in as it comes over ([Open issues](#open-issues)).
+
+### FileStorage
+
+Reading and writing files with the rules of [Data](data.md). Source files in `Sources/FileStorage/`:
+
+| File | Contents |
+| --- | --- |
+| `YAMLCoding.swift` | `YAMLCoding`: `encode(_:)`, `encodeData(_:)`, `decode(_:from:)` for `Data`, `String` and a Yams `Node`, `parseMapping(_:)`, `nodeResolverKey` |
+| `RawYAML.swift` | `RawYAML`, `YAMLMapping`, `AnyKey`, the internal `NodeResolver` |
+| `MappingCoding.swift` | `MappingReader`, `MappingWriter` |
+| `ISODate.swift` | `ISODate`: `string(from:)`, `date(from:)`, `now()`, `scalar(_:)`; `Date.truncatedToSeconds` |
+| `StorageError.swift` | `StorageError`, `FileFormatError` |
+| `YAMLFile.swift` | `YAMLFile`: `read(_:at:)`, `decode(_:from:path:)`, `isMissing(_:)`, `write(_:to:ownWrites:newFileMode:)` |
+| `AtomicFile.swift` | `AtomicFile`: `write(_:to:newFileMode:)`, `sha256(_:)`, `isTemporaryFileName(_:)`, `removeLeftoverTemporaryFiles(in:)`, `resolvedDestination(_:)`, `defaultMode` 0644, `privateMode` 0600, `folderMode` 0755, `temporaryNameOverhead` 42 |
+| `OwnWrites.swift` | `OwnWrites`: `recordWrite(path:sha256:)`, `recordRemoval(path:)`, `isOwnWrite(path:data:)`, `isOwnRemoval(path:)` |
+| `FolderLock.swift` | `FolderLock`: `acquire(_:)`, `release()`, `path` |
+| `Trash.swift` | `Trash`: `move(_:)`, `.system`, `.folder(_:)` |
+| `FileWatcher.swift` | `FileEvent` (`path`, `kind`, `changesMoreThanMetadata`), `FileEvent.Kind`; the internal `FileWatcher` |
+| `FileEventHub.swift` | `FileEventHub`: `watch(_:)`, `unwatch(_:)`, `restart(_:)`, `stop()`, `receive(_:)`, `batches`, `watchedFolders`, `quietDelay`, `maximumDelay` |
+
+- **YAML coding.** `YAMLCoding.encode` uses `YAMLEncoder` with `Options(indent: 2, width: -1, allowUnicode:
+  true, lineBreak: .ln, sequenceStyle: .block, mappingStyle: .block, newLineScalarStyle: .literal)`.
+  `decode` parses with `Yams.compose(yaml:)` (`parseMapping`: skips a byte order mark; a `YamlError` becomes
+  `FileFormatError("not valid YAML: <first line>")`, `duplicatedKeysInMapping` becomes `the key "<key>"
+  appears twice in one mapping`, a root that isn't a mapping `the root of the document is not a mapping`),
+  then decodes the node with `YAMLDecoder().decode(_:from:userInfo:)`, passing a `NodeResolver` of the
+  document under `nodeResolverKey`. Every error becomes a `FileFormatError` whose reason
+  `FileFormatError.describe(_:)` writes from the coding path: `keyNotFound` → `<path>: the required key is
+  missing or null`, `typeMismatch` → `<path>: expected a value of type <T>`, `dataCorrupted` → `<path>:
+  <message>`; the path is the keys joined with `.`, an index as `[n]`, `the root` when empty.
+- **`RawYAML`** is an `indirect enum`, `Sendable` and `Hashable`: `.scalar(Scalar)` (`text`, `tag`, the
+  resolved tag's raw value such as `tag:yaml.org,2002:int`, and `style`: `ScalarStyle` `any`, `plain`,
+  `singleQuoted`, `doubleQuoted`, `literal`, `folded`, Yams's raw values), `.sequence([RawYAML], style:)` and
+  `.mapping(YAMLMapping, style:)` (`CollectionStyle` `any`, `block`, `flow`). `init(_ node: Node)` copies a
+  Yams node (an alias becomes `.null`); `node` rebuilds one. It conforms to Yams's `YAMLEncodable`, whose
+  `box()` returns `node`, so Yams writes it as read. Its `Decodable` init asks the `NodeResolver` in the
+  decoder's `userInfo` for the node at the decoder's coding path (a mapping is entered by key, a sequence by
+  index); without one (another decoder) it rebuilds the value from containers, scalars as strings. `isNull`
+  is true for a scalar tagged `null`. `RawYAML.null` is the plain scalar `null`.
+- **`YAMLMapping`** keeps entries (`Entry`: `key`, `value`) in order: a `RandomAccessCollection`, literal by
+  dictionary, with `subscript(key:)` to read, replace, append (a new key goes last) or remove (nil), and
+  `keys`.
+- **`MappingReader`** wraps a keyed container (`AnyKey`) of a decoder: `contains`, `isAbsentOrNull`,
+  `required` (throws `keyNotFound` for absent or null), `optional`, `value(_:default:)`, `requiredDate`,
+  `optionalDate` (strings parsed by `ISODate.date(from:)`, else `invalid`), `schema()` (absent is 1; 2 or more:
+  `schema <n> was written by a newer version`; otherwise `schema must be 1, not <n>`), `raw(_:)` (the
+  `RawYAML` of a present key, `null` included), `unknownKeys(known:)` (the mapping's entries not in `known`,
+  in the document's order, from the resolver; without one, sorted by key), `invalid(_:_:)` (a
+  `dataCorrupted` error at the key) and `check(_:_:_:_:)` (`"<value>" is not a valid <what>`).
+- **`MappingWriter`** wraps a keyed encoding container: `encode`, `encodeOptional` (`null` when absent),
+  `encodeIfPresent` (left out when absent), `encodeDate` and `encodeOptionalDate` (`ISODate.scalar`: a plain
+  scalar tagged `timestamp` with `ISODate.string(from:)`), and `encodeUnknownKeys(_:known:)`, which writes each
+  entry not in `known`, in order.
+- **`ISODate`** is V2's: proleptic Gregorian calendar arithmetic in UTC (days from and to the civil date, by
+  Howard Hinnant's algorithm), no `DateFormatter`. `date(from:)` accepts `YYYY-MM-DDTHH:MM:SS`, an optional
+  `.` and digits (dropped), then `Z` or `±HH:MM`, and checks the ranges, the day of the month included.
+- **`AtomicFile.write`** follows [Data › Atomic writes](data.md#atomic-writes) with POSIX calls: `open` with
+  `O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC` and the mode of the file it replaces (`stat`), `fchmod`, `write` in
+  a loop (retrying `EINTR`), `fsync`, `close`, `rename`; any failure unlinks the temporary file and throws
+  `StorageError.writeFailed(path:reason:)` with `strerror`. It returns the SHA-256 (CryptoKit) in lowercase
+  hexadecimal. `resolvedDestination` follows symbolic links up to 32 levels, relative ones from the link's
+  folder.
+- **`OwnWrites`** is a `final class` with a `Mutex` around the digests by path and the removed paths;
+  recording a write forgets a removal of the path, and a removal forgets its digest.
+- **`FolderLock.acquire`** opens the folder with `O_RDONLY | O_DIRECTORY | O_CLOEXEC` and takes `flock(LOCK_EX
+  | LOCK_NB)`: `EWOULDBLOCK` throws `folderInUse`, any other failure `folderUnavailable` with `strerror`.
+  `release()` unlocks and closes once; `deinit` releases. Two `acquire` calls in one process conflict too: each
+  opens its own descriptor.
+- **`Trash`** holds a `@Sendable (URL) throws -> Void`. `move` rethrows a `StorageError` and wraps any other
+  error as `trashFailed(path:reason:)`, the reason without its final period. `.system` calls
+  `FileManager.trashItem`; `.folder(_:)` moves the item into a new UUID-named folder inside the given folder.
+- **`FileWatcher`** (internal) is one FSEvents stream: `FSEventStreamCreate` with the flags `FileEvents |
+  WatchRoot | UseCFTypes`, latency 0.05 s, from `kFSEventStreamEventIdSinceNow`, on its own serial dispatch
+  queue; the C callback finds the watcher through an unretained `info` pointer, drops bookkeeping events
+  (`HistoryDone`, `EventIdsWrapped`), maps flags to `FileEvent.Kind` (`created`, `removed`, `renamed`,
+  `modified` for modified or cloned, `metadata` for inode, Finder info, owner or extended attributes,
+  `mustRescan` for must-scan-subdirectories, user or kernel dropped, mount and unmount, `rootChanged`) and
+  calls its handler. `stop()` stops, invalidates and releases the stream on its queue, which waits for a
+  callback in progress.
+- **`FileEventHub`** is an actor. `watch(_:)` starts a `FileWatcher` whose handler yields into an internal
+  `AsyncStream`, consumed in order by one task that calls `receive(_:)`. `receive` appends the events to the
+  pending batch, notes the first arrival, and restarts a timer of `min(quietDelay, first arrival +
+  maximumDelay − now)`; when a timer fires for the latest generation, the pending events are yielded to
+  `batches` as one array. `stop()` stops the streams and finishes `batches`. The delays are 300 ms and 2 s;
+  tests pass shorter ones.
+
+### ExternalTools
+
+Running the command-line tools with the rules of HephaestusV2's child processes. Source files in
+`Sources/ExternalTools/`:
+
+| File | Contents |
+| --- | --- |
+| `ChildProcess.swift` | `ProcessRequest`, `ProcessTermination` (`isSuccess`, `code`), `ChildProcessError`, `ChildProcess`, `ProcessResult`, `ChildProcessRunner.run(_:input:timeout:killGrace:started:)`; the private `ExitWaiter`, `PipeCollector`, `TimeoutFlag` |
+| `ProcessRunning.swift` | `ProcessRunning`, `SystemProcessRunner` (`shared`, `runningCount`, `terminateAll()`) |
+| `ShellEnvironment.swift` | `ShellEnvironment`: `capture(processEnvironment:runner:shell:arguments:timeout:)`, `Capture`, `Outcome`, `forChildren(_:)`, `parseNULSeparated(_:)` |
+| `ToolLocator.swift` | `Tools` (`environment`, `git`, `ssh`, `kubectl`, `gh`), `ToolLocator`: `lookUp(environment:runner:xcodeSelect:)`, `executable(named:inPATH:)`, `isExecutableFile(_:)` |
+| `Git.swift` | `Git`: `originURL(in:)` |
+| `SSH.swift` | `SSH`: `hostName(alias:in:)`, `hostName(inConfiguration:)` |
+| `Kubectl.swift` | `Kubectl`: `namespaces(kubeconfig:)`, `deployments(namespace:kubeconfig:)`, `currentContext(kubeconfig:)`, `prefix(kubeconfig:namespace:homeDirectory:)`, `expandingHome(_:homeDirectory:)`, `command(_:)`; `KubectlError` |
+
+The rules of child processes:
+
+1. **Environment.** Every child gets the login shell's environment, captured once with `/bin/zsh -lic 'env
+   -0'` (timeout 10 s), so tools installed with Homebrew or in `~/.local/bin` are found as in Terminal. A
+   capture that fails, times out, prints no `NAME=VALUE` part or can't start falls back to the app's own
+   environment and says so (`Outcome`: `captured(count:)`, `failed(_:)`, `timedOut`, `empty`,
+   `couldNotStart(reason:)`). Variables starting with `HEPHAESTUS_` never reach a child
+   (`ShellEnvironment.forChildren`).
+2. **Lookup.** A tool is the first executable regular file of its name in the environment's `PATH`; empty and
+   relative entries are skipped. `/usr/bin/git` counts only when `/usr/bin/xcode-select -p` succeeds (timeout
+   10 s): otherwise it is the stub that asks to install the Command Line Tools.
+3. **Spawning.** `ChildProcess.spawn` uses `posix_spawn` with `POSIX_SPAWN_SETPGROUP` (the child leads a new
+   process group), `CLOEXEC_DEFAULT`, an empty signal mask and default signal actions. Standard input is
+   `/dev/null` or a pipe whose write end has `F_SETNOSIGPIPE`; standard output and error are pipes. Pipe ends
+   are close-on-exec at once; a failed spawn closes each descriptor once.
+4. **Waiting and reading.** A thread per child reaps it with a blocking `waitpid` (retrying `EINTR`); a thread
+   per pipe reads it to end of file in 64 KiB blocks. After the exit, collection waits at most 500 ms more, so
+   a grandchild that kept the pipe open doesn't block the caller.
+5. **Timeout.** When `timeout` passes first, the process group gets `SIGTERM`, then `SIGKILL` 2 s later
+   (`killGrace`) if it is still running; the result says `timedOut`.
+6. **Quitting.** `SystemProcessRunner` keeps the running children; `terminateAll()` sends `SIGTERM` to each
+   one's process group.
+7. **Testing.** Code that runs tools takes an `any ProcessRunning`; tests pass a fake that answers from a
+   script, so no test starts the user's shell or tools. The process tests themselves start only `/bin/sh`,
+   `echo` and `sleep`.
+
+| Tool | Command | Timeout | Gives |
+| --- | --- | --- | --- |
+| git | `git config --get remote.origin.url`, in the project's folder | 5 s | The origin's URL, trimmed; nil outside a work tree, without an origin, on failure or timeout |
+| ssh | `ssh -G <alias>`, in the project's folder | 5 s | The value of the first `hostname` line (case-insensitive); nil for an alias starting with `-`, on failure or timeout |
+| kubectl | `[--kubeconfig=<file>] [--namespace=<ns>] get namespaces -o json` | 15 s | The `metadata.name` of each item, in kubectl's order |
+| kubectl | `[--kubeconfig=<file>] [--namespace=<ns>] get deployments -o json` | 15 s | Same |
+| kubectl | `[--kubeconfig=<file>] config current-context` | 15 s | The context's name |
+
+kubectl never gets `--context`: it uses the kubeconfig file's current context. A kubeconfig path starting
+with `~/` is expanded with the home folder (trailing `/` removed; `/` gives no prefix). Failures are
+`KubectlError`: `failed(command:code:message:)` (`<command> exited with code <n>: <stderr>`, or `… with code
+<n>.` without standard error; `n` is the status, or 128 + the signal), `timedOut(command:)` (`<command> did
+not finish within 15 seconds.`), `unexpectedOutput(command:)` (`Unexpected output from <command>.`),
+`couldNotStart(reason:)`. `<command>` is `kubectl` and its arguments, each argument that is empty or holds a
+character other than letters, digits and `-_./:=,@+%` in single quotes.
+
+### ProjectData
+
+The files of [Data](data.md). Source files in `Sources/ProjectData/`:
+
+| File | Contents |
+| --- | --- |
+| `ProjectFile.swift` | `ProjectFile`, `ProjectKind`, `ProjectColor`, `EnvironmentEntry` (`baseURL`), `EnvironmentOverride` (`isEmpty`, `applied(to:)`) |
+| `RegistryFile.swift` | `RegistryFile` (`loadableEntries`) |
+| `CurrentEnvironmentsFile.swift` | `CurrentEnvironmentsFile` |
+| `ProjectFolder.swift` | `ProjectFolder`: the `.hephaestus/` paths, `isProject`, `ensureGitignore(ownWrites:)`, `gitignoreLine` |
+| `DataFolder.swift` | `DataFolder`: `resolve(environment:container:)`, `appGroup`, `overrideVariable`, `registryFile`, `currentEnvironmentsFile`, `invalidCopy(of:)`, `createIfNeeded()`, `lock()` |
+| `V2Import.swift` | `V2Import`: `runIfNeeded(into:from:ownWrites:)`, `Result`, `defaultV2Folder(homeDirectory:)`, `v2ProjectIdentifier` |
+| `ProjectRules.swift` | `ProjectRules`, `ProjectRuleError` |
+| `GitHub.swift` | `GitHubPage`, `GitRemote` (`init?(remoteURL:)`, `isGitHubHost`, `gitHubPage(resolvedHostName:)`) |
+
+- **File types.** Each is a `Codable`, `Sendable`, `Hashable` struct whose `init(from:)` reads with a
+  `MappingReader` and whose `encode(to:)` writes with a `MappingWriter`, key by key in the order of its table
+  in [Data](data.md), then its unknown keys. Single-line strings are trimmed with
+  `ProjectRules.trimmedOrNil`.
+- **`ProjectFile`** keeps V2's keys it doesn't use in `keptV2Keys`, read with `raw(_:)` and written with
+  `encodeIfPresent` at their places: `webTabs`, `skills`, `chatDefaults` after `subprojects`;
+  `dashboardWidgets`, `dashboardGraphWindow`, `deletedChats`, `commentAnswers` after `environmentOverrides`.
+  `color`, `icon` and `githubPage` are left out when nil and `graphEnabled` while false.
+  `environmentOverrides` is written through `EnvironmentOverride.SortedMap`, its names in Unicode code point
+  order; `CurrentEnvironmentsFile.projects` likewise.
+- **Equality** compares every field, the kept and unknown keys included: a file that decodes to the value in
+  memory is no change.
 
 ## ToolsFoundation
 
@@ -1196,14 +1404,18 @@ Routes reach it as described under [ToolsScenes](#routehost-and-route-handling):
 ### Concurrency and isolation
 
 - Swift 6 language mode everywhere: `SWIFT_VERSION = 6.0` in the app target, tools version 6.2 in the package.
-- Every package target defaults to the main actor (`.defaultIsolation(MainActor.self)`); so does the app
-  target (`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`).
+- Every UI target of the package defaults to the main actor (`.defaultIsolation(MainActor.self)`); so does
+  the app target (`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`). The data targets have no default isolation:
+  their values are `Sendable`, their shared state sits behind a `Mutex` (`OwnWrites`, `FolderLock`,
+  `SystemProcessRunner`, the process waiters and pipe readers) or an `Atomic`, and `FileEventHub` is an actor.
+  Blocking calls (`waitpid`, pipe reads) run on threads of their own, never on the cooperative pool.
 - Plain data types are marked `nonisolated` and `Sendable`: all of ToolsFoundation's, and the value types a
   `Layout`, a `Table` sort or a background task touches (`RequestRow`, the Dashboard's grid types, the
   Contracts, Machines and Builds values).
 - Environment and focused-value keys are `nonisolated private struct`s. Actions stored in environment values
   are `@MainActor @Sendable` closures wrapped in a struct with `callAsFunction`.
-- The only asynchronous work is the chat's reply: a `Task` in `ChatStore.send` that awaits the engine.
+- In the windows, the only asynchronous work is the chat's reply: a `Task` in `ChatStore.send` that awaits the
+  engine.
 
 ### Models, stores and views
 
@@ -1302,6 +1514,10 @@ identifiers from it (`chat.composer.field`, `chat.composer.send`).
 Everything else lasts as long as the app runs: conversations (`ChatStore.shared`), selections, filters,
 folded parents, drafts. The Projects window's selection starts on `ORD` at each launch.
 
+The files of [Data](data.md) (the project files, `registry.yml`, `current-environments.yml`) are read and
+written by the data targets, which no window uses yet. As each feature comes over from V2, its data moves from
+the table above into those files.
+
 ### Sample data
 
 All data is sample data around `SampleClock`, 11 November 2026 at 14:00. Each kind lives beside the code that
@@ -1333,12 +1549,14 @@ are the Mac window's own layouts at those widths, through AZDesign's adaptive wi
 ## Building, testing and running
 
 Sign only with team `USWJAJULN9`. Never pass another team in build settings or `xcodebuild` arguments. If
-signing fails with it, stop and ask. In a session with Claude, the `xcode` MCP server builds, runs tests and
-renders previews.
+signing fails with it, stop and ask. The App Group needs a profile that names it: Xcode makes it when it
+builds with automatic signing; from the command line, the first build after a capability change needs
+`-allowProvisioningUpdates`. In a session with Claude, the `xcode` MCP server builds, runs tests and renders
+previews; it can't sign this app, so signed builds use `xcodebuild`.
 
 | Task | In Xcode | From the command line |
 | --- | --- | --- |
-| Build and run the app | Open `HephaestusV3.xcodeproj`, scheme `HephaestusV3`, My Mac, Run | `xcodebuild -project HephaestusV3.xcodeproj -scheme HephaestusV3 -destination 'platform=macOS' build` |
+| Build and run the app | Open `HephaestusV3.xcodeproj`, scheme `HephaestusV3`, My Mac, Run | `xcodebuild -project HephaestusV3.xcodeproj -scheme HephaestusV3 -destination 'platform=macOS' [-allowProvisioningUpdates] build` |
 | Run the unit tests | Scheme `HephaestusV3Kit`, Test | `cd HephaestusV3Kit && xcodebuild -scheme HephaestusV3Kit -destination 'platform=macOS' test` |
 | See a view's states | Open the view's file, the canvas shows its `#Preview`s | — |
 | Fill the String Catalogs and check bundles | — | Build first, then `scripts/sync-strings.sh <derived data>` (or no argument to build into `HephaestusV3Kit/.build/strings`) |
@@ -1347,10 +1565,15 @@ renders previews.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names):
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 310 tests). Tests
+use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
+deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
 | Target | Suites | Covers |
 | --- | --- | --- |
+| FileStorageTests | YAML coding, Dates, Atomic writes, Own writes the folder lock and the Trash, File events | Kept keys written back in order and layout; read rules (UTF-8, root mapping, keys twice, YAML errors); BOM and CR LF; defaults and required keys; schema; dates read and written; quoting and literal blocks; atomic writes (modes, links, failures, leftovers); own writes; the lock; a test Trash; `YAMLFile`; batches by quiet and maximum delay; one real FSEvents stream in a temporary folder; flag kinds. |
+| ExternalToolsTests | Child processes, The login shell's environment, Finding the tools, git ssh and kubectl | Output, status, input, folder, environment, signals, missing executables; the timeout ending a whole process group; `terminateAll`; `env -0` parsing and every capture outcome; `PATH` lookup and the git stub; the commands, arguments, parsing and failures of git, ssh and kubectl. Uses `FakeRunner`. |
+| ProjectDataTests | Project file, Registry and current environments, Data folder, Import from HephaestusV2, Rules and GitHub | V2's complete project file written back byte for byte; every V2 example round-tripping with all its keys; defaults; environments, base URLs and overrides; V3's additions; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; the import's list, skips, choices, single run and missing V2; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints. Fixtures: V2's examples. |
 | ToolsFoundationTests | Routes, Strings, Inherited settings | Each `FocusRequest` is new; `ChatReference.route` and ids per environment; shared titles from the catalog; unique tool shortcuts; inherited environments. |
 | ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`. |
 | DashboardsKitTests | What the Dashboard shows, Edit mode, Steps of the keyboard and VoiceOver, Settings, Saving | Sample, default and saved lists; hidden service widgets; toolbar environment and time window; a change in every window of a project; list order; titles; Done, remove, add, first save, drags; every step and its limits; title, checkbox and Number rules; lenient decoding; keys. Uses `MockDashboardLayoutStore`. |
@@ -1367,8 +1590,11 @@ ToolsScenes has no tests: scenes, routes, `WindowDirectory` and the menus are ch
 
 Where the code doesn't yet meet the workspace's rules, or the architecture is knowingly incomplete:
 
-- **No App Group.** The Dashboard and the chat preferences live in `UserDefaults.standard`. The workspace rule
-  puts an app's data in `group.fr.azavech.hephaestusv3` from day one; there is no entitlements file yet.
+- **Data in `UserDefaults`.** The Dashboard and the chat preferences still live in `UserDefaults.standard`;
+  they move into the files of [Data](data.md) with their features (the Dashboard into `project.yml`).
+- **The data targets aren't wired.** FileStorage, ExternalTools and ProjectData are built and tested, but the
+  windows still run on sample stores; the Projects feature is the first to use them. Until then the app's
+  `Package.resolved` doesn't pin Yams, since the app links nothing that uses it.
 - **No asset catalog.** The app target has no app icon.
 - **Routes come only from inside the app.** No URL scheme, App Intents, Spotlight, widgets or Handoff lead
   into it yet. When they come, each becomes a `Route` handled by `RouteHost`. Nothing sends `.machine(id)` yet.
