@@ -1,6 +1,7 @@
 # Contracts
 
-The Contracts window shows one service's OpenAPI contract. At the left, the contract's operations, grouped by
+The Contracts window shows one service's OpenAPI contract: the `openapi/contract.yaml` of its folder, read with
+its `$ref` pointers resolved ([Data › Contracts](../data.md#contracts)), V2's API Explorer file. At the left, the contract's operations, grouped by
 tag. At the right, the operation picked: what the contract says about it, a request to fill in for one of
 the service's environments, the response of its last call, and the responses the contract documents.
 
@@ -12,8 +13,9 @@ the service's environments, the response of its last call, and the responses the
 
 ## Opening it
 
-Contracts exists only for a service that has a contract. In the samples these are
-Orders, Payments and Edge Gateway. Shop, a service without a contract, and the apps and libraries have no
+Contracts exists only for a service that has a contract: a service whose folder holds
+`openapi/contract.yaml` when the projects are read. In the samples these are Orders, Payments and Edge
+Gateway. Shop, a service without a contract, and the apps and libraries have no
 Contracts window ([Tools per project](navigation.md#tools-per-project)).
 
 - **Projects window.** The **Contracts** tile (`curlybraces.square`) reads "Version 1.4.0, 6 operations".
@@ -73,7 +75,8 @@ sits at the right edge.
 | Back | The stack's own button | — | — | Returns to the operations and clears the selection. | iPhone, on an operation's page |
 | **Filter Operations** | Search field | — | — | Filters the operations. See [Operations list](#operations-list). | iPhone, on the list, in the toolbar's middle. On a Mac and an iPad it sits at the top of the operations column. |
 | **Environment** | Pull-down menu, labeled with the environment's name | — | — | Picks the environment the request goes to: one of the project's environments, or of the project it takes its settings from (see [Projects](projects.md)). Help: "Environment the requests go to". Absent when the project has no environments. | Mac, iPad; iPhone on an operation's page |
-| **Send** | Prominent button | `paperplane.fill` | ⌘Return | Sends the request. **Not wired yet.** Disabled when no operation is selected or the project has no environments. Help: "Send the request". | Mac, iPad; iPhone on an operation's page |
+| **Credentials and Headers** | Button | `key` | — | Opens the sheet of the contract's credentials and the headers added to every request (see [Credentials and headers](#credentials-and-headers)). Help: "Credentials and headers of the requests". Absent for the samples. | Mac, iPad; iPhone on an operation's page |
+| **Send** | Prominent button | `paperplane.fill` | ⌘Return | Sends the request. Disabled when no operation is selected, the project has no environments, or a request is on its way. Help: "Send the request". | Mac, iPad; iPhone on an operation's page |
 | **Chat** | `ChatPanelToolbarItem` | `sidebar.right` | ⌃⌘C | Shows or hides the chat panel. Always the last item (the user's choice). See [Chat panel button](components.md#chat-panel-button). | Mac, iPad, iPhone |
 
 In the **No Contract** state the toolbar holds only the project switcher and the chat panel's button.
@@ -199,20 +202,37 @@ The operation pane picks one of two arrangements from its own size and the text 
 ## Environment and Send
 
 **Environment.** A pull-down menu labeled with the current environment's name, such as "Staging". It lists
-the project's environments, with a check mark on the current one. The window starts on Staging when the
-project has one, otherwise on its first environment. Changing it changes the URL in **Request**; the values
+the project's environments, with a check mark on the current one. The window starts on the project's current
+environment (for a sample, Staging when it has one, otherwise its first environment). Picking another makes
+it the project's current environment, as V2's form did. Changing it changes the URL in **Request**; the values
 stay. The menu is absent when the project has no environments. VoiceOver reads it as "Environment", with
 the environment's name as its value. Identifier: `contracts.environment`.
 
-**Send** (`paperplane.fill`, ⌘Return). A prominent button that sends the request. **Not wired yet**: the
-fields hold what the user types and nothing else, and **Last Response** doesn't change. Disabled when no
-operation is selected or the project has no environments. Identifier: `contracts.send`.
+**Send** (`paperplane.fill`, ⌘Return). A prominent button that sends the request, built by V2's rules with the
+stored credentials and headers ([Data › Sending a request](../data.md#sending-a-request)), from this Mac. The
+answer shows in **Last Response**, and stays while the app runs; a request without answer shows "The request
+failed." with the error's description (`contracts.response.failure`). Before a first call, **Last Response**
+reads "Not Sent Yet" (`contracts.response.none`). Disabled when no operation is selected, the project has no
+environments, or a request is on its way. Identifier: `contracts.send`. The samples send nothing.
+
+### Credentials and headers
+
+A sheet (`contracts.access.sheet`, at least 420 × 360 pt), opened by **Credentials and Headers**: one section
+per security scheme of the contract, titled with its name, its description under it: an API key's field
+labeled with its name and place (`X-API-Key (header)`), **Username** and **Password** (secure) for HTTP basic,
+**Token** (secure) for a bearer. Then **Headers**: rows of **Name** and **Value** fields with a remove button
+(`minus.circle`), and **Add Header** (`contracts.access.addHeader`); footer "Added to every request of this
+contract. Kept on this Mac, with the credentials." **Cancel** (Escape) and **Save** (Return,
+`contracts.access.save`). Saved in `openapi-requests.json` ([Data › Stored values](../data.md#stored-values)).
+The values typed in the request stay while the operation is selected, as before; they aren't stored.
 
 ## States
 
 | State | When | What shows |
 | --- | --- | --- |
 | **Loaded** | The project has a contract and an operation is selected. | The operations column and the operation. |
+| **Reading** | The contract file is being read. | "Reading the contract…" with a spinner (`contracts.loading`). |
+| **Can't Read the Contract** | The file isn't an OpenAPI 3 contract. | `exclamationmark.triangle`, "Can't Read the Contract", and the reason in the code font, selectable (`contracts.unreadable`). |
 | **No Contract** | The window shows a project without a contract, as the **No Contract** preview does. | The empty state "No Contract" (`curlybraces.square`): "This project has no OpenAPI contract yet." It fills the window on the `canvas` color. The toolbar keeps the project switcher and the chat panel's button. |
 | **No Operation Selected** | No operation is selected, on a Mac or an iPad. | In the operation pane: "No Operation Selected" (`curlybraces.square`): "Pick an operation to read it and call it." **Send** is disabled. |
 | **No Results** | The filter matches no operation, as the **No Results** preview does. | Under the contract's header, the empty state "No Matching Operations" (`magnifyingglass`): "No path, summary or operation id contains “invoice”." The operation pane keeps the selected operation. |
@@ -286,8 +306,9 @@ See [Chat](chat.md).
 
 ## Sample data and limits
 
-- **Sample contracts.** The contracts are sample data, which the window reads through a contract store
-  (`SampleContractStore`). In the real suite they are read from the project's contract file.
+- **Live contracts.** The app reads each project's `openapi/contract.yaml` (`LiveContractStore`), sends the
+  requests from this Mac, and keeps the credentials and headers in `openapi-requests.json`.
+- **Sample contracts.** Previews and captures read sample contracts (`SampleContractStore`):
 
   | Project | Contract | Operations | Tags |
   | --- | --- | --- | --- |
@@ -295,9 +316,8 @@ See [Chat](chat.md).
   | Payments | Payments API 2.1.0 | 4 | Charges, Refunds |
   | Edge Gateway | Edge Gateway 1.0.2 | 3 | Operations, Routing |
 
-- **Last Response** is a fixed value per operation. It doesn't change with the environment or the values.
-  `checkoutOrder` answers 504 and `refundCharge` answers 500.
-- **Send** is not wired yet.
+- **A sample's Last Response** is a fixed value per operation, and its Send shows that the samples send
+  nothing. `checkoutOrder` answers 504 and `refundCharge` answers 500.
 - **Values aren't kept.** Edited parameters and bodies return to the examples when another operation is
   picked, after Back at iPhone width, or when the window moves to another project. A route to the operation
   already selected keeps them.

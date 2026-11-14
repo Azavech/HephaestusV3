@@ -39,6 +39,14 @@ public struct ToolSchema: Sendable, Hashable {
         return schema
     }
 
+    /// An object whose members, of any name, each follow `values`.
+    public static func map(_ description: String? = nil, of values: ToolSchema) -> ToolSchema {
+        var schema = ToolSchema(kind: .object, description: description)
+        schema.allowsOtherProperties = true
+        schema.items = [values]
+        return schema
+    }
+
     public static func string(_ description: String? = nil, oneOf values: [String]? = nil) -> ToolSchema {
         var schema = ToolSchema(kind: .string, description: description)
         schema.allowed = values
@@ -68,9 +76,13 @@ public struct ToolSchema: Sendable, Hashable {
         if let description { object["description"] = .string(description) }
         switch kind {
         case .object:
-            object["properties"] = .object(Dictionary(uniqueKeysWithValues: properties.map { ($0.name, $0.schema.json) }))
-            if !required.isEmpty { object["required"] = .array(required.map(JSONValue.string)) }
-            object["additionalProperties"] = .bool(allowsOtherProperties)
+            if let values = items.first {
+                object["additionalProperties"] = values.json
+            } else {
+                object["properties"] = .object(Dictionary(uniqueKeysWithValues: properties.map { ($0.name, $0.schema.json) }))
+                if !required.isEmpty { object["required"] = .array(required.map(JSONValue.string)) }
+                object["additionalProperties"] = .bool(allowsOtherProperties)
+            }
         case .array:
             if let item = items.first { object["items"] = item.json }
         case .string:
@@ -106,6 +118,11 @@ public struct ToolSchema: Sendable, Hashable {
             }
             for (name, schema) in properties {
                 if let member = members[name], let violation = schema.check(member, path: at(name)) { return violation }
+            }
+            if let values = items.first {
+                for name in members.keys.sorted() {
+                    if let member = members[name], let violation = values.check(member, path: at(name)) { return violation }
+                }
             }
             return nil
         case (.array, .array(let elements)):

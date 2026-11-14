@@ -39,7 +39,8 @@ every window as the `availableTools` environment value, and the menus read it di
 | Tickets | The Tickets window, its tile, Window ▸ Tickets (⌘2), its menu bar button | Yes |
 | Chat | The Chat window, its tile, Window ▸ Chat (⌘6), its menu bar button, the chat panel of the available tools' windows, Settings ▸ Chat | Yes |
 | Builds | The Builds window, its tile, Window ▸ Builds (⌘5), its menu bar button, the Dashboard's Recent Builds widget | Yes |
-| Service Map, Contracts | Their tool windows | Not yet |
+| Contracts | The Contracts window, its tile, Window ▸ Contracts (⌘4), its menu bar button, for a service whose folder holds `openapi/contract.yaml` | Yes |
+| Service Map | Its tool window | Not yet |
 | Virtual Machines | Its window | Not yet |
 
 Previews and the screenshots of the spec show every tool: the environment value's default is all of them.

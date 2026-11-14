@@ -23,6 +23,17 @@
         }
       }
     },
+    "%@: %@ %@, in %@ %@." : {
+      "comment" : "What an operation is, for the chat, before any call",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@ %3$@, in %4$@ %5$@."
+          }
+        }
+      }
+    },
     "%@: %@ %@, in %@ %@. Its last call answered %lld after %@." : {
       "comment" : "What an operation is, for the chat. Pay for an order: POST /orders/{id}/checkout, in Orders API 1.4.0. Its last call answered 504 after 4.2 sec.",
       "localizations" : {
@@ -34,8 +45,59 @@
         }
       }
     },
+    "Add Header" : {
+
+    },
+    "Added to every request of this contract. Kept on this Mac, with the credentials." : {
+
+    },
+    "Binary body (%@)" : {
+
+    },
     "Body" : {
       "comment" : "Heading of the request's body editor."
+    },
+    "Called %@ of %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Called %1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "Can't Read the Contract" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Claude wants to call %@ of %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Claude wants to call %1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "Claude wants to call %@ of %@ on %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Claude wants to call %1$@ of %2$@ on %3$@"
+          }
+        }
+      }
+    },
+    "Credentials and Headers" : {
+
+    },
+    "Credentials and headers of the requests" : {
+
     },
     "Documented Responses" : {
 
@@ -47,6 +109,9 @@
 
     },
     "Filter Operations" : {
+
+    },
+    "Headers" : {
 
     },
     "In" : {
@@ -73,16 +138,34 @@
     "No path, summary or operation id contains “%@”." : {
 
     },
+    "Not Sent Yet" : {
+
+    },
+    "Password" : {
+
+    },
     "Pick an operation to read it and call it." : {
 
     },
     "Read operation %@" : {
       "comment" : "A tool call of the chat; the value is an operationId."
     },
+    "Read the contract of %@" : {
+
+    },
+    "Reading the contract…" : {
+
+    },
+    "Remove Header" : {
+
+    },
     "Request" : {
 
     },
     "Required" : {
+
+    },
+    "Save" : {
 
     },
     "Send" : {
@@ -91,19 +174,43 @@
     "Send the request" : {
 
     },
+    "Send the request to see its answer here." : {
+
+    },
+    "Set the URL of %@ in Project Settings." : {
+
+    },
     "Show an example request for %@" : {
 
     },
     "Status %@" : {
       "comment" : "VoiceOver label of a response's HTTP status, such as: Status 504."
     },
+    "The contract isn't read." : {
+
+    },
+    "The request failed." : {
+
+    },
+    "The request's URL isn't valid." : {
+
+    },
+    "The samples send nothing." : {
+
+    },
     "This project has no OpenAPI contract yet." : {
+
+    },
+    "Token" : {
 
     },
     "Type" : {
       "comment" : "Column heading: a parameter's type."
     },
     "URL" : {
+
+    },
+    "Username" : {
 
     },
     "Value" : {

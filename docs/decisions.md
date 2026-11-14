@@ -142,3 +142,17 @@ which rules the app enforces, and never tells Claude how to work.
 | When does the Dashboard's Recent Builds read? | When it shows, then every 30 s, as the window. | [UI › Dashboard](ui/dashboard.md) |
 | What does the chat's reader read now? | Tickets and Builds read the app's data (Tickets did read its samples until now); the Service Map and Contracts keep their samples until their phases. | [UI › Chat › How Claude reaches the tools](ui/chat.md#how-claude-reaches-the-tools) |
 | What about the Projects window's Builds tile and activity? | They keep the samples' text for sample projects, and "Workflow runs and releases on GitHub" otherwise: reading every project's runs for a tile would call gh for each project. | [UI › Projects](ui/projects.md) |
+
+## Phase 7: Contracts (14 November 2026)
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| Which file is a project's contract? | `openapi/contract.yaml` of its folder, V2's API Explorer file, for a service; V2's Code section contracts (any OpenAPI file opened in the editor) wait for the Code editor. | [Data › Contracts](data.md#contracts) |
+| How are operations named? | By `operationId` in the window and routes, by `<METHOD> <path>` (V2's key) in the stored values and `api_call`, so that the gate reads the method from it. | [MCP › api_call](mcp.md#api_call) |
+| Which environment do requests go to? | The project's current environment, which picking one in the window changes, as V2's form did. | [UI › Contracts › Environment and Send](ui/contracts.md#environment-and-send) |
+| What is stored? | The credentials and added headers, in V2's `openapi-requests.json` (imported once from V2); the parameters and bodies typed stay while the operation is selected, as the design had it. | [Data › Stored values](data.md#stored-values) |
+| Where are credentials typed? | A **Credentials and Headers** sheet from the toolbar (`key`), since the design's request box has no room for them. | [UI › Contracts › Credentials and headers](ui/contracts.md#credentials-and-headers) |
+| Which media type does the body use? | The operation's first; the window shows one body editor. Claude's `api_call` may name another. | same |
+| What may Claude call? | `GET` and `HEAD` always (V2's rule); other methods under a new **Call APIs that change data** (Never, Ask First, Always; Ask First by default). | [MCP › Permissions](mcp.md#permissions) |
+| Are responses kept? | While the app runs, per operation; never written. | [UI › Contracts](ui/contracts.md) |
+| What about V2's schema trees, Info detail, and Quick Look of binary bodies? | Not in V3's design: the window shows operations, the request and the documented responses; a binary body reads "Binary body (<size>)". | same |

@@ -8,11 +8,15 @@ import ToolsFoundation
 /// A wide pane puts the request and the response side by side, each as tall as the pane, as an API
 /// client does. A narrow or short one, or text at an accessibility size, stacks them and scrolls.
 ///
-/// The fields hold what you type and nothing else: Send in the toolbar does nothing in this example.
+/// Send in the toolbar sends the request; its answer shows in **Last Response**.
 struct OperationView: View {
     /// The request being written, which names its operation.
     @Binding var draft: RequestDraft
     let environment: DeploymentEnvironment?
+    /// The answer of the operation's last call: the window's, else a sample's.
+    var response: SampleResponse? = nil
+    /// Why the last call got no answer.
+    var failure: String? = nil
 
     @State private var fitsWide = false
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -108,8 +112,24 @@ struct OperationView: View {
 
     private func lastResponse(fillsHeight: Bool) -> some View {
         GroupBox {
-            ResponseView(response: operation.lastResponse, fillsHeight: fillsHeight)
-                .padding(6)
+            Group {
+                if let failure {
+                    ContentUnavailableView {
+                        Label(String(localized: "The request failed.", bundle: #bundle), systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text(verbatim: failure)
+                    }
+                    .accessibilityIdentifier("contracts.response.failure")
+                } else if let response = response ?? operation.lastResponse {
+                    ResponseView(response: response, fillsHeight: fillsHeight)
+                } else {
+                    ContentUnavailableView(String(localized: "Not Sent Yet", bundle: #bundle), systemImage: "paperplane",
+                                           description: Text("Send the request to see its answer here.", bundle: #bundle))
+                        .accessibilityIdentifier("contracts.response.none")
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: fillsHeight ? .infinity : nil)
+            .padding(6)
         } label: {
             Label(String(localized: "Last Response", bundle: #bundle), systemImage: "arrow.down.circle")
                 .accessibilityAddTraits(.isHeader)
@@ -123,7 +143,7 @@ struct OperationView: View {
             VStack(spacing: 0) {
                 ForEach(operation.responses) { response in
                     DocumentedResponseRow(response: response)
-                        .accessibilityIdentifier("contracts.documentedResponse.\(response.status)")
+                        .accessibilityIdentifier("contracts.documentedResponse.\(response.code)")
                 }
             }
             .padding(6)
@@ -244,7 +264,7 @@ private struct DocumentedResponseRow: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Text(verbatim: String(response.status))
+            Text(verbatim: response.code)
                 .font(.callout.monospaced().weight(.semibold))
                 .foregroundStyle(statusColor(response.status))
                 .frame(minWidth: statusWidth, alignment: .leading)
@@ -343,6 +363,7 @@ extension HTTPMethod {
         case .put: .warning
         case .patch: .accentSecondary
         case .delete: .danger
+        case .head, .options, .trace: .textSecondary
         }
     }
 }

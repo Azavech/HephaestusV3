@@ -18,7 +18,7 @@ meet the workspace's rules (`~/Developer/Apple/CLAUDE.md`), [Open issues](#open-
 3. [The Xcode project](#the-xcode-project)
 4. [The package](#the-package)
 5. [The data targets](#the-data-targets): [FileStorage](#filestorage), [ExternalTools](#externaltools),
-   [ProjectData](#projectdata), [MCPKit](#mcpkit), [TicketData](#ticketdata), [BuildData](#builddata), [ChatData](#chatdata), [TextFormats](text.md)
+   [ProjectData](#projectdata), [MCPKit](#mcpkit), [TicketData](#ticketdata), [BuildData](#builddata), [ContractData](#contractdata), [ChatData](#chatdata), [TextFormats](text.md)
 6. [ToolsFoundation](#toolsfoundation)
 7. [ToolsScenes](#toolsscenes)
 8. [The tool kits](#the-tool-kits): [ProjectsKit](#projectskit), [DashboardsKit](#dashboardskit),
@@ -198,6 +198,7 @@ Shared values in the manifest:
 | `TicketData` | The ticket, bundle and attachment files and their rules: the `TicketLibrary` actor and the `TicketSession`. | FileStorage, ProjectData | `.target(name:, dependencies:)` |
 | `ChatData` | The chat files, the Claude CLI and its protocol, the chats' processes: the `ChatSession`. | FileStorage, ExternalTools, ProjectData, MCPKit | `.target(name:, dependencies:)` |
 | `BuildData` | gh's runs, jobs, logs and releases, and release downloads. | ExternalTools | `.target(name:, dependencies:)` |
+| `ContractData` | OpenAPI contracts, `$ref`, samples, requests, the HTTP client, stored values. | FileStorage, Yams | `.target(name:, dependencies:)` |
 | `TextFormats` | Markdown to a block model and syntax highlighting, from HephaestusV2 without its markers ([Text](text.md)). | swift-markdown | `.target(name:, dependencies:)` |
 | `ToolsFoundation` | Shared vocabulary: projects, tools, routes, chat vocabulary, the Dashboard model, `ProjectIcon`. | AZDesign | `.target` |
 | `ProjectsKit` | The project selector: the Projects window, the project switcher, the menu bar panel; New Project, Project Settings, Settings ▸ Projects; the mapping of the app's projects; the project tools of the MCP server. | ToolsFoundation, AZDesign, AZDesignCode, ProjectData, ExternalTools, MCPKit | `toolTarget(_:data:)` |
@@ -259,7 +260,7 @@ Commit both `Package.resolved` files with it.
 ## The data targets
 
 Targets without UI hold the data code that V3 brings over from HephaestusV2: `FileStorage`, `ExternalTools`,
-`ProjectData`, `MCPKit`, `TicketData`, `ChatData`, `BuildData` and `TextFormats`. They import no SwiftUI, have no default isolation (a `@MainActor`
+`ProjectData`, `MCPKit`, `TicketData`, `ChatData`, `BuildData`, `ContractData` and `TextFormats`. They import no SwiftUI, have no default isolation (a `@MainActor`
 session type says so itself), and keep shared state in `Mutex`es and actors. Each feature wires them into its
 windows as it comes over ([Open issues](#open-issues)).
 
@@ -525,6 +526,19 @@ isolation. Source files in `Sources/TicketData/`:
   in-app project changes. Its changes forward to the library as the user on this Mac (`device` is
   `SCDynamicStoreCopyComputerName`) and keep the snapshot they return when its revision is higher. The MCP
   tools use `library` directly with the actor `.claude(chat:)`, then call `refresh()`.
+
+### ContractData
+
+The contracts of [Data › Contracts](data.md#contracts). No UI, no default isolation. Depends on FileStorage
+and Yams. Source files in `Sources/ContractData/`:
+
+| File | Contents |
+| --- | --- |
+| `ContractValue.swift` | `ContractValue` (an ordered YAML/JSON value: `parse(_:)` with Yams, `subscript(key:)`, accessors, `json(pretty:)`) |
+| `OpenAPIContract.swift` | `OpenAPIContract` (`read(_:file:root:)`, `operation(_:)`, `schemes(for:)`), `ContractError`, `OpenAPIOperation` (`key`, `RequestBody`, `MediaType`, `DocumentedResponse`), `OpenAPIParameter`, `SecurityScheme`, `ContractResolver` (the `$ref` rules) |
+| `ContractSamples.swift` | `ContractSamples` (prefilled bodies, samples from schemas, type summaries) |
+| `RequestBuilder.swift` | `RequestValues`, `RequestBuilder` (`encode`, `url`, `headers`, `request`), `ContractResponse` (`text`), `ContractHTTPClient` (strict and lenient ephemeral sessions), `ContractCallError` |
+| `StoredValues.swift` | `StoredContract`, `StoredHeader`, `StoredOperation`, `StoredValuesFile` (`read`, `write`, `v2File`, `importV2`) |
 
 ### BuildData
 
@@ -899,7 +913,7 @@ Behavior is specified in [Navigation › Routes and Window reuse](ui/navigation.
 | --- | --- |
 | `.tickets` | `TicketsReader.read(reference.focus, store: appData.ticketStore)` |
 | `.serviceMap` | `ServiceMapReader.read(reference.focus, environment: reference.environment, project: project)` |
-| `.contracts` | `ContractsReader.read(reference.focus, project: project)` |
+| `.contracts` | `ContractsReader.read(reference.focus, project: project, store: appData.contractStore)` |
 | `.builds` | `BuildsReader.read(reference.focus, project: project, store: appData.buildStore)` |
 | `.dashboard`, `.chat` | nil |
 
@@ -1466,46 +1480,34 @@ list), with an always-open `.inspector` (280–440) in `.mac` and `.pad`; in `.p
 
 ### ContractsKit
 
-Spec: [Contracts](ui/contracts.md).
+Spec: [Contracts](ui/contracts.md). Data: `ContractData` ([ContractData](#contractdata)). Depends on
+ContractData, MCPKit and ProjectData.
 
 | File | Contents |
 | --- | --- |
-| `Contract.swift` | `Contract`, `HTTPMethod`, `Operation`, `Parameter`, `DocumentedResponse`, `SampleResponse`, `RequestDraft` |
+| `Contract.swift` | `Contract`, `HTTPMethod`, `Operation` (`lastResponse?`, `mediaType`, `details`, `key`), `Parameter`, `DocumentedResponse` (`code`, `status`), `SampleResponse`, `RequestDraft` |
+| `ContractStore.swift` | `ContractLoad`, `ContractStore` (protocol), `ContractSendError`, `ContractAccess`, `SampleContractStore`, `LiveContractStore`, `EnvironmentValues.contractStore` |
+| `ContractTools.swift` | `ContractTools` (`api_operations`, `api_call`) |
 | `ContractsModel.swift` | `OperationSection`, `ContractsModel` |
 | `ContractsReader.swift` | `ContractsReader` |
-| `ContractsRootView.swift` | `ContractsRootView`, `OperationList`, `OperationRow` |
-| `OperationView.swift` | `OperationView`, `ParameterList`, `DocumentedResponseRow`, `ResponseView`, `MethodBadge`, `HTTPMethod` colors, `statusColor(_:)` |
-| `SampleContracts.swift` | `ContractStore`, `SampleContractStore`, `Contract.sample(for:)` |
+| `ContractsRootView.swift` | `ContractsRootView`, `OperationList`, `ContractAccessSheet` |
+| `OperationView.swift` | `OperationView`, the request, response and documented-response views |
+| `SampleContracts.swift` | `Contract.sample(for:)` |
 
-**Public API**: `ContractsRootView(project: Project, focus: String? = nil)`,
-`ContractsReader.read(_ focus: String, project: Project) -> ToolReading?`.
+**Public API**: `ContractsRootView(project:focus:store: LiveContractStore)`, `LiveContractStore(projects:)`,
+`ContractsReader.read(_:project:store:)`, `ContractTools.operations(contracts:projects:)`.
 
-**Types.** `Contract` (`title`, `version`, `operations`; `tags` in first-appearance order; `operation(_:)`).
-`Operation` (`id` = `operationId`, `method: HTTPMethod`, `path`, `summary`, `tag`, `parameters`,
-`requestBody: String?`, `responses: [DocumentedResponse]`, `lastResponse: SampleResponse`). `Parameter`
-(`name`, `location` `path`/`query`/`header`, `type`, `isRequired`, `example`; `id` `"<location>.<name>"`).
-`SampleResponse` (`status`, `duration: Duration`, `bytes`, `body`; `isError` from 400; `durationStyle`:
-milliseconds below a second, else seconds with one decimal). `RequestDraft` (`operation`, `values` by
-parameter id, `body`; starts from the examples; `subscript(parameter:)`; `url(on:)` fills path parameters and
-appends query parameters that have a value; headers don't show).
+**Stores.** `protocol ContractStore` (`@MainActor`, a class): `contract(of:) -> ContractLoad` (`none`,
+`loading`, `loaded`, `failed`), `refresh(_:)`, `send(_:to:of:)`, `lastResponse(of:in:)`, `setEnvironment(_:of:)`,
+`access(of:)`, `setAccess(_:of:)`. `LiveContractStore` (`@Observable`, one for the app) reads
+`openapi/contract.yaml` off the main actor with `OpenAPIContract.read`, maps it to the window's `Contract`,
+reads it again after file events under `openapi/`, keeps the responses of the run and the stored values
+(imported once from V2), and sends with `ContractHTTPClient`. `SampleContractStore` reads the samples and sends
+nothing.
 
-**Store.** `protocol ContractStore { func contract(of: Project.ID) -> Contract? }`. `SampleContractStore` returns
-`Contract.sample(for:)`: Orders API 1.4.0 (`ORD`), Payments (`PAY`) and Edge Gateway (`GW`); nil otherwise.
-
-**`ContractsModel`**, `init(project:focus:store:)`: `project`, `contract`, `opensSelection` (the focus names an
-operation), `query`, `environmentName` (Staging when there is one, else the first). `selection` (computed:
-selecting another operation starts its request from the examples), `selectedOperation`, `operation(_:)`,
-`select(focus:)` (clears a filter that hides it; an unknown id changes nothing), `filterText`, `sections`,
-`hasNoMatches`, `matches(_:)` (path, summary or id), `environments`, `environment`, `draft(for:)`,
-`update(_:)` (kept only for the selected operation), `canSend`, `send()` (not wired), `chatSubject`.
-
-**Reader.** `ContractsReader.read(_:project:store:locale:)` writes one sentence with the operation's summary,
-method, path, contract and last response; `suggestions(for:locale:)` asks why a failed call failed first;
-`reference(_:in:)` uses the operation id as focus and title.
-
-**Root view.** `NavigationSplitView` (operations 260–380; `.detailOnly` in `.pad`) or a `PhoneStack`. Toolbar:
-environment menu, Send (⌘Return, `.borderedProminent`), `ChatPanelToolbarItem()`. It reports the selected
-operation and applies `onFocusRequest`. Without a contract it shows "No Contract".
+**`ContractsModel`**, `init(project:focus:store:)`: `contractLoad`, `contract`, `refresh()` (applies a focus that
+waited for the contract), `query`, `sections`, `selection`, `environmentName`, `pickEnvironment(_:)`, `canSend`,
+`isSending`, `send()`, `responses`, `failures`, `response(for:)`, `chatSubject`.
 
 ### BuildsKit
 
@@ -1847,7 +1849,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 516 tests). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 522 tests). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
@@ -1857,6 +1859,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ExternalToolsTests | Child processes, The login shell's environment, Finding the tools, git ssh and kubectl | Output, status, input, folder, environment, signals, missing executables; the timeout ending a whole process group; `terminateAll`; `env -0` parsing and every capture outcome; `PATH` lookup and the git stub; the commands, arguments, parsing and failures of git, ssh and kubectl. Uses `FakeRunner`. |
 | MCPKitTests | JSON values and schemas, JSON-RPC, HTTP, Server | Number kinds and sorted output; every validation message in order; the classification table; initialize, ping, unknown methods and the version header; tools/list and tools/call results, errors and validation; heads, chunked and sized bodies and their limits; bearer tokens; a real listener on a free port answering with the token and refusing the rest. |
 | ProjectDataTests | Project file, Dashboard widgets, Registry and current environments, Data folder, Import from HephaestusV2, Rules and GitHub, Loading, Outside changes, Creating opening and removing, Inherited settings, Current environment, GitHub page, Session | V2's complete project file written back byte for byte; every V2 example round-tripping with all its keys; defaults; environments, base URLs and overrides; V3's additions; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; the import's list, skips, choices, single run and missing V2; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints; loading depth first with every issue; data folder files set aside; outside changes (changed, invalid, renamed identifier, deleted and returning files, the registry, own writes, relevance); create, open and remove with their refusals and sub projects; update with its write rules; inheritance on, off, nested and across types; the current environment chosen, renamed, removed and forgotten; GitHub pages from origins, aliases, typed pages and parents, `.git/config`; the session's start, lock, changes and a real outside change. Fixtures: V2's examples. Uses `FakeRunner`.; Dashboard widgets: keys of another kind kept, V3's Recent Builds, unknown kinds and statuses refused, each write rule with its message, stored widgets written back as they are, repeated ids. |
+| ContractDataTests | Contracts | Operations in V2's order, parameters merged, `$ref` across files and outside the folder, schemes, the prefilled body; unreadable files; URLs, query, header order and replacements, the request; JSON in order, form bodies; stored values read, imported once, mode 0600, earlier keys left out. Temporary folders only; nothing is sent. |
 | BuildDataTests | gh, Builds from gh | Repositories from GitHub pages; gh's environment and V2's failure messages; runs, a run's jobs and steps, logs by step (CR LF included), re-run and cancel after `--`; releases without drafts, the latest marked; a download's pattern, free name and temporary folder. A fake runner answers gh. |
 | ChatDataTests | Chat files, Transcripts, Stream mapping, Chats on the Claude CLI, Launching the CLI | V2's chat file written back byte for byte, V3's `origin`, the kinds' rules; replay (add, update, lines skipped), lines written by V3, the LF after a line cut short; V2's captures of Claude Code 2.1.309 mapped to items with V2's ids, streamed text, the CLI's permission request, compaction lines, results after Stop; the CLI located in order, its version and models; a first message (arguments without prompt, hooks or the CLI's tools, the MCP configuration and its chat token, the attached line), a turn replayed to idle, the app's card and the CLI's request answered, Stop, an exit in error, a missing session started again, model and effort. A `FakeLauncher` replays the captures; nothing starts Claude. |
 | TicketDataTests | Ticket and bundle files, Ticket library | V2's complete ticket and bundle written back byte for byte; defaults, the creation entry and unknown keys; numbers from the counters, skipping existing files; provisional titles and the title, description and status messages; Claude's descriptions taken as written; drafts; link rules 1–7 with their messages and inverse links; history entries in order and changes that write nothing; Claude's status limits; the Complete and Reopened rules, Claude's bundle limits and the Complete rule at load; deletion order and the Trash; comments and their files; attachment copies, names, limits and paths; outside changes, invalid files and removals. Fixtures: V2's examples. Uses a test Trash folder. |

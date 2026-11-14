@@ -54,6 +54,8 @@ let package = Package(
         // Tickets and bundles: their files, rules and changes.
         .target(name: "TicketData", dependencies: ["FileStorage", "ProjectData"]),
         .target(name: "TextFormats", dependencies: [.product(name: "Markdown", package: "swift-markdown")]),
+        // Contracts: OpenAPI 3 files, their $ref pointers, samples, requests and the values typed for them.
+        .target(name: "ContractData", dependencies: ["FileStorage", yams]),
         // Builds: gh's runs, jobs, logs and releases of a project's GitHub repository.
         .target(name: "BuildData", dependencies: ["ExternalTools"]),
         // Chats: their files, the Claude CLI and its stream-json protocol, the chats' processes.
@@ -70,7 +72,7 @@ let package = Package(
         toolTarget("DashboardsKit", data: ["ProjectData"]),
         toolTarget("TicketsKit", data: ["TicketData", "TextFormats", "MCPKit"]),
         toolTarget("ServiceMapKit"),
-        toolTarget("ContractsKit"),
+        toolTarget("ContractsKit", data: ["ContractData", "MCPKit", "ProjectData"]),
         toolTarget("BuildsKit", data: ["BuildData", "MCPKit", "ProjectData", "ExternalTools"]),
         toolTarget("MachinesKit"),
         // Claude as one more client of the tools: the Chat window and the panel beside each tool.
@@ -80,7 +82,7 @@ let package = Package(
         .target(
             name: "ToolsScenes",
             dependencies: [
-                "ToolsFoundation", "ProjectData", "FileStorage", "MCPKit", "TicketData", "ChatData", "BuildData", "ProjectsKit",
+                "ToolsFoundation", "ProjectData", "FileStorage", "MCPKit", "TicketData", "ChatData", "BuildData", "ContractData", "ProjectsKit",
                 "DashboardsKit", "TicketsKit", "ServiceMapKit", "ContractsKit", "BuildsKit", "MachinesKit", "ChatKit",
                 design,
             ],
@@ -96,6 +98,7 @@ let package = Package(
         testTarget("TextFormats", resources: [.copy("Fixtures")], settings: []),
         testTarget("ChatData", resources: [.copy("Fixtures")], settings: []),
         testTarget("BuildData", settings: []),
+        testTarget("ContractData", settings: []),
         testTarget("ToolsFoundation"),
         testTarget("ProjectsKit"),
         testTarget("DashboardsKit"),

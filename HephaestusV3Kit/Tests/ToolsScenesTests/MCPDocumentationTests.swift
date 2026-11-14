@@ -1,3 +1,4 @@
+import ContractsKit
 import ChatData
 import Foundation
 import MCPKit
@@ -33,7 +34,8 @@ struct MCPDocumentationTests {
     func toolsMatch() throws {
         let session = ProjectSession(dataFolder: nil)
         let registry = AppTools.registry(session: session, tickets: TicketSession(projects: session, device: "Test"),
-                                         chats: ChatSession(projects: session, tokens: MCPTokens(), device: "Test")) { _ in true }
+                                         chats: ChatSession(projects: session, tokens: MCPTokens(), device: "Test"),
+                                         contracts: LiveContractStore(projects: session)) { _ in true }
         let documented = try documentedTools()
         #expect(documented.map(\.name) == registry.names)
         for (name, description, schema) in documented {

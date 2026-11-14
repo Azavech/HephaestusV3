@@ -15,8 +15,15 @@ nonisolated struct OperationSection: Identifiable, Hashable, Sendable {
 @Observable
 final class ContractsModel {
     let project: Project
-    /// Nil for a project without a contract.
-    let contract: Contract?
+    let store: any ContractStore
+    /// A focus waiting for the contract to be read.
+    private var pendingFocus: String?
+    /// A request on its way.
+    private(set) var isSending = false
+    /// Why an operation's last call got no answer, by operation.
+    private(set) var failures: [Operation.ID: String] = [:]
+    /// The answers of this window's calls, by operation.
+    private(set) var responses: [Operation.ID: SampleResponse] = [:]
     /// Whether the window opened on an operation a route asked for: an iPhone's layout then starts on
     /// its page.
     let opensSelection: Bool
@@ -34,14 +41,32 @@ final class ContractsModel {
     /// contract doesn't have, the first operation is.
     init(project: Project, focus: String?, store: any ContractStore) {
         self.project = project
-        let contract = store.contract(of: project.id)
-        self.contract = contract
+        self.store = store
+        let contract = store.contract(of: project).value
         let focused = focus.flatMap { contract?.operation($0) }
-        opensSelection = focused != nil
-        // Staging when the project has one: the first place a change can be tried on.
-        let preferred = project.deploymentEnvironments.first { $0.name == "Staging" } ?? project.deploymentEnvironments.first
+        opensSelection = focused != nil || (contract == nil && focus != nil)
+        pendingFocus = contract == nil ? focus : nil
+        // The project's current environment; for a sample, Staging when it has one, the first place a change can
+        // be tried on.
+        let preferred = project.deploymentEnvironments.first { $0.name == project.currentEnvironment }
+            ?? project.deploymentEnvironments.first { $0.name == "Staging" } ?? project.deploymentEnvironments.first
         environmentName = preferred?.name ?? ""
         selection = (focused ?? contract?.operations.first)?.id
+    }
+
+    /// The project's contract: on its way, read, unreadable, or none.
+    var contractLoad: ContractLoad { store.contract(of: project) }
+    var contract: Contract? { contractLoad.value }
+
+    /// Reads the contract again, then selects a focus that waited for it, or the first operation.
+    func refresh() async {
+        await store.refresh(project)
+        if let pendingFocus, contract?.operation(pendingFocus) != nil {
+            self.pendingFocus = nil
+            select(focus: pendingFocus)
+        } else if selection == nil || selectedOperation == nil {
+            selection = contract?.operations.first?.id
+        }
     }
 
     /// The selected operation's id. Selecting another operation starts its request from the
@@ -135,13 +160,34 @@ final class ContractsModel {
         self.draft = draft
     }
 
-    /// An operation is selected and there is an environment to send it to.
+    /// An operation is selected, there is an environment to send it to, and no request is on its way.
     var canSend: Bool {
-        selectedOperation != nil && environment != nil
+        selectedOperation != nil && environment != nil && !isSending
     }
 
-    /// Sends the request. Not wired yet: the sample data has no service to call.
-    func send() {}
+    /// Picks the environment requests go to; in the app it becomes the project's current one.
+    func pickEnvironment(_ name: String) {
+        environmentName = name
+        store.setEnvironment(name, of: project)
+    }
+
+    /// Sends the selected operation's request; its answer, or why none came, shows in **Last Response**.
+    func send() async {
+        guard let operation = selectedOperation, let environment, !isSending else { return }
+        isSending = true
+        defer { isSending = false }
+        do throws(ContractSendError) {
+            responses[operation.id] = try await store.send(draft(for: operation), to: environment, of: project)
+            failures[operation.id] = nil
+        } catch {
+            failures[operation.id] = error.message
+        }
+    }
+
+    /// The answer shown for an operation: this window's last, else the store's, else a sample's.
+    func response(for operation: Operation) -> SampleResponse? {
+        responses[operation.id] ?? store.lastResponse(of: operation, in: project) ?? operation.lastResponse
+    }
 
     // MARK: Chat
 

@@ -6,13 +6,27 @@ import ToolsFoundation
 // `Operation` alone would also name Foundation's.
 private typealias ContractOperation = ContractsKit.Operation
 
-/// Contracts kept in memory, by project.
-struct MockContractStore: ContractStore {
-    var contracts: [Project.ID: Contract] = [:]
+/// Contracts kept in memory, by project; a send answers `answer`, or fails with `failure`.
+final class MockContractStore: ContractStore {
+    var contracts: [Project.ID: Contract]
+    var answer = SampleResponse(status: 201, duration: .milliseconds(12), bytes: 2, body: "{}")
+    var failure: String?
+    private(set) var environments: [String] = []
 
-    func contract(of project: Project.ID) -> Contract? {
-        contracts[project]
+    init(contracts: [Project.ID: Contract] = [:]) {
+        self.contracts = contracts
     }
+
+    func contract(of project: Project) -> ContractLoad { contracts[project.id].map(ContractLoad.loaded) ?? .none }
+    func refresh(_ project: Project) async {}
+    func send(_ draft: RequestDraft, to environment: DeploymentEnvironment, of project: Project) async throws(ContractSendError) -> SampleResponse {
+        if let failure { throw ContractSendError(message: failure) }
+        return answer
+    }
+    func lastResponse(of operation: ContractsKit.Operation, in project: Project) -> SampleResponse? { nil }
+    func setEnvironment(_ name: String, of project: Project) { environments.append(name) }
+    func access(of project: Project) -> ContractAccess? { nil }
+    func setAccess(_ access: ContractAccess, of project: Project) {}
 }
 
 /// A small contract: two tags, the Items tag coming back after Billing, a failing operation, and a
@@ -358,7 +372,7 @@ struct ReaderTests {
     @Test("Reads the sample contracts by default")
     func sample() throws {
         let orders = try #require(Project.sample("ORD"))
-        let reading = try #require(ContractsReader.read("checkoutOrder", project: orders))
+        let reading = try #require(ContractsReader.read("checkoutOrder", project: orders, store: nil))
         #expect(reading.action.contains("checkoutOrder"))
         #expect(reading.detail.contains("POST /orders/{id}/checkout"))
         #expect(reading.suggestions.count == 2)
@@ -391,5 +405,25 @@ struct SampleTests {
         let model = ContractsModel(project: payments, focus: nil, store: SampleContractStore())
         #expect(model.sections.map(\.tag) == ["Charges", "Refunds"])
         #expect(model.sections.first?.operations.map(\.id) == ["createCharge", "getCharge", "listCharges"])
+    }
+}
+
+
+@Suite("Sending")
+@MainActor
+struct ContractSendTests {
+    @Test("Send shows the answer, or why none came; the environment picked becomes the project's")
+    func send() async throws {
+        let store = MockContractStore(contracts: ["ORD": try #require(SampleContractStore().contract(of: "ORD"))])
+        let orders = try #require(Project.sample("ORD"))
+        let model = ContractsModel(project: orders, focus: "listOrders", store: store)
+        let operation = try #require(model.selectedOperation)
+        await model.send()
+        #expect(model.response(for: operation)?.status == 201)
+        store.failure = "Could not connect to the server."
+        await model.send()
+        #expect(model.failures[operation.id] == "Could not connect to the server.")
+        model.pickEnvironment("Production")
+        #expect(store.environments == ["Production"] && model.environmentName == "Production")
     }
 }

@@ -1,19 +1,6 @@
 import Foundation
 import ToolsFoundation
 
-/// Where the contracts come from. The app and the previews use `SampleContractStore`.
-protocol ContractStore {
-    /// The contract of the project, or nil for a project without one.
-    func contract(of project: Project.ID) -> Contract?
-}
-
-/// The sample contracts of Orders, Payments and Edge Gateway.
-struct SampleContractStore: ContractStore {
-    func contract(of project: Project.ID) -> Contract? {
-        Contract.sample(for: project)
-    }
-}
-
 nonisolated extension Contract {
     /// The contract of a sample project, or nil for projects without one.
     static func sample(for projectID: Project.ID) -> Contract? {

@@ -34,6 +34,12 @@ public enum ChatGate {
         case .removeProjects:
             permission = rule(ChatPreferences.projectChangesKey) == .never ? .never : .askFirst
             refusal = "The user doesn't let Claude change projects from chats (Settings ▸ Chat)."
+        case .callAPIs:
+            // A request that reads runs; another follows Call APIs that change data.
+            let operation = arguments["operation"]?.stringValue ?? ""
+            if operation.hasPrefix("GET ") || operation.hasPrefix("HEAD ") { return nil }
+            permission = rule(ChatPreferences.apiCallsKey)
+            refusal = "The user doesn't let Claude call APIs that change data from chats (Settings ▸ Chat)."
         case .startBuilds:
             // Never by default; Ask First at most.
             permission = defaults.string(forKey: ChatPreferences.buildStartsKey) == ChangePermission.askFirst.rawValue ? .askFirst : .never

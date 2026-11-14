@@ -29,6 +29,9 @@ nonisolated enum HTTPMethod: String, Sendable {
     case put = "PUT"
     case patch = "PATCH"
     case delete = "DELETE"
+    case head = "HEAD"
+    case options = "OPTIONS"
+    case trace = "TRACE"
 }
 
 /// One operation of the contract, with what the request builder needs to call it.
@@ -43,8 +46,15 @@ nonisolated struct Operation: Identifiable, Hashable, Sendable {
     /// An example body, for the operations that take one.
     let requestBody: String?
     let responses: [DocumentedResponse]
-    /// What the last call answered.
-    let lastResponse: SampleResponse
+    /// What a sample's last call answered; nil for a contract of the app's data, whose calls the window keeps.
+    let lastResponse: SampleResponse?
+    /// The media type of `requestBody`.
+    var mediaType: String? = nil
+    /// The description, Markdown.
+    var details = ""
+
+    /// `GET /orders/{id}`: what the stored values and Claude's `api_call` name it by.
+    var key: String { "\(method.rawValue) \(path)" }
 }
 
 nonisolated struct Parameter: Identifiable, Hashable, Sendable {
@@ -52,6 +62,7 @@ nonisolated struct Parameter: Identifiable, Hashable, Sendable {
         case path
         case query
         case header
+        case cookie
     }
 
     /// `path.id`, `query.limit`: a name is unique only within its location.
@@ -64,9 +75,23 @@ nonisolated struct Parameter: Identifiable, Hashable, Sendable {
 }
 
 nonisolated struct DocumentedResponse: Identifiable, Hashable, Sendable {
-    var id: Int { status }
-    let status: Int
+    var id: String { code }
+    /// `200`, `4XX`, `default`.
+    let code: String
     let description: String
+
+    init(status: Int, description: String) {
+        code = String(status)
+        self.description = description
+    }
+
+    init(code: String, description: String) {
+        self.code = code
+        self.description = description
+    }
+
+    /// The code's number, for its color; 0 for `default`, `500` for `5XX`.
+    var status: Int { Int(code) ?? Int(code.prefix(1)).map { $0 * 100 } ?? 0 }
 }
 
 /// A response the service gave.
@@ -117,6 +142,7 @@ nonisolated struct RequestDraft: Hashable, Sendable {
         let query = operation.parameters
             .filter { $0.location == .query && !self[$0].isEmpty }
             .map { "\($0.name)=\(self[$0])" }
-        return (environment.url ?? "") + (query.isEmpty ? path : path + "?" + query.joined(separator: "&"))
+        let base = (environment.url ?? "").hasSuffix("/") ? String((environment.url ?? "").dropLast()) : (environment.url ?? "")
+        return base + (query.isEmpty ? path : path + "?" + query.joined(separator: "&"))
     }
 }

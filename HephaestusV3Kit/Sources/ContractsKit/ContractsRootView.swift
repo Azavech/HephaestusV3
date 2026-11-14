@@ -1,4 +1,5 @@
 import AZDesign
+import ContractData
 import SwiftUI
 import ToolsFoundation
 
@@ -11,8 +12,8 @@ public struct ContractsRootView: View {
     @Environment(\.windowLayout) private var layout
 
     /// The contract of `project`, with `focus` (an operation id) selected when it opens.
-    public init(project: Project, focus: String? = nil) {
-        self.init(model: ContractsModel(project: project, focus: focus, store: SampleContractStore()))
+    public init(project: Project, focus: String? = nil, store: LiveContractStore) {
+        self.init(model: ContractsModel(project: project, focus: focus, store: store))
     }
 
     init(model: ContractsModel) {
@@ -21,6 +22,8 @@ public struct ContractsRootView: View {
 
     /// The operations column: shown on a Mac, folded behind the sidebar button on an iPad.
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
+    /// The credentials and headers sheet, while it shows.
+    @State private var access: ContractAccess?
 
     public var body: some View {
         Group {
@@ -31,18 +34,47 @@ public struct ContractsRootView: View {
                     splitBody(contract)
                 }
             } else {
-                ContentUnavailableView {
-                    Label(String(localized: "No Contract", bundle: #bundle), systemImage: ToolKind.contracts.symbol)
-                } description: {
-                    Text("This project has no OpenAPI contract yet.", bundle: #bundle)
+                Group {
+                    switch model.contractLoad {
+                    case .loading:
+                        ProgressView(String(localized: "Reading the contract…", bundle: #bundle))
+                            .accessibilityIdentifier("contracts.loading")
+                    case .failed(let message):
+                        ContentUnavailableView {
+                            Label(String(localized: "Can't Read the Contract", bundle: #bundle), systemImage: "exclamationmark.triangle")
+                        } description: {
+                            Text(verbatim: message)
+                                .font(.callout.monospaced())
+                                .textSelection(.enabled)
+                        }
+                        .accessibilityIdentifier("contracts.unreadable")
+                    default:
+                        ContentUnavailableView {
+                            Label(String(localized: "No Contract", bundle: #bundle), systemImage: ToolKind.contracts.symbol)
+                        } description: {
+                            Text("This project has no OpenAPI contract yet.", bundle: #bundle)
+                        }
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier("contracts.noContract")
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(.canvas)
-                .accessibilityElement(children: .contain)
-                .accessibilityIdentifier("contracts.noContract")
                 .toolbar {
                     ChatPanelToolbarItem()
                 }
+            }
+        }
+        // The contract is read when the window shows, and again when its files change.
+        .task {
+            await model.refresh()
+        }
+        .sheet(item: $access) { access in
+            ContractAccessSheet(access: access) { changed in
+                model.store.setAccess(changed, of: model.project)
+                self.access = nil
+            } cancel: {
+                self.access = nil
             }
         }
         // A later route to this window selects its operation, without starting afresh.
@@ -63,7 +95,8 @@ public struct ContractsRootView: View {
                 .navigationSplitViewColumnWidth(min: 260, ideal: 300, max: 380)
         } detail: {
             if let operation = model.selectedOperation {
-                OperationView(draft: draft(for: operation), environment: model.environment)
+                OperationView(draft: draft(for: operation), environment: model.environment, response: model.response(for: operation),
+                              failure: model.failures[operation.id])
                     .id(operation.id)
             } else {
                 ContentUnavailableView {
@@ -97,7 +130,8 @@ public struct ContractsRootView: View {
                 }
         } page: { id in
             if let operation = model.operation(id) {
-                OperationView(draft: draft(for: operation), environment: model.environment)
+                OperationView(draft: draft(for: operation), environment: model.environment, response: model.response(for: operation),
+                              failure: model.failures[operation.id])
                     .toolbar {
                         operationToolbar
                     }
@@ -119,7 +153,8 @@ public struct ContractsRootView: View {
         if !model.environments.isEmpty {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Picker(String(localized: "Environment", bundle: #bundle), selection: $model.environmentName) {
+                    Picker(String(localized: "Environment", bundle: #bundle), selection: Binding(get: { model.environmentName },
+                                                                                                    set: { model.pickEnvironment($0) })) {
                         ForEach(model.environments) { environment in
                             Text(verbatim: environment.name).tag(environment.name)
                         }
@@ -136,9 +171,18 @@ public struct ContractsRootView: View {
                 .accessibilityIdentifier("contracts.environment")
             }
         }
+        if let access = model.store.access(of: model.project) {
+            ToolbarItem(placement: .primaryAction) {
+                Button(String(localized: "Credentials and Headers", bundle: #bundle), systemImage: "key") {
+                    self.access = access
+                }
+                .help(String(localized: "Credentials and headers of the requests", bundle: #bundle))
+                .accessibilityIdentifier("contracts.access")
+            }
+        }
         ToolbarItem(placement: .primaryAction) {
             Button(String(localized: "Send", bundle: #bundle, comment: "Button: sends the request to the environment."), systemImage: "paperplane.fill") {
-                model.send()
+                Task { await model.send() }
             }
             .buttonStyle(.borderedProminent)
             .keyboardShortcut(.return, modifiers: .command)
@@ -315,4 +359,82 @@ private var ordersWithoutEnvironments: Project {
 
 #Preview("iPhone, Largest Text", traits: .phoneLayout, .largestText, .fixedLayout(width: 420, height: 800)) {
     ContractsRootView(model: previewModel(focus: "createOrder"))
+}
+
+
+/// The credentials the contract asks for and the headers added to every request, kept on this Mac
+/// (docs/ui/contracts.md › Credentials and headers).
+private struct ContractAccessSheet: View {
+    @State var access: ContractAccess
+    let save: (ContractAccess) -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Form {
+                ForEach($access.schemes) { $scheme in
+                    Section {
+                        switch scheme.kind {
+                        case .apiKey(let label):
+                            TextField(label, text: binding($scheme, "value"))
+                        case .basic:
+                            TextField(String(localized: "Username", bundle: #bundle), text: binding($scheme, "username"))
+                            SecureField(String(localized: "Password", bundle: #bundle), text: binding($scheme, "password"))
+                        case .bearer:
+                            SecureField(String(localized: "Token", bundle: #bundle), text: binding($scheme, "token"))
+                        }
+                    } header: {
+                        Text(verbatim: scheme.name)
+                    } footer: {
+                        if !scheme.description.isEmpty {
+                            Text(verbatim: scheme.description).font(.caption).foregroundStyle(.textSecondary)
+                        }
+                    }
+                }
+                Section {
+                    ForEach(access.headers.indices, id: \.self) { index in
+                        HStack {
+                            TextField(String(localized: "Name", bundle: #bundle), text: $access.headers[index].name)
+                            TextField(String(localized: "Value", bundle: #bundle), text: $access.headers[index].value)
+                            Button(String(localized: "Remove Header", bundle: #bundle), systemImage: "minus.circle") {
+                                access.headers.remove(at: index)
+                            }
+                            .labelStyle(.iconOnly)
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                    Button(String(localized: "Add Header", bundle: #bundle)) {
+                        access.headers.append(StoredHeader(name: "", value: ""))
+                    }
+                    .accessibilityIdentifier("contracts.access.addHeader")
+                } header: {
+                    Text("Headers", bundle: #bundle)
+                } footer: {
+                    Text("Added to every request of this contract. Kept on this Mac, with the credentials.", bundle: #bundle)
+                        .font(.caption)
+                        .foregroundStyle(.textSecondary)
+                }
+            }
+            .formStyle(.grouped)
+            HStack {
+                Spacer()
+                Button(String(localized: "Cancel", bundle: #bundle), action: cancel)
+                    .keyboardShortcut(.cancelAction)
+                Button(String(localized: "Save", bundle: #bundle)) { save(access) }
+                    .keyboardShortcut(.defaultAction)
+                    .accessibilityIdentifier("contracts.access.save")
+            }
+            .padding(12)
+        }
+        .frame(minWidth: 420, minHeight: 360)
+        .accessibilityIdentifier("contracts.access.sheet")
+    }
+
+    private func binding(_ scheme: Binding<ContractAccess.Scheme>, _ key: String) -> Binding<String> {
+        Binding(get: { scheme.wrappedValue.values[key] ?? "" }, set: { scheme.wrappedValue.values[key] = $0 })
+    }
+}
+
+extension ContractAccess: Identifiable {
+    var id: String { schemes.map(\.name).joined(separator: ",") + "|\(headers.count)" }
 }

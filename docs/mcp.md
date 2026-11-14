@@ -17,7 +17,7 @@ function the window calls ([Architecture › MCPKit](architecture.md#mcpkit)). T
 | JSON-RPC methods | `initialize`, `ping`, `tools/list`, `tools/call`; every notification is accepted and ignored |
 | Server name | `hephaestus`, so Claude names the tools `mcp__hephaestus__<tool>` |
 | Authentication | `Authorization: Bearer <token>` with the external token ([Authentication](#authentication)) |
-| Tools | [Tools](#tools): 32 today |
+| Tools | [Tools](#tools): 34 today |
 | Instructions to Claude | None: no `instructions` in `initialize`, no system prompt, no skills ([What Claude reads](#what-claude-reads)) |
 
 ## Server lifecycle
@@ -190,6 +190,7 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 | `read` | the `list_` and `get_` tools, `open_in_app` | runs | runs |
 | `renameChats` | `rename_chat` | runs | runs |
 | `startBuilds` | `rerun_run`, `cancel_run` | runs | Start builds: Ask First shows a card and waits; Never (the default) refuses |
+| `callAPIs` | `api_call` | runs | an `operation` starting `GET ` or `HEAD ` runs; another follows Call APIs that change data, as Change tickets |
 | `changeTickets` | `create_ticket`, `update_ticket`, `set_ticket_status`, `add_comment`, `update_comment`, the bundle tools but `delete_bundle` | runs | Change tickets: Always runs; Ask First shows a card and waits; Never refuses |
 | `deleteTickets` | `delete_ticket`, `delete_comment`, `remove_attachment`, `delete_bundle` | runs | Change tickets Never refuses; otherwise a card, even under Always |
 | `changeProjects` | `create_project`, `update_project` | runs | Change projects, as Change tickets |
@@ -199,10 +200,11 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
   user answers, Stop, or the chat's process ends. The CLI waits up to `MCP_TOOL_TIMEOUT`, 30 minutes.
 - A refusal is a tool error (`forbidden`) with one of these messages: `The user doesn't let Claude change
   tickets from chats (Settings ▸ Chat).`, `The user doesn't let Claude change projects from chats (Settings ▸
-  Chat).`, `The user doesn't let Claude start or cancel builds from chats (Settings ▸ Chat).`, `The user didn't
-  allow this call.`
+  Chat).`, `The user doesn't let Claude start or cancel builds from chats (Settings ▸ Chat).`, `The user doesn't let
+  Claude call APIs that change data from chats (Settings ▸ Chat).`, `The user didn't allow this call.`
 - The permissions are the user defaults `chat.ticketChanges` and `chat.projectChanges`: `never`, `askFirst`
-  (the default) or `always`; and `chat.buildStarts`: `never` (the default) or `askFirst`.
+  (the default) or `always`; `chat.apiCalls`, the same; and `chat.buildStarts`: `never` (the default) or
+  `askFirst`.
 - The CLI runs every tool of the server without asking (`--allowedTools`): the gate is where the user's
   permissions hold, whatever the CLI's own settings say.
 
@@ -272,6 +274,8 @@ a project: Claude may read and change every project of this Mac, as the user can
 | `rename_chat` | ChatKit | renameChats | `ChatSession.rename` |
 | `list_runs`, `get_run`, `get_run_log`, `list_releases`, `get_release` | BuildsKit | read | gh ([Data › Builds](data.md#builds)) |
 | `rerun_run`, `cancel_run` | BuildsKit | startBuilds | gh |
+| `api_operations` | ContractsKit | read | the project's contract ([Data › Contracts](data.md#contracts)) |
+| `api_call` | ContractsKit | callAPIs | the contract's request, the app's HTTP client |
 | `open_in_app` | ToolsScenes | read | a route ([Navigation › Routes](ui/navigation.md#routes)) |
 
 A project's JSON (`get_project`, `create_project`, `update_project`): `id`, `name`, `type` (`none`,
@@ -1464,6 +1468,106 @@ Input schema:
   "required" : [
     "projectID",
     "tag"
+  ],
+  "type" : "object"
+}
+```
+
+### api_operations
+
+- **Calls:** the contracts store, which reads `openapi/contract.yaml` of the project's folder when it isn't read.
+- **Result:** `title`, `version`, `operations`: each `key` (`<METHOD> <path>`), `operationId` when set,
+  `summary`, `description`, `tags`, `parameters` (`name`, `in`, `required`, `type`, `description`),
+  `requestBody` (`required`, `mediaTypes`: `name`, `example`) when it has one, `responses` (`code`,
+  `description`).
+- **Errors:** an unknown project, or one without the file (`notFound`); a contract that can't be read
+  (`invalid`, `The contract can't be read: <reason>`).
+
+Description:
+
+```text
+Returns the operations of the project's OpenAPI contract, openapi/contract.yaml, with its $ref pointers resolved: key (METHOD and path, what api_call takes), operationId, summary, description, tags, parameters, the request body's media types with their example, and the documented responses.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID"
+  ],
+  "type" : "object"
+}
+```
+
+### api_call
+
+- **Calls:** the request of [Data › Contracts › Sending a request](data.md#sending-a-request), with the
+  parameters, body, media type and headers given, the credentials and added headers stored for the contract
+  on this Mac (Claude never sees them), to the environment named or the project's current one, with its
+  `allowInvalidCertificates`.
+- **Result:** `status`, `headers` (`<name>: <value>`, sorted), `body` (pretty JSON for JSON, else the text, at
+  most 100,000 characters, or `Binary body (<n> bytes)`), `durationMs`.
+- **Errors:** those of `api_operations`; an unknown operation or environment (`notFound`); no URL or no answer
+  (`unavailable`, `The request failed: <reason>`). A chat's call follows [Permissions](#permissions).
+
+Description:
+
+```text
+Sends the request of one operation of the project's contract to one of its environments, as the Contracts window sends it, with the credentials and headers stored for the contract on this Mac. Returns the status, the headers, the body (text, at most 100000 characters) and the duration.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "body" : {
+      "description" : "The request body, as text.",
+      "type" : "string"
+    },
+    "environment" : {
+      "description" : "An environment of the project; without it, the project's current environment.",
+      "type" : "string"
+    },
+    "headers" : {
+      "additionalProperties" : {
+        "type" : "string"
+      },
+      "description" : "Headers to add, by name; each replaces a header of the same name.",
+      "type" : "object"
+    },
+    "mediaType" : {
+      "description" : "The body's media type; without it, the first the operation takes.",
+      "type" : "string"
+    },
+    "operation" : {
+      "description" : "The operation's key from api_operations: its method and path, such as GET /orders/{id}.",
+      "type" : "string"
+    },
+    "parameters" : {
+      "additionalProperties" : {
+        "type" : "string"
+      },
+      "description" : "Parameter values by name, or by in:name when two share a name.",
+      "type" : "object"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID",
+    "operation"
   ],
   "type" : "object"
 }

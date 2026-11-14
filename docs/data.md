@@ -29,6 +29,8 @@ a project's other files stay as V2 left them.
 | Attachments | `<project>/.hephaestus/attachments/<TICKET-ID>/<id>-<name>` | — (any file) | Tickets |
 | Chat file | `<project>/.hephaestus/chats/<CHAT-ID>.yml` | `ChatFile` | Chat |
 | Builds | — (read from GitHub with gh, never stored) | — | Builds |
+| Contract | `<project>/openapi/contract.yaml` (read only) | `OpenAPIContract` | Contracts |
+| Stored request values | `<data folder>/openapi-requests.json` | `StoredContract` | Contracts |
 | Chat transcript | `<project>/.hephaestus/chats/<CHAT-ID>.jsonl` | `ChatItem` on each line | Chat |
 | Chat MCP configuration | `<data folder>/Runtime/mcp/<CHAT-ID>.json` | — (JSON) | Chat |
 | Chat log | `<data folder>/Logs/claude-<CHAT-ID>.log` | — (text) | Chat |
@@ -1048,6 +1050,72 @@ taken. It gets the quarantine of a web download, with the file's URL
 (`https://github.com/<owner>/<name>/releases/download/<tag>/<asset>`) and the release's page, so that
 Gatekeeper checks it when it opens. The temporary folder is removed, also after a failure. `<asset>` in the
 pattern has `\` before each `\`, `*`, `?` and `[`.
+
+## Contracts
+
+A project's contract is its `openapi/contract.yaml`, V2's API Explorer file: an OpenAPI 3.0 or 3.1 document,
+YAML or JSON, which V3 reads and never writes ([UI › Contracts](ui/contracts.md)). A project whose folder holds
+the file, when the projects are read, offers Contracts; the window reads the file when it shows, and again
+after a file event under `openapi/`.
+
+### Reading
+
+- **Parsing.** Yams reads the text, JSON included, keeping each mapping's order. The text can't be read when it
+  isn't YAML or JSON (the parser's message), when its root isn't a mapping (`The root is not a mapping.`), or
+  when it has no `openapi` value starting with `3` (`The root has no openapi value starting with 3.`; Swagger
+  2.0 included).
+- **Operations** follow `paths`, and in a path `get`, `put`, `post`, `delete`, `options`, `head`, `patch`,
+  `trace`; a path item reached through `$ref` is resolved first. An operation's parameter replaces the path
+  item's with the same `name` and `in`. Its key is `<METHOD> <path>`; the window names it by `operationId`, or
+  by its key without one. Its tag is its first, else `default`.
+- **`$ref`** (V2's rules): split at the first `#`; the fragment is a JSON pointer (`~1` is `/`, `~0` is `~`,
+  percent-decoded); an empty file part is the same file; another is relative to the file holding the ref,
+  `.` and `..` removed. A ref can't be resolved when its file part has a scheme, starts with `/`, leaves the
+  project's folder, can't be read or parsed, or its pointer names nothing. Refs are followed at most 32 in a row.
+- **Security schemes** V3 sends: `apiKey` (in a header, the query or a cookie), `http` `basic`, `http` `bearer`;
+  the others are left out. An operation's schemes are those its `security` names, else the root's; without
+  either, every scheme.
+
+### Prefilled bodies
+
+A request body starts with its first media type's `example`, else the `value` of the first of its `examples`,
+else a sample of its schema, else nothing. A sample: an unresolved or circular ref gives none (a property is
+left out); then `example`, the first `examples`, `default`, `const`, the first `enum`; `allOf` merges its
+objects; `oneOf`/`anyOf` take the first; an object takes each property not `readOnly`; an array one sample of
+`items`; a string by `format` (`2024-01-01`, `2024-01-01T00:00:00Z`, `00:00:00`, `user@example.com`, a UUID,
+`https://example.com`, `example.com`, `192.0.2.1`, `2001:db8::1`), else `string`; a number its `minimum`, else
+`0`; a boolean `true`. JSON media types (`application/json`, `+json`) are written with two-space indentation,
+in the contract's order; a form (`application/x-www-form-urlencoded`) as `name=value&…`, percent-encoded;
+another as text.
+
+### Sending a request
+
+1. **Base URL**: the environment's URL with its port, without a final `/` ([Project environment](#project-environment)).
+2. **Path**: each `{name}` replaced by the path parameter's value, every byte but the RFC 3986 unreserved
+   characters percent-encoded.
+3. **Query**: the query parameters with a value, then the API keys sent in the query, `name=value` joined with
+   `&`, after `?` (or `&`).
+4. **Headers**, in order: header parameters with a value; `Cookie` (cookie parameters and API keys); API keys in
+   headers; `Authorization: Basic …` when a username or password is set; `Authorization: Bearer …` when a
+   token is; `Content-Type` when a body is sent; then the added headers, each replacing one of the same name.
+5. **Body**: the body's UTF-8 bytes, when the operation takes one and it isn't empty.
+6. **Client**: `URLSession` with an ephemeral configuration, no cookies, cache or credential storage;
+   redirects followed. An environment with `allowInvalidCertificates` uses a session of its own that accepts
+   any server certificate. The duration runs from the start to the last byte.
+
+The answer: its status, its headers (`<name>: <value>`, sorted), its body (pretty JSON when it is JSON, else the
+text; `Binary body (<size>)` otherwise). A request without answer gives the error's description.
+
+### Stored values
+
+`<data folder>/openapi-requests.json`, mode 0600, V2's format: `{"contracts": [{"projectID", "path",
+"credentials", "headers", "operations", "deviceID"}]}`. V3 keeps per contract (`path` is
+`openapi/contract.yaml`) the credentials of each scheme (`value` for an API key, `username` and `password`,
+`token`) and the added headers, set in the window's **Credentials and Headers** sheet; it keeps V2's
+`operations` and `deviceID` as read, and leaves out V2's earlier keys (`environment`, `server`…). At its first
+start V3 copies V2's `~/Library/Application Support/HephaestusV2/openapi-requests.json` when its own file is
+missing. A missing or invalid file is empty. Claude's `api_call` uses the stored credentials and headers and
+never sees them.
 
 ## Settings file
 

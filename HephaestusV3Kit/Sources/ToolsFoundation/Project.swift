@@ -47,6 +47,9 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
     public let currentEnvironment: String?
     /// Why the project's file on disk is invalid now, while the version loaded before shows.
     public let fileIssue: String?
+    /// For a project of the app's data: whether its folder holds `openapi/contract.yaml`, the contract of
+    /// Contracts (docs/ui/contracts.md).
+    public let hasContract: Bool
 
     public init(
         id: String,
@@ -63,7 +66,8 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
         environmentsAreResolved: Bool = false,
         githubPage: String? = nil,
         currentEnvironment: String? = nil,
-        fileIssue: String? = nil
+        fileIssue: String? = nil,
+        hasContract: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -80,6 +84,7 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
         self.githubPage = githubPage
         self.currentEnvironment = currentEnvironment
         self.fileIssue = fileIssue
+        self.hasContract = hasContract
     }
 
     /// The tools that apply to this project, in menu order: the Dashboard first, as in V2, and Chat
@@ -87,7 +92,7 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
     public var tools: [ToolKind] {
         switch kind {
         case .service:
-            activity?.contractVersion == nil
+            activity?.contractVersion == nil && !hasContract
                 ? [.dashboard, .tickets, .serviceMap, .builds, .chat]
                 : [.dashboard, .tickets, .serviceMap, .contracts, .builds, .chat]
         case .app, .library, .other: [.dashboard, .tickets, .builds, .chat]

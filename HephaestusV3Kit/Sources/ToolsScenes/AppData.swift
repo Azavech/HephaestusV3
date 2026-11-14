@@ -2,6 +2,7 @@ import AppKit
 import ChatData
 import BuildData
 import BuildsKit
+import ContractsKit
 import ChatKit
 import DashboardsKit
 import ExternalTools
@@ -20,7 +21,7 @@ import ToolsFoundation
 final class AppData {
     /// The tools whose feature has come over from HephaestusV2; the others are hidden in the running app
     /// (docs/ui/navigation.md › Available tools). Previews show every tool.
-    static let availableTools: Set<ToolKind> = [.dashboard, .tickets, .builds, .chat]
+    static let availableTools: Set<ToolKind> = [.dashboard, .tickets, .contracts, .builds, .chat]
     /// Whether the Virtual Machines window has come over.
     static let machinesAvailable = false
 
@@ -31,6 +32,8 @@ final class AppData {
     let ticketStore: LiveTicketStore
     /// The Dashboards of the loaded projects, kept in their project files.
     let dashboardStore: LiveDashboardStore
+    /// The projects' OpenAPI contracts, their requests and the values typed for them.
+    let contractStore: LiveContractStore
     /// The runs and releases of the projects' GitHub repositories, read with gh.
     let buildStore: LiveBuildStore
     /// The chats and their Claude processes (docs/architecture.md › ChatData).
@@ -65,6 +68,7 @@ final class AppData {
         ticketStore = LiveTicketStore(session: tickets)
         dashboardStore = LiveDashboardStore(session: session)
         let session = session
+        contractStore = LiveContractStore(projects: session)
         let downloads = (DataFolder.resolve()?.url ?? FileManager.default.temporaryDirectory).appendingPathComponent("Runtime/downloads", isDirectory: true)
         buildStore = LiveBuildStore(cli: {
             GitHubCLI(gh: session.tools.gh, environment: session.tools.environment, runner: SystemProcessRunner.shared)
@@ -117,7 +121,7 @@ final class AppData {
         settingsPort = folder.readSettings().mcpPort
         externalToken = try? folder.externalToken(make: MCPTokens.generate)
         tokens.replace(with: Set([externalToken].compactMap { $0 }))
-        let registry = AppTools.registry(session: session, tickets: tickets, chats: chats) { [weak self] route in
+        let registry = AppTools.registry(session: session, tickets: tickets, chats: chats, contracts: contractStore) { [weak self] route in
             guard let open = self?.openRoute else { return false }
             open(route)
             return true

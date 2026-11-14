@@ -189,5 +189,6 @@ public enum ChatPreferences {
     public static let showsPanelKey = "chat.showsPanel"
     static let ticketChangesKey = "chat.ticketChanges"
     static let projectChangesKey = "chat.projectChanges"
+    static let apiCallsKey = "chat.apiCalls"
     static let buildStartsKey = "chat.buildStarts"
 }

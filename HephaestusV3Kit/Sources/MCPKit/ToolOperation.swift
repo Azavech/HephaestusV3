@@ -33,6 +33,9 @@ public enum ToolPermission: String, Sendable, Hashable, CaseIterable {
     case renameChats
     /// Re-runs or cancels a workflow run: Settings ▸ Chat › Start builds.
     case startBuilds
+    /// Calls an API of a project's contract: a `GET` or `HEAD` always runs; another method follows Settings ▸
+    /// Chat › Call APIs that change data.
+    case callAPIs
 
     /// True for the permissions that change the user's data.
     public var changes: Bool { self != .read }
