@@ -111,7 +111,7 @@ private struct ProjectSettingsForm: View {
             guard let old else { return }
             Task { await apply(old) }
         }
-        .task(id: [model.selectedEnvironment ?? "", model.selected?.kubeconfig ?? "", model.selected?.namespace ?? ""]) {
+        .task(id: [model.selectedEnvironment ?? "", model.selected?.kubeconfig ?? "", model.selected?.namespace ?? "", "\(model.hasKubectl)"]) {
             await model.checkCluster()
         }
         .fileImporter(isPresented: $browsingKubeconfig, allowedContentTypes: [.item]) { result in
@@ -598,6 +598,9 @@ final class PreviewSettingsBackend: ProjectSettingsBackend {
                           parentID: nil, depth: 0, childIDs: [], resolved: ResolvedSettings(), fileIssue: nil),
         ])
     }
+
+    var hasLookedUpTools: Bool { true }
+    func waitForTools() async {}
 
     func update(_ id: String, _ change: ProjectChange) async throws(ProjectError) {}
 }

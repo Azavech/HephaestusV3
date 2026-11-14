@@ -140,8 +140,10 @@ GitHub section is in `+`.*
 - **The connection dot** shows while the environment has a kubeconfig file: a spinner while kubectl lists the
   cluster's namespaces with that file (and its current context), then a green dot ("kubectl reaches the
   cluster"), or a red one with kubectl's message under the row. Without kubectl the message is "kubectl
-  wasn’t found in your login shell’s PATH." It checks again when another environment, kubeconfig file or
-  namespace is chosen.
+  wasn’t found in your login shell’s PATH." A window that opens with the app, before the app has read the
+  login shell's PATH, shows the spinner until it has, then checks: it never says kubectl is missing before
+  looking. It checks again when another environment, kubeconfig file or namespace is chosen, and when kubectl
+  is found or lost (Settings ▸ Projects › Look Again).
 - **Namespace** and **Deployment**: text fields, monospaced, each with a `chevron.down` menu of suggestions:
   the cluster's namespaces, and the deployments of the environment's namespace (or of the context's), read
   once the dot is green. Any name can be typed; a picked name applies at once.

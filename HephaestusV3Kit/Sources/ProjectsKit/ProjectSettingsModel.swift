@@ -11,6 +11,10 @@ protocol ProjectSettingsBackend: AnyObject {
     var snapshot: ProjectSnapshot { get }
     /// kubectl with the tools found; nil without it.
     var kubectl: Kubectl? { get }
+    /// Whether the tools were looked up: until then `kubectl` is nil, whether kubectl is installed or not.
+    var hasLookedUpTools: Bool { get }
+    /// Returns once the tools were looked up the first time.
+    func waitForTools() async
     func update(_ id: String, _ change: ProjectChange) async throws(ProjectError)
 }
 
@@ -352,7 +356,8 @@ final class ProjectSettingsModel {
         }
     }
 
-    /// Whether kubectl was found, for the connection dot and the suggestions.
+    /// Whether kubectl was found, for the connection dot and the suggestions. The form checks the cluster again
+    /// when it changes, as when the first lookup ends or Look Again finds kubectl.
     var hasKubectl: Bool { backend.kubectl != nil }
 
     /// Reaches the cluster of the selected environment's kubeconfig file, then reads its namespaces and the
@@ -363,6 +368,12 @@ final class ProjectSettingsModel {
         guard let environment = selected, let file = environment.kubeconfig else {
             connection = .none
             return
+        }
+        // A window that opens with the app waits for the first lookup of the tools rather than finding kubectl missing.
+        if !backend.hasLookedUpTools {
+            connection = .checking
+            await backend.waitForTools()
+            guard !Task.isCancelled, selected?.kubeconfig == file else { return }
         }
         guard let kubectl = backend.kubectl else {
             connection = .failed(String(localized: "kubectl wasn’t found in your login shell’s PATH.", bundle: #bundle))

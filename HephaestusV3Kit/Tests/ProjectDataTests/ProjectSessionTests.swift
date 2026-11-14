@@ -50,6 +50,29 @@ struct ProjectSessionTests {
         }
     }
 
+    @Test("A wait for the tools ends with the first lookup; after it, or for a session that can't start, at once")
+    func waitForTools() async throws {
+        try await withTemporaryFolderAsync { world in
+            let bin = try toolsFolder(in: world)
+            let session = ProjectSession(dataFolder: world.data, runner: FakeRunner(environment: "PATH=\(bin)\0HOME=/x\0"),
+                                         processEnvironment: ["PATH": "/usr/bin"])
+            #expect(!session.hasLookedUpTools)
+            let waiter = Task { @MainActor in
+                await session.waitForTools()
+                return session.kubectl?.executable
+            }
+            await session.start()
+            #expect(await waiter.value == bin + "/kubectl")
+            #expect(session.hasLookedUpTools)
+            await session.waitForTools()
+            await session.stop()
+        }
+        let failed = ProjectSession(dataFolder: nil, runner: FakeRunner())
+        await failed.start()
+        await failed.waitForTools()
+        #expect(!failed.hasLookedUpTools)
+    }
+
     @Test("Changes go through the library and the session shows the result")
     func changes() async throws {
         try await withTemporaryFolderAsync { world in

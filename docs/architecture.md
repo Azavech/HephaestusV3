@@ -448,7 +448,7 @@ The files of [Data](data.md). Source files in `Sources/ProjectData/`:
 | `ProjectSnapshot.swift` | `ProjectSnapshot` (`revision`, `projects`, `issues`, `project(_:)`, `project(atRoot:)`, `family(of:)`), `LoadedProject` (`root`, `file`, `parentID`, `depth`, `childIDs`, `resolved`, `fileIssue`), `ResolvedSettings` (`environments`, `inheritedEnvironments`, `currentEnvironment`, `githubPage`, `defaultGithubPage`, `graphEnabled`, `inheritedGraphEnabled`; [Data › Resolution](data.md#resolution)), `ProjectIssue` (`path`, `source`, `reason`) |
 | `ProjectError.swift` | `ProjectError` |
 | `ProjectLibrary.swift` | `ProjectLibrary` (`load()`, `handle(_:)`, `watchedFolders`, `setTools(_:)`, `refreshOrigins()`, `create(_:)`, `open(folder:)`, `update(_:_:)`, `remove(_:)`, `setCurrentEnvironment(_:to:)`, `allocateNumber(for:_:)` with `NumberKind`), `NewProject`, `ProjectChange` |
-| `ProjectSession.swift` | `ProjectSession` (`phase`, `snapshot`, `shell`, `tools`, `isLookingUpTools`, `kubectl`, `projectLibrary`, `start()`, `lookUpTools()`, `stop()`, `observeFileEvents(_:)`, and the changes) |
+| `ProjectSession.swift` | `ProjectSession` (`phase`, `snapshot`, `shell`, `tools`, `isLookingUpTools`, `hasLookedUpTools`, `waitForTools()`, `kubectl`, `projectLibrary`, `start()`, `lookUpTools()`, `stop()`, `observeFileEvents(_:)`, and the changes) |
 
 - **File types.** Each is a `Codable`, `Sendable`, `Hashable` struct whose `init(from:)` reads with a
   `MappingReader` and whose `encode(to:)` writes with a `MappingWriter`, key by key in the order of its table
@@ -480,7 +480,12 @@ The files of [Data](data.md). Source files in `Sources/ProjectData/`:
   revision is higher). `start()` runs the order of [Data › Loading](data.md#loading); it consumes the
   `FileEventHub`'s batches in a task, hands each to `handle(_:)`, and updates the watched folders after each
   change. `lookUpTools()` captures the shell, looks the tools up, gives them to the library and reads the
-  origins. `stop()` stops the streams, ends the running tools and releases the lock. `kubectl` is the
+  origins. The tools are looked up after the projects load, so a window that opens with the app (one macOS
+  restores) can ask for a tool before they are known: `hasLookedUpTools` turns true after the first lookup,
+  and `waitForTools()` returns then (at once after it, or when the session failed to start or stops; the
+  waiters are `CheckedContinuation`s resumed together). What runs a tool as the app opens waits for it
+  rather than finding the tool missing: Project Settings' cluster check, `LiveServiceMapStore.refresh` and
+  `LiveBuildStore.refresh` (through its `toolsReady` closure). `stop()` stops the streams, ends the running tools and releases the lock. `kubectl` is the
   tools' kubectl for the settings' suggestions. Tests give it a temporary data folder, a fake runner and a
   hub with short delays.
 - **Shared with other features.** `allocateNumber(for:_:)` takes a ticket or bundle number from a project's
@@ -1202,7 +1207,7 @@ The project selector. Spec: [Projects](ui/projects.md), [Menu bar](ui/menu-bar.m
   `addFolder` focused value; the mapping of `ProjectMapping.swift`.
 
 **`ProjectSettingsModel`** (`@Observable`) takes a `ProjectSettingsBackend` (`snapshot`, `kubectl`,
-`update(_:_:)`): `ProjectSession` in the app, a real session on a temporary folder in the tests, a fixed
+`hasLookedUpTools`, `waitForTools()`, `update(_:_:)`): `ProjectSession` in the app, a real session on a temporary folder in the tests, a fixed
 snapshot whose kubectl answers from fixed lists in the previews. It reads the project from the snapshot at each
 access and keeps the text of each field (`name`, `icon`, `docsPath`, `githubPage`, and the environment's
 `environmentName`, `kubeconfig`, `namespace`, `deployment`, `jaeger`, `url`, `port`), which `reload(except:)`
@@ -1621,7 +1626,8 @@ ProjectData and ExternalTools.
 | `BuildsRootView.swift` | `BuildsRootView` and its rows, tables, inspectors, `LogPane`, `ReleaseNotes` |
 | `BuildsDashboardWidget.swift` | `BuildsDashboardWidget` |
 
-**Public API**: `BuildsRootView(project:focus:store: LiveBuildStore)`, `LiveBuildStore(cli:temporary:downloads:)`,
+**Public API**: `BuildsRootView(project:focus:store: LiveBuildStore)`, `LiveBuildStore(cli:temporary:downloads:toolsReady:)` (`toolsReady`, awaited at the start of each refresh, is the
+session's `waitForTools()` in the app),
 `BuildsReader.read(_:project:store: LiveBuildStore?)`, `BuildsDashboardWidget(widget:context:)` (reads
 `\.buildStore`), `BuildTools.operations(projects:runner:)`.
 

@@ -116,10 +116,14 @@ public final class LiveBuildStore: BuildStore {
     @ObservationIgnored private let temporary: URL
     @ObservationIgnored private let downloads: URL
     @ObservationIgnored private var refreshing: Set<String> = []
+    /// Returns once gh can be looked for: the projects' session's first lookup of the tools.
+    @ObservationIgnored private let toolsReady: @MainActor () async -> Void
 
     public init(cli: @escaping @MainActor () -> GitHubCLI, temporary: URL,
-                downloads: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]) {
+                downloads: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0],
+                toolsReady: @escaping @MainActor () async -> Void = {}) {
         self.cli = cli
+        self.toolsReady = toolsReady
         self.temporary = temporary
         self.downloads = downloads
     }
@@ -166,6 +170,8 @@ public final class LiveBuildStore: BuildStore {
         let key = key(project) + (releases ? "#releases" : "#runs")
         guard refreshing.insert(key).inserted else { return }
         defer { refreshing.remove(key) }
+        // Runs read as the app opens wait for the first lookup of the tools rather than finding gh missing.
+        await toolsReady()
         do throws(BuildError) {
             let builds = try builds(project)
             if releases {

@@ -18,7 +18,10 @@ private final class QuietRunner: ProcessRunning {
 private final class LateBackend: ProjectSettingsBackend {
     var snapshot = ProjectSnapshot(revision: 0, projects: [])
     var kubectl: Kubectl? { nil }
+    var hasLookedUpTools = true
     var changes: [ProjectChange] = []
+
+    func waitForTools() async {}
 
     func update(_ id: String, _ change: ProjectChange) async throws(ProjectError) {
         changes.append(change)
@@ -30,6 +33,40 @@ private final class LateBackend: ProjectSettingsBackend {
             LoadedProject(root: "/tmp/orders", file: file, parentID: nil, depth: 0, childIDs: [], resolved: ResolvedSettings(), fileIssue: nil),
         ])
     }
+}
+
+/// Answers `get namespaces` and `get deployments` with fixed names, without starting a process.
+private struct ClusterRunner: ProcessRunning {
+    func run(_ request: ProcessRequest, input: Data?, timeout: Duration?) async throws -> ProcessResult {
+        let names = request.arguments.contains("namespaces") ? ["default", "orders"] : ["orders-api"]
+        let items = names.map { #"{"metadata":{"name":"\#($0)"}}"# }.joined(separator: ",")
+        return ProcessResult(termination: .exited(0), standardOutput: Data(#"{"items":[\#(items)]}"#.utf8))
+    }
+}
+
+/// A backend whose tools are looked up after the window opens, as at launch.
+@MainActor
+private final class SlowToolsBackend: ProjectSettingsBackend {
+    let snapshot: ProjectSnapshot
+    private(set) var kubectl: Kubectl?
+    private(set) var hasLookedUpTools = false
+
+    init() {
+        let staging = EnvironmentEntry(name: "staging", namespace: "orders", kubeconfig: "~/.kube/staging.yaml")
+        var resolved = ResolvedSettings()
+        resolved.environments = [staging]
+        let file = ProjectFile(id: "ORD", name: "Orders", created: Date(timeIntervalSince1970: 0), type: .goService, environments: [staging])
+        snapshot = ProjectSnapshot(revision: 1, projects: [
+            LoadedProject(root: "/tmp/orders", file: file, parentID: nil, depth: 0, childIDs: [], resolved: resolved, fileIssue: nil),
+        ])
+    }
+
+    func waitForTools() async {
+        kubectl = Kubectl(executable: "/opt/homebrew/bin/kubectl", environment: [:], runner: ClusterRunner())
+        hasLookedUpTools = true
+    }
+
+    func update(_ id: String, _ change: ProjectChange) async throws(ProjectError) {}
 }
 
 @MainActor
@@ -289,6 +326,17 @@ struct ProjectSettingsTests {
             #expect(model.icon == "server.rack")
             #expect(session.snapshot.project("ORD")?.file.icon == "server.rack")
         }
+    }
+
+
+    @Test("A cluster check that starts before the tools are looked up waits for them instead of finding kubectl missing")
+    func clusterWaitsForTools() async {
+        let model = ProjectSettingsModel(projectID: "ORD", backend: SlowToolsBackend())
+        #expect(!model.hasKubectl)
+        await model.checkCluster()
+        #expect(model.connection == .connected)
+        #expect(model.namespaces == ["default", "orders"])
+        #expect(model.deployments == ["orders-api"])
     }
 
 }

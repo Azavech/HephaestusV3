@@ -27,6 +27,10 @@ public final class ProjectSession {
     public private(set) var tools = Tools.notLookedUp
     /// True while the shell and the tools are looked up again.
     public private(set) var isLookingUpTools = false
+    /// True once the tools were looked up the first time. Until then `tools` knows none: a window that opens with
+    /// the app waits for the lookup (`waitForTools()`) rather than finding a tool missing.
+    public private(set) var hasLookedUpTools = false
+    @ObservationIgnored private var toolWaiters: [CheckedContinuation<Void, Never>] = []
 
     public let dataFolder: DataFolder?
     @ObservationIgnored private let runner: any ProcessRunning
@@ -66,6 +70,7 @@ public final class ProjectSession {
         guard phase == .starting, library == nil else { return }
         guard let dataFolder else {
             phase = .failed(.noDataFolder)
+            resumeToolWaiters()
             return
         }
         do {
@@ -73,9 +78,11 @@ public final class ProjectSession {
             lock = try dataFolder.lock()
         } catch let error as StorageError {
             phase = .failed(.storage(error))
+            resumeToolWaiters()
             return
         } catch {
             phase = .failed(.noDataFolder)
+            resumeToolWaiters()
             return
         }
         let library = ProjectLibrary(dataFolder: dataFolder, runner: runner)
@@ -95,12 +102,33 @@ public final class ProjectSession {
         let capture = await ShellEnvironment.capture(processEnvironment: processEnvironment, runner: runner)
         shell = capture
         tools = await ToolLocator.lookUp(environment: capture.environment, runner: runner)
+        hasLookedUpTools = true
+        resumeToolWaiters()
         await library.setTools(tools)
         apply(await library.refreshOrigins())
     }
 
+    /// Returns once the tools were looked up the first time, at once after that or when the session can't
+    /// start, and when it stops.
+    public func waitForTools() async {
+        guard !hasLookedUpTools, !isFailed else { return }
+        await withCheckedContinuation { toolWaiters.append($0) }
+    }
+
+    private var isFailed: Bool {
+        if case .failed = phase { return true }
+        return false
+    }
+
+    private func resumeToolWaiters() {
+        let waiters = toolWaiters
+        toolWaiters = []
+        waiters.forEach { $0.resume() }
+    }
+
     /// Stops watching and ends the running tools, as the app quits. The lock goes with the process.
     public func stop() async {
+        resumeToolWaiters()
         watching?.cancel()
         await hub.stop()
         if let runner = runner as? SystemProcessRunner {

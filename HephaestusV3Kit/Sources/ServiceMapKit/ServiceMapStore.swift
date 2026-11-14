@@ -104,6 +104,8 @@ public final class LiveServiceMapStore: ServiceMapStore {
         let key = key(project, environment)
         guard reading.insert(key).inserted else { return }
         defer { reading.remove(key) }
+        // A map read as the app opens waits for the first lookup of the tools rather than finding kubectl missing.
+        await projects.waitForTools()
         let tools = projects.tools
         do throws(ClusterError) {
             let cluster = try cluster(project.id, environment: environment)
