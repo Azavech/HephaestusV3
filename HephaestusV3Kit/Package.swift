@@ -31,7 +31,8 @@ let package = Package(
         .library(name: "ToolsScenes", targets: ["ToolsScenes"]),
     ],
     dependencies: [
-        .package(path: "../../../Libraries/AZDesign"),
+        // AZDesign by version, from its GitHub repo (workspace rule): bump the version to update it.
+        .package(url: "git@github.com:Azavech/AZDesign.git", from: "0.4.0"),
     ],
     targets: [
         // Shared vocabulary: projects, tools, routes and the few components every tool uses.

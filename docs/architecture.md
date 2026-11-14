@@ -62,10 +62,12 @@ The architecture rests on a few rules:
 HephaestusV3/                    the repository root (GitHub: Azavech, private)
 ├─ CLAUDE.md                     what applies to this repository only
 ├─ .gitignore                    .DS_Store, xcuserdata/, .build/, .swiftpm/, DerivedData/
-├─ HephaestusV3.xcodeproj/       project.xcproj, in Xcode 27.2's JSON format
+├─ HephaestusV3.xcodeproj/       project.xcproj, in Xcode 27.2's JSON format; the app's Package.resolved
+│                                in project.xcworkspace/xcshareddata/swiftpm/
 ├─ HephaestusV3/                 the app target's folder: HephaestusV3App.swift only
 ├─ HephaestusV3Kit/              the local package
 │  ├─ Package.swift
+│  ├─ Package.resolved           pins AZDesign's version for the package's own builds and tests
 │  ├─ Sources/<Target>/          Swift files, and Localizable.xcstrings, for each target
 │  └─ Tests/<Target>Tests/       Swift Testing suites, one folder per tested target
 ├─ docs/
@@ -151,7 +153,7 @@ struct HephaestusV3App: App {
 | `defaultLocalization` | `"en"` |
 | `platforms` | `.macOS("27.0")` |
 | `products` | one library, `ToolsScenes`, of the target `ToolsScenes` |
-| `dependencies` | `.package(path: "../../../Libraries/AZDesign")`, that is `~/Developer/Apple/Libraries/AZDesign` |
+| `dependencies` | `.package(url: "git@github.com:Azavech/AZDesign.git", from: "0.4.0")`: AZDesign by version, from its GitHub repo over SSH. `Package.resolved` pins the exact version (0.4.0, revision `b0db917`) |
 
 Shared values in the manifest:
 
@@ -194,9 +196,13 @@ only on its target, uses Swift Testing and `@testable import`. ToolsScenes has n
   DashboardsKit (`DashboardRootView.swift`) and ServiceMapKit (`GraphCanvasView.swift`). No third-party
   dependency.
 
-**AZDesign APIs the app uses.** AZDesign comes from its working copy at the local path; every API below is
-in its release 0.4.0. Its pages in
-`~/Developer/Apple/Libraries/AZDesign/docs/` document each API (the Docs column).
+**AZDesign APIs the app uses.** AZDesign comes by version from its GitHub repo; every API below is in its
+release 0.4.0. Its reference pages (`docs/` in the AZDesign repo) document each API (the Docs column).
+
+**Updating AZDesign** follows the workspace rule: raise the version in `Package.swift`, read AZDesign's
+`CHANGELOG.md` (not its source) and apply its migration notes, resolve the packages (Xcode's File ▸ Packages
+▸ Update to Latest Package Versions, or `xcodebuild -resolvePackageDependencies`), then build and test.
+Commit both `Package.resolved` files with it.
 
 | Area | APIs | Used in | Docs |
 | --- | --- | --- | --- |
@@ -1361,11 +1367,6 @@ ToolsScenes has no tests: scenes, routes, `WindowDirectory` and the menus are ch
 
 Where the code doesn't yet meet the workspace's rules, or the architecture is knowingly incomplete:
 
-- **AZDesign by path.** `Package.swift` depends on AZDesign by local path, which AZDesign's `docs/package.md`
-  allows while both are developed together, not by version tag. Every AZDesign API the app uses is in
-  AZDesign 0.4.0 (the styles, components, adaptive layout, `PhoneStack` and preview traits) or earlier
-  (colors, motion, the code font). Moving to `.package(url: "git@github.com:Azavech/AZDesign.git", from: "0.4.0")`
-  would meet the workspace rule.
 - **No App Group.** The Dashboard and the chat preferences live in `UserDefaults.standard`. The workspace rule
   puts an app's data in `group.fr.azavech.hephaestusv3` from day one; there is no entitlements file yet.
 - **No asset catalog.** The app target has no app icon.

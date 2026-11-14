@@ -1,0 +1,15 @@
+{
+  "originHash" : "1e4d9e29292eb041612c8a4135e8f6e4c7c6b0173af47edea2c7f5ff4eb30bd3",
+  "pins" : [
+    {
+      "identity" : "azdesign",
+      "kind" : "remoteSourceControl",
+      "location" : "git@github.com:Azavech/AZDesign.git",
+      "state" : {
+        "revision" : "b0db917ad2e5746cce6562937a15466373bd3cf3",
+        "version" : "0.4.0"
+      }
+    }
+  ],
+  "version" : 3
+}
