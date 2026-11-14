@@ -13,7 +13,7 @@ public enum ProjectTools {
         [list(session), get(session), create(session), update(session), remove(session)]
     }
 
-    static let projectID = ToolSchema.string("Project identifier: 2 to 8 letters, for example ORD.")
+    static let projectID = ToolSchema.string("Project identifier, 2 to 8 letters, such as ORD.")
     static let types = ["none", "goService", "swiftApplication", "library"]
 
     // MARK: Operations
@@ -22,7 +22,7 @@ public enum ProjectTools {
     static func list(_ session: ProjectSession) -> ToolOperation {
         ToolOperation(
             name: "list_projects",
-            description: "List the projects of Hephaestus V3 on this Mac, sub projects included: identifier, name, type, folder, parent and sub projects.",
+            description: "Returns every project in Hephaestus V3, sub projects included, each with its identifier, name, type, folder, parent and sub projects.",
             inputSchema: .object(), permission: .read
         ) { @MainActor _ throws(ToolError) in
             try encode(session.snapshot.projects.map(ProjectSummaryJSON.init))
@@ -33,7 +33,7 @@ public enum ProjectTools {
     static func get(_ session: ProjectSession) -> ToolOperation {
         ToolOperation(
             name: "get_project",
-            description: "Get a project: its settings (name, type, color, icon, docs folder, GitHub page, use parent settings, graph enabled), folder, parent, sub projects, and its environments as they apply (environments; for a sub project that uses its parent's settings, the parent's with its changes first, then its own), the inherited ones (inheritedEnvironments) and the one the user works in (currentEnvironment).",
+            description: "Returns one project: its settings (name, type, color, icon, docs folder, GitHub page, use parent settings, graph enabled), folder, parent and sub projects, and its environments. environments holds those that apply: for a sub project on its parent's settings, the parent's with this project's changes, then its own. inheritedEnvironments holds the parent's as they are, and currentEnvironment the one selected in the app.",
             inputSchema: .object(properties: [("projectID", projectID)], required: ["projectID"]), permission: .read
         ) { @MainActor arguments throws(ToolError) in
             try detail(session, try arguments.string("projectID"))
@@ -44,13 +44,13 @@ public enum ProjectTools {
     static func create(_ session: ProjectSession) -> ToolOperation {
         ToolOperation(
             name: "create_project",
-            description: "Create a project in a folder on this Mac (the folder is created when missing) and add it to Hephaestus V3. The identifier is 2 to 8 letters, unique and permanent: ask the user for the name and the identifier unless they gave them. With parentID the folder must be inside the parent project's folder and the new project becomes its sub project. type is none when omitted.",
+            description: "Adds a project to Hephaestus V3 for a folder on this Mac, creating the folder if it doesn't exist. The identifier can't be changed later. With parentID, the project becomes a sub project of that parent, whose folder must contain this one. Without type, the type is none.",
             inputSchema: .object(properties: [
-                ("path", .string("Absolute path of the project folder, or a path starting with ~/.")),
-                ("name", .string("Project name shown in the app.")),
-                ("identifier", .string("2 to 8 letters A to Z, stored uppercase, unique on this Mac, never changed.")),
-                ("type", .string("Project type: none, goService (a service), swiftApplication (an app) or library.", oneOf: types)),
-                ("parentID", .string("Identifier of the parent project, to create a sub project.")),
+                ("path", .string("The project's folder: an absolute path, or one starting with ~/.")),
+                ("name", .string("The name the app shows.")),
+                ("identifier", .string("2 to 8 letters A–Z, saved in uppercase, not used by another project.")),
+                ("type", .string("none, goService (a service), swiftApplication (an app) or library.", oneOf: types)),
+                ("parentID", .string("The parent's identifier, for a sub project.")),
             ], required: ["path", "name", "identifier"]),
             permission: .change
         ) { @MainActor arguments throws(ToolError) in
@@ -72,14 +72,14 @@ public enum ProjectTools {
     static func update(_ session: ProjectSession) -> ToolOperation {
         ToolOperation(
             name: "update_project",
-            description: "Change a project's name, type, color, icon or docs folder. Omitted arguments are left unchanged. color is a tint (accent, accentSecondary, info, success, warning) or a hex color #RRGGBB, and an empty color removes it. icon is the name of an SF Symbol of this Mac, for example hammer, and an empty icon removes it.",
+            description: "Changes a project's name, type, color, icon or docs folder. Arguments left out keep their value, and an empty color or icon clears it.",
             inputSchema: .object(properties: [
                 ("projectID", projectID),
-                ("name", .string("New project name.")),
-                ("type", .string("Project type: none, goService (a service), swiftApplication (an app) or library.", oneOf: types)),
-                ("color", .string("The project's tint: accent, accentSecondary, info, success, warning, or #RRGGBB; an empty string removes it.")),
-                ("icon", .string("Name of an SF Symbol of this Mac shown as the project's icon, for example hammer; an empty string removes it.")),
-                ("docsPath", .string("Docs folder relative to the project's folder, for example docs.")),
+                ("name", .string("The new name.")),
+                ("type", .string("none, goService (a service), swiftApplication (an app) or library.", oneOf: types)),
+                ("color", .string("A tint (accent, accentSecondary, info, success, warning) or #RRGGBB.")),
+                ("icon", .string("An SF Symbol name, such as hammer.")),
+                ("docsPath", .string("The docs folder, relative to the project's folder, such as docs.")),
             ], required: ["projectID"]),
             permission: .change
         ) { @MainActor arguments throws(ToolError) in
@@ -109,7 +109,7 @@ public enum ProjectTools {
     static func remove(_ session: ProjectSession) -> ToolOperation {
         ToolOperation(
             name: "remove_project",
-            description: "Remove a project and its sub projects from Hephaestus V3 on this Mac. Their folders and files are left untouched; adding the folder again brings the project back.",
+            description: "Removes a project and its sub projects from Hephaestus V3. Nothing on disk is deleted: adding the folder again restores the project.",
             inputSchema: .object(properties: [("projectID", projectID)], required: ["projectID"]), permission: .change
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("projectID")

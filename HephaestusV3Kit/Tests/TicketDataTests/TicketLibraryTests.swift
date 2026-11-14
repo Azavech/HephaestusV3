@@ -86,8 +86,6 @@ private func failure(_ body: () async throws -> Void) async -> TicketError? {
     }
 }
 
-private let template = TicketRules.template
-
 @Suite("Ticket library")
 struct TicketLibraryTests {
     // MARK: Creating
@@ -119,24 +117,21 @@ struct TicketLibraryTests {
         #expect(title == .invalid("Title must be 1 to 200 characters on one line."))
         let missing = await failure { _ = try await world.library.create(.init(projectID: "NOPE", title: "x"), by: World.me) }
         #expect(missing == .notFound("Project NOPE not found."))
-        #expect(TicketRules.provisionalTitle(from: "Problem\n# Heading\n") == "Untitled Ticket")
+        #expect(TicketRules.provisionalTitle(from: "# Heading\n\n## Other\n") == "Untitled Ticket")
     }
 
-    @Test("Claude's tickets follow the template, start To Do and record the chat")
+    @Test("Claude's tickets take any description, start To Do and record the chat")
     func claudeCreates() async throws {
         let world = try await World()
-        let error = await failure {
-            _ = try await world.library.create(.init(projectID: "HEPH", description: "Problem\nCurrent Behavior\nChange"), by: World.claude)
-        }
-        #expect(error?.description.hasPrefix("Description does not follow the ticket template: heading \"Expected\" is missing") == true)
-        let id = try await world.library.create(.init(projectID: "HEPH", title: "Fix", description: template, status: .draft), by: World.claude).id
+        let id = try await world.library.create(.init(projectID: "HEPH", title: "Fix", description: "Tabs close.", status: .draft),
+                                                by: World.claude).id
         let ticket = try #require(await world.ticket(id))
         #expect(ticket.file.status == .todo)
         #expect(ticket.file.createdBy == .claude)
+        #expect(ticket.file.description == "Tabs close.")
         #expect(ticket.file.history.first?.chat == "external")
-        #expect(TicketRules.heading(of: "  ## current behavior :") == 1)
-        #expect(TicketRules.heading(of: "**Problem**") == nil)
-        #expect(TicketRules.heading(of: "Current Behaviour") == nil)
+        _ = try await world.library.update(id, .init(description: "Tabs close on click."), by: World.claude)
+        #expect(await world.ticket(id)?.file.description == "Tabs close on click.")
     }
 
     @Test("The user may create a draft (V3)")

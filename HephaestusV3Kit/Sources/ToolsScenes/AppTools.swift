@@ -19,15 +19,15 @@ enum AppTools {
     static func openInApp(session: ProjectSession, tickets: TicketSession, open: @escaping @MainActor (Route) -> Bool) -> ToolOperation {
         ToolOperation(
             name: "open_in_app",
-            description: "Show something to the user in Hephaestus V3: a project in the Projects window, a project's settings, or a ticket or a bundle in its Tickets window.",
+            description: "Opens an item in Hephaestus V3 for the user: a project in the Projects window, a project's settings window, or a ticket or bundle in its project's Tickets window.",
             inputSchema: .object(properties: [
                 ("target", .object(
-                    "What to show. kind decides the other properties: project: projectID; projectSettings: projectID; ticket: ticketID; bundle: bundleID.",
+                    "The item to open. project and projectSettings take projectID, ticket takes ticketID, bundle takes bundleID.",
                     properties: [
-                        ("kind", .string("Kind of item to show.", oneOf: ["project", "projectSettings", "ticket", "bundle"])),
-                        ("projectID", .string("Project identifier: 2 to 8 letters, for example ORD.")),
-                        ("ticketID", .string("Ticket id, for example ORD-12.")),
-                        ("bundleID", .string("Bundle id, for example ORD-B2.")),
+                        ("kind", .string("The item's kind.", oneOf: ["project", "projectSettings", "ticket", "bundle"])),
+                        ("projectID", .string("Project identifier, 2 to 8 letters, such as ORD.")),
+                        ("ticketID", .string("Ticket id, such as ORD-12.")),
+                        ("bundleID", .string("Bundle id, such as ORD-B2.")),
                     ],
                     required: ["kind"]
                 )),

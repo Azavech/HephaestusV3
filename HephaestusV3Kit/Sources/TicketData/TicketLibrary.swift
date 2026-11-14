@@ -250,7 +250,6 @@ public actor TicketLibrary {
         if !hasTitle, description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             throw .invalid("The description must not be empty.")
         }
-        if actor.isClaude { try TicketRules.checkTemplate(description) }
         guard request.status == .todo || request.status == .draft else { throw .invalid("A new ticket is To Do or a draft.") }
         let status: TicketFileStatus = actor.isClaude ? .todo : request.status
         let files = try checkedFiles(request.attachments)
@@ -312,8 +311,7 @@ public actor TicketLibrary {
         }
         if let description = change.description {
             let description = TicketRules.normalized(description)
-            if actor.isClaude { try TicketRules.checkTemplate(description) }
-            if description != file.description {
+                if description != file.description {
                 file.history.append(entry(.description, date: date, by: actor))
                 file.description = description
             }

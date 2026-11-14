@@ -72,14 +72,15 @@ struct TicketToolsTests {
         ])
     }
 
-    @Test("Claude creates a ticket with the template, comments with a file, and the window's session sees it")
+    @Test("Claude creates a ticket with a free description, comments with a file, and the window's session sees it")
     func ticketLifecycle() async throws {
         let world = try await ToolWorld()
         defer { Task { await world.close() } }
-        let refused = await world.failure("create_ticket", ["projectID": "ORD", "description": "Fix it"])
+        let refused = await world.failure("create_ticket", ["projectID": "ORD", "title": "Two\nlines", "description": "Fix it"])
         #expect(refused?.code == .invalid)
-        let ticket = try await world.call("create_ticket", ["projectID": "ord", "title": "Retries", "description": .string(TicketRules.template),
+        let ticket = try await world.call("create_ticket", ["projectID": "ord", "title": "Retries", "description": "Retries stop after one timeout.",
                                                             "priority": "high", "labels": ["api"]])
+        #expect(ticket["description"]?.stringValue == "Retries stop after one timeout.")
         #expect(ticket["id"]?.stringValue == "ORD-1")
         #expect(ticket["status"]?.stringValue == "todo" && ticket["createdBy"]?.stringValue == "claude")
         #expect(ticket["priority"]?.stringValue == "high")
@@ -97,7 +98,7 @@ struct TicketToolsTests {
     func statusAndBundles() async throws {
         let world = try await ToolWorld()
         defer { Task { await world.close() } }
-        _ = try await world.call("create_ticket", ["projectID": "ORD", "description": .string(TicketRules.template)])
+        _ = try await world.call("create_ticket", ["projectID": "ORD", "description": "Fix it"])
         let bundle = try await world.call("create_bundle", ["projectID": "ORD", "ticketIDs": ["ORD-1"]])
         #expect(bundle["id"]?.stringValue == "ORD-B1" && bundle["status"]?.stringValue == "todo")
         #expect(await world.failure("set_ticket_status", ["ticketID": "ORD-1", "status": "draft"])?.message

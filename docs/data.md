@@ -581,19 +581,14 @@ next number, before the ticket or bundle file. A number is never reused, even wh
 
 **Titles.** Trimmed, 1–200 characters on one line, else `Title must be 1 to 200 characters on one line.` A
 title equal to the stored one changes nothing. A ticket created without a title takes its provisional
-title: the description's first line that isn't empty and isn't a heading (a line starting with `#`, or a
-template heading line), trimmed, cut to 60 characters and trimmed again; `Untitled Ticket` without one.
+title: the description's first line that isn't empty and isn't a heading (a line starting with `#`), trimmed,
+cut to 60 characters and trimmed again; `Untitled Ticket` without one.
 Without a title the description must not be empty (`The description must not be empty.`). A bundle created
 without a title takes its tickets' titles joined with `, `, cut to 60 characters and trimmed. (V2 then had
 Haiku name them; V3 keeps the provisional title, which the user or Claude may change.)
 
-**Description template.** A description Claude writes, at creation or in a change, must hold the headings
-Problem, Current Behavior, Expected, Change, Testing, Docs, in this order, each alone on its line: a line is
-the heading H when it matches `^\s*#*\s*H\s*:?\s*$`, any letter case; the lines are scanned once and each
-heading line of the next expected heading counts. Otherwise: `Description does not follow the ticket template:
-heading "<H>" is missing or out of order. Use the headings Problem, Current Behavior, Expected, Change, Testing,
-Docs in this order, each alone on its line.` The user's descriptions aren't checked (`TicketRules.template`
-holds the template's text).
+**Descriptions.** Free Markdown, from the user and from Claude alike. V2 made Claude's descriptions follow a
+six-heading template; V3 drops it with the rest of V2's prompts ([Decisions › V2's prompts](decisions.md#v2s-prompts)).
 
 **Status.** Statuses in order: Draft (**V3 addition**), To Do, In Progress, In Review, Done. A ticket starts
 To Do, or as a draft when the user creates it so; Claude's start To Do. The user may set any status at any
@@ -640,8 +635,8 @@ writes](#atomic-writes) and returns a new snapshot.
 
 | Change | Rules | Order of the writes |
 | --- | --- | --- |
-| **Create a ticket** (`NewTicket`) | The project is loaded (`Project <ID> not found.`). Title, description (template for Claude), status (`todo` or `draft`: `A new ticket is To Do or a draft.`), files and links are checked before a number is taken. `created` and `updated` now, `createdBy` the actor, the history one `created` entry. | 1. project file (counter) 2. attachment files 3. ticket file; when 2 or 3 fails, the copied files are removed |
-| **Change a ticket** (`TicketChange`) | Title, description (template for Claude), priority, labels, the whole list of links. History entries in this order: rename, description edit, one `linkRemoved` per link no longer declared (in the old order), one `linkAdded` per new link (in the given order); a link whose kind changes is removed, then added. Priority and labels add no entry. A change that changes nothing writes nothing. | ticket file |
+| **Create a ticket** (`NewTicket`) | The project is loaded (`Project <ID> not found.`). Title, description, status (`todo` or `draft`: `A new ticket is To Do or a draft.`), files and links are checked before a number is taken. `created` and `updated` now, `createdBy` the actor, the history one `created` entry. | 1. project file (counter) 2. attachment files 3. ticket file; when 2 or 3 fails, the copied files are removed |
+| **Change a ticket** (`TicketChange`) | Title, description, priority, labels, the whole list of links. History entries in this order: rename, description edit, one `linkRemoved` per link no longer declared (in the old order), one `linkAdded` per new link (in the given order); a link whose kind changes is removed, then added. Priority and labels add no entry. A change that changes nothing writes nothing. | ticket file |
 | **Set a ticket's status** | [Ticket rules › Status](#ticket-rules); one `status` entry. | 1. ticket file 2. each bundle file the automatic rules change, in bundle number order |
 | **Delete tickets** | Their ids leave every bundle (the automatic rules apply in the same write), and every link to them leaves the other tickets of the project, with no history entry. | 1. each bundle file listing them 2. each ticket file linking to them 3. the ticket files and their `attachments/<ID>/` folders, moved to the Trash |
 | **Add a comment** | Text or files; the comment's author is the actor. | 1. attachment files 2. ticket file |

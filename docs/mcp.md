@@ -17,7 +17,8 @@ function the window calls ([Architecture › MCPKit](architecture.md#mcpkit)). T
 | JSON-RPC methods | `initialize`, `ping`, `tools/list`, `tools/call`; every notification is accepted and ignored |
 | Server name | `hephaestus`, so Claude names the tools `mcp__hephaestus__<tool>` |
 | Authentication | `Authorization: Bearer <token>` with the external token ([Authentication](#authentication)) |
-| Tools | [Tools](#tools): 6 today |
+| Tools | [Tools](#tools): 22 today |
+| Instructions to Claude | None: no `instructions` in `initialize`, no system prompt, no skills ([What Claude reads](#what-claude-reads)) |
 
 ## Server lifecycle
 
@@ -125,7 +126,8 @@ insignificant white space, keys sorted.
 
 - **`initialize`**: `protocolVersion` is required; `capabilities` and `clientInfo` are ignored. The result is
   `{"protocolVersion": <the requested version when supported, else 2025-06-18>, "capabilities": {"tools":
-  {"listChanged": false}}, "serverInfo": {"name": "hephaestus", "version": <the app's version>}}`.
+  {"listChanged": false}}, "serverInfo": {"name": "hephaestus", "version": <the app's version>}}`, with no
+  `instructions` member.
 - **Notifications** get 202 and do nothing.
 - **`ping`**: the result is `{}`.
 - **`tools/list`**: `params`, when present, must be an object; its members, `cursor` included, are ignored. The
@@ -203,6 +205,15 @@ The section "Claude Code in Terminal" ends with: "Run the command in Terminal to
 Hephaestus V3. After Regenerate or a new port, run “claude mcp remove hephaestus” first." Identifiers:
 `settings.mcp.status`, `.port`, `.copyToken`, `.regenerate`, `.command`, `.copyCommand`.
 
+## What Claude reads
+
+The tool names, descriptions and input schemas are all V3 tells Claude. A description says what the tool does,
+what it returns and which rules the app enforces; it never tells Claude how to work: when to change a status,
+what to ask the user, how to write a ticket. None of V2's prompts come over: not its system prompts and skills,
+not its hook texts, not its tool descriptions, which V3 wrote anew (the owner's rule:
+[Decisions › V2's prompts](decisions.md#v2s-prompts)). Claude follows the same rules as the user, except the
+changes reserved to the user ([Data › Ticket rules](data.md#ticket-rules)).
+
 ## Tools
 
 Each tool runs the operation its kit declares ([Architecture › MCPKit](architecture.md#mcpkit)); its section
@@ -254,7 +265,7 @@ make, `forbidden`; a file that can't be moved to the Trash, `unavailable`; a fil
 Description:
 
 ```text
-List the projects of Hephaestus V3 on this Mac, sub projects included: identifier, name, type, folder, parent and sub projects.
+Returns every project in Hephaestus V3, sub projects included, each with its identifier, name, type, folder, parent and sub projects.
 ```
 
 Input schema:
@@ -276,7 +287,7 @@ Input schema:
 Description:
 
 ```text
-Get a project: its settings (name, type, color, icon, docs folder, GitHub page, use parent settings, graph enabled), folder, parent, sub projects, and its environments as they apply (environments; for a sub project that uses its parent's settings, the parent's with its changes first, then its own), the inherited ones (inheritedEnvironments) and the one the user works in (currentEnvironment).
+Returns one project: its settings (name, type, color, icon, docs folder, GitHub page, use parent settings, graph enabled), folder, parent and sub projects, and its environments. environments holds those that apply: for a sub project on its parent's settings, the parent's with this project's changes, then its own. inheritedEnvironments holds the parent's as they are, and currentEnvironment the one selected in the app.
 ```
 
 Input schema:
@@ -285,7 +296,7 @@ Input schema:
 {
   "type": "object",
   "properties": {
-    "projectID": {"type": "string", "description": "Project identifier: 2 to 8 letters, for example ORD."}
+    "projectID": {"type": "string", "description": "Project identifier, 2 to 8 letters, such as ORD."}
   },
   "required": ["projectID"],
   "additionalProperties": false
@@ -305,7 +316,7 @@ Input schema:
 Description:
 
 ```text
-Create a project in a folder on this Mac (the folder is created when missing) and add it to Hephaestus V3. The identifier is 2 to 8 letters, unique and permanent: ask the user for the name and the identifier unless they gave them. With parentID the folder must be inside the parent project's folder and the new project becomes its sub project. type is none when omitted.
+Adds a project to Hephaestus V3 for a folder on this Mac, creating the folder if it doesn't exist. The identifier can't be changed later. With parentID, the project becomes a sub project of that parent, whose folder must contain this one. Without type, the type is none.
 ```
 
 Input schema:
@@ -314,15 +325,15 @@ Input schema:
 {
   "type": "object",
   "properties": {
-    "path": {"type": "string", "description": "Absolute path of the project folder, or a path starting with ~/."},
-    "name": {"type": "string", "description": "Project name shown in the app."},
-    "identifier": {"type": "string", "description": "2 to 8 letters A to Z, stored uppercase, unique on this Mac, never changed."},
+    "path": {"type": "string", "description": "The project's folder: an absolute path, or one starting with ~/."},
+    "name": {"type": "string", "description": "The name the app shows."},
+    "identifier": {"type": "string", "description": "2 to 8 letters A–Z, saved in uppercase, not used by another project."},
     "type": {
       "type": "string",
-      "description": "Project type: none, goService (a service), swiftApplication (an app) or library.",
+      "description": "none, goService (a service), swiftApplication (an app) or library.",
       "enum": ["none", "goService", "swiftApplication", "library"]
     },
-    "parentID": {"type": "string", "description": "Identifier of the parent project, to create a sub project."}
+    "parentID": {"type": "string", "description": "The parent's identifier, for a sub project."}
   },
   "required": ["path", "name", "identifier"],
   "additionalProperties": false
@@ -342,7 +353,7 @@ Input schema:
 Description:
 
 ```text
-Change a project's name, type, color, icon or docs folder. Omitted arguments are left unchanged. color is a tint (accent, accentSecondary, info, success, warning) or a hex color #RRGGBB, and an empty color removes it. icon is the name of an SF Symbol of this Mac, for example hammer, and an empty icon removes it.
+Changes a project's name, type, color, icon or docs folder. Arguments left out keep their value, and an empty color or icon clears it.
 ```
 
 Input schema:
@@ -351,16 +362,16 @@ Input schema:
 {
   "type": "object",
   "properties": {
-    "projectID": {"type": "string", "description": "Project identifier: 2 to 8 letters, for example ORD."},
-    "name": {"type": "string", "description": "New project name."},
+    "projectID": {"type": "string", "description": "Project identifier, 2 to 8 letters, such as ORD."},
+    "name": {"type": "string", "description": "The new name."},
     "type": {
       "type": "string",
-      "description": "Project type: none, goService (a service), swiftApplication (an app) or library.",
+      "description": "none, goService (a service), swiftApplication (an app) or library.",
       "enum": ["none", "goService", "swiftApplication", "library"]
     },
-    "color": {"type": "string", "description": "The project's tint: accent, accentSecondary, info, success, warning, or #RRGGBB; an empty string removes it."},
-    "icon": {"type": "string", "description": "Name of an SF Symbol of this Mac shown as the project's icon, for example hammer; an empty string removes it."},
-    "docsPath": {"type": "string", "description": "Docs folder relative to the project's folder, for example docs."}
+    "color": {"type": "string", "description": "A tint (accent, accentSecondary, info, success, warning) or #RRGGBB."},
+    "icon": {"type": "string", "description": "An SF Symbol name, such as hammer."},
+    "docsPath": {"type": "string", "description": "The docs folder, relative to the project's folder, such as docs."}
   },
   "required": ["projectID"],
   "additionalProperties": false
@@ -376,7 +387,7 @@ Input schema:
 Description:
 
 ```text
-Remove a project and its sub projects from Hephaestus V3 on this Mac. Their folders and files are left untouched; adding the folder again brings the project back.
+Removes a project and its sub projects from Hephaestus V3. Nothing on disk is deleted: adding the folder again restores the project.
 ```
 
 Input schema:
@@ -385,7 +396,7 @@ Input schema:
 {
   "type": "object",
   "properties": {
-    "projectID": {"type": "string", "description": "Project identifier: 2 to 8 letters, for example ORD."}
+    "projectID": {"type": "string", "description": "Project identifier, 2 to 8 letters, such as ORD."}
   },
   "required": ["projectID"],
   "additionalProperties": false
@@ -401,7 +412,7 @@ Input schema:
 Description:
 
 ```text
-List a project's tickets, those of its sub projects included, optionally only those with one status: draft, todo, in_progress, review or done.
+Returns a project's tickets, its sub projects' included. With status, only the tickets in that status.
 ```
 
 Input schema:
@@ -411,11 +422,11 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "projectID" : {
-      "description" : "Project identifier: 2 to 8 letters, for example ORD.",
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
       "type" : "string"
     },
     "status" : {
-      "description" : "Only list tickets with this status.",
+      "description" : "draft, todo, in_progress, review or done.",
       "enum" : [
         "draft",
         "todo",
@@ -442,7 +453,7 @@ Input schema:
 Description:
 
 ```text
-Get a ticket: title, status, priority, labels, dates, creator, description, attachments (with their absolute paths), comments, chat ids, links and history. links are the links the ticket declares (dependsOn, related); inverseLinks are the links other tickets declare to it (blocks, related). history lists its creation, status changes, renames, link changes and description edits with their authors and dates.
+Returns a ticket: title, status, priority, labels, dates, creator, description, attachments with absolute paths, comments, chat ids, links and history. links holds the links written in this ticket (dependsOn, related); inverseLinks holds the links written in other tickets that point here (blocks, related). history records the creation, status changes, renames, link changes and description edits, each with its author and date.
 ```
 
 Input schema:
@@ -452,7 +463,7 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "ticketID" : {
-      "description" : "Ticket id, for example ORD-12.",
+      "description" : "Ticket id, such as ORD-12.",
       "type" : "string"
     }
   },
@@ -465,27 +476,14 @@ Input schema:
 
 ### create_ticket
 
-- **Calls:** `TicketLibrary.create` as Claude: [Data › Ticket changes](data.md#ticket-changes). The description is checked against the template; the ticket starts `todo`, `createdBy: claude`. `title`, `priority` and `labels` are V3's: without a title, the provisional title is kept.
+- **Calls:** `TicketLibrary.create` as Claude: [Data › Ticket changes](data.md#ticket-changes). The description is free Markdown, as the user's; the ticket starts `todo`, `createdBy: claude`. `title`, `priority` and `labels` are V3's: without a title, the provisional title is kept.
 - **Result:** the new ticket's JSON.
-- **Errors:** an unknown project or linked ticket (`notFound`); a description off the template, a title, an attachment or a link that breaks a rule (`invalid`).
+- **Errors:** an unknown project or linked ticket (`notFound`); an empty description without a title, a title, an attachment or a link that breaks a rule (`invalid`).
 
 Description:
 
 ```text
-Create a ticket in a project. It starts as todo. Without a title, its title is the description's first line that is not a heading. The description must use this template, the six headings alone on their lines and in this order:
-Problem
-(Explain the problem)
-Current Behavior
-(Explain the current behaviour)
-Expected
-(Explain the behaviour that should be expected)
-Change
-(Explain what should change)
-Testing
-(List the tests that decide whether the ticket is done)
-Docs
-(List all docs files and paragraphs relevant to the issue)
-attachments are paths of files on this Mac (absolute, starting with ~/, or relative to the project's folder) that are copied into the ticket. links are links to other tickets of the same project: dependsOn when this ticket needs the other ticket to be done first, related when they are only related.
+Creates a ticket by Claude in a project, with the status todo. Without a title, the description's first line that is neither empty nor a heading becomes the title. The files listed in attachments are copied into the ticket.
 ```
 
 Input schema:
@@ -495,30 +493,30 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "attachments" : {
-      "description" : "Files on this Mac to attach: absolute paths, paths starting with ~/, or paths relative to the project's folder.",
+      "description" : "Files on this Mac to copy in, each an absolute path, a path from ~/, or a path within the project's folder.",
       "items" : {
         "type" : "string"
       },
       "type" : "array"
     },
     "description" : {
-      "description" : "Ticket description following the template.",
+      "description" : "The description, in Markdown.",
       "type" : "string"
     },
     "labels" : {
-      "description" : "Labels, replacing the current ones; [] removes them all.",
+      "description" : "The labels, replacing the current ones; [] clears them.",
       "items" : {
         "type" : "string"
       },
       "type" : "array"
     },
     "links" : {
-      "description" : "Links to other tickets of the same project.",
+      "description" : "Links to tickets in the same project.",
       "items" : {
         "additionalProperties" : false,
         "properties" : {
           "kind" : {
-            "description" : "dependsOn when this ticket needs the other ticket to be done first, related otherwise.",
+            "description" : "dependsOn: this ticket waits for the other one to be done. related: a plain link.",
             "enum" : [
               "dependsOn",
               "related"
@@ -526,7 +524,7 @@ Input schema:
             "type" : "string"
           },
           "ticket" : {
-            "description" : "Id of a ticket of the same project, for example ORD-15.",
+            "description" : "Id of a ticket in the same project, such as ORD-15.",
             "type" : "string"
           }
         },
@@ -539,7 +537,7 @@ Input schema:
       "type" : "array"
     },
     "priority" : {
-      "description" : "Priority: low, medium, high or urgent; an empty string removes it.",
+      "description" : "low, medium, high or urgent; empty to clear it.",
       "enum" : [
         "",
         "low",
@@ -550,11 +548,11 @@ Input schema:
       "type" : "string"
     },
     "projectID" : {
-      "description" : "Project identifier: 2 to 8 letters, for example ORD.",
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
       "type" : "string"
     },
     "title" : {
-      "description" : "Ticket title, one line of 1 to 200 characters.",
+      "description" : "One line of 1 to 200 characters.",
       "type" : "string"
     }
   },
@@ -570,12 +568,12 @@ Input schema:
 
 - **Calls:** `TicketLibrary.update` as Claude. `links` replaces the declared links; each new one is checked with the [link rules](data.md#link-rules). A call that changes nothing writes nothing.
 - **Result:** the ticket's JSON.
-- **Errors:** an unknown ticket or newly linked ticket (`notFound`); a malformed id, a title, a description off the template or a link that breaks a rule (`invalid`).
+- **Errors:** an unknown ticket or newly linked ticket (`notFound`); a malformed id, a title or a link that breaks a rule (`invalid`).
 
 Description:
 
 ```text
-Change a ticket's title, description, priority, labels or links. Omitted arguments are left unchanged; a new description must follow the same template as create_ticket; links replaces the links the ticket declares, so list every link to keep, and [] removes them all. Use set_ticket_status for the status and add_comment to report work.
+Changes a ticket's title, description, priority, labels or links. Arguments left out keep their value.
 ```
 
 Input schema:
@@ -585,23 +583,23 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "description" : {
-      "description" : "New description, following the ticket template.",
+      "description" : "The new description, in Markdown.",
       "type" : "string"
     },
     "labels" : {
-      "description" : "Labels, replacing the current ones; [] removes them all.",
+      "description" : "The labels, replacing the current ones; [] clears them.",
       "items" : {
         "type" : "string"
       },
       "type" : "array"
     },
     "links" : {
-      "description" : "The links this ticket declares, replacing the current ones: every link to keep and the new ones; [] removes them all.",
+      "description" : "Every link the ticket declares after the change; links missing from the list are removed, and [] removes them all.",
       "items" : {
         "additionalProperties" : false,
         "properties" : {
           "kind" : {
-            "description" : "dependsOn when this ticket needs the other ticket to be done first, related otherwise.",
+            "description" : "dependsOn: this ticket waits for the other one to be done. related: a plain link.",
             "enum" : [
               "dependsOn",
               "related"
@@ -609,7 +607,7 @@ Input schema:
             "type" : "string"
           },
           "ticket" : {
-            "description" : "Id of a ticket of the same project, for example ORD-15.",
+            "description" : "Id of a ticket in the same project, such as ORD-15.",
             "type" : "string"
           }
         },
@@ -622,7 +620,7 @@ Input schema:
       "type" : "array"
     },
     "priority" : {
-      "description" : "Priority: low, medium, high or urgent; an empty string removes it.",
+      "description" : "low, medium, high or urgent; empty to clear it.",
       "enum" : [
         "",
         "low",
@@ -633,11 +631,11 @@ Input schema:
       "type" : "string"
     },
     "ticketID" : {
-      "description" : "Ticket id, for example ORD-12.",
+      "description" : "Ticket id, such as ORD-12.",
       "type" : "string"
     },
     "title" : {
-      "description" : "New title, one line.",
+      "description" : "The new title, one line of 1 to 200 characters.",
       "type" : "string"
     }
   },
@@ -657,7 +655,7 @@ Input schema:
 Description:
 
 ```text
-Delete a ticket and its attachments, moved to the Trash; it is also removed from every bundle and from the links of the other tickets.
+Deletes a ticket, moving its file and attachments to the Trash, and takes it out of every bundle and every other ticket's links.
 ```
 
 Input schema:
@@ -667,7 +665,7 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "ticketID" : {
-      "description" : "Ticket id, for example ORD-12.",
+      "description" : "Ticket id, such as ORD-12.",
       "type" : "string"
     }
   },
@@ -687,7 +685,7 @@ Input schema:
 Description:
 
 ```text
-Set a ticket's status to todo, in_progress, review or done. Set in_progress when you start working on a ticket, and review or done when you have finished it. Only the user changes a done ticket or a draft.
+Changes a ticket's status to todo, in_progress, review or done. Drafts and done tickets can only be changed by the user.
 ```
 
 Input schema:
@@ -707,7 +705,7 @@ Input schema:
       "type" : "string"
     },
     "ticketID" : {
-      "description" : "Ticket id, for example ORD-12.",
+      "description" : "Ticket id, such as ORD-12.",
       "type" : "string"
     }
   },
@@ -728,7 +726,7 @@ Input schema:
 Description:
 
 ```text
-Add a comment by Claude to a ticket, in markdown, optionally with files attached (paths on this Mac: absolute, starting with ~/, or relative to the project's folder).
+Adds a comment by Claude to a ticket, with optional files copied in.
 ```
 
 Input schema:
@@ -738,18 +736,18 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "attachments" : {
-      "description" : "Files on this Mac to attach: absolute paths, paths starting with ~/, or paths relative to the project's folder.",
+      "description" : "Files on this Mac to copy in, each an absolute path, a path from ~/, or a path within the project's folder.",
       "items" : {
         "type" : "string"
       },
       "type" : "array"
     },
     "text" : {
-      "description" : "Comment text (markdown).",
+      "description" : "The comment, in Markdown.",
       "type" : "string"
     },
     "ticketID" : {
-      "description" : "Ticket id, for example ORD-12.",
+      "description" : "Ticket id, such as ORD-12.",
       "type" : "string"
     }
   },
@@ -770,7 +768,7 @@ Input schema:
 Description:
 
 ```text
-Change the text of a comment of a ticket, whoever wrote it. The comment's attached files do not change.
+Replaces the text of a ticket's comment, whoever wrote it. Its files stay as they are.
 ```
 
 Input schema:
@@ -780,15 +778,15 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "commentID" : {
-      "description" : "Comment id (a UUID), from get_ticket.",
+      "description" : "The comment's UUID, as get_ticket returns it.",
       "type" : "string"
     },
     "text" : {
-      "description" : "New comment text (markdown).",
+      "description" : "The new text, in Markdown.",
       "type" : "string"
     },
     "ticketID" : {
-      "description" : "Ticket id, for example ORD-12.",
+      "description" : "Ticket id, such as ORD-12.",
       "type" : "string"
     }
   },
@@ -810,7 +808,7 @@ Input schema:
 Description:
 
 ```text
-Delete a comment of a ticket, whoever wrote it; its attached files are moved to the Trash.
+Deletes a ticket's comment, whoever wrote it, and moves its files to the Trash.
 ```
 
 Input schema:
@@ -820,11 +818,11 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "commentID" : {
-      "description" : "Comment id (a UUID), from get_ticket.",
+      "description" : "The comment's UUID, as get_ticket returns it.",
       "type" : "string"
     },
     "ticketID" : {
-      "description" : "Ticket id, for example ORD-12.",
+      "description" : "Ticket id, such as ORD-12.",
       "type" : "string"
     }
   },
@@ -845,7 +843,7 @@ Input schema:
 Description:
 
 ```text
-Remove a file attached to a ticket itself (not to one of its comments); the file is moved to the Trash.
+Removes a file attached to the ticket itself, not to a comment, and moves it to the Trash.
 ```
 
 Input schema:
@@ -855,11 +853,11 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "attachmentID" : {
-      "description" : "Attachment id (a UUID), from get_ticket.",
+      "description" : "The attachment's UUID, as get_ticket returns it.",
       "type" : "string"
     },
     "ticketID" : {
-      "description" : "Ticket id, for example ORD-12.",
+      "description" : "Ticket id, such as ORD-12.",
       "type" : "string"
     }
   },
@@ -880,7 +878,7 @@ Input schema:
 Description:
 
 ```text
-List a project's bundles: named groups of its tickets, in the order they are to be done, each with its status (todo, in_progress, done).
+Returns a project's bundles: ordered groups of its tickets, each with the status todo, in_progress or done.
 ```
 
 Input schema:
@@ -890,7 +888,7 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "projectID" : {
-      "description" : "Project identifier: 2 to 8 letters, for example ORD.",
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
       "type" : "string"
     }
   },
@@ -910,7 +908,7 @@ Input schema:
 Description:
 
 ```text
-Get a bundle: title, status, dates, ticket ids in the order they are to be done and chat ids.
+Returns a bundle: title, status, dates, its ticket ids in order, and chat ids.
 ```
 
 Input schema:
@@ -920,7 +918,7 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "bundleID" : {
-      "description" : "Bundle id, for example ORD-B2.",
+      "description" : "Bundle id, such as ORD-B2.",
       "type" : "string"
     }
   },
@@ -940,7 +938,7 @@ Input schema:
 Description:
 
 ```text
-Create a bundle of tickets of one project, in the order they are to be done. Without a title, its title is made of its tickets' titles. A bundle of tickets that are all done starts done.
+Creates a bundle from tickets of one project, kept in the order given. Without a title, it is named after its tickets. When every ticket is already done, the bundle starts done.
 ```
 
 Input schema:
@@ -950,18 +948,18 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "projectID" : {
-      "description" : "Project identifier: 2 to 8 letters, for example ORD.",
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
       "type" : "string"
     },
     "ticketIDs" : {
-      "description" : "Ids of tickets of the project, in order; at least one.",
+      "description" : "Ids of the project's tickets, in order; one at least.",
       "items" : {
         "type" : "string"
       },
       "type" : "array"
     },
     "title" : {
-      "description" : "Bundle title, one line of 1 to 200 characters.",
+      "description" : "One line of 1 to 200 characters.",
       "type" : "string"
     }
   },
@@ -982,7 +980,7 @@ Input schema:
 Description:
 
 ```text
-Change a bundle's title or tickets. Omitted arguments are left unchanged; ticketIDs replaces the bundle's tickets and their order.
+Changes a bundle's title or tickets. Arguments left out keep their value.
 ```
 
 Input schema:
@@ -992,18 +990,18 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "bundleID" : {
-      "description" : "Bundle id, for example ORD-B2.",
+      "description" : "Bundle id, such as ORD-B2.",
       "type" : "string"
     },
     "ticketIDs" : {
-      "description" : "Ids of tickets of the project, in order, replacing the current ones.",
+      "description" : "Ids of the project's tickets, in order, replacing the whole list.",
       "items" : {
         "type" : "string"
       },
       "type" : "array"
     },
     "title" : {
-      "description" : "New title, one line.",
+      "description" : "The new title, one line of 1 to 200 characters.",
       "type" : "string"
     }
   },
@@ -1023,7 +1021,7 @@ Input schema:
 Description:
 
 ```text
-Set a bundle's status to todo or in_progress. A bundle becomes done by itself when all its tickets are done, and only the user changes a done bundle.
+Changes a bundle's status to todo or in_progress. A bundle turns done on its own once all its tickets are done, and a done bundle can only be changed by the user.
 ```
 
 Input schema:
@@ -1033,7 +1031,7 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "bundleID" : {
-      "description" : "Bundle id, for example ORD-B2.",
+      "description" : "Bundle id, such as ORD-B2.",
       "type" : "string"
     },
     "status" : {
@@ -1062,7 +1060,7 @@ Input schema:
 Description:
 
 ```text
-Delete a bundle; its file is moved to the Trash and its tickets are kept.
+Deletes a bundle, moving its file to the Trash; its tickets stay.
 ```
 
 Input schema:
@@ -1072,7 +1070,7 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "bundleID" : {
-      "description" : "Bundle id, for example ORD-B2.",
+      "description" : "Bundle id, such as ORD-B2.",
       "type" : "string"
     }
   },
@@ -1096,7 +1094,7 @@ Input schema:
 Description:
 
 ```text
-Show something to the user in Hephaestus V3: a project in the Projects window, a project's settings, or a ticket or a bundle in its Tickets window.
+Opens an item in Hephaestus V3 for the user: a project in the Projects window, a project's settings window, or a ticket or bundle in its project's Tickets window.
 ```
 
 Input schema:
@@ -1107,14 +1105,14 @@ Input schema:
   "properties" : {
     "target" : {
       "additionalProperties" : false,
-      "description" : "What to show. kind decides the other properties: project: projectID; projectSettings: projectID; ticket: ticketID; bundle: bundleID.",
+      "description" : "The item to open. project and projectSettings take projectID, ticket takes ticketID, bundle takes bundleID.",
       "properties" : {
         "bundleID" : {
-          "description" : "Bundle id, for example ORD-B2.",
+          "description" : "Bundle id, such as ORD-B2.",
           "type" : "string"
         },
         "kind" : {
-          "description" : "Kind of item to show.",
+          "description" : "The item's kind.",
           "enum" : [
             "project",
             "projectSettings",
@@ -1124,11 +1122,11 @@ Input schema:
           "type" : "string"
         },
         "projectID" : {
-          "description" : "Project identifier: 2 to 8 letters, for example ORD.",
+          "description" : "Project identifier, 2 to 8 letters, such as ORD.",
           "type" : "string"
         },
         "ticketID" : {
-          "description" : "Ticket id, for example ORD-12.",
+          "description" : "Ticket id, such as ORD-12.",
           "type" : "string"
         }
       },

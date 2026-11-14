@@ -19,16 +19,16 @@ public enum TicketTools {
 
     /// Claude with the external token; the chats' own tokens come with Chat.
     static let claude = TicketActor.claude(chat: "external")
-    static let projectID = ToolSchema.string("Project identifier: 2 to 8 letters, for example ORD.")
-    static let ticketID = ToolSchema.string("Ticket id, for example ORD-12.")
-    static let bundleID = ToolSchema.string("Bundle id, for example ORD-B2.")
-    static let attachments = ToolSchema.array("Files on this Mac to attach: absolute paths, paths starting with ~/, or paths relative to the project's folder.", of: .string())
-    static let priority = ToolSchema.string("Priority: low, medium, high or urgent; an empty string removes it.", oneOf: ["", "low", "medium", "high", "urgent"])
-    static let labels = ToolSchema.array("Labels, replacing the current ones; [] removes them all.", of: .string())
+    static let projectID = ToolSchema.string("Project identifier, 2 to 8 letters, such as ORD.")
+    static let ticketID = ToolSchema.string("Ticket id, such as ORD-12.")
+    static let bundleID = ToolSchema.string("Bundle id, such as ORD-B2.")
+    static let attachments = ToolSchema.array("Files on this Mac to copy in, each an absolute path, a path from ~/, or a path within the project's folder.", of: .string())
+    static let priority = ToolSchema.string("low, medium, high or urgent; empty to clear it.", oneOf: ["", "low", "medium", "high", "urgent"])
+    static let labels = ToolSchema.array("The labels, replacing the current ones; [] clears them.", of: .string())
     static func links(_ description: String) -> ToolSchema {
         .array(description, of: .object(properties: [
-            ("kind", .string("dependsOn when this ticket needs the other ticket to be done first, related otherwise.", oneOf: ["dependsOn", "related"])),
-            ("ticket", .string("Id of a ticket of the same project, for example ORD-15.")),
+            ("kind", .string("dependsOn: this ticket waits for the other one to be done. related: a plain link.", oneOf: ["dependsOn", "related"])),
+            ("ticket", .string("Id of a ticket in the same project, such as ORD-15.")),
         ], required: ["kind", "ticket"]))
     }
 }
@@ -51,10 +51,10 @@ extension TicketToolSet {
     var listTickets: ToolOperation {
         ToolOperation(
             name: "list_tickets",
-            description: "List a project's tickets, those of its sub projects included, optionally only those with one status: draft, todo, in_progress, review or done.",
+            description: "Returns a project's tickets, its sub projects' included. With status, only the tickets in that status.",
             inputSchema: .object(properties: [
                 ("projectID", TicketTools.projectID),
-                ("status", .string("Only list tickets with this status.", oneOf: ["draft", "todo", "in_progress", "review", "done"])),
+                ("status", .string("draft, todo, in_progress, review or done.", oneOf: ["draft", "todo", "in_progress", "review", "done"])),
             ], required: ["projectID"]),
             permission: .read
         ) { @MainActor arguments throws(ToolError) in
@@ -70,7 +70,7 @@ extension TicketToolSet {
     var getTicket: ToolOperation {
         ToolOperation(
             name: "get_ticket",
-            description: "Get a ticket: title, status, priority, labels, dates, creator, description, attachments (with their absolute paths), comments, chat ids, links and history. links are the links the ticket declares (dependsOn, related); inverseLinks are the links other tickets declare to it (blocks, related). history lists its creation, status changes, renames, link changes and description edits with their authors and dates.",
+            description: "Returns a ticket: title, status, priority, labels, dates, creator, description, attachments with absolute paths, comments, chat ids, links and history. links holds the links written in this ticket (dependsOn, related); inverseLinks holds the links written in other tickets that point here (blocks, related). history records the creation, status changes, renames, link changes and description edits, each with its author and date.",
             inputSchema: .object(properties: [("ticketID", TicketTools.ticketID)], required: ["ticketID"]),
             permission: .read
         ) { @MainActor arguments throws(ToolError) in
@@ -81,30 +81,15 @@ extension TicketToolSet {
     var createTicket: ToolOperation {
         ToolOperation(
             name: "create_ticket",
-            description: """
-                Create a ticket in a project. It starts as todo. Without a title, its title is the description's first line that is not a heading. The description must use this template, the six headings alone on their lines and in this order:
-                Problem
-                (Explain the problem)
-                Current Behavior
-                (Explain the current behaviour)
-                Expected
-                (Explain the behaviour that should be expected)
-                Change
-                (Explain what should change)
-                Testing
-                (List the tests that decide whether the ticket is done)
-                Docs
-                (List all docs files and paragraphs relevant to the issue)
-                attachments are paths of files on this Mac (absolute, starting with ~/, or relative to the project's folder) that are copied into the ticket. links are links to other tickets of the same project: dependsOn when this ticket needs the other ticket to be done first, related when they are only related.
-                """,
+            description: "Creates a ticket by Claude in a project, with the status todo. Without a title, the description's first line that is neither empty nor a heading becomes the title. The files listed in attachments are copied into the ticket.",
             inputSchema: .object(properties: [
                 ("projectID", TicketTools.projectID),
-                ("title", .string("Ticket title, one line of 1 to 200 characters.")),
-                ("description", .string("Ticket description following the template.")),
+                ("title", .string("One line of 1 to 200 characters.")),
+                ("description", .string("The description, in Markdown.")),
                 ("priority", TicketTools.priority),
                 ("labels", TicketTools.labels),
                 ("attachments", TicketTools.attachments),
-                ("links", TicketTools.links("Links to other tickets of the same project.")),
+                ("links", TicketTools.links("Links to tickets in the same project.")),
             ], required: ["projectID", "description"]),
             permission: .change
         ) { @MainActor arguments throws(ToolError) in
@@ -130,14 +115,14 @@ extension TicketToolSet {
     var updateTicket: ToolOperation {
         ToolOperation(
             name: "update_ticket",
-            description: "Change a ticket's title, description, priority, labels or links. Omitted arguments are left unchanged; a new description must follow the same template as create_ticket; links replaces the links the ticket declares, so list every link to keep, and [] removes them all. Use set_ticket_status for the status and add_comment to report work.",
+            description: "Changes a ticket's title, description, priority, labels or links. Arguments left out keep their value.",
             inputSchema: .object(properties: [
                 ("ticketID", TicketTools.ticketID),
-                ("title", .string("New title, one line.")),
-                ("description", .string("New description, following the ticket template.")),
+                ("title", .string("The new title, one line of 1 to 200 characters.")),
+                ("description", .string("The new description, in Markdown.")),
                 ("priority", TicketTools.priority),
                 ("labels", TicketTools.labels),
-                ("links", TicketTools.links("The links this ticket declares, replacing the current ones: every link to keep and the new ones; [] removes them all.")),
+                ("links", TicketTools.links("Every link the ticket declares after the change; links missing from the list are removed, and [] removes them all.")),
             ], required: ["ticketID"]),
             permission: .change
         ) { @MainActor arguments throws(ToolError) in
@@ -154,7 +139,7 @@ extension TicketToolSet {
     var deleteTicket: ToolOperation {
         ToolOperation(
             name: "delete_ticket",
-            description: "Delete a ticket and its attachments, moved to the Trash; it is also removed from every bundle and from the links of the other tickets.",
+            description: "Deletes a ticket, moving its file and attachments to the Trash, and takes it out of every bundle and every other ticket's links.",
             inputSchema: .object(properties: [("ticketID", TicketTools.ticketID)], required: ["ticketID"]),
             permission: .change
         ) { @MainActor arguments throws(ToolError) in
@@ -167,7 +152,7 @@ extension TicketToolSet {
     var setTicketStatus: ToolOperation {
         ToolOperation(
             name: "set_ticket_status",
-            description: "Set a ticket's status to todo, in_progress, review or done. Set in_progress when you start working on a ticket, and review or done when you have finished it. Only the user changes a done ticket or a draft.",
+            description: "Changes a ticket's status to todo, in_progress, review or done. Drafts and done tickets can only be changed by the user.",
             inputSchema: .object(properties: [
                 ("ticketID", TicketTools.ticketID),
                 ("status", .string("New status.", oneOf: ["todo", "in_progress", "review", "done"])),
@@ -186,10 +171,10 @@ extension TicketToolSet {
     var addComment: ToolOperation {
         ToolOperation(
             name: "add_comment",
-            description: "Add a comment by Claude to a ticket, in markdown, optionally with files attached (paths on this Mac: absolute, starting with ~/, or relative to the project's folder).",
+            description: "Adds a comment by Claude to a ticket, with optional files copied in.",
             inputSchema: .object(properties: [
                 ("ticketID", TicketTools.ticketID),
-                ("text", .string("Comment text (markdown).")),
+                ("text", .string("The comment, in Markdown.")),
                 ("attachments", TicketTools.attachments),
             ], required: ["ticketID", "text"]),
             permission: .change
@@ -205,11 +190,11 @@ extension TicketToolSet {
     var updateComment: ToolOperation {
         ToolOperation(
             name: "update_comment",
-            description: "Change the text of a comment of a ticket, whoever wrote it. The comment's attached files do not change.",
+            description: "Replaces the text of a ticket's comment, whoever wrote it. Its files stay as they are.",
             inputSchema: .object(properties: [
                 ("ticketID", TicketTools.ticketID),
-                ("commentID", .string("Comment id (a UUID), from get_ticket.")),
-                ("text", .string("New comment text (markdown).")),
+                ("commentID", .string("The comment's UUID, as get_ticket returns it.")),
+                ("text", .string("The new text, in Markdown.")),
             ], required: ["ticketID", "commentID", "text"]),
             permission: .change
         ) { @MainActor arguments throws(ToolError) in
@@ -224,10 +209,10 @@ extension TicketToolSet {
     var deleteComment: ToolOperation {
         ToolOperation(
             name: "delete_comment",
-            description: "Delete a comment of a ticket, whoever wrote it; its attached files are moved to the Trash.",
+            description: "Deletes a ticket's comment, whoever wrote it, and moves its files to the Trash.",
             inputSchema: .object(properties: [
                 ("ticketID", TicketTools.ticketID),
-                ("commentID", .string("Comment id (a UUID), from get_ticket.")),
+                ("commentID", .string("The comment's UUID, as get_ticket returns it.")),
             ], required: ["ticketID", "commentID"]),
             permission: .change
         ) { @MainActor arguments throws(ToolError) in
@@ -241,10 +226,10 @@ extension TicketToolSet {
     var removeAttachment: ToolOperation {
         ToolOperation(
             name: "remove_attachment",
-            description: "Remove a file attached to a ticket itself (not to one of its comments); the file is moved to the Trash.",
+            description: "Removes a file attached to the ticket itself, not to a comment, and moves it to the Trash.",
             inputSchema: .object(properties: [
                 ("ticketID", TicketTools.ticketID),
-                ("attachmentID", .string("Attachment id (a UUID), from get_ticket.")),
+                ("attachmentID", .string("The attachment's UUID, as get_ticket returns it.")),
             ], required: ["ticketID", "attachmentID"]),
             permission: .change
         ) { @MainActor arguments throws(ToolError) in
@@ -260,7 +245,7 @@ extension TicketToolSet {
     var listBundles: ToolOperation {
         ToolOperation(
             name: "list_bundles",
-            description: "List a project's bundles: named groups of its tickets, in the order they are to be done, each with its status (todo, in_progress, done).",
+            description: "Returns a project's bundles: ordered groups of its tickets, each with the status todo, in_progress or done.",
             inputSchema: .object(properties: [("projectID", TicketTools.projectID)], required: ["projectID"]),
             permission: .read
         ) { @MainActor arguments throws(ToolError) in
@@ -273,7 +258,7 @@ extension TicketToolSet {
     var getBundle: ToolOperation {
         ToolOperation(
             name: "get_bundle",
-            description: "Get a bundle: title, status, dates, ticket ids in the order they are to be done and chat ids.",
+            description: "Returns a bundle: title, status, dates, its ticket ids in order, and chat ids.",
             inputSchema: .object(properties: [("bundleID", TicketTools.bundleID)], required: ["bundleID"]),
             permission: .read
         ) { @MainActor arguments throws(ToolError) in
@@ -284,11 +269,11 @@ extension TicketToolSet {
     var createBundle: ToolOperation {
         ToolOperation(
             name: "create_bundle",
-            description: "Create a bundle of tickets of one project, in the order they are to be done. Without a title, its title is made of its tickets' titles. A bundle of tickets that are all done starts done.",
+            description: "Creates a bundle from tickets of one project, kept in the order given. Without a title, it is named after its tickets. When every ticket is already done, the bundle starts done.",
             inputSchema: .object(properties: [
                 ("projectID", TicketTools.projectID),
-                ("ticketIDs", .array("Ids of tickets of the project, in order; at least one.", of: .string())),
-                ("title", .string("Bundle title, one line of 1 to 200 characters.")),
+                ("ticketIDs", .array("Ids of the project's tickets, in order; one at least.", of: .string())),
+                ("title", .string("One line of 1 to 200 characters.")),
             ], required: ["projectID", "ticketIDs"]),
             permission: .change
         ) { @MainActor arguments throws(ToolError) in
@@ -309,11 +294,11 @@ extension TicketToolSet {
     var updateBundle: ToolOperation {
         ToolOperation(
             name: "update_bundle",
-            description: "Change a bundle's title or tickets. Omitted arguments are left unchanged; ticketIDs replaces the bundle's tickets and their order.",
+            description: "Changes a bundle's title or tickets. Arguments left out keep their value.",
             inputSchema: .object(properties: [
                 ("bundleID", TicketTools.bundleID),
-                ("title", .string("New title, one line.")),
-                ("ticketIDs", .array("Ids of tickets of the project, in order, replacing the current ones.", of: .string())),
+                ("title", .string("The new title, one line of 1 to 200 characters.")),
+                ("ticketIDs", .array("Ids of the project's tickets, in order, replacing the whole list.", of: .string())),
             ], required: ["bundleID"]),
             permission: .change
         ) { @MainActor arguments throws(ToolError) in
@@ -328,7 +313,7 @@ extension TicketToolSet {
     var setBundleStatus: ToolOperation {
         ToolOperation(
             name: "set_bundle_status",
-            description: "Set a bundle's status to todo or in_progress. A bundle becomes done by itself when all its tickets are done, and only the user changes a done bundle.",
+            description: "Changes a bundle's status to todo or in_progress. A bundle turns done on its own once all its tickets are done, and a done bundle can only be changed by the user.",
             inputSchema: .object(properties: [
                 ("bundleID", TicketTools.bundleID),
                 ("status", .string("New status.", oneOf: ["todo", "in_progress"])),
@@ -347,7 +332,7 @@ extension TicketToolSet {
     var deleteBundle: ToolOperation {
         ToolOperation(
             name: "delete_bundle",
-            description: "Delete a bundle; its file is moved to the Trash and its tickets are kept.",
+            description: "Deletes a bundle, moving its file to the Trash; its tickets stay.",
             inputSchema: .object(properties: [("bundleID", TicketTools.bundleID)], required: ["bundleID"]),
             permission: .change
         ) { @MainActor arguments throws(ToolError) in

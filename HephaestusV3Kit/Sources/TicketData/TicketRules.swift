@@ -39,7 +39,7 @@ public enum TicketError: Error, Sendable, Hashable, CustomStringConvertible {
     }
 }
 
-/// V2's ticket rules that need no file: titles, the description template, attachment names and limits.
+/// V2's ticket rules that need no file: titles, attachment names and limits.
 public enum TicketRules {
     /// The largest attachment, and the largest set of attachments of one change: 20 MiB.
     public static let attachmentLimit = 20 * 1024 * 1024
@@ -60,7 +60,7 @@ public enum TicketRules {
     public static func provisionalTitle(from description: String) -> String {
         for line in lines(description) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard !trimmed.isEmpty, !trimmed.hasPrefix("#"), heading(of: trimmed) == nil else { continue }
+            guard !trimmed.isEmpty, !trimmed.hasPrefix("#") else { continue }
             let cut = String(trimmed.prefix(60)).trimmingCharacters(in: .whitespaces)
             if !cut.isEmpty { return cut }
         }
@@ -82,55 +82,6 @@ public enum TicketRules {
     public static func labels(_ labels: [String]) -> [String] {
         var seen: Set<String> = []
         return labels.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty && seen.insert($0).inserted }
-    }
-
-    // MARK: Template
-
-    /// The headings of the description template, in order.
-    public static let templateHeadings = ["Problem", "Current Behavior", "Expected", "Change", "Testing", "Docs"]
-
-    /// The description template: the New Ticket sheet's starting text, and what Claude's descriptions follow.
-    public static let template = """
-        Problem
-        (Explain the problem)
-
-        Current Behavior
-        (Explain the current behaviour)
-
-        Expected
-        (Explain the behaviour that should be expected)
-
-        Change
-        (Explain what should change)
-
-        Testing
-        (List the tests that decide whether the ticket is done)
-
-        Docs
-        (List all docs files and paragraphs relevant to the issue)
-        """
-
-    /// Checks a description Claude writes: the six headings, in order, each alone on its line.
-    public static func checkTemplate(_ description: String) throws(TicketError) {
-        var next = 0
-        for line in lines(description) where next < templateHeadings.count {
-            if heading(of: line) == next { next += 1 }
-        }
-        guard next == templateHeadings.count else {
-            throw .invalid("Description does not follow the ticket template: heading \"\(templateHeadings[next])\" is missing or out of "
-                + "order. Use the headings Problem, Current Behavior, Expected, Change, Testing, Docs in this order, each alone on its line.")
-        }
-    }
-
-    /// The index of the template heading a line is (`^\s*#*\s*H\s*:?\s*$`, any letter case), or nil.
-    static func heading(of line: String) -> Int? {
-        var text = Substring(line).drop { $0.isWhitespace }
-        text = text.drop { $0 == "#" }.drop { $0.isWhitespace }
-        var rest = String(text)
-        while rest.last?.isWhitespace == true { rest.removeLast() }
-        if rest.hasSuffix(":") { rest.removeLast() }
-        while rest.last?.isWhitespace == true { rest.removeLast() }
-        return templateHeadings.firstIndex { $0.caseInsensitiveCompare(rest) == .orderedSame }
     }
 
     /// The lines of a text split at LF, CR LF or CR.

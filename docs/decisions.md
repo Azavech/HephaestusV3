@@ -2,7 +2,22 @@
 
 The open questions met while bringing HephaestusV2 over, each answered with the recommended default so that
 the work goes on. The owner reviews them whenever they like; the page that applies each one says "default
-chosen at design time" beside it. Newest phase last.
+chosen at design time" beside it. The owner's own rules come first, then the phases, newest last.
+
+## V2's prompts
+
+On 14 November 2026 the owner set the rule: V3 gets none of V2's prompts. Everything V2 wrote for Claude to
+read stays in V2: the system prompts and the skills behind them (common, project, ticket, bundle, implement,
+finish, naming, notification summary, comment answers, CI, setup, feedback), the texts its hooks added to the
+user's messages, and its tool descriptions. What V3 tells Claude it writes itself, says what a tool does and
+which rules the app enforces, and never tells Claude how to work.
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| What about the tool descriptions written in Phases 1 to 3? | Rewritten in V3's words: no sentence of V2's descriptions is left, and no advice to Claude ("ask the user for the name", "set in_progress when you start", "use add_comment to report work"). What remains in common with V2 is the API itself: field, status and argument names. | [MCP › What Claude reads](mcp.md#what-claude-reads) |
+| Does the server send instructions? | No: `initialize` has no `instructions` member. | [MCP › Methods](mcp.md#methods) |
+| What happens to the ticket template? | Dropped: it existed so Claude's tickets followed V2's six headings. Claude's descriptions are taken as written, like the user's. | [Data › Ticket rules](data.md#ticket-rules) |
+| What does the Chat (Phase 5) send the Claude CLI? | No V2 system prompt, skill or hook text: no `--append-system-prompt` built from V2's skills, and no hook that adds the linked items to a message. The permission hook stays, since it carries approvals, not text for Claude. Anything V3 adds is written for V3 and documented with the Chat. | The Chat's pages, written in Phase 5 |
 
 ## Phase 0: Foundation (13 November 2026)
 
@@ -62,7 +77,7 @@ chosen at design time" beside it. Newest phase last.
 | How is a ticket named without Haiku? | With V2's provisional title, kept as the title: the description's first plain line, cut to 60 characters, else `Untitled Ticket`; a bundle with its tickets' titles. Either can be renamed. | [Data › Ticket rules](data.md#ticket-rules) |
 | May Claude give a title? | Yes: V2 had no title input because Haiku named Claude's tickets; without Haiku the provisional title would be all Claude could give. | same |
 | Must a description be written? | Only without a title, to make the provisional title; a ticket with a title may have an empty description. V2 always required one. | same |
-| Is the description template kept? | For Claude, as V2: its descriptions follow it. The New Ticket sheet keeps V3's design, an empty Description field, and the user's descriptions aren't checked. | same |
+| Is the description template kept? | No (changed on 14 November 2026): it only steered what Claude wrote, one of V2's prompts ([V2's prompts](#v2s-prompts)). Descriptions are free Markdown for the user and Claude alike; the New Ticket sheet keeps its empty Description field. | same |
 | What may Claude do with a draft (V3)? | Nothing to its status: Claude neither makes a draft nor changes one, so that "not ready yet" stays the user's call. Claude's new tickets start To Do. | same |
 | Do priority and labels (V3) add history entries? | No: the history keeps V2's six kinds. | [Data › Ticket changes](data.md#ticket-changes) |
 | Which device name goes into the history? | The Mac's computer name (`SCDynamicStoreCopyComputerName`), as V2's local windows. | [Data › Ticket file](data.md#ticket-file) |
