@@ -860,11 +860,11 @@ Grid, Placement, Lists without positions](ui/dashboard.md#grid).
 - `countRange = 1...20`; `titleLimit = 100`.
 - `cells: DashboardCells?` gets the four position values, brought inside the grid by `DashboardGrid.clamped`,
   or nil when any is missing; setting it writes all four.
-- `defaultList(for:)`: Project, Tickets, Recent Builds, plus Service Graph when `hasServiceMap(project)`, with
+- `defaultList(for:)`: Project, Tickets, Recent Builds, plus Service Graph when `showsGraph(project)`, with
   the ids `00000000-0000-0000-0000-00000000000<n>`.
 - `DashboardWidgetKind` also has `recentChats` and `cost`, kept and never shown. `isShown(for:tools:)`: Project
   always; Tickets with `.tickets`; Recent Builds with `.builds`; Instances with `.serviceMap`; the four service
-  widgets with `.serviceMap` and `hasServiceMap(project)`; Recent Chats and Cost never. `shown(for:tools:)` is
+  widgets with `.serviceMap` and `showsGraph(project)`; Recent Chats and Cost never. `shown(for:tools:)` is
   the set of those kinds; `addable(for:tools:)` the shown kinds, Instances only for a service.
 - `DashboardGrid.layout(of:shown:rows:)` places the widgets whose kind is in `shown`; the others get nil and
   take no place.
@@ -893,8 +893,9 @@ Grid, Placement, Lists without positions](ui/dashboard.md#grid).
 | `isGraph` | True for `serviceGraph`, `busiestCalls`, `failedRequests`, `requestsPerMinute`: hidden when the map can't be read. |
 | `fillsWidget` | True for `serviceGraph` and `requestsPerMinute`. |
 | `hasCount` | True for `recentBuilds`, `busiestCalls`, `failedRequests`. |
-| `hasServiceMap(_:)` | The project has the Service Map tool and at least one environment. |
-| `addable(for:)` | The Add Widget menu's kinds: `instances` only for a service, graph kinds only with `hasServiceMap`. |
+| `hasServiceMap(_:)` | The project has the Service Map tool and at least one environment (the Dashboard tile's text). |
+| `showsGraph(_:)` | `hasServiceMap` and the project's `graphEnabled`: the graph widgets and the overview's graph show. |
+| `addable(for:)` | The Add Widget menu's kinds: `instances` only for a service, graph kinds only with `showsGraph`. |
 
 **`DashboardProjectField`**: `name`, `identifier`, `type`, `folder`.
 
@@ -1293,7 +1294,7 @@ only when it has a project. `ProjectListEntry` is a project with its depth.
 | `select(focus:)` | Selects the project the focus names; an unknown id changes nothing. |
 | `ancestors(of:)`, `descendantCount(of:)`, `ticketTotals(of:)` | The overview's path and figures. |
 | `environments(of:) -> ProjectEnvironments` | For the app's projects, their environments, and the parent they inherit from; for samples, the settings source's environments, and `inheritedFrom` when it isn't the project. |
-| `graphEnvironment(of:tools:) -> DeploymentEnvironment?` | The overview's Graph: nil unless the project's `graphEnabled` is on and `DashboardWidgetKind.serviceGraph.isShown(for:tools:)`; then the environment named by `currentEnvironment`, else the first of `tree.environments(of:)`. |
+| `graphEnvironment(of:tools:) -> DeploymentEnvironment?` | The overview's Graph: nil unless `DashboardWidgetKind.serviceGraph.isShown(for:tools:)` (which needs `showsGraph`); then the environment named by `currentEnvironment`, else the first of `tree.environments(of:)`. |
 | `activity(of:) -> [ActivityEntry]` | The family's events, newest first, at most 40. `ActivityEntry.id` is `"<project>.<event id>"`. |
 
 The window's selection and the model's follow each other: `onAppear` and `onChange(of: selection)` call

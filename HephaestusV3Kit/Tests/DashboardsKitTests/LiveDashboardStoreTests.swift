@@ -224,6 +224,25 @@ struct DashboardAvailabilityTests {
         #expect(DashboardWidgetKind.shown(for: orders, tools: all).contains(.serviceGraph))
     }
 
+    @Test("While the graph is off, the graph widgets are hidden and not offered; Instances stays")
+    func graphOff() {
+        func service(graph: Bool) -> Project {
+            Project(id: "SVC", name: "Service", kind: .service, tint: .accent, symbol: "server.rack", path: "/p/svc", repository: "",
+                    environments: [DeploymentEnvironment(name: "production", cluster: nil, namespace: "svc", url: nil, health: nil)],
+                    activity: nil, environmentsAreResolved: true, graphEnabled: graph)
+        }
+        let all = Set(ToolKind.allCases)
+        let off = service(graph: false)
+        #expect(!DashboardWidgetKind.showsGraph(off))
+        #expect(DashboardWidgetKind.hasServiceMap(off))
+        #expect(DashboardWidgetKind.shown(for: off, tools: all) == [.project, .tickets, .recentBuilds, .instances])
+        #expect(!DashboardWidgetKind.addable(for: off, tools: all).contains(.serviceGraph))
+        #expect(DashboardWidget.defaultList(for: off).map(\.kind) == [.project, .tickets, .recentBuilds])
+        let on = service(graph: true)
+        #expect(DashboardWidgetKind.shown(for: on, tools: all).isSuperset(of: [.serviceGraph, .busiestCalls, .failedRequests, .requestsPerMinute]))
+        #expect(DashboardWidget.defaultList(for: on).map(\.kind) == [.project, .tickets, .recentBuilds, .serviceGraph])
+    }
+
     @Test("Hidden widgets take no place and keep their stored positions through a change")
     func hiddenKeepTheirPlace() {
         let graph = DashboardWidget(id: UUID(), kind: .serviceGraph, column: 0, row: 0, width: 24, height: 6)

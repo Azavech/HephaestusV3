@@ -69,9 +69,9 @@ nonisolated public struct DashboardWidget: Sendable, Hashable, Identifiable {
 
     /// The list a project without a stored list shows, with fixed ids, an empty title, no stored
     /// position and the default settings: Project and Tickets, then Recent Builds in place of
-    /// its Recent Chats, and the Service Graph for a project whose map can be read.
+    /// its Recent Chats, and the Service Graph for a project whose graph shows.
     public static func defaultList(for project: Project) -> [DashboardWidget] {
-        let kinds: [DashboardWidgetKind] = [.project, .tickets, .recentBuilds] + (DashboardWidgetKind.hasServiceMap(project) ? [.serviceGraph] : [])
+        let kinds: [DashboardWidgetKind] = [.project, .tickets, .recentBuilds] + (DashboardWidgetKind.showsGraph(project) ? [.serviceGraph] : [])
         return kinds.enumerated().map { index, kind in
             DashboardWidget(id: UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", index + 1))!, kind: kind)
         }
@@ -235,8 +235,8 @@ nonisolated public enum DashboardWidgetKind: String, Codable, Sendable, Hashable
 
     public var id: Self { self }
 
-    /// Whether the kind reads the Service Map, and so is hidden for a project whose map cannot be
-    /// read.
+    /// Whether the kind shows the project's graph, and so is hidden for a project whose graph doesn't show
+    /// (`showsGraph(_:)`).
     public var isGraph: Bool {
         switch self {
         case .serviceGraph, .busiestCalls, .failedRequests, .requestsPerMinute: true
@@ -245,7 +245,7 @@ nonisolated public enum DashboardWidgetKind: String, Codable, Sendable, Hashable
     }
 
     /// Whether the Dashboard shows widgets of the kind for `project` when the app offers `tools`: the tool
-    /// whose data it shows is offered, and a service widget needs a project whose Service Map can be read.
+    /// whose data it shows is offered, and a graph widget needs a project whose graph shows.
     /// Recent Chats and Cost never show. A widget that doesn't show takes no place and keeps its stored
     /// position (docs/ui/dashboard.md › Placement).
     public func isShown(for project: Project, tools: Set<ToolKind>) -> Bool {
@@ -254,7 +254,7 @@ nonisolated public enum DashboardWidgetKind: String, Codable, Sendable, Hashable
         case .tickets: tools.contains(.tickets)
         case .recentBuilds: tools.contains(.builds)
         case .instances: tools.contains(.serviceMap)
-        case .serviceGraph, .busiestCalls, .failedRequests, .requestsPerMinute: tools.contains(.serviceMap) && Self.hasServiceMap(project)
+        case .serviceGraph, .busiestCalls, .failedRequests, .requestsPerMinute: tools.contains(.serviceMap) && Self.showsGraph(project)
         case .recentChats, .cost: false
         }
     }
@@ -278,6 +278,13 @@ nonisolated public enum DashboardWidgetKind: String, Codable, Sendable, Hashable
     /// Whether the Service Map can be read for `project`: it is a service that runs somewhere.
     public static func hasServiceMap(_ project: Project) -> Bool {
         project.tools.contains(.serviceMap) && !project.environments.isEmpty
+    }
+
+    /// Whether the project's graph shows, in the Dashboard's graph widgets and on the project overview: its
+    /// Service Map can be read and its graph is on (Project Settings › Service), as in V2. While it is off, the
+    /// graph widgets are hidden and not offered; the list keeps them, and they show again when it is on.
+    public static func showsGraph(_ project: Project) -> Bool {
+        hasServiceMap(project) && project.graphEnabled
     }
 
     /// The kinds the Add Widget menu lists for `project` when the app offers `tools`, in this order: the kinds

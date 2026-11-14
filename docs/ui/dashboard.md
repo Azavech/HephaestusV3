@@ -2,8 +2,8 @@
 
 The Dashboard shows one project on one screen, in widgets the user arranges. Each widget shows one thing
 from one tool: what the project is, how many tickets it has in each status, its recent builds, the pods
-where it runs, and, for a service whose Service Map can be read, the map of its services, the busiest
-calls, the failed requests and the requests per minute. The widgets sit on an invisible grid of 24 columns
+where it runs, and, for a service whose graph shows (its Service Map can be read and its graph is on), the map
+of its services, the busiest calls, the failed requests and the requests per minute. The widgets sit on an invisible grid of 24 columns
 of square cells, as in Grafana, and float up. In edit mode the user adds, removes, moves, resizes and sets
 up the widgets. Each project keeps its own Dashboard in its project file ([Saving](#saving)), and a widget
 shows once the tool whose data it shows is available ([Which widgets show](#which-widgets-show)).
@@ -181,7 +181,7 @@ tools](navigation.md#available-tools)); until then it is hidden (default chosen 
 | Recent Builds | Builds is available. |
 | Instances, Service Graph, Busiest Calls, Failed Requests, Requests per Minute | The Service Map is available and the project has a map; they read the project's live map, every 5 s while shown. |
 | Instances | The Service Map is available. |
-| Service Graph, Busiest Calls, Failed Requests, Requests per Minute | The Service Map is available and the project's Service Map can be read: it is a service with environments. |
+| Service Graph, Busiest Calls, Failed Requests, Requests per Minute | The Service Map is available and the project's graph shows (`DashboardWidgetKind.showsGraph`): it is a service with environments, and its graph is on (**Enable graph** in [Project Settings](project-settings.md), its own or its parent's), as in V2. While the graph is off they are hidden, in and out of edit mode, and not offered; the list keeps them, and they show again when it is on. |
 | Recent Chats, Cost | Never: they are kept in the project file with their settings. |
 
 A hidden widget takes no place: the widgets under it rise into its space. It keeps its stored position, in
@@ -194,7 +194,7 @@ the widgets that had risen move down ([Placement](#placement)).
 ### Default list and sample layouts
 
 A project without a stored list shows the default list: Project, Tickets and Recent Builds, then Service Graph
-for a project whose Service Map can be read; default settings, empty titles, no stored positions, and the ids
+for a project whose graph shows; default settings, empty titles, no stored positions, and the ids
 `00000000-0000-0000-0000-00000000000<n>`. Instances is not in it.
 
 Sample layouts exist only in the previews and the screenshots, for two sample projects; a project of the app
@@ -290,7 +290,7 @@ drag in progress ends, and a settings popover closes, when edit mode ends or whe
   points per second at the edge and beyond. The widget stays under the pointer.
 - **Add Widget.** The menu lists, in this order, with their symbols: **Project**, **Tickets**, **Recent
   Builds**; **Instances** for a service project; then **Service Graph**, **Busiest Calls**, **Failed
-  Requests** and **Requests per Minute** when the project's Service Map can be read. The chosen widget is
+  Requests** and **Requests per Minute** when the project's graph shows. The chosen widget is
   appended to the list with default settings and a new id, at column 0 under every widget, 12 columns wide
   and as many rows tall as its content needs at that width; then it rises by the placement rule.
 
