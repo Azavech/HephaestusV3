@@ -217,6 +217,9 @@ a project: Claude may read and change every project of this Mac, as the user can
 | `create_project` | ProjectsKit | change | `ProjectSession.create` |
 | `update_project` | ProjectsKit | change | `ProjectSession.update` |
 | `remove_project` | ProjectsKit | change | `ProjectSession.remove` |
+| `list_tickets`, `get_ticket`, `list_bundles`, `get_bundle` | TicketsKit | read | the ticket library's snapshot |
+| `create_ticket`, `update_ticket`, `delete_ticket`, `set_ticket_status`, `add_comment`, `update_comment`, `delete_comment`, `remove_attachment` | TicketsKit | change | `TicketLibrary`, as Claude (`TicketTools`) |
+| `create_bundle`, `update_bundle`, `set_bundle_status`, `delete_bundle` | TicketsKit | change | `TicketLibrary`, as Claude |
 | `open_in_app` | ToolsScenes | read | a route ([Navigation › Routes](ui/navigation.md#routes)) |
 
 A project's JSON (`get_project`, `create_project`, `update_project`): `id`, `name`, `type` (`none`,
@@ -228,6 +231,19 @@ environment: `name`, `url`, `port`, `baseURL`, `allowInvalidCertificates`, `name
 use or a folder that holds a project, `conflict`; a broken rule or a folder outside the parent, `invalid`; an
 unknown project or folder, `notFound`; no data folder, `unavailable`; a file that can't be written,
 `internal`. The messages are the English ones of [Data › Validation](data.md#validation) and `ProjectError`.
+
+**Tickets and bundles.** The ticket tools act as Claude (`TicketActor.claude(chat: "external")`, the external
+token; the chats' tokens come with Chat), so V2's rules for Claude hold ([Data › Ticket rules](data.md#ticket-rules)),
+and every change shows in the open Tickets windows at once. A ticket's JSON: `id`, `title`, `status` (`draft`,
+`todo`, `in_progress`, `review`, `done`), `created`, `updated`, `createdBy`, `description`, `priority` (when
+set), `labels`, `attachments` (`id`, `name`, `path` absolute, `contentType`, `size`), `comments` (`id`, `author`,
+`created`, `updated` when edited, `text`, `attachments`), `chats`, `links` and `inverseLinks` (`kind`,
+`ticket`), `history` (`kind`, `date`, `from`, `to`, `author`, `device`, `chat`, as stored). A bundle's JSON:
+`id`, `title`, `status`, `created`, `updated`, `tickets`, `chats`. Dates are ISO 8601. Attachment paths are
+files on this Mac: absolute, `~/`, or relative to the project's folder. Errors map to codes this way: a broken
+rule, `invalid`; an unknown project, ticket, bundle, comment or attachment, `notFound`; a change Claude may not
+make, `forbidden`; a file that can't be moved to the Trash, `unavailable`; a file that can't be written,
+`internal`. V2's `implement_ticket` and `implement_bundle` aren't brought over.
 
 ### list_projects
 
@@ -376,40 +392,756 @@ Input schema:
 }
 ```
 
-### open_in_app
+### list_tickets
 
-- **Calls:** a route: `project` opens the Projects window with the project selected (`.project(id)`),
-  `projectSettings` its Project Settings window (`.projectSettings(id)`); an open window comes forward. Each
-  feature adds its own kinds as it comes over.
-- **Result:** `{}`.
-- **Errors:** an unknown project (`notFound`, `No project <ID>.`); no window has appeared yet to open routes
-  (`unavailable`, `The app has no window to show it in.`).
+- **Calls:** the ticket library's snapshot: the tickets of the project, then of each of its loaded sub projects in tree order, each in ascending number, with `status` only those in it.
+- **Result:** an array of tickets' JSON.
+- **Errors:** an unknown project (`notFound`, `Project <ID> not found.`).
 
 Description:
 
 ```text
-Show something to the user in Hephaestus V3: a project in the Projects window, or a project's settings.
+List a project's tickets, those of its sub projects included, optionally only those with one status: draft, todo, in_progress, review or done.
 ```
 
 Input schema:
 
 ```json
 {
-  "type": "object",
-  "properties": {
-    "target": {
-      "type": "object",
-      "description": "What to show. kind decides the other properties: project: projectID; projectSettings: projectID.",
-      "properties": {
-        "kind": {"type": "string", "description": "Kind of item to show.", "enum": ["project", "projectSettings"]},
-        "projectID": {"type": "string", "description": "Project identifier: 2 to 8 letters, for example ORD."}
-      },
-      "required": ["kind", "projectID"],
-      "additionalProperties": false
+  "additionalProperties" : false,
+  "properties" : {
+    "projectID" : {
+      "description" : "Project identifier: 2 to 8 letters, for example ORD.",
+      "type" : "string"
+    },
+    "status" : {
+      "description" : "Only list tickets with this status.",
+      "enum" : [
+        "draft",
+        "todo",
+        "in_progress",
+        "review",
+        "done"
+      ],
+      "type" : "string"
     }
   },
-  "required": ["target"],
-  "additionalProperties": false
+  "required" : [
+    "projectID"
+  ],
+  "type" : "object"
+}
+```
+
+### get_ticket
+
+- **Calls:** the ticket library's snapshot.
+- **Result:** the ticket's JSON, its attachments' paths absolute (`<project folder>/.hephaestus/<path>`).
+- **Errors:** a malformed id (`invalid`), an unknown ticket (`notFound`).
+
+Description:
+
+```text
+Get a ticket: title, status, priority, labels, dates, creator, description, attachments (with their absolute paths), comments, chat ids, links and history. links are the links the ticket declares (dependsOn, related); inverseLinks are the links other tickets declare to it (blocks, related). history lists its creation, status changes, renames, link changes and description edits with their authors and dates.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "ticketID" : {
+      "description" : "Ticket id, for example ORD-12.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "ticketID"
+  ],
+  "type" : "object"
+}
+```
+
+### create_ticket
+
+- **Calls:** `TicketLibrary.create` as Claude: [Data › Ticket changes](data.md#ticket-changes). The description is checked against the template; the ticket starts `todo`, `createdBy: claude`. `title`, `priority` and `labels` are V3's: without a title, the provisional title is kept.
+- **Result:** the new ticket's JSON.
+- **Errors:** an unknown project or linked ticket (`notFound`); a description off the template, a title, an attachment or a link that breaks a rule (`invalid`).
+
+Description:
+
+```text
+Create a ticket in a project. It starts as todo. Without a title, its title is the description's first line that is not a heading. The description must use this template, the six headings alone on their lines and in this order:
+Problem
+(Explain the problem)
+Current Behavior
+(Explain the current behaviour)
+Expected
+(Explain the behaviour that should be expected)
+Change
+(Explain what should change)
+Testing
+(List the tests that decide whether the ticket is done)
+Docs
+(List all docs files and paragraphs relevant to the issue)
+attachments are paths of files on this Mac (absolute, starting with ~/, or relative to the project's folder) that are copied into the ticket. links are links to other tickets of the same project: dependsOn when this ticket needs the other ticket to be done first, related when they are only related.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "attachments" : {
+      "description" : "Files on this Mac to attach: absolute paths, paths starting with ~/, or paths relative to the project's folder.",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    },
+    "description" : {
+      "description" : "Ticket description following the template.",
+      "type" : "string"
+    },
+    "labels" : {
+      "description" : "Labels, replacing the current ones; [] removes them all.",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    },
+    "links" : {
+      "description" : "Links to other tickets of the same project.",
+      "items" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "kind" : {
+            "description" : "dependsOn when this ticket needs the other ticket to be done first, related otherwise.",
+            "enum" : [
+              "dependsOn",
+              "related"
+            ],
+            "type" : "string"
+          },
+          "ticket" : {
+            "description" : "Id of a ticket of the same project, for example ORD-15.",
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "kind",
+          "ticket"
+        ],
+        "type" : "object"
+      },
+      "type" : "array"
+    },
+    "priority" : {
+      "description" : "Priority: low, medium, high or urgent; an empty string removes it.",
+      "enum" : [
+        "",
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "type" : "string"
+    },
+    "projectID" : {
+      "description" : "Project identifier: 2 to 8 letters, for example ORD.",
+      "type" : "string"
+    },
+    "title" : {
+      "description" : "Ticket title, one line of 1 to 200 characters.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID",
+    "description"
+  ],
+  "type" : "object"
+}
+```
+
+### update_ticket
+
+- **Calls:** `TicketLibrary.update` as Claude. `links` replaces the declared links; each new one is checked with the [link rules](data.md#link-rules). A call that changes nothing writes nothing.
+- **Result:** the ticket's JSON.
+- **Errors:** an unknown ticket or newly linked ticket (`notFound`); a malformed id, a title, a description off the template or a link that breaks a rule (`invalid`).
+
+Description:
+
+```text
+Change a ticket's title, description, priority, labels or links. Omitted arguments are left unchanged; a new description must follow the same template as create_ticket; links replaces the links the ticket declares, so list every link to keep, and [] removes them all. Use set_ticket_status for the status and add_comment to report work.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "description" : {
+      "description" : "New description, following the ticket template.",
+      "type" : "string"
+    },
+    "labels" : {
+      "description" : "Labels, replacing the current ones; [] removes them all.",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    },
+    "links" : {
+      "description" : "The links this ticket declares, replacing the current ones: every link to keep and the new ones; [] removes them all.",
+      "items" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "kind" : {
+            "description" : "dependsOn when this ticket needs the other ticket to be done first, related otherwise.",
+            "enum" : [
+              "dependsOn",
+              "related"
+            ],
+            "type" : "string"
+          },
+          "ticket" : {
+            "description" : "Id of a ticket of the same project, for example ORD-15.",
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "kind",
+          "ticket"
+        ],
+        "type" : "object"
+      },
+      "type" : "array"
+    },
+    "priority" : {
+      "description" : "Priority: low, medium, high or urgent; an empty string removes it.",
+      "enum" : [
+        "",
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "type" : "string"
+    },
+    "ticketID" : {
+      "description" : "Ticket id, for example ORD-12.",
+      "type" : "string"
+    },
+    "title" : {
+      "description" : "New title, one line.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "ticketID"
+  ],
+  "type" : "object"
+}
+```
+
+### delete_ticket
+
+- **Calls:** `TicketLibrary.delete`: its bundles and the other tickets' links first, then its file and attachments to the Trash.
+- **Result:** `{}`.
+- **Errors:** an unknown ticket (`notFound`); a file that can't be moved to the Trash (`unavailable`).
+
+Description:
+
+```text
+Delete a ticket and its attachments, moved to the Trash; it is also removed from every bundle and from the links of the other tickets.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "ticketID" : {
+      "description" : "Ticket id, for example ORD-12.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "ticketID"
+  ],
+  "type" : "object"
+}
+```
+
+### set_ticket_status
+
+- **Calls:** `TicketLibrary.setStatus` as Claude; the bundles that list the ticket follow their automatic rules.
+- **Result:** the ticket's JSON.
+- **Errors:** another status (`invalid`, `status: must be one of todo, in_progress, review, done.`); an unknown ticket (`notFound`); a done ticket or a draft (`forbidden`, `<ID> is done; only the user can change its status.`, `<ID> is a draft; only the user can change its status.`).
+
+Description:
+
+```text
+Set a ticket's status to todo, in_progress, review or done. Set in_progress when you start working on a ticket, and review or done when you have finished it. Only the user changes a done ticket or a draft.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "status" : {
+      "description" : "New status.",
+      "enum" : [
+        "todo",
+        "in_progress",
+        "review",
+        "done"
+      ],
+      "type" : "string"
+    },
+    "ticketID" : {
+      "description" : "Ticket id, for example ORD-12.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "ticketID",
+    "status"
+  ],
+  "type" : "object"
+}
+```
+
+### add_comment
+
+- **Calls:** `TicketLibrary.addComment` as Claude (`author: claude`).
+- **Result:** the ticket's JSON.
+- **Errors:** an unknown ticket (`notFound`); empty text without files, or a file that isn't readable or is over 20 MB (`invalid`).
+
+Description:
+
+```text
+Add a comment by Claude to a ticket, in markdown, optionally with files attached (paths on this Mac: absolute, starting with ~/, or relative to the project's folder).
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "attachments" : {
+      "description" : "Files on this Mac to attach: absolute paths, paths starting with ~/, or paths relative to the project's folder.",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    },
+    "text" : {
+      "description" : "Comment text (markdown).",
+      "type" : "string"
+    },
+    "ticketID" : {
+      "description" : "Ticket id, for example ORD-12.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "ticketID",
+    "text"
+  ],
+  "type" : "object"
+}
+```
+
+### update_comment
+
+- **Calls:** `TicketLibrary.updateComment`.
+- **Result:** the ticket's JSON.
+- **Errors:** an unknown ticket or comment (`notFound`, `Comment <id> not found.`); empty text on a comment without files (`invalid`).
+
+Description:
+
+```text
+Change the text of a comment of a ticket, whoever wrote it. The comment's attached files do not change.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "commentID" : {
+      "description" : "Comment id (a UUID), from get_ticket.",
+      "type" : "string"
+    },
+    "text" : {
+      "description" : "New comment text (markdown).",
+      "type" : "string"
+    },
+    "ticketID" : {
+      "description" : "Ticket id, for example ORD-12.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "ticketID",
+    "commentID",
+    "text"
+  ],
+  "type" : "object"
+}
+```
+
+### delete_comment
+
+- **Calls:** `TicketLibrary.deleteComment`: the ticket file, then the comment's files to the Trash.
+- **Result:** the ticket's JSON.
+- **Errors:** an unknown ticket or comment (`notFound`); a file that can't be moved to the Trash (`unavailable`).
+
+Description:
+
+```text
+Delete a comment of a ticket, whoever wrote it; its attached files are moved to the Trash.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "commentID" : {
+      "description" : "Comment id (a UUID), from get_ticket.",
+      "type" : "string"
+    },
+    "ticketID" : {
+      "description" : "Ticket id, for example ORD-12.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "ticketID",
+    "commentID"
+  ],
+  "type" : "object"
+}
+```
+
+### remove_attachment
+
+- **Calls:** `TicketLibrary.removeAttachment`: the ticket file, then the file to the Trash.
+- **Result:** the ticket's JSON.
+- **Errors:** an unknown ticket or ticket attachment (`notFound`, `Attachment <id> not found.`); a file that can't be moved to the Trash (`unavailable`).
+
+Description:
+
+```text
+Remove a file attached to a ticket itself (not to one of its comments); the file is moved to the Trash.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "attachmentID" : {
+      "description" : "Attachment id (a UUID), from get_ticket.",
+      "type" : "string"
+    },
+    "ticketID" : {
+      "description" : "Ticket id, for example ORD-12.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "ticketID",
+    "attachmentID"
+  ],
+  "type" : "object"
+}
+```
+
+### list_bundles
+
+- **Calls:** the ticket library's snapshot.
+- **Result:** an array of the project's bundles' JSON, in ascending number.
+- **Errors:** an unknown project (`notFound`).
+
+Description:
+
+```text
+List a project's bundles: named groups of its tickets, in the order they are to be done, each with its status (todo, in_progress, done).
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "projectID" : {
+      "description" : "Project identifier: 2 to 8 letters, for example ORD.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID"
+  ],
+  "type" : "object"
+}
+```
+
+### get_bundle
+
+- **Calls:** the ticket library's snapshot.
+- **Result:** the bundle's JSON.
+- **Errors:** a malformed id (`invalid`), an unknown bundle (`notFound`).
+
+Description:
+
+```text
+Get a bundle: title, status, dates, ticket ids in the order they are to be done and chat ids.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "bundleID" : {
+      "description" : "Bundle id, for example ORD-B2.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "bundleID"
+  ],
+  "type" : "object"
+}
+```
+
+### create_bundle
+
+- **Calls:** `TicketLibrary.createBundle`; without a title, the provisional one from its tickets' titles.
+- **Result:** the new bundle's JSON.
+- **Errors:** an unknown project or ticket (`notFound`); no ticket, a ticket of another project or listed twice, a title that breaks the rule (`invalid`).
+
+Description:
+
+```text
+Create a bundle of tickets of one project, in the order they are to be done. Without a title, its title is made of its tickets' titles. A bundle of tickets that are all done starts done.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "projectID" : {
+      "description" : "Project identifier: 2 to 8 letters, for example ORD.",
+      "type" : "string"
+    },
+    "ticketIDs" : {
+      "description" : "Ids of tickets of the project, in order; at least one.",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    },
+    "title" : {
+      "description" : "Bundle title, one line of 1 to 200 characters.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID",
+    "ticketIDs"
+  ],
+  "type" : "object"
+}
+```
+
+### update_bundle
+
+- **Calls:** `TicketLibrary.updateBundle`; a change of its set of tickets applies the automatic rules.
+- **Result:** the bundle's JSON.
+- **Errors:** an unknown bundle or ticket (`notFound`); a ticket of another project or listed twice (`invalid`).
+
+Description:
+
+```text
+Change a bundle's title or tickets. Omitted arguments are left unchanged; ticketIDs replaces the bundle's tickets and their order.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "bundleID" : {
+      "description" : "Bundle id, for example ORD-B2.",
+      "type" : "string"
+    },
+    "ticketIDs" : {
+      "description" : "Ids of tickets of the project, in order, replacing the current ones.",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    },
+    "title" : {
+      "description" : "New title, one line.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "bundleID"
+  ],
+  "type" : "object"
+}
+```
+
+### set_bundle_status
+
+- **Calls:** `TicketLibrary.setBundleStatus` as Claude.
+- **Result:** the bundle's JSON.
+- **Errors:** another status (`invalid`); an unknown bundle (`notFound`); a done bundle (`forbidden`, `<ID> is done; only the user can change its status.`).
+
+Description:
+
+```text
+Set a bundle's status to todo or in_progress. A bundle becomes done by itself when all its tickets are done, and only the user changes a done bundle.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "bundleID" : {
+      "description" : "Bundle id, for example ORD-B2.",
+      "type" : "string"
+    },
+    "status" : {
+      "description" : "New status.",
+      "enum" : [
+        "todo",
+        "in_progress"
+      ],
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "bundleID",
+    "status"
+  ],
+  "type" : "object"
+}
+```
+
+### delete_bundle
+
+- **Calls:** `TicketLibrary.deleteBundle`.
+- **Result:** `{}`.
+- **Errors:** an unknown bundle (`notFound`); a file that can't be moved to the Trash (`unavailable`).
+
+Description:
+
+```text
+Delete a bundle; its file is moved to the Trash and its tickets are kept.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "bundleID" : {
+      "description" : "Bundle id, for example ORD-B2.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "bundleID"
+  ],
+  "type" : "object"
+}
+```
+
+### open_in_app
+
+- **Calls:** a route: `project` opens the Projects window with the project selected (`.project(id)`),
+  `projectSettings` its Project Settings window (`.projectSettings(id)`), `ticket` and `bundle` the Tickets
+  window of its project with it selected (`.tool(.tickets, project:, focus: <id>)`); an open window comes
+  forward. Each feature adds its own kinds as it comes over.
+- **Result:** `{}`.
+- **Errors:** an unknown project, ticket or bundle (`notFound`); no window has appeared yet to open routes
+  (`unavailable`, `The app has no window to show it in.`).
+
+Description:
+
+```text
+Show something to the user in Hephaestus V3: a project in the Projects window, a project's settings, or a ticket or a bundle in its Tickets window.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "target" : {
+      "additionalProperties" : false,
+      "description" : "What to show. kind decides the other properties: project: projectID; projectSettings: projectID; ticket: ticketID; bundle: bundleID.",
+      "properties" : {
+        "bundleID" : {
+          "description" : "Bundle id, for example ORD-B2.",
+          "type" : "string"
+        },
+        "kind" : {
+          "description" : "Kind of item to show.",
+          "enum" : [
+            "project",
+            "projectSettings",
+            "ticket",
+            "bundle"
+          ],
+          "type" : "string"
+        },
+        "projectID" : {
+          "description" : "Project identifier: 2 to 8 letters, for example ORD.",
+          "type" : "string"
+        },
+        "ticketID" : {
+          "description" : "Ticket id, for example ORD-12.",
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "kind"
+      ],
+      "type" : "object"
+    }
+  },
+  "required" : [
+    "target"
+  ],
+  "type" : "object"
 }
 ```
 

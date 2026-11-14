@@ -64,7 +64,7 @@ let package = Package(
         // The tools. The Dashboard draws the grid and its edit mode; each tool provides the widgets of
         // its own data, and ToolsScenes hands them to it.
         toolTarget("DashboardsKit"),
-        toolTarget("TicketsKit", data: ["TicketData", "TextFormats"]),
+        toolTarget("TicketsKit", data: ["TicketData", "TextFormats", "MCPKit"]),
         toolTarget("ServiceMapKit"),
         toolTarget("ContractsKit"),
         toolTarget("BuildsKit"),

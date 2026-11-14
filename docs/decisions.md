@@ -77,3 +77,6 @@ chosen at design time" beside it. Newest phase last.
 | How is Markdown drawn without V2's web view? | Natively, from V2's block model (`MarkdownBlockRenderer`), with each line break kept, since people type plain lines; V2's markers and HTML output aren't brought over. | [Text](text.md) |
 | Which colors highlight code? | AZDesign's semantic colors, after Dracula's code colors: the workspace allows no hex values in views. | [UI › Tickets](ui/tickets.md#markdown) |
 | Where do relative links in a ticket go? | To the project's file, opened in its default app: V2's documentation viewer isn't brought over. | same |
+| Which ticket tools does Claude get? | V2's sixteen, without `implement_ticket` and `implement_bundle`; `create_ticket` and `update_ticket` also take V3's `title`, `priority` and `labels`, and `list_tickets` filters drafts too. The descriptions drop V2's Haiku naming and implementation workflow. | [MCP › Tools](mcp.md#tools) |
+| Which attachment paths do results give? | Absolute ones in every result, not only `get_ticket`'s as in V2: one ticket JSON everywhere. | same |
+| How does a change by Claude reach the windows? | The tool calls the shared `TicketLibrary`, then `TicketSession.refresh()`, so open Tickets windows show it at once rather than at the next file event. | [Architecture › TicketData](architecture.md#ticketdata) |

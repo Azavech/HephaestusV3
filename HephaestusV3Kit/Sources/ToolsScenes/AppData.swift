@@ -80,7 +80,7 @@ final class AppData {
         settingsPort = folder.readSettings().mcpPort
         externalToken = try? folder.externalToken(make: MCPTokens.generate)
         tokens.replace(with: Set([externalToken].compactMap { $0 }))
-        let registry = AppTools.registry(session: session) { [weak self] route in
+        let registry = AppTools.registry(session: session, tickets: tickets) { [weak self] route in
             guard let open = self?.openRoute else { return false }
             open(route)
             return true

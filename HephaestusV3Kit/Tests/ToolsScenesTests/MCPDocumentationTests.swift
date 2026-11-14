@@ -1,6 +1,7 @@
 import Foundation
 import MCPKit
 import ProjectData
+import TicketData
 import Testing
 @testable import ToolsScenes
 
@@ -29,7 +30,8 @@ struct MCPDocumentationTests {
     @Test("The page and the registry agree")
     @MainActor
     func toolsMatch() throws {
-        let registry = AppTools.registry(session: ProjectSession(dataFolder: nil)) { _ in true }
+        let session = ProjectSession(dataFolder: nil)
+        let registry = AppTools.registry(session: session, tickets: TicketSession(projects: session, device: "Test")) { _ in true }
         let documented = try documentedTools()
         #expect(documented.map(\.name) == registry.names)
         for (name, description, schema) in documented {

@@ -473,8 +473,9 @@ The MCP server of [MCP](mcp.md). No UI, no default isolation. Source files in `S
 | `MCPServer.swift` | `MCPServer` (actor: `state`, `states`, `start(port:)`, `stop()`), the private `MCPConnection` and `OneShot` |
 
 - **Operations.** A kit declares its tools as `ToolOperation`s whose `run` is a `@MainActor` closure calling
-  the same function its window calls (ProjectsKit's `ProjectTools.operations(session:)`). ToolsScenes gathers
-  them in order (`AppTools.registry(session:open:)`), adds `open_in_app`, and hands the registry to an
+  the same function its window calls (ProjectsKit's `ProjectTools.operations(session:)`, TicketsKit's
+  `TicketTools.operations(tickets:projects:)`). ToolsScenes gathers them in order
+  (`AppTools.registry(session:tickets:open:)`), adds `open_in_app`, and hands the registry to an
   `MCPProtocol`. `MCPProtocol.call` validates the arguments, runs the operation with `null` members removed,
   and wraps its JSON, or its error's message, in a tool result.
 - **The server** binds an `NWListener` whose `requiredLocalEndpoint` is `127.0.0.1:<port>` (local endpoint
@@ -1252,9 +1253,10 @@ Spec: [Tickets](ui/tickets.md). Data: `TicketData` ([TicketData](#ticketdata)) a
 | `NewTicketView.swift` | `NewTicketView` |
 | `TicketAppearance.swift` | `TicketWords` (shared labels and the activity sentences, one per author); symbols, colors, shortcuts, next steps and `next` of statuses; priorities, bundle statuses, links and events |
 | `TicketsDashboardWidget.swift` | `TicketsDashboardWidget` |
+| `TicketTools.swift` | `TicketTools.operations(tickets:projects:)` (public), the private `TicketToolSet`, `ticketToolError`, `TicketJSON`, `BundleJSON` |
 | `SampleTickets.swift` | `Ticket.samples` (18 tickets), `TicketBundle.samples` |
 
-**Public API**: `TicketsRootView(project:focus:store:directory:)`, `LiveTicketStore(session:)` with
+**Public API**: `TicketsRootView(project:focus:store:directory:)`, `TicketTools.operations(tickets:projects:)`, `LiveTicketStore(session:)` with
 `counts() -> [Project.ID: TicketCounts]`, `EnvironmentValues.ticketStore`, `TicketsReader.read(_:)`,
 `TicketsDashboardWidget(widget:context:)`.
 
@@ -1760,7 +1762,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 464 tests). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 467 tests). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
@@ -1776,7 +1778,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ToolsFoundationTests | Routes, Strings, Inherited settings | Each `FocusRequest` is new; `ChatReference.route` and ids per environment; shared titles from the catalog; unique tool shortcuts; inherited environments. |
 | ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker, Projects from the app's data, New Project, Projects window on the app's data, Project Settings, Project tools | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`.; the mapping of kinds, tints and environments; New Project's following fields, rules, type and parent from the folder, sub project folders and default location; the loading, empty and unavailable states; the selection after a removal and at load.; Project Settings' fields, rules and messages, environments added, renamed and removed, pending fields applied together, and inherited environments changed in the sub project's changes.; the five project tools through JSON-RPC on a real session, their refusals and `~/` expansion. |
 | DashboardsKitTests | What the Dashboard shows, Edit mode, Steps of the keyboard and VoiceOver, Settings, Saving | Sample, default and saved lists; hidden service widgets; toolbar environment and time window; a change in every window of a project; list order; titles; Done, remove, add, first save, drags; every step and its limits; title, checkbox and Number rules; lenient decoding; keys. Uses `MockDashboardLayoutStore`. |
-| TicketsKitTests | The store, The list, Selection and route focus, Comments, New Ticket, The reader, Changes, Tickets from the app's data | Store queries and counts; grouping, filters, counts, bundles; default selection, focus, repeated routes, hidden and missing tickets, chat subject; comment drafts; the sheet's project, validation, creation and failure; reader sentences and suggestions; next step and status, comments with files, editing, links, deletion, bundles, the store's phases; the live store's mapping of statuses, priorities, links, blocking and activity. Uses `MockTicketStore` and `SampleTicketStore`. |
+| TicketsKitTests | The store, The list, Selection and route focus, Comments, New Ticket, The reader, Changes, Tickets from the app's data, Ticket tools | Store queries and counts; grouping, filters, counts, bundles; default selection, focus, repeated routes, hidden and missing tickets, chat subject; comment drafts; the sheet's project, validation, creation and failure; reader sentences and suggestions; next step and status, comments with files, editing, links, deletion, bundles, the store's phases; the live store's mapping of statuses, priorities, links, blocking and activity; the ticket tools on real sessions in temporary folders (creation with the template, comments with files, absolute paths, filters, Claude's status limits, bundles, deletion). Uses `MockTicketStore` and `SampleTicketStore`. |
 | ServiceMapKitTests | Focus formats, Service Map model, Service Map reader, Service widgets, Formats | Focus parsing; opening environment and view; history, Back, Show All; taps; repeated routes; missing items; chat subject; summary; request order and sorting; graph contents; logs; reader per environment, details and suggestions; widget readings; durations, literals, stable layout. Uses `MockServiceMapStore`. |
 | ContractsKitTests | Opening, Route focus, Filter, Request, Responses, Reader and chat, Sample contracts | Opening selection and environment; repeated routes, filters cleared, drafts kept; sections and matching; examples, URLs, draft keeping, Send; duration formats; reader sentences and suggestions; sample contracts. Uses `MockContractStore`. |
 | BuildsKitTests | Focus, Model, Reader, Samples and logs, Recent Builds widget | Focus parsing; default selection, focus by mode, repeated routes, steps, mode selections, chat subject; reader text and owner repository; default steps, open jobs, log line kinds, sample releases; recent runs within 1–20. Uses `MockBuildStore`. |
