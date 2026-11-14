@@ -208,6 +208,9 @@
     "Open in the Chat Window" : {
 
     },
+    "Operate deployments" : {
+
+    },
     "Path" : {
       "comment" : "The Claude CLI's path"
     },

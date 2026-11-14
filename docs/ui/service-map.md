@@ -1,6 +1,6 @@
 # Service Map
 
-The Service Map shows the services of a project's namespace and how they call each other, after the service map of AWS X-Ray. Round nodes stand for the services and for the databases, queues and external services they call; curved arrows stand for the calls, colored by their traffic. Under the graph, a table lists the namespace's recent requests, newest first. Beside both, the details show the service in focus or the request selected. A click on a service focuses the graph on it. A request shows only its path, from a Client node. A right-click, **Back** or ⌘[ goes back to the view before. All data is sample data (see [Sample data and limits](#sample-data-and-limits)).
+The Service Map shows the services of a project's namespace and how they call each other, after the service map of AWS X-Ray. Round nodes stand for the services and for the databases, queues and external services they call; curved arrows stand for the calls, colored by their traffic. Under the graph, a table lists the namespace's recent requests, newest first. Beside both, the details show the service in focus or the request selected. A click on a service focuses the graph on it. A request shows only its path, from a Client node. A right-click, **Back** or ⌘[ goes back to the view before. The map reads the environment's cluster with kubectl, the services' sources on GitHub with gh, and the traces of its Jaeger, by V2's rules ([Data › Clusters](../data.md#clusters)); the previews and captures use sample data (see [Sample data and limits](#sample-data-and-limits)).
 
 ![The Service Map of Orders in Staging, focused on orders-api, in light appearance](images/servicemap-light.png)
 *Orders in Staging, opened on its own service, orders-api. The summary, zoom controls and legend float over the graph. The recent requests are under the graph, and the details of orders-api are on the right.*
@@ -51,8 +51,8 @@ The graph sits over the requests table in a vertical split view whose divider ca
 | Project switcher | ProjectSwitcher, at the leading edge | The project's symbol | — | Switches the window's project and starts the map afresh. See [components.md](components.md). | Mac, iPad, iPhone |
 | **Service Map** and project path | Window title and subtitle | — | — | Dropped when the window is narrower than 760 points. | Mac, iPad from 760 points |
 | **Environment** | Menu with an inline picker. The label is the current environment's name, for example **Staging**. | — | — | Picks one of the project's environments, or of the project it takes its settings from (see [Projects](projects.md)): **Local**, **Staging** or **Production** in the samples. The graph, summary, requests, details and the chat panel's subject follow the choice. The view stays: a service or request the new environment lacks shows as not found (see [States](#states)). Tooltip "Environment". | Mac, iPad |
-| **Time Window** | Segmented control on Mac, pop-up menu on iPad: **5 min**, **1 hour** (default), **24 hours** | — | — | Tooltip "Time Window". Not wired yet: every window shows the same sample map. | Mac, iPad |
-| **Live** | Toggle button, on by default | `dot.radiowaves.left.and.right` | — | Tooltip "Follow new requests as they arrive". Not wired yet. | Mac, iPad |
+| **Time Window** | Segmented control on Mac, pop-up menu on iPad: **5 min**, **1 hour** (default), **24 hours** | — | — | The window of the traces the map counts, ending at each read. Tooltip "Time Window". | Mac, iPad |
+| **Live** | Toggle button, on by default | `dot.radiowaves.left.and.right` | — | On, the map is read again 5 s after each read (V2's cadence); off, only when the environment or the window changes. Tooltip "Follow new requests as they arrive". | Mac, iPad |
 | **Map Settings** | Menu | `ellipsis.circle` | — | Holds the Environment picker, the Time Window picker and the **Live** toggle. Tooltip "Environment, time window and Live". | iPhone |
 | **Details** | Button | `info.circle` | — | Pushes the details page over the map. Tooltip "Details of the service or request". | iPhone |
 | **Chat** | `ChatPanelToolbarItem` | `sidebar.right` | ⌃⌘C | Shows or hides the chat panel. It is the last item (the user's choice). It is absent when Settings › Chat turns the panel off. Tooltip "Show the Chat Panel (⌃⌘C)" or "Hide the Chat Panel (⌃⌘C)". | Mac, iPad, iPhone |
@@ -214,6 +214,13 @@ The details column is always open beside the map. There is no button to hide it 
 - **Requests, last 30 minutes.** An area and line chart in the accent color, 64 points tall, without axes.
 - **Calls.** One row for each call to or from the node: `arrow.up.right` for a call it makes, `arrow.down.left` for a call it receives. Then the node at the other end, its error rate when 1% or more (warning color from 1%, danger from 5%), and its calls per second. A click on a row focuses on the node at the other end, whatever its kind (see [Navigating the graph](#navigating-the-graph) › Click).
 - **Logs.** The node's log lines: time, a 6-point dot in the level's color (info, warning or danger), and the message, in the code font (Fira Code), selectable. Without lines: "No log lines in this time window."
+- **Deployment**, for the project's own service (the environment's `deployment`), in the app: **Restart…**
+  (`arrow.clockwise.circle`), a stepper of replicas (0 to 100) with **Scale…**, and with an Argo CD application,
+  "Argo CD: *sync*, *health*" and **Sync…** (`arrow.triangle.2.circlepath`, disabled while Argo CD syncs). Each asks
+  first in a confirmation dialog ("Restart the pods of the service in Staging?", "Scale the service in Staging to
+  3 pods?", "Sync the Argo CD application of Staging?"), then runs kubectl ([Data › kubectl calls](../data.md#kubectl-calls)),
+  shows kubectl's answer, or "Restart failed" with its reason, in an alert, and reads the map again. Identifiers
+  `serviceMap.inspector.restart`, `.scale`, `.sync`, `.argoCD`.
 - **Open Contract** (`curlybraces.square`). Shown for the project's own service, when the project has a contract. Opens Contracts for the project. Tooltip "Open the service's contract in Contracts".
 
 ### Request
@@ -249,6 +256,9 @@ On the whole namespace of a project without its own service, the column shows **
 | Zoomed out | Below 50% zoom on the whole namespace, or below 30% in any view | Below 50% on the whole namespace, arrow labels hide. Below 30%, in any view, node names hide too; hovering a node shows its name. |
 | No log lines | The service or request has none | "No log lines in this time window." |
 | Focus not in the map | A service absent from the current environment, or an unknown request id | The whole namespace, with **Back** and **Show All**, and **Service Not Found** or **Request Not Found** in the details. The chat panel gets no subject. |
+| Reading | The first read of the environment hasn't ended. | "Reading the map…" in a bar over the graph (`serviceMap.status`). |
+| Read failed | kubectl failed, as when the cluster can't be reached. | Its message in `danger` in the bar; the last map read stays. |
+| Problems | A service's sources couldn't be read, or Jaeger couldn't be reached. | The sentences in `warning` in the bar, joined with " · "; without Jaeger, every arrow grey and no requests. |
 | No project | The window has no project | **No Project**. See [navigation.md](navigation.md). |
 
 ## Layouts
@@ -337,11 +347,12 @@ Text comes from the Service Map's own String Catalog. Counts agree with their nu
 
 ## Sample data and limits
 
-- The map is sample data: the `shop` namespace as each environment would show it. Local scales the traffic down to 5%. Staging has a slow payment provider, so `payments-api` and `stripe` are degraded and checkouts time out. Production triples the traffic and adds 28 more nodes of the whole shop, some in groups that never call the others.
-- The requests table holds 31 sample requests: seven that the samples are about, such as the failed checkout `req-8f3a`, plus 24 routine ones. There are nine log lines. Every time is relative to a fixed sample clock, to the minute, so requests of the same minute keep the samples' order.
-- Each project's own service is a fixed sample mapping: Orders to `orders-api`, Payments to `payments-api`, Edge Gateway to `edge-gateway`.
-- **Time Window** and **Live** are not wired yet. The chart in the details always covers the last 30 minutes.
-- No sample call has zero traffic, so grey **No calls** arrows never appear.
+- **Live maps.** The app reads each environment with `LiveServiceMapStore`: services, databases (V2's postgres
+  Clusters) and buckets (as external services) from the Deployments and their sources; calls, figures, requests and
+  log lines from Jaeger's traces. V3's gateways, workers and queues don't come from V2's sources: a live map shows
+  services, databases and external services. Logs are those of the requests' span events.
+- **Samples.** Previews and captures use the sample namespaces (`SampleServiceMapStore`): Local, Staging and
+  Production, with gateways, workers, queues and a Production-only service; their numbers are fixed.
 
 ## Previews
 

@@ -8,14 +8,14 @@ public enum ServiceMapReader {
     /// `focus` is `service:<name>` or `request:<id>`, as the Service Map's routes. `environment` is the
     /// name of the environment the user has on screen, which the chat panel's subject carries; without
     /// one, or with a name the project doesn't have, the first that isn't healthy is read.
-    public static func read(_ focus: String, environment: String? = nil, project: Project) -> ToolReading? {
-        read(focus, environment: environment, project: project, store: SampleServiceMapStore())
+    public static func read(_ focus: String, environment: String? = nil, project: Project, store: LiveServiceMapStore?) -> ToolReading? {
+        read(focus, environment: environment, project: project, store: store ?? SampleServiceMapStore())
     }
 
     static func read(_ focus: String, environment environmentName: String?, project: Project, store: any ServiceMapStore) -> ToolReading? {
         let named = environmentName.flatMap { name in project.deploymentEnvironments.first { $0.name == name } }
         guard let environment = named ?? project.openingEnvironment else { return nil }
-        let map = store.map(environment: environment.name)
+        let map = store.map(of: project, environment: environment.name)
         switch MapSelection(focus: focus) {
         case .service(let id)?:
             guard let node = map.node(id) else { return nil }

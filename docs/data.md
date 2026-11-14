@@ -1051,6 +1051,81 @@ taken. It gets the quarantine of a web download, with the file's URL
 Gatekeeper checks it when it opens. The temporary folder is removed, also after a failure. `<asset>` in the
 pattern has `\` before each `\`, `*`, `?` and `[`.
 
+## Clusters
+
+The Service Map and Claude's cluster tools read where a service runs: each environment's `kubeconfig`,
+`namespace`, `deployment`, `argoCDApplication` and `jaeger` ([Project environment](#project-environment)),
+with kubectl from the login shell's `PATH`. Nothing is stored: every read asks the cluster again.
+
+### kubectl calls
+
+Every command starts with `--kubeconfig=<file>` (`~/` expanded) and `--namespace=<namespace>`, each only when the
+environment sets it, runs in the project's folder with the login shell's environment, and ends after 60 s (SIGTERM,
+then SIGKILL). The Argo CD commands use the Application's namespace: `<namespace>` of `<namespace>/<name>`, else
+`argocd`.
+
+| Call | Command |
+| --- | --- |
+| Deployments | `get deployments -o json` |
+| A Deployment's status | `get deployment/<deployment> -o json`, then `get pods --selector=<its matchLabels> -o json` |
+| Logs | `logs <pod or deployment/<deployment>> --tail=<n> --timestamps` (`--all-containers` for the Deployment; `--container`, `--since=<n>s`, `--previous`) |
+| Events | `get events -o json`, those whose object is the Deployment or named after it |
+| Restart | `rollout restart deployment/<deployment>` |
+| Scale | `scale deployment/<deployment> --replicas=<0–100>` |
+| Argo CD status | `get applications.argoproj.io/<name> -o json`: `status.sync.status`, `status.health.status`, the revision, `status.operationState.phase` |
+| Argo CD sync | `patch applications.argoproj.io/<name> --type=merge --patch={"operation":{"initiatedBy":{"username":"Hephaestus"},"sync":{"syncStrategy":{"hook":{}}}}}`, refused while an operation runs |
+| Port forward | `port-forward <target> --address=127.0.0.1 <local>:<remote>`, waiting at most 30 s for `Forwarding from 127.0.0.1:<port> -> <remote>` |
+
+Failures, V2's: `<command> exited with code <n>: <standard error>` (or `.` without it), `<command> did not finish
+within 60 seconds.`, `Unexpected output from <command>.`, `kubectl was not found in the PATH of the login shell.`,
+`Environment “<name>” has no deployment.`, `Environment “<name>” has no Argo CD application.` `<command>` is kubectl
+and its arguments, an argument with other characters than letters, digits and `-_./:=,@+%` in single quotes.
+
+**Port forwards.** Jaeger's forward is shared by the reads of every window, one per kubeconfig and Service, and
+ends 60 s after its last use or when kubectl exits. The forwards Claude opens (`k8s_port_forward`) last until it
+stops them or the app quits.
+
+### Service map
+
+V2's rules, which came from the owner:
+
+- **Services**: each Deployment whose first container image of the form `ghcr.io/<owner>/<repository>:sha-<commit>`
+  (7 to 40 hexadecimal digits) names a repository other than `yc-shared`. Its health: Down when no pod is ready,
+  Degraded when some aren't, else Healthy.
+- **Sources**: the service's `go.mod` and `deployment/values-prod.yml` at the deployed commit, with
+  `gh api --header=Accept: application/vnd.github.raw repos/<owner>/<repository>/contents/<path>?ref=<commit>`; a
+  file the commit hasn't (HTTP 404) is empty; the files read are kept until the app quits; a failed read gives
+  `The sources of <deployment> cannot be read: <reason>.` and is tried again at the next read.
+- **Databases**: a service has `<service>-postgres` when `postgres.enabled` of its values file is `true`, `yes` or
+  `on` (any case), or its `go.mod` requires `…/yc-shared/gormpg` (or a major version). **Buckets**:
+  `<service>-bucket`, an external node, from `s3.enabled` or `…/yc-shared/s3store`.
+- **Arrows**: a service calls another when its `go.mod` requires the other's repository module, or one below it;
+  it calls its database and its bucket. Services first, by name, then the databases and buckets.
+
+### Jaeger
+
+The environment's `jaeger`, `<namespace>/<name>` (without a namespace, the environment's), is reached on port
+16686 through the shared port forward of `service/<name>`. The v3 API in OTLP JSON:
+`GET /api/v3/traces?query.service_name=<service>&query.start_time_min=<start>&query.start_time_max=<end>&query.search_depth=10000`
+for each service of the map (a full answer is read again in halves), and `GET /api/v3/traces/<id>` for one
+request. A 404 gives no trace. Without Jaeger, or when it can't be reached, the map shows its nodes and grey
+arrows, and `Jaeger cannot be reached: <reason>`.
+
+### Calls and requests
+
+Of the spans that started in the time window:
+
+- A **client** span of a service is a call: `db.system.name` `postgresql` of its database, `rpc.system` `aws-api` with
+  `rpc.service` `S3` of its bucket, else of the service named by the first label of `server.address`; only the map's
+  arrows count. A failed span (status `ERROR`, `error` `true`, or a status of 500 or more) is an error.
+- A **server** span is a request of its service: requests per second, p95 duration, error rate, and the requests of
+  30 equal parts of the window for the chart.
+- A **request** is a trace whose first span (no parent in the trace, the earliest) is a server span of a service,
+  at least 3 s old: its id is the trace id, its method `http.request.method`, its route `http.route` (else
+  `url.path`, else the span's name), its status `http.response.status_code` (else `http.status_code`), its spans in
+  start order. Span events with `log.level` are its log lines (`error`, `fatal`, `panic` are errors; `warning`,
+  `warn` warnings).
+
 ## Contracts
 
 A project's contract is its `openapi/contract.yaml`, V2's API Explorer file: an OpenAPI 3.0 or 3.1 document,

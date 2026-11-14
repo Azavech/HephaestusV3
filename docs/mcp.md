@@ -17,7 +17,7 @@ function the window calls ([Architecture › MCPKit](architecture.md#mcpkit)). T
 | JSON-RPC methods | `initialize`, `ping`, `tools/list`, `tools/call`; every notification is accepted and ignored |
 | Server name | `hephaestus`, so Claude names the tools `mcp__hephaestus__<tool>` |
 | Authentication | `Authorization: Bearer <token>` with the external token ([Authentication](#authentication)) |
-| Tools | [Tools](#tools): 34 today |
+| Tools | [Tools](#tools): 45 today |
 | Instructions to Claude | None: no `instructions` in `initialize`, no system prompt, no skills ([What Claude reads](#what-claude-reads)) |
 
 ## Server lifecycle
@@ -190,6 +190,7 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 | `read` | the `list_` and `get_` tools, `open_in_app` | runs | runs |
 | `renameChats` | `rename_chat` | runs | runs |
 | `startBuilds` | `rerun_run`, `cancel_run` | runs | Start builds: Ask First shows a card and waits; Never (the default) refuses |
+| `operateClusters` | `k8s_restart`, `k8s_scale`, `k8s_port_forward`, `k8s_stop_port_forward`, `argocd_sync` | runs | Operate deployments, as Change tickets |
 | `callAPIs` | `api_call` | runs | an `operation` starting `GET ` or `HEAD ` runs; another follows Call APIs that change data, as Change tickets |
 | `changeTickets` | `create_ticket`, `update_ticket`, `set_ticket_status`, `add_comment`, `update_comment`, the bundle tools but `delete_bundle` | runs | Change tickets: Always runs; Ask First shows a card and waits; Never refuses |
 | `deleteTickets` | `delete_ticket`, `delete_comment`, `remove_attachment`, `delete_bundle` | runs | Change tickets Never refuses; otherwise a card, even under Always |
@@ -201,9 +202,10 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 - A refusal is a tool error (`forbidden`) with one of these messages: `The user doesn't let Claude change
   tickets from chats (Settings ▸ Chat).`, `The user doesn't let Claude change projects from chats (Settings ▸
   Chat).`, `The user doesn't let Claude start or cancel builds from chats (Settings ▸ Chat).`, `The user doesn't let
-  Claude call APIs that change data from chats (Settings ▸ Chat).`, `The user didn't allow this call.`
+  Claude call APIs that change data from chats (Settings ▸ Chat).`, `The user doesn't let Claude operate deployments
+  from chats (Settings ▸ Chat).`, `The user didn't allow this call.`
 - The permissions are the user defaults `chat.ticketChanges` and `chat.projectChanges`: `never`, `askFirst`
-  (the default) or `always`; `chat.apiCalls`, the same; and `chat.buildStarts`: `never` (the default) or
+  (the default) or `always`; `chat.apiCalls` and `chat.clusterChanges`, the same; and `chat.buildStarts`: `never` (the default) or
   `askFirst`.
 - The CLI runs every tool of the server without asking (`--allowedTools`): the gate is where the user's
   permissions hold, whatever the CLI's own settings say.
@@ -276,6 +278,8 @@ a project: Claude may read and change every project of this Mac, as the user can
 | `rerun_run`, `cancel_run` | BuildsKit | startBuilds | gh |
 | `api_operations` | ContractsKit | read | the project's contract ([Data › Contracts](data.md#contracts)) |
 | `api_call` | ContractsKit | callAPIs | the contract's request, the app's HTTP client |
+| `k8s_status`, `k8s_logs`, `k8s_events`, `argocd_status`, `get_service_map`, `get_request` | ServiceMapKit | read | kubectl, Jaeger ([Data › Clusters](data.md#clusters)) |
+| `k8s_restart`, `k8s_scale`, `k8s_port_forward`, `k8s_stop_port_forward`, `argocd_sync` | ServiceMapKit | operateClusters | kubectl |
 | `open_in_app` | ToolsScenes | read | a route ([Navigation › Routes](ui/navigation.md#routes)) |
 
 A project's JSON (`get_project`, `create_project`, `update_project`): `id`, `name`, `type` (`none`,
@@ -1568,6 +1572,434 @@ Input schema:
   "required" : [
     "projectID",
     "operation"
+  ],
+  "type" : "object"
+}
+```
+
+### k8s_status
+
+- **Calls:** `kubectl get deployment/<deployment> -o json`, then the pods of its selector.
+- **Result:** `deployment`, `replicas`, `ready`, `updated`, `available`, `images`, `pods` (`name`, `phase`, `ready`, `restarts`, `started`).
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+
+Description:
+
+```text
+Returns the environment's Deployment: its replicas, ready, updated and available pods, its images, and each pod's phase, readiness, restarts and start.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "environment" : {
+      "description" : "An environment of the project, such as Staging.",
+      "type" : "string"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID",
+    "environment"
+  ],
+  "type" : "object"
+}
+```
+
+### k8s_logs
+
+- **Calls:** `kubectl logs <pod or deployment/<deployment>> --tail=<n> --timestamps`, `--all-containers` for the Deployment, `--container`, `--since`, `--previous` when given.
+- **Result:** the lines, as text.
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+
+Description:
+
+```text
+Returns log lines of the environment's Deployment, all its containers, or of one pod; the last 200 by default.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "container" : {
+      "description" : "A container of the pod.",
+      "type" : "string"
+    },
+    "environment" : {
+      "description" : "An environment of the project, such as Staging.",
+      "type" : "string"
+    },
+    "pod" : {
+      "description" : "A pod's name, as k8s_status gives it.",
+      "type" : "string"
+    },
+    "previous" : {
+      "description" : "The previous container's lines, after a restart.",
+      "type" : "boolean"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    },
+    "sinceSeconds" : {
+      "description" : "Only lines of the last seconds.",
+      "minimum" : 1,
+      "type" : "integer"
+    },
+    "tailLines" : {
+      "description" : "The last lines to return.",
+      "maximum" : 5000,
+      "minimum" : 1,
+      "type" : "integer"
+    }
+  },
+  "required" : [
+    "projectID",
+    "environment"
+  ],
+  "type" : "object"
+}
+```
+
+### k8s_events
+
+- **Calls:** `kubectl get events -o json`, those of the Deployment and of the objects named after it.
+- **Result:** an array: `type`, `reason`, `message`, `object`, `count`, `lastSeen`, newest first.
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+
+Description:
+
+```text
+Returns the events of the environment's Deployment, its ReplicaSets and its pods, newest first.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "environment" : {
+      "description" : "An environment of the project, such as Staging.",
+      "type" : "string"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID",
+    "environment"
+  ],
+  "type" : "object"
+}
+```
+
+### k8s_restart
+
+- **Calls:** `kubectl rollout restart deployment/<deployment>`.
+- **Result:** kubectl's output, as text.
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+
+Description:
+
+```text
+Restarts the pods of the environment's Deployment (kubectl rollout restart).
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "environment" : {
+      "description" : "An environment of the project, such as Staging.",
+      "type" : "string"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID",
+    "environment"
+  ],
+  "type" : "object"
+}
+```
+
+### k8s_scale
+
+- **Calls:** `kubectl scale deployment/<deployment> --replicas=<n>`.
+- **Result:** kubectl's output, as text.
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+
+Description:
+
+```text
+Sets the number of pods of the environment's Deployment.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "environment" : {
+      "description" : "An environment of the project, such as Staging.",
+      "type" : "string"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    },
+    "replicas" : {
+      "description" : "0 to 100.",
+      "maximum" : 100,
+      "minimum" : 0,
+      "type" : "integer"
+    }
+  },
+  "required" : [
+    "projectID",
+    "environment",
+    "replicas"
+  ],
+  "type" : "object"
+}
+```
+
+### k8s_port_forward
+
+- **Calls:** `kubectl port-forward deployment/<deployment> --address=127.0.0.1 <local>:<remote>`, kept until stopped or the app quits.
+- **Result:** `portForwardID`, `localPort`, `remotePort`.
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+
+Description:
+
+```text
+Forwards a port of the environment's Deployment to a port of this Mac on 127.0.0.1, until stopped or the app quits. Returns its id and local port.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "environment" : {
+      "description" : "An environment of the project, such as Staging.",
+      "type" : "string"
+    },
+    "localPort" : {
+      "description" : "A port of this Mac; without it, a free one.",
+      "maximum" : 65535,
+      "minimum" : 1024,
+      "type" : "integer"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    },
+    "remotePort" : {
+      "description" : "The Deployment's port.",
+      "maximum" : 65535,
+      "minimum" : 1,
+      "type" : "integer"
+    }
+  },
+  "required" : [
+    "projectID",
+    "environment",
+    "remotePort"
+  ],
+  "type" : "object"
+}
+```
+
+### k8s_stop_port_forward
+
+- **Calls:** the port forwards: ends kubectl's process.
+- **Result:** `{}`.
+- **Errors:** an unknown id (`notFound`, `Port forward <id> not found.`).
+
+Description:
+
+```text
+Stops a port forward that k8s_port_forward started.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "portForwardID" : {
+      "description" : "The id k8s_port_forward returned.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "portForwardID"
+  ],
+  "type" : "object"
+}
+```
+
+### argocd_status
+
+- **Calls:** `kubectl get applications.argoproj.io/<name> -o json`, in the Application's namespace (`argocd` by default).
+- **Result:** `name`, `sync`, `health`, `revision`, `operation`.
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+
+Description:
+
+```text
+Returns the environment's Argo CD Application: its sync status, health, revision and running operation.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "environment" : {
+      "description" : "An environment of the project, such as Staging.",
+      "type" : "string"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID",
+    "environment"
+  ],
+  "type" : "object"
+}
+```
+
+### argocd_sync
+
+- **Calls:** `kubectl patch applications.argoproj.io/<name> --type=merge` with an `operation` that syncs, as Argo CD's UI does; refused while an operation runs.
+- **Result:** kubectl's output, as text.
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+
+Description:
+
+```text
+Asks Argo CD to sync the environment's Application, as its own UI does.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "environment" : {
+      "description" : "An environment of the project, such as Staging.",
+      "type" : "string"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID",
+    "environment"
+  ],
+  "type" : "object"
+}
+```
+
+### get_service_map
+
+- **Calls:** the Service Map's read of the namespace over the last hour ([Data › Clusters › Service map](data.md#service-map)).
+- **Result:** `nodes` (`id`, `kind`, `pods`, `ready`, `health`, `requestsPerSecond`, `p95Ms`, `errorRate`), `calls` (`from`, `to`, `callsPerSecond`, `errorRate`), `requests` (their number).
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+
+Description:
+
+```text
+Returns the service map of the environment's namespace over the last hour: each service, database and bucket with its pods, health, requests per second, p95 latency and error rate, and each call with its calls per second and error rate.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "environment" : {
+      "description" : "An environment of the project, such as Staging.",
+      "type" : "string"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID",
+    "environment"
+  ],
+  "type" : "object"
+}
+```
+
+### get_request
+
+- **Calls:** Jaeger's `GET /api/v3/traces/<id>` through the port forward of the environment's Jaeger.
+- **Result:** `id`, `method`, `route`, `status`, `durationMs`, `start`, `spans` (`service`, `name`, `startMs`, `durationMs`, `failed`), `logs` (`time`, `service`, `level`, `message`).
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+
+Description:
+
+```text
+Returns one request of the environment's traces by its id: its method, route, status, duration, spans and log lines.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "environment" : {
+      "description" : "An environment of the project, such as Staging.",
+      "type" : "string"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    },
+    "requestID" : {
+      "description" : "The request's id: its trace id, 32 hexadecimal digits.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID",
+    "environment",
+    "requestID"
   ],
   "type" : "object"
 }

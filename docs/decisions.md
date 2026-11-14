@@ -156,3 +156,16 @@ which rules the app enforces, and never tells Claude how to work.
 | What may Claude call? | `GET` and `HEAD` always (V2's rule); other methods under a new **Call APIs that change data** (Never, Ask First, Always; Ask First by default). | [MCP › Permissions](mcp.md#permissions) |
 | Are responses kept? | While the app runs, per operation; never written. | [UI › Contracts](ui/contracts.md) |
 | What about V2's schema trees, Info detail, and Quick Look of binary bodies? | Not in V3's design: the window shows operations, the request and the documented responses; a binary body reads "Binary body (<size>)". | same |
+
+## Phase 8: Service Map, Kubernetes and Argo CD (14 November 2026)
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| Which of V2's node kinds map to V3's? | Services to services, V2's postgres Clusters to databases, buckets to external services; V3's gateways, workers and queues stay for the samples, since V2's sources don't tell them. | [Data › Service map](data.md#service-map) |
+| How often does the map read? | V2's 5 s after each read, while **Live** is on; once per change of environment or window when it is off. | [UI › Service Map › Toolbar](ui/service-map.md#toolbar) |
+| Which time windows? | V3's 5 min, 1 hour and 24 hours; V2's 7 days isn't offered. | same |
+| Where do the logs come from? | The span events with `log.level` of the window's requests, V2's Log tab; pod logs are Claude's `k8s_logs`. | [Data › Calls and requests](data.md#calls-and-requests) |
+| Which actions does the user get? | Restart, Scale and Argo CD Sync in the own service's details, each confirmed first; port forwards stay Claude's (and Jaeger's), with no window of their own yet. | [UI › Service Map › Service](ui/service-map.md#service) |
+| What may Claude do? | Read deployments, logs, events, Argo CD, the map and a request; restart, scale, sync and forward ports under a new **Operate deployments** (Never, Ask First, Always; Ask First by default). V2 gave these tools to chats only; V3's external token may call them too, as for every tool. | [MCP › Permissions](mcp.md#permissions) |
+| Which project's environments? | The tools take a `projectID` and an `environment`, since V3's tools aren't tied to a chat's project. | [MCP › Tools](mcp.md#tools) |
+| What about the status line? | A bar over the graph shows reading, a failure, or the sources' and Jaeger's problems; V2's request and trace counts aren't shown. | [UI › Service Map › States](ui/service-map.md#states) |

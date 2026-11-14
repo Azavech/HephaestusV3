@@ -36,6 +36,8 @@ public enum ToolPermission: String, Sendable, Hashable, CaseIterable {
     /// Calls an API of a project's contract: a `GET` or `HEAD` always runs; another method follows Settings ▸
     /// Chat › Call APIs that change data.
     case callAPIs
+    /// Restarts, scales or syncs a Deployment, or forwards a port: Settings ▸ Chat › Operate deployments.
+    case operateClusters
 
     /// True for the permissions that change the user's data.
     public var changes: Bool { self != .read }

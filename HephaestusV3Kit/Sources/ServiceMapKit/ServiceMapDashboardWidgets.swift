@@ -13,30 +13,48 @@ import ToolsFoundation
 public struct ServiceMapDashboardWidget: View {
     let widget: DashboardWidget
     let context: DashboardContext
-    private let store: any ServiceMapStore
+    /// The store of previews and tests; nil reads the app's.
+    private let fixedStore: (any ServiceMapStore)?
+    @Environment(\.serviceMapStore) private var appStore
 
     public init(widget: DashboardWidget, context: DashboardContext) {
-        self.init(widget: widget, context: context, store: SampleServiceMapStore())
+        self.init(widget: widget, context: context, store: nil)
     }
 
-    init(widget: DashboardWidget, context: DashboardContext, store: any ServiceMapStore) {
+    init(widget: DashboardWidget, context: DashboardContext, store: (any ServiceMapStore)?) {
         self.widget = widget
         self.context = context
-        self.store = store
+        fixedStore = store
+    }
+
+    private var store: any ServiceMapStore {
+        fixedStore ?? appStore ?? SampleServiceMapStore()
     }
 
     public var body: some View {
+        content
+            // The map is read when the widget shows, then every 5 s while it does.
+            .task(id: "\(context.environment?.name ?? "")|\(context.window)") {
+                guard let environment = context.environment else { return }
+                while !Task.isCancelled {
+                    await store.refresh(context.project, environment: environment.name, window: context.window)
+                    try? await Task.sleep(for: .seconds(5))
+                }
+            }
+    }
+
+    @ViewBuilder private var content: some View {
         if let environment = context.environment {
-            let reading = ServiceWidgetReading(map: store.map(environment: environment.name), window: context.window)
+            let reading = ServiceWidgetReading(map: store.map(of: context.project, environment: environment.name), window: context.window)
             switch widget.kind {
             case .instances:
                 InstancesContent(
                     environment: environment,
-                    pods: store.ownService(of: context.project.id).flatMap(reading.map.node).map { store.pods(of: $0, environment: environment) }
+                    pods: store.ownService(of: context.project, environment: environment.name).flatMap(reading.map.node).map { store.pods(of: $0, environment: environment) }
                 )
             case .serviceGraph:
                 ServiceGraphContent(
-                    project: context.project, reading: reading, focusID: store.ownService(of: context.project.id), editing: context.editing
+                    project: context.project, reading: reading, focusID: store.ownService(of: context.project, environment: environment.name), editing: context.editing
                 )
             case .busiestCalls:
                 BusiestCallsContent(reading: reading, limit: rowLimit)

@@ -190,6 +190,7 @@ struct ChatPermissionsSection: View {
     @Binding var projectChanges: ChangePermission
     @Binding var buildStarts: ChangePermission
     @AppStorage(ChatPreferences.apiCallsKey) private var apiCalls = ChangePermission.askFirst
+    @AppStorage(ChatPreferences.clusterChangesKey) private var clusterChanges = ChangePermission.askFirst
     let identifier: String
 
     var body: some View {
@@ -220,6 +221,12 @@ struct ChatPermissionsSection: View {
                 }
             }
             .accessibilityIdentifier("\(identifier).apiCalls")
+            Picker(String(localized: "Operate deployments", bundle: #bundle), selection: $clusterChanges) {
+                ForEach(ChangePermission.allCases) { permission in
+                    Text(permission.title).tag(permission)
+                }
+            }
+            .accessibilityIdentifier("\(identifier).clusters")
             Picker(String(localized: "Start builds", bundle: #bundle), selection: $buildStarts) {
                 ForEach([ChangePermission.never, .askFirst]) { permission in
                     Text(permission.title).tag(permission)

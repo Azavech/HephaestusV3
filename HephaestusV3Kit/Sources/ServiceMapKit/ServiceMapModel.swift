@@ -1,3 +1,4 @@
+import ClusterData
 import Foundation
 import Observation
 import ToolsFoundation
@@ -39,7 +40,24 @@ final class ServiceMapModel {
     var sortOrder: [KeyPathComparator<RequestRow>] = [KeyPathComparator(\.startedAt, order: .reverse)]
 
     /// The service the project deploys, if any: shown on the whole namespace.
-    let ownService: ServiceNode.ID?
+    /// The project's own service in the shown environment.
+    var ownService: ServiceNode.ID? {
+        store.ownService(of: project, environment: environment)
+    }
+
+    /// How the last read went.
+    var status: MapStatus {
+        store.status(of: project, environment: environment)
+    }
+
+    /// Whether the window can act on the cluster: restart, scale, sync.
+    var acts: Bool { store.acts }
+    /// A cluster action on its way.
+    private(set) var isActing = false
+    /// What the last action said, or why it failed: its title and text.
+    var actionResult: (title: String, message: String)?
+    /// The Argo CD Application of the environment, once read.
+    private(set) var argoCD: ArgoCDStatus?
 
     /// The map of `project` on `environment` (or the first that isn't healthy), with `focus` shown:
     /// `service:<name>` or `request:<id>`. A sub project opened without a focus shows its own service
@@ -49,11 +67,10 @@ final class ServiceMapModel {
         self.store = store
         let named = environment.flatMap { name in project.deploymentEnvironments.first { $0.name == name } }
         let shown = (named ?? project.openingEnvironment)?.name ?? ""
-        let map = store.map(environment: shown)
-        let own = store.ownService(of: project.id)
+        let map = store.map(of: project, environment: shown)
+        let own = store.ownService(of: project, environment: shown)
         self.environment = shown
         self.map = map
-        ownService = own
         rows = Self.rows(of: map)
         if focus == nil, project.parentID != nil, let own {
             scope = .service(own)
@@ -64,8 +81,57 @@ final class ServiceMapModel {
     }
 
     private func load() {
-        map = store.map(environment: environment)
+        map = store.map(of: project, environment: environment)
         rows = Self.rows(of: map)
+    }
+
+    /// Reads the namespace and the window's traces again, then shows them.
+    func refresh() async {
+        await store.refresh(project, environment: environment, window: timeWindow)
+        let read = store.map(of: project, environment: environment)
+        if read != map { load() }
+    }
+
+    // MARK: Cluster actions
+
+    /// Restarts the own service's Deployment (`kubectl rollout restart`).
+    func restart() async {
+        await act(String(localized: "Restart", bundle: #bundle)) { [store, project, environment] () throws(MapActionError) in
+            try await store.restart(project, environment: environment)
+        }
+    }
+
+    /// Scales the own service's Deployment.
+    func scale(to replicas: Int) async {
+        await act(String(localized: "Scale", bundle: #bundle)) { [store, project, environment] () throws(MapActionError) in
+            try await store.scale(project, environment: environment, to: replicas)
+        }
+    }
+
+    /// Reads the environment's Argo CD Application.
+    func readArgoCD() async {
+        argoCD = try? await store.argoCD(project, environment: environment)
+    }
+
+    /// Asks Argo CD to sync the environment's Application.
+    func sync() async {
+        await act(String(localized: "Sync", bundle: #bundle)) { [store, project, environment] () throws(MapActionError) in
+            try await store.sync(project, environment: environment)
+        }
+        await readArgoCD()
+    }
+
+    private func act(_ title: String, _ work: () async throws(MapActionError) -> String) async {
+        guard !isActing else { return }
+        isActing = true
+        defer { isActing = false }
+        do throws(MapActionError) {
+            let output = try await work()
+            actionResult = (title, output)
+        } catch {
+            actionResult = (String(localized: "\(title) failed", bundle: #bundle, comment: "An action's alert: Restart failed"), error.message)
+        }
+        await refresh()
     }
 
     var currentEnvironment: DeploymentEnvironment? {

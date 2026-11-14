@@ -91,6 +91,7 @@ Each call Claude makes to one of the app's tools shows as one row on a `surfaceS
 | `list_chats`, `get_chat`, `rename_chat` | Listed the chats of ORD; Read a chat; Renamed a chat “…” | — | The project's Chat window, for the list |
 | The Builds tools | Listed the runs of ORD; Read a run of ORD; Read the log of a run of ORD; Re-ran the failed jobs of a run of ORD; Cancelled a run of ORD; Listed the releases of ORD; Read release v1.4.0 | The run's one-line answer from Builds | The run or the release in Builds |
 | `api_operations`, `api_call` | Read the contract of ORD; Called POST /orders/{id}/checkout of ORD | — | The project's Contracts window |
+| The cluster and map tools | Read the deployment of ORD in Staging; Read the logs…; Restarted ORD in Staging; Scaled…; Synced… with Argo CD; Read the service map of ORD in Staging; Read request <id> | — | The Service Map (a request: on it) |
 | `open_in_app` | Opened a window of Hephaestus | — | None |
 | A tool of the CLI (in V2's chats) | Used Bash | Its result's first line when it failed | None |
 
@@ -179,10 +180,10 @@ A grouped form in a trailing column, 260 to 400 pt wide, 300 pt ideally.
 | Section | Contents |
 |---|---|
 | **In This Chat** | Every item the conversation attached or read, in the order it first came up. Each row: the tool's symbol, the item's title, the tool's name as a caption, and **Open**, which opens the item in its tool's window (help "Open *item* in *Tool*"). An item seen in two Service Map environments has a row for each. With none: "Items Claude reads or you attach show here." |
-| **Claude Can** | **Read tickets, services, contracts and builds**: Always (fixed text). **Change tickets**: Never, Ask First or Always; Ask First by default. **Change projects**: Never, Ask First or Always; Ask First by default. **Call APIs that change data**: Never, Ask First or Always; Ask First by default (a `GET` or `HEAD` call always runs). **Start builds**: Never or Ask First; Never by default. Footer: "Claude acts through each tool, as you would. Nothing it reads or changes goes around them." The same settings as [Settings ▸ Chat](#settings--chat). |
+| **Claude Can** | **Read tickets, services, contracts and builds**: Always (fixed text). **Change tickets**: Never, Ask First or Always; Ask First by default. **Change projects**: Never, Ask First or Always; Ask First by default. **Call APIs that change data**: Never, Ask First or Always; Ask First by default (a `GET` or `HEAD` call always runs). **Operate deployments** (restart, scale, Argo CD sync, port forwards): Never, Ask First or Always; Ask First by default. **Start builds**: Never or Ask First; Never by default. Footer: "Claude acts through each tool, as you would. Nothing it reads or changes goes around them." The same settings as [Settings ▸ Chat](#settings--chat). |
 | **Replies** | **Model**: a pop-up of the CLI's models (Default, Opus, Fable, Sonnet, Haiku until the CLI answers). **Effort**: Low, Medium, High, Extra High, Max, the levels the model has; hidden for a model without one. For the selected conversation, its own; with no conversation selected, those of new chats. A change applies to the running CLI at once. In previews: **Model**: None connected, and "Replies are samples until a model is connected." |
 
-The permissions are stored in the user defaults (`chat.ticketChanges`, `chat.projectChanges`, `chat.apiCalls`, `chat.buildStarts`) and the MCP server applies them to every chat's calls ([MCP › Permissions](../mcp.md#permissions)): Always runs the change, Ask First shows a card and waits, Never refuses it. A deletion (a ticket, a bundle, a comment, an attachment) or a project's removal asks first even under Always. **Start builds** covers re-running and cancelling runs: Never refuses them, Ask First shows a card.
+The permissions are stored in the user defaults (`chat.ticketChanges`, `chat.projectChanges`, `chat.apiCalls`, `chat.clusterChanges`, `chat.buildStarts`) and the MCP server applies them to every chat's calls ([MCP › Permissions](../mcp.md#permissions)): Always runs the change, Ask First shows a card and waits, Never refuses it. A deletion (a ticket, a bundle, a comment, an attachment) or a project's removal asks first even under Always. **Start builds** covers re-running and cancelling runs: Never refuses them, Ask First shows a card.
 
 ## How Claude reaches the tools
 
@@ -204,7 +205,7 @@ The panel also reads its attached item before the first message, through `toolRe
 | Contracts | `ContractsReader.read(_:project:)` | operationId: `createOrder` | Method and path · summary · contract title and version |
 | Dashboard, Chat | None | — | — |
 
-Today the app's MCP tools are those of Projects, Tickets, Chat, Builds and Contracts; the Service Map brings its own in its phase, and its panel shows only once it is available. Tickets, Builds and Contracts read the app's data; the Service Map reader answers from its samples until then.
+The app's MCP tools are those of Projects, Tickets, Chat, Builds, Contracts and the Service Map, and every tool's reader reads the app's data.
 
 ### Samples
 
@@ -380,6 +381,7 @@ The Settings window's **Chat** tab (`bubble.left.and.text.bubble.right`), at 520
 | | **Change tickets**, pop-up: Never, Ask First, Always | Ask First | Shared with the Chat window's inspector; applied to every chat's calls. |
 | | **Change projects**, pop-up: Never, Ask First, Always | Ask First | The same, for adding projects and changing or removing them. |
 | | **Call APIs that change data**, pop-up: Never, Ask First, Always | Ask First | Claude's `api_call` with another method than `GET` or `HEAD`. |
+| | **Operate deployments**, pop-up: Never, Ask First, Always | Ask First | Claude's restarts, scales, Argo CD syncs and port forwards. |
 | | **Start builds**, pop-up: Never, Ask First | Never | Shared with the inspector; applied to Claude's re-runs and cancels of runs. |
 | | Footer | — | "Claude acts through each tool, as you would. Nothing it reads or changes goes around them." |
 | **Replies** | **Model**, **Effort**, pop-ups | Default, High | The model and effort of new chats, stored as `chatModel` and `chatEffort` in `settings.yml`. Footer: "New chats start with these. Each chat keeps its own, in the Chat window's inspector." |

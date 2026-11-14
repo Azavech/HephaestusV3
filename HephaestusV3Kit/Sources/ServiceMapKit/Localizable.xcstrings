@@ -37,6 +37,9 @@
     "%@ calls per second" : {
       "comment" : "Calls per second with a decimal, read by VoiceOver"
     },
+    "%@ failed" : {
+      "comment" : "An action's alert: Restart failed"
+    },
     "%@ has no recent request “%@”." : {
       "comment" : "The details of a request id that isn't among the environment's recent requests",
       "localizations" : {
@@ -227,11 +230,25 @@
         }
       }
     },
+    "%lld replicas" : {
+      "comment" : "A Deployment's number of pods to scale to"
+    },
     "A service map shows a project that runs in a cluster." : {
 
     },
     "Age" : {
       "comment" : "A column of the Instances widget: the pod's age"
+    },
+    "Argo CD: %@, %@" : {
+      "comment" : "An Argo CD application's sync status and health, such as Synced, Healthy",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Argo CD: %1$@, %2$@"
+          }
+        }
+      }
     },
     "Back" : {
       "comment" : "Goes back to the graph's view before"
@@ -289,11 +306,60 @@
         }
       }
     },
+    "Cancel" : {
+
+    },
+    "Claude wants to forward port %lld of %@ in %@ to this Mac" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Claude wants to forward port %1$lld of %2$@ in %3$@ to this Mac"
+          }
+        }
+      }
+    },
+    "Claude wants to restart the pods of %@ in %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Claude wants to restart the pods of %1$@ in %2$@"
+          }
+        }
+      }
+    },
+    "Claude wants to scale %@ in %@ to %lld pods" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Claude wants to scale %1$@ in %2$@ to %3$lld pods"
+          }
+        }
+      }
+    },
+    "Claude wants to stop a port forward" : {
+
+    },
+    "Claude wants to sync %@ in %@ with Argo CD" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Claude wants to sync %1$@ in %2$@ with Argo CD"
+          }
+        }
+      }
+    },
     "Client" : {
       "comment" : "A kind of node on the service map: who sent a request"
     },
     "Database" : {
       "comment" : "A kind of node on the service map"
+    },
+    "Deployment" : {
+      "comment" : "A section: the Kubernetes Deployment of the service"
     },
     "Details" : {
 
@@ -339,6 +405,16 @@
     },
     "Follow new requests as they arrive" : {
 
+    },
+    "Forwarded port %lld of %@ in %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Forwarded port %1$lld of %2$@ in %3$@"
+          }
+        }
+      }
     },
     "Gateway" : {
       "comment" : "A kind of node on the service map"
@@ -396,6 +472,9 @@
     "Nothing Selected" : {
 
     },
+    "OK" : {
+
+    },
     "Open Contract" : {
 
     },
@@ -420,11 +499,64 @@
     "Queue" : {
       "comment" : "A kind of node on the service map"
     },
+    "Read Argo CD for %@ in %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Read Argo CD for %1$@ in %2$@"
+          }
+        }
+      }
+    },
     "Read request %@" : {
       "comment" : "What the chat did: it read a request of the Service Map"
     },
     "Read service %@" : {
       "comment" : "What the chat did: it read a service of the Service Map"
+    },
+    "Read the deployment of %@ in %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Read the deployment of %1$@ in %2$@"
+          }
+        }
+      }
+    },
+    "Read the events of %@ in %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Read the events of %1$@ in %2$@"
+          }
+        }
+      }
+    },
+    "Read the logs of %@ in %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Read the logs of %1$@ in %2$@"
+          }
+        }
+      }
+    },
+    "Read the service map of %@ in %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Read the service map of %1$@ in %2$@"
+          }
+        }
+      }
+    },
+    "Reading the map…" : {
+
     },
     "Ready" : {
       "comment" : "A column of the Instances widget: ready containers"
@@ -444,8 +576,53 @@
     "Requests, last 30 minutes" : {
 
     },
+    "Restart" : {
+
+    },
+    "Restart the pods of the service in %@?" : {
+
+    },
+    "Restarted %@ in %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Restarted %1$@ in %2$@"
+          }
+        }
+      }
+    },
     "Restarts" : {
       "comment" : "A column of the Instances widget"
+    },
+    "Restart…" : {
+
+    },
+    "Scale" : {
+
+    },
+    "Scale the service in %@ to %lld pods?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Scale the service in %1$@ to %2$lld pods?"
+          }
+        }
+      }
+    },
+    "Scaled %@ in %@ to %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Scaled %1$@ in %2$@ to %3$lld"
+          }
+        }
+      }
+    },
+    "Scale…" : {
+
     },
     "Service" : {
       "comment" : "A kind of node on the service map"
@@ -479,6 +656,28 @@
     },
     "Status %@, succeeded" : {
       "comment" : "A request's HTTP status, for VoiceOver"
+    },
+    "Stopped a port forward" : {
+
+    },
+    "Sync" : {
+
+    },
+    "Sync the Argo CD application of %@?" : {
+
+    },
+    "Synced %@ in %@ with Argo CD" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Synced %1$@ in %2$@ with Argo CD"
+          }
+        }
+      }
+    },
+    "Sync…" : {
+
     },
     "This project has no environments." : {
 

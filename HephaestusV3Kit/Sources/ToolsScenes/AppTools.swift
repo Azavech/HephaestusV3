@@ -1,6 +1,7 @@
 import BuildsKit
 import ChatData
 import ContractsKit
+import ServiceMapKit
 import ChatKit
 import Foundation
 import MCPKit
@@ -16,10 +17,10 @@ import ToolsFoundation
 enum AppTools {
     /// `open` shows a route in a window, and says whether a window could.
     static func registry(session: ProjectSession, tickets: TicketSession, chats: ChatSession, contracts: LiveContractStore,
-                         open: @escaping @MainActor (Route) -> Bool) -> ToolRegistry {
+                         maps: LiveServiceMapStore, open: @escaping @MainActor (Route) -> Bool) -> ToolRegistry {
         ToolRegistry(ProjectTools.operations(session: session) + TicketTools.operations(tickets: tickets, projects: session)
             + ChatTools.operations(chats: chats, projects: session) + BuildTools.operations(projects: session)
-            + ContractTools.operations(contracts: contracts, projects: session)
+            + ContractTools.operations(contracts: contracts, projects: session) + ClusterTools.operations(maps: maps, projects: session)
             + [openInApp(session: session, tickets: tickets, open: open)])
     }
 

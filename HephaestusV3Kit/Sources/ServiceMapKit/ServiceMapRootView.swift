@@ -28,8 +28,8 @@ public struct ServiceMapRootView: View {
     private static let requestsTableWidth: CGFloat = 600
 
     /// The map of `project`, with `focus` selected: `service:<name>` or `request:<id>`.
-    public init(project: Project, focus: String? = nil) {
-        self.init(model: ServiceMapModel(project: project, focus: focus, store: SampleServiceMapStore()))
+    public init(project: Project, focus: String? = nil, store: LiveServiceMapStore) {
+        self.init(model: ServiceMapModel(project: project, focus: focus, store: store))
     }
 
     init(model: ServiceMapModel) {
@@ -72,6 +72,20 @@ public struct ServiceMapRootView: View {
         // A later route to this window shows its focus without starting the map afresh.
         .onFocusRequest { focus in
             model.select(focus: focus)
+        }
+        // The map is read when it shows, at each change of environment or window, then every 5 s while Live.
+        .task(id: "\(model.environment)|\(model.timeWindow)|\(model.isLive)") {
+            guard !model.project.deploymentEnvironments.isEmpty else { return }
+            repeat {
+                await model.refresh()
+                guard model.isLive else { return }
+                try? await Task.sleep(for: .seconds(5))
+            } while !Task.isCancelled
+        }
+        .alert(model.actionResult?.title ?? "", isPresented: Binding(get: { model.actionResult != nil }, set: { if !$0 { model.actionResult = nil } })) {
+            Button(String(localized: "OK", bundle: #bundle)) { model.actionResult = nil }
+        } message: {
+            Text(verbatim: model.actionResult?.message ?? "")
         }
         .toolbar {
             if !model.project.deploymentEnvironments.isEmpty {
@@ -124,6 +138,9 @@ public struct ServiceMapRootView: View {
                     services: model.serviceCount, needingAttention: model.servicesNeedingAttention
                 )
             }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    MapStatusBanner(status: model.status, isEmpty: model.map.nodes.isEmpty)
+                }
                 .overlay(alignment: .bottomLeading) {
                     GraphLegend(isRequest: model.showsRequest)
                         .padding(14)
@@ -198,7 +215,8 @@ public struct ServiceMapRootView: View {
                 logs: model.logs(ofService: node.id),
                 isOwnService: model.isOwnService(node.id),
                 onSelectService: { model.show(.service($0)) },
-                onOpenContract: { openRoute(.tool(.contracts, project: model.project.id)) }
+                onOpenContract: { openRoute(.tool(.contracts, project: model.project.id)) },
+                operations: model
             )
         case .request(let request):
             RequestInspector(request: request, logs: model.logs(ofRequest: request.id), onSelectService: { model.show(.service($0)) })
@@ -408,4 +426,43 @@ private func previewModel(_ projectID: Project.ID, focus: String? = nil, environ
 
 #Preview("No Environments", traits: .appChrome, .fixedLayout(width: 1000, height: 600)) {
     ServiceMapRootView(model: previewModel("TLS"))
+}
+
+
+/// How the last read went, over the map: reading, the failure of kubectl, or the problems of the sources and
+/// Jaeger. Nothing once a read went well.
+private struct MapStatusBanner: View {
+    let status: MapStatus
+    let isEmpty: Bool
+
+    var body: some View {
+        switch status {
+        case .reading where isEmpty:
+            banner(String(localized: "Reading the map…", bundle: #bundle), symbol: "arrow.triangle.2.circlepath", color: .textSecondary)
+        case .failed(let message):
+            banner(message, symbol: "exclamationmark.triangle.fill", color: .danger)
+        case .read(let problems) where !problems.isEmpty:
+            banner(problems.joined(separator: " · "), symbol: "exclamationmark.triangle", color: .warning)
+        default:
+            EmptyView()
+        }
+    }
+
+    private func banner(_ text: String, symbol: String, color: Color) -> some View {
+        Label {
+            Text(verbatim: text)
+                .lineLimit(2)
+                .textSelection(.enabled)
+        } icon: {
+            Image(systemName: symbol)
+                .accessibilityHidden(true)
+        }
+        .font(.callout)
+        .foregroundStyle(color)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.bar)
+        .accessibilityIdentifier("serviceMap.status")
+    }
 }

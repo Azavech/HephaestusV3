@@ -40,6 +40,9 @@ public enum ChatGate {
             if operation.hasPrefix("GET ") || operation.hasPrefix("HEAD ") { return nil }
             permission = rule(ChatPreferences.apiCallsKey)
             refusal = "The user doesn't let Claude call APIs that change data from chats (Settings ▸ Chat)."
+        case .operateClusters:
+            permission = rule(ChatPreferences.clusterChangesKey)
+            refusal = "The user doesn't let Claude operate deployments from chats (Settings ▸ Chat)."
         case .startBuilds:
             // Never by default; Ask First at most.
             permission = defaults.string(forKey: ChatPreferences.buildStartsKey) == ChangePermission.askFirst.rawValue ? .askFirst : .never

@@ -18,7 +18,7 @@ meet the workspace's rules (`~/Developer/Apple/CLAUDE.md`), [Open issues](#open-
 3. [The Xcode project](#the-xcode-project)
 4. [The package](#the-package)
 5. [The data targets](#the-data-targets): [FileStorage](#filestorage), [ExternalTools](#externaltools),
-   [ProjectData](#projectdata), [MCPKit](#mcpkit), [TicketData](#ticketdata), [BuildData](#builddata), [ContractData](#contractdata), [ChatData](#chatdata), [TextFormats](text.md)
+   [ProjectData](#projectdata), [MCPKit](#mcpkit), [TicketData](#ticketdata), [BuildData](#builddata), [ContractData](#contractdata), [ClusterData](#clusterdata), [ChatData](#chatdata), [TextFormats](text.md)
 6. [ToolsFoundation](#toolsfoundation)
 7. [ToolsScenes](#toolsscenes)
 8. [The tool kits](#the-tool-kits): [ProjectsKit](#projectskit), [DashboardsKit](#dashboardskit),
@@ -199,6 +199,7 @@ Shared values in the manifest:
 | `ChatData` | The chat files, the Claude CLI and its protocol, the chats' processes: the `ChatSession`. | FileStorage, ExternalTools, ProjectData, MCPKit | `.target(name:, dependencies:)` |
 | `BuildData` | gh's runs, jobs, logs and releases, and release downloads. | ExternalTools | `.target(name:, dependencies:)` |
 | `ContractData` | OpenAPI contracts, `$ref`, samples, requests, the HTTP client, stored values. | FileStorage, Yams | `.target(name:, dependencies:)` |
+| `ClusterData` | kubectl, Argo CD, port forwards, the service graph, Jaeger's traces. | ExternalTools, MCPKit, BuildData | `.target(name:, dependencies:)` |
 | `TextFormats` | Markdown to a block model and syntax highlighting, from HephaestusV2 without its markers ([Text](text.md)). | swift-markdown | `.target(name:, dependencies:)` |
 | `ToolsFoundation` | Shared vocabulary: projects, tools, routes, chat vocabulary, the Dashboard model, `ProjectIcon`. | AZDesign | `.target` |
 | `ProjectsKit` | The project selector: the Projects window, the project switcher, the menu bar panel; New Project, Project Settings, Settings ▸ Projects; the mapping of the app's projects; the project tools of the MCP server. | ToolsFoundation, AZDesign, AZDesignCode, ProjectData, ExternalTools, MCPKit | `toolTarget(_:data:)` |
@@ -260,7 +261,7 @@ Commit both `Package.resolved` files with it.
 ## The data targets
 
 Targets without UI hold the data code that V3 brings over from HephaestusV2: `FileStorage`, `ExternalTools`,
-`ProjectData`, `MCPKit`, `TicketData`, `ChatData`, `BuildData`, `ContractData` and `TextFormats`. They import no SwiftUI, have no default isolation (a `@MainActor`
+`ProjectData`, `MCPKit`, `TicketData`, `ChatData`, `BuildData`, `ContractData`, `ClusterData` and `TextFormats`. They import no SwiftUI, have no default isolation (a `@MainActor`
 session type says so itself), and keep shared state in `Mutex`es and actors. Each feature wires them into its
 windows as it comes over ([Open issues](#open-issues)).
 
@@ -526,6 +527,21 @@ isolation. Source files in `Sources/TicketData/`:
   in-app project changes. Its changes forward to the library as the user on this Mac (`device` is
   `SCDynamicStoreCopyComputerName`) and keep the snapshot they return when its revision is higher. The MCP
   tools use `library` directly with the actor `.claude(chat:)`, then call `refresh()`.
+
+### ClusterData
+
+The clusters of [Data › Clusters](data.md#clusters). No UI, no default isolation. Depends on ExternalTools,
+MCPKit (its `JSONValue`) and BuildData (gh, for the sources). Source files in `Sources/ClusterData/`:
+
+| File | Contents |
+| --- | --- |
+| `Cluster.swift` | `ClusterTarget` (`argoCD`), `ClusterError`, `DeploymentStatus`, `PodStatus`, `ClusterEvent`, `ArgoCDStatus`, `Cluster` (`deployments`, `status`, `logs`, `events`, `restart`, `scale`, `argoCDStatus`, `argoCDSync`) |
+| `PortForwards.swift` | `PortForward`, `PortForwards` (actor: `forward`, `list`, `stop`, `stopAll`, the 60 s reaper, `forwardingPort`) |
+| `ServiceGraph.swift` | `ServiceGraph` (`Box`, `Arrow`, `image`, `requiredModules`, `values`, `build`) |
+| `Jaeger.swift` | `TraceSpan` (`spans(_:)` from OTLP JSON), `JaegerClient` (`spans(service:from:to:)`, `trace(_:)`) |
+| `ServiceActivity.swift` | `ServiceActivity` (`analyze`, `request`), `ServiceSources` (actor: the sources read with gh, kept), `ServiceMapRead` (`read`: Deployments, sources, Jaeger) |
+
+ExternalTools' `Kubectl` gained a public `run(_:timeout:directory:)`; its timeout message says the timeout.
 
 ### ContractData
 
@@ -912,7 +928,7 @@ Behavior is specified in [Navigation › Routes and Window reuse](ui/navigation.
 | Tool | Read function |
 | --- | --- |
 | `.tickets` | `TicketsReader.read(reference.focus, store: appData.ticketStore)` |
-| `.serviceMap` | `ServiceMapReader.read(reference.focus, environment: reference.environment, project: project)` |
+| `.serviceMap` | `ServiceMapReader.read(reference.focus, environment: reference.environment, project: project, store: appData.serviceMapStore)` |
 | `.contracts` | `ContractsReader.read(reference.focus, project: project, store: appData.contractStore)` |
 | `.builds` | `BuildsReader.read(reference.focus, project: project, store: appData.buildStore)` |
 | `.dashboard`, `.chat` | nil |
@@ -1478,6 +1494,16 @@ list), with an always-open `.inspector` (280–440) in `.mac` and `.pad`; in `.p
 `NavigationStack` with the details as a destination page. It reports `model.chatSubject` and applies
 `onFocusRequest`. The Service Map has no ⇧⌘N item.
 
+
+**Live data (Phase 8).** `ServiceMapStore.swift` holds `MapStatus`, `MapActionError`, the protocol
+`ServiceMapStore` (`map(of:environment:)`, `status`, `refresh(_:environment:window:)`, `ownService(of:environment:)`,
+`pods`, `acts`, `restart`, `scale`, `argoCD`, `sync`), `SampleServiceMapStore` and `LiveServiceMapStore` (`@Observable`,
+one for the app: reads with `ServiceMapRead.read`, maps it to `ServiceMap`, keeps the own service's pods, owns the
+`PortForwards`; `cluster(_:environment:)` gives Claude's tools their `Cluster`). `ServiceMapModel` refreshes in a
+`.task(id:)` loop every 5 s while Live, and runs the Deployment's actions. `ClusterTools.swift` declares the eleven
+cluster and map tools. Public API: `ServiceMapRootView(project:focus:store:)`, `LiveServiceMapStore(projects:runner:)`,
+`ServiceMapReader.read(_:environment:project:store:)`, `ClusterTools.operations(maps:projects:)`,
+`EnvironmentValues.serviceMapStore`.
 ### ContractsKit
 
 Spec: [Contracts](ui/contracts.md). Data: `ContractData` ([ContractData](#contractdata)). Depends on
@@ -1849,7 +1875,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 522 tests). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 529 tests). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
@@ -1859,6 +1885,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ExternalToolsTests | Child processes, The login shell's environment, Finding the tools, git ssh and kubectl | Output, status, input, folder, environment, signals, missing executables; the timeout ending a whole process group; `terminateAll`; `env -0` parsing and every capture outcome; `PATH` lookup and the git stub; the commands, arguments, parsing and failures of git, ssh and kubectl. Uses `FakeRunner`. |
 | MCPKitTests | JSON values and schemas, JSON-RPC, HTTP, Server | Number kinds and sorted output; every validation message in order; the classification table; initialize, ping, unknown methods and the version header; tools/list and tools/call results, errors and validation; heads, chunked and sized bodies and their limits; bearer tokens; a real listener on a free port answering with the token and refusing the rest. |
 | ProjectDataTests | Project file, Dashboard widgets, Registry and current environments, Data folder, Import from HephaestusV2, Rules and GitHub, Loading, Outside changes, Creating opening and removing, Inherited settings, Current environment, GitHub page, Session | V2's complete project file written back byte for byte; every V2 example round-tripping with all its keys; defaults; environments, base URLs and overrides; V3's additions; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; the import's list, skips, choices, single run and missing V2; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints; loading depth first with every issue; data folder files set aside; outside changes (changed, invalid, renamed identifier, deleted and returning files, the registry, own writes, relevance); create, open and remove with their refusals and sub projects; update with its write rules; inheritance on, off, nested and across types; the current environment chosen, renamed, removed and forgotten; GitHub pages from origins, aliases, typed pages and parents, `.git/config`; the session's start, lock, changes and a real outside change. Fixtures: V2's examples. Uses `FakeRunner`.; Dashboard widgets: keys of another kind kept, V3's Recent Builds, unknown kinds and statuses refused, each write rule with its message, stored widgets written back as they are, repeated ids. |
+| ClusterDataTests | Clusters, Service graph, Traces | kubectl's prefix, status and pods, restart, scale (and its failure message), logs, Argo CD in its namespace and sync, missing fields; the forwarding line; boxes, databases, buckets, arrows and source problems; go.mod and values files; OTLP spans; calls, figures, requests and their logs, the 3 s rule. A fake kubectl; nothing reaches a cluster. |
 | ContractDataTests | Contracts | Operations in V2's order, parameters merged, `$ref` across files and outside the folder, schemes, the prefilled body; unreadable files; URLs, query, header order and replacements, the request; JSON in order, form bodies; stored values read, imported once, mode 0600, earlier keys left out. Temporary folders only; nothing is sent. |
 | BuildDataTests | gh, Builds from gh | Repositories from GitHub pages; gh's environment and V2's failure messages; runs, a run's jobs and steps, logs by step (CR LF included), re-run and cancel after `--`; releases without drafts, the latest marked; a download's pattern, free name and temporary folder. A fake runner answers gh. |
 | ChatDataTests | Chat files, Transcripts, Stream mapping, Chats on the Claude CLI, Launching the CLI | V2's chat file written back byte for byte, V3's `origin`, the kinds' rules; replay (add, update, lines skipped), lines written by V3, the LF after a line cut short; V2's captures of Claude Code 2.1.309 mapped to items with V2's ids, streamed text, the CLI's permission request, compaction lines, results after Stop; the CLI located in order, its version and models; a first message (arguments without prompt, hooks or the CLI's tools, the MCP configuration and its chat token, the attached line), a turn replayed to idle, the app's card and the CLI's request answered, Stop, an exit in error, a missing session started again, model and effort. A `FakeLauncher` replays the captures; nothing starts Claude. |

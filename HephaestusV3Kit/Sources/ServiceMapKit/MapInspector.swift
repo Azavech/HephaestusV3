@@ -1,6 +1,7 @@
 import AZDesign
 import AZDesignCode
 import Charts
+import ClusterData
 import SwiftUI
 import ToolsFoundation
 
@@ -14,6 +15,8 @@ struct ServiceInspector: View {
     let isOwnService: Bool
     let onSelectService: (ServiceNode.ID) -> Void
     let onOpenContract: () -> Void
+    /// The window's model, for the Deployment's actions of the own service; nil without them (the samples).
+    var operations: ServiceMapModel? = nil
 
     var body: some View {
         ScrollView {
@@ -90,6 +93,10 @@ struct ServiceInspector: View {
 
                 InspectorSection(String(localized: "Logs", bundle: #bundle)) {
                     LogList(lines: logs)
+                }
+
+                if isOwnService, let operations, operations.acts {
+                    DeploymentActions(model: operations, replicas: node.pods)
                 }
 
                 if isOwnService {
@@ -335,3 +342,81 @@ struct LogList: View {
     }
 }
 
+
+
+/// The own service's Deployment: Restart, Scale and, with an Argo CD application, its state and Sync. Each asks
+/// before it acts (docs/ui/service-map.md › Deployment).
+private struct DeploymentActions: View {
+    let model: ServiceMapModel
+    let replicas: Int
+
+    @State private var confirming: Action?
+    @State private var target = 1
+
+    enum Action: Identifiable { case restart, scale, sync; var id: Self { self } }
+
+    var body: some View {
+        InspectorSection(String(localized: "Deployment", bundle: #bundle, comment: "A section: the Kubernetes Deployment of the service")) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Button(String(localized: "Restart…", bundle: #bundle), systemImage: "arrow.clockwise.circle") { confirming = .restart }
+                        .accessibilityIdentifier("serviceMap.inspector.restart")
+                    Stepper(value: $target, in: 0...100) {
+                        Text("\(target) replicas", bundle: #bundle, comment: "A Deployment's number of pods to scale to")
+                    }
+                    .fixedSize()
+                    Button(String(localized: "Scale…", bundle: #bundle)) { confirming = .scale }
+                        .disabled(target == replicas)
+                        .accessibilityIdentifier("serviceMap.inspector.scale")
+                }
+                .disabled(model.isActing)
+                if let argoCD = model.argoCD {
+                    HStack {
+                        Text("Argo CD: \(argoCD.sync), \(argoCD.health)", bundle: #bundle, comment: "An Argo CD application's sync status and health, such as Synced, Healthy")
+                            .foregroundStyle(.textSecondary)
+                        Spacer()
+                        Button(String(localized: "Sync…", bundle: #bundle), systemImage: "arrow.triangle.2.circlepath") { confirming = .sync }
+                            .disabled(model.isActing || argoCD.operation == "Running")
+                            .accessibilityIdentifier("serviceMap.inspector.sync")
+                    }
+                    .accessibilityIdentifier("serviceMap.inspector.argoCD")
+                }
+            }
+            .font(.callout)
+        }
+        .onAppear { target = replicas }
+        .task(id: model.environment) { await model.readArgoCD() }
+        .confirmationDialog(title, isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }), titleVisibility: .visible) {
+            Button(button) {
+                let action = confirming
+                Task {
+                    switch action {
+                    case .restart?: await model.restart()
+                    case .scale?: await model.scale(to: target)
+                    case .sync?: await model.sync()
+                    case nil: break
+                    }
+                }
+            }
+            Button(String(localized: "Cancel", bundle: #bundle), role: .cancel) {}
+        }
+    }
+
+    private var title: String {
+        switch confirming {
+        case .restart?: String(localized: "Restart the pods of the service in \(model.environment)?", bundle: #bundle)
+        case .scale?: String(localized: "Scale the service in \(model.environment) to \(target) pods?", bundle: #bundle)
+        case .sync?: String(localized: "Sync the Argo CD application of \(model.environment)?", bundle: #bundle)
+        case nil: ""
+        }
+    }
+
+    private var button: String {
+        switch confirming {
+        case .restart?: String(localized: "Restart", bundle: #bundle)
+        case .scale?: String(localized: "Scale", bundle: #bundle)
+        case .sync?: String(localized: "Sync", bundle: #bundle)
+        case nil: ""
+        }
+    }
+}

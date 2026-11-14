@@ -181,6 +181,7 @@ tools](navigation.md#available-tools)); until then it is hidden (default chosen 
 | Project | Always. |
 | Tickets | Tickets is available: today. |
 | Recent Builds | Builds is available: since Phase 6. |
+| Instances, Service Graph, Busiest Calls, Failed Requests, Requests per Minute | The Service Map is available (since Phase 8) and the project has a map; they read the project's live map, every 5 s while shown. |
 | Instances | The Service Map is available (Phase 8). |
 | Service Graph, Busiest Calls, Failed Requests, Requests per Minute | The Service Map is available and the project's Service Map can be read: it is a service with environments. |
 | Recent Chats, Cost | Never: V2's widgets, kept in the project file with their settings. |

@@ -1,3 +1,4 @@
+import ServiceMapKit
 import ContractsKit
 import ChatData
 import Foundation
@@ -35,7 +36,7 @@ struct MCPDocumentationTests {
         let session = ProjectSession(dataFolder: nil)
         let registry = AppTools.registry(session: session, tickets: TicketSession(projects: session, device: "Test"),
                                          chats: ChatSession(projects: session, tokens: MCPTokens(), device: "Test"),
-                                         contracts: LiveContractStore(projects: session)) { _ in true }
+                                         contracts: LiveContractStore(projects: session), maps: LiveServiceMapStore(projects: session)) { _ in true }
         let documented = try documentedTools()
         #expect(documented.map(\.name) == registry.names)
         for (name, description, schema) in documented {

@@ -100,17 +100,17 @@ public struct Kubectl: Sendable {
         var items: [Item]
     }
 
-    /// Runs kubectl with `arguments` and returns its standard output.
-    private func run(_ arguments: [String]) async throws(KubectlError) -> Data {
-        let request = ProcessRequest(executable: executable, arguments: arguments, environment: environment)
+    /// Runs kubectl with `arguments` and returns its standard output; `timeout` ends it (SIGTERM, then SIGKILL).
+    public func run(_ arguments: [String], timeout: Duration = Kubectl.timeout, directory: String? = nil) async throws(KubectlError) -> Data {
+        let request = ProcessRequest(executable: executable, arguments: arguments, environment: environment, currentDirectory: directory)
         let result: ProcessResult
         do {
-            result = try await runner.run(request, timeout: Self.timeout)
+            result = try await runner.run(request, timeout: timeout)
         } catch {
             throw .couldNotStart(reason: String(describing: error))
         }
         if result.timedOut {
-            throw .timedOut(command: Self.command(arguments))
+            throw .timedOut(command: Self.command(arguments), seconds: timeout.components.seconds)
         }
         guard result.termination.isSuccess else {
             throw .failed(command: Self.command(arguments), code: result.termination.code,
@@ -124,7 +124,7 @@ public struct Kubectl: Sendable {
 public enum KubectlError: Error, Sendable, Hashable, CustomStringConvertible {
     /// kubectl exited with `code` (the status, or 128 + the signal); `message` is its standard error.
     case failed(command: String, code: Int, message: String)
-    case timedOut(command: String)
+    case timedOut(command: String, seconds: Int64 = 15)
     case unexpectedOutput(command: String)
     case couldNotStart(reason: String)
 
@@ -132,8 +132,8 @@ public enum KubectlError: Error, Sendable, Hashable, CustomStringConvertible {
         switch self {
         case let .failed(command, code, message):
             message.isEmpty ? "\(command) exited with code \(code)." : "\(command) exited with code \(code): \(message)"
-        case let .timedOut(command):
-            "\(command) did not finish within \(Kubectl.timeout.components.seconds) seconds."
+        case let .timedOut(command, seconds):
+            "\(command) did not finish within \(seconds) seconds."
         case let .unexpectedOutput(command):
             "Unexpected output from \(command)."
         case let .couldNotStart(reason):

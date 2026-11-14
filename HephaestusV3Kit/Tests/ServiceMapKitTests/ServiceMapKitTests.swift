@@ -1,3 +1,4 @@
+import ClusterData
 import Foundation
 import Testing
 import ToolsFoundation
@@ -7,7 +8,17 @@ import ToolsFoundation
 
 /// A small namespace: a gateway, a degraded service, a worker, a database and an external service.
 /// Production adds a service of its own, `extra`.
-struct MockServiceMapStore: ServiceMapStore {
+final class MockServiceMapStore: ServiceMapStore {
+    func map(of project: Project, environment: String) -> ServiceMap { map(environment: environment) }
+    func status(of project: Project, environment: String) -> MapStatus { .none }
+    func refresh(_ project: Project, environment: String, window: TimeWindow) async {}
+    func ownService(of project: Project, environment: String) -> ServiceNode.ID? { ownService(of: project.id) }
+    var acts: Bool { false }
+    func restart(_ project: Project, environment: String) async throws(MapActionError) -> String { "" }
+    func scale(_ project: Project, environment: String, to replicas: Int) async throws(MapActionError) -> String { "" }
+    func argoCD(_ project: Project, environment: String) async throws(MapActionError) -> ArgoCDStatus { throw MapActionError(message: "") }
+    func sync(_ project: Project, environment: String) async throws(MapActionError) -> String { "" }
+
     func map(environment: String) -> ServiceMap {
         let production = environment == "Production"
         func node(
