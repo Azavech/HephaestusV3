@@ -202,13 +202,9 @@ private struct ToolWindowRoot: View {
     @State private var chatPanelModel = ChatPanelModel()
     /// A route's ask to select an item in this window, once it is open.
     @State private var focusRequest: FocusRequest?
-    /// The window's width, which picks the Mac's, an iPad's or an iPhone's layout. Wide until measured.
-    @State private var windowWidth: CGFloat = 10_000
-    /// The window's size classes, from its size: compact width is an iPhone's, compact height an
-    /// iPhone held sideways. Regular until measured.
-    @State private var sizeClasses = WindowSizeClasses.regular
-    /// Whether the window has shown a regular width since it opened.
-    @State private var wasRegularWidth = false
+    /// The window's size, size classes and whether it narrowed from a regular width (AZDesign), which
+    /// pick the Mac's, an iPad's or an iPhone's layout.
+    @State private var adaptiveWindow = AdaptiveWindowState()
 
     /// The chat panel's width beside or over the tool, its divider included.
     private static let panelWidth: CGFloat = 341
@@ -246,7 +242,6 @@ private struct ToolWindowRoot: View {
                     .environment(\.reportChatSubject, ReportChatSubjectAction { [$chatSubject] subject in
                         $chatSubject.wrappedValue = subject
                     })
-                    .environment(\.toolLayout, layout)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.trailing, showsChatPanel && layout == .mac ? Self.panelWidth : 0)
                 if showsChatPanel {
@@ -258,7 +253,7 @@ private struct ToolWindowRoot: View {
                             chatPanelControl.toggle()
                         }
                     }
-                    .frame(width: layout == .phone ? windowWidth : Self.panelWidth)
+                    .frame(width: layout == .phone ? adaptiveWindow.size.width : Self.panelWidth)
                     .frame(maxHeight: .infinity)
                     .background(.canvas)
                     // Over the content on an iPad, a shadow sets it apart.
@@ -268,16 +263,9 @@ private struct ToolWindowRoot: View {
                     .motionTransition(.panel, edge: .trailing)
                 }
             }
-            .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
-                windowWidth = size.width
-                sizeClasses = WindowSizeClasses(size: size)
-                if sizeClasses.horizontal == .regular {
-                    wasRegularWidth = true
-                }
-            }
-            // The system's size classes, as iPadOS and iOS would set them for a window this size.
-            .windowSizeClasses(sizeClasses)
-            .environment(\.collapsedFromRegularWidth, wasRegularWidth && sizeClasses.horizontal == .compact)
+            // Measures the window and gives the tool and the panel its layout, its size classes and
+            // whether it narrowed from a regular width (AZDesign's adaptive window).
+            .adaptiveWindow($adaptiveWindow, layout: layout)
             .frame(minWidth: Self.minimumWidth, minHeight: 420)
             // No clipping here: it would take the toolbar's room from the tool's columns. The window's
             // edge already hides the panel while it slides.
@@ -286,7 +274,7 @@ private struct ToolWindowRoot: View {
                 .navigationTitle(Text(tool.title))
                 .navigationSubtitle(Text(verbatim: Project.tree.path(of: project.id)))
                 // A narrow toolbar has no room for the title: the switcher names the project.
-                .toolbar(removing: windowWidth < Self.titleWidth ? .title : nil)
+                .toolbar(removing: adaptiveWindow.size.width < Self.titleWidth ? .title : nil)
                 .toolbar {
                     ToolbarItem(placement: .navigation) {
                         ProjectSwitcher(projects: Project.samples, selection: projectBinding, tool: tool)
@@ -322,8 +310,8 @@ private struct ToolWindowRoot: View {
 
     /// The Mac's layout while the tool's columns, and the chat panel when it is open beside them, fit;
     /// an iPad's below that; an iPhone's in a narrow window.
-    private var layout: ToolLayout {
-        ToolLayout.forWidth(windowWidth, macWidth: tool.macLayoutWidth, panelWidth: showsChatPanel ? Self.panelWidth : 0)
+    private var layout: WindowLayout {
+        adaptiveWindow.layout(macWidth: tool.macLayoutWidth, sidePanelWidth: showsChatPanel ? Self.panelWidth : 0)
     }
 
     @ViewBuilder private func content(for project: Project, focus: String?) -> some View {
@@ -527,8 +515,8 @@ extension ToolKind {
     /// The width the tool's columns need side by side, below which its window takes an iPad's layout.
     var macLayoutWidth: CGFloat {
         switch self {
-        // V2's grid needs 900 points (below that the Dashboard lists its widgets); with the chat panel
-        // open, the panel slides over it rather than narrowing it.
+        // V2's grid needs 900 points (below that the Dashboard lists its widgets). With the chat panel
+        // open, the window needs 341 points more for the Mac layout, as every tool does.
         case .dashboard: 900
         case .tickets: 900
         case .serviceMap: 880

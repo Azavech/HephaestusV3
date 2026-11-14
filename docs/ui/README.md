@@ -14,6 +14,10 @@ the code doesn't yet meet the workspace's rules (`~/Developer/Apple/CLAUDE.md`),
 
 ## Contents
 
+**How it is built:** [Architecture](../architecture.md) covers the code: targets, models, stores, routes,
+strings and tests. The shared, generic components come from AZDesign, whose reference is in
+`~/Developer/Apple/Libraries/AZDesign/docs/`.
+
 **Across the app**
 
 | Page | Covers |

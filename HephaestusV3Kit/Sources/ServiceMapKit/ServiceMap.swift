@@ -222,8 +222,9 @@ enum MapSelection: Hashable, Sendable {
 
 extension Project {
     /// The environment a Service Map opens on, and the chat reads without one: the first that isn't
-    /// healthy, or else the first.
+    /// healthy, or else the first, among the environments the project's tools read (its own, or those of
+    /// the project it takes its settings from).
     var openingEnvironment: DeploymentEnvironment? {
-        environments.first { $0.health != .healthy } ?? environments.first
+        deploymentEnvironments.first { $0.health != .healthy } ?? deploymentEnvironments.first
     }
 }

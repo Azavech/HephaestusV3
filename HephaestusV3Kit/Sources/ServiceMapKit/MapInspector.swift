@@ -335,23 +335,3 @@ struct LogList: View {
     }
 }
 
-/// A titled part of an inspector.
-struct InspectorSection<Content: View>: View {
-    let title: String
-    @ViewBuilder var content: Content
-
-    init(_ title: String, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(verbatim: title)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.textSecondary)
-                .accessibilityAddTraits(.isHeader)
-            content
-        }
-    }
-}

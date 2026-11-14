@@ -14,7 +14,7 @@ public struct ServiceMapRootView: View {
 
     @Environment(\.openRoute) private var openRoute
     @Environment(\.reportChatSubject) private var reportChatSubject
-    @Environment(\.toolLayout) private var layout
+    @Environment(\.windowLayout) private var layout
     @Environment(\.verticalSizeClass) private var verticalSizeClass
 
     /// A short window: the graph and the requests share less height.

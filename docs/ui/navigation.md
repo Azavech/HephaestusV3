@@ -41,7 +41,7 @@ window's tool.
 
 | Part | Contents |
 | --- | --- |
-| **Project switcher** | The toolbar's first item: the project's icon and name. A click opens a popover listing every project as a tree; picking one moves this window to that project and clears its selection; picking the project it already shows changes nothing. See [Components › Project switcher](components.md#project-switcher). |
+| **Project switcher** | The toolbar's first item: the project's icon and name. A click opens a popover listing every project as a tree; picking one moves this window to that project, where the tool starts afresh on its default selection; picking the project it already shows changes nothing. See [Components › Project switcher](components.md#project-switcher). |
 | **Title and subtitle** | The tool's name, and the project's path from its top-level project, such as "Shop › Orders". Hidden below 760 pt. |
 | **The tool's toolbar items** | Defined by the tool, as each tool's page lists them. |
 | **Chat panel button** | The last toolbar item, `sidebar.right`: shows or hides the chat panel. Absent in the Chat window, and everywhere when Settings ▸ Chat turns the panel off. See [Chat](chat.md). |
@@ -101,7 +101,7 @@ replace the items SwiftUI adds for each kind of window, which would open a tool 
 
 | Item | Shortcut | In | Does |
 | --- | --- | --- | --- |
-| New *Tool* Window, such as **New Tickets Window** | ⌘N | A tool window | Opens another window of the key window's tool, on its project, with nothing selected. Disabled, as **New Window**, in the Projects and Virtual Machines windows. |
+| New *Tool* Window, such as **New Tickets Window** | ⌘N | A tool window | Opens another window of the key window's tool, on its project and on no particular item: the tool starts on its default selection, such as the first ticket or the newest run. Disabled, as **New Window**, in the Projects and Virtual Machines windows. |
 | **New Ticket…** | ⇧⌘N | Tickets | Opens the New Ticket sheet. |
 | **New Chat** | ⇧⌘N | The Chat window | Starts a new chat. |
 | **New Project…** | ⇧⌘N | The Projects window | Not wired yet. |

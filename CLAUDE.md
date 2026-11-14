@@ -10,7 +10,12 @@ sample data. This file adds only what applies here to `~/Developer/Apple/CLAUDE.
   `ServiceMapKit`, `ContractsKit`, `BuildsKit`, `ChatKit`, `MachinesKit`), the shared vocabulary in
   `ToolsFoundation`, scenes and routes in `ToolsScenes`. Tools never depend on each other: they open one
   another through a `Route`.
-- `docs/ui/`: the UI specification. Every UI change updates its page and its screenshots in the same change.
+- `docs/architecture.md`: how the code is put together; `docs/ui/`: the UI specification, window by window.
+  Both must be precise enough to rebuild the app from them: every change updates its pages, and its
+  screenshots, in the same commit.
+- Generic UI (styles, components, the adaptive window layout, `PhoneStack`, preview traits) comes from
+  AZDesign, documented in its own `docs/`. A component that knows this app's types stays here; a generic one
+  goes into AZDesign, with its reference page and Catalog page.
 - Strings: one String Catalog per target, looked up with `#bundle`. After changing user-facing text, build,
   then run `scripts/sync-strings.sh <derived data>` to fill the catalogs and check the bundles.
 - Tests: `cd HephaestusV3Kit && xcodebuild -scheme HephaestusV3Kit -destination 'platform=macOS' test`.

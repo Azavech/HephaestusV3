@@ -39,7 +39,7 @@ public struct DashboardRootView<WidgetContent: View>: View {
     @State private var model: DashboardModel
     let widgetContent: (DashboardWidget, DashboardContext) -> WidgetContent
 
-    @Environment(\.toolLayout) private var layout
+    @Environment(\.windowLayout) private var layout
     /// The Dashboard's own width, which picks the grid or the list. Wide until measured.
     @State private var viewWidth: CGFloat = 10_000
     /// The list's width, which sets its cards' width.
@@ -135,8 +135,8 @@ public struct DashboardRootView<WidgetContent: View>: View {
                         }
                         .padding(DashboardGridMetrics.padding)
                         .frame(width: cardWidth, alignment: .topLeading)
-                        .background(.surface, in: DashboardWidgetShape())
-                        .clipShape(DashboardWidgetShape())
+                        .background(.surface, in: CardShape.card)
+                        .clipShape(CardShape.card)
                         .accessibilityElement(children: .contain)
                         .accessibilityLabel(DashboardContent.title(of: row.widget))
                         .accessibilityIdentifier("dashboard.widget.\(row.slot.identifier)")
@@ -318,7 +318,7 @@ public struct DashboardRootView<WidgetContent: View>: View {
         return DashboardGridLayout {
             if let placeholder = state.placeholder {
                 // The cells where the moved or resized widget will land.
-                DashboardWidgetShape()
+                CardShape.card
                     .stroke(.accent, lineWidth: 2)
                     .dashboardFrame(.cells(placeholder))
                     .zIndex(1)
@@ -330,7 +330,7 @@ public struct DashboardRootView<WidgetContent: View>: View {
                     // The widget that follows the pointer hides the widgets under it.
                     .background {
                         if floats {
-                            DashboardWidgetShape()
+                            CardShape.card
                                 .fill(.canvas)
                         }
                     }
@@ -532,14 +532,6 @@ nonisolated private struct SmallestWidth: Layout {
     }
 }
 
-/// The shape of a widget and of the placeholder of a moved one: concentric with the window, as the
-/// workspace asks, and never squarer than a card.
-nonisolated struct DashboardWidgetShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        ConcentricRectangle(corners: .concentric(minimum: .fixed(10)), isUniform: true).path(in: rect)
-    }
-}
-
 // MARK: Steps
 
 extension DashboardStep {
@@ -658,9 +650,9 @@ struct DashboardWidgetCard<Content: View>: View {
         // when the title row and the padding need more, and what does not fit is cut: nothing is
         // drawn outside a widget.
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
-        .background(.surface, in: DashboardWidgetShape())
-        .clipShape(DashboardWidgetShape())
-        .contentShape(DashboardWidgetShape())
+        .background(.surface, in: CardShape.card)
+        .clipShape(CardShape.card)
+        .contentShape(CardShape.card)
         .background {
             if editing {
                 // The title row at full width, which gives the smallest size of the widget.
@@ -832,14 +824,16 @@ struct DashboardWidgetSettings: View {
             case .project:
                 GridRow {
                     Text("Fields", bundle: #bundle)
-                    CheckboxGroup(checked: widget.fields, label: \.title, identifier: { "dashboard.settings.field.\($0.rawValue)" }) { field in
+                    CheckboxGroup(Array(DashboardProjectField.allCases), isChecked: { widget.fields.contains($0) }, keepsOneChecked: true,
+                                  label: \.title, identifier: { "dashboard.settings.field.\($0.rawValue)" }) { field in
                         model.update(slot) { $0.fields = DashboardEdits.flipping(field, in: $0.fields) }
                     }
                 }
             case .tickets:
                 GridRow {
                     Text("Statuses", bundle: #bundle)
-                    CheckboxGroup(checked: widget.statuses, label: \.title, identifier: { "dashboard.settings.status.\($0.rawValue)" }) { status in
+                    CheckboxGroup(Array(TicketStatus.allCases), isChecked: { widget.statuses.contains($0) }, keepsOneChecked: true,
+                                  label: \.title, identifier: { "dashboard.settings.status.\($0.rawValue)" }) { status in
                         model.update(slot) { $0.statuses = DashboardEdits.flipping(status, in: $0.statuses) }
                     }
                 }
@@ -954,26 +948,6 @@ struct DashboardWidgetSettings: View {
         shownTitle = title
         guard let widget = model.widget(slot), trimmed != widget.title else { return }
         model.update(slot) { $0.title = trimmed }
-    }
-}
-
-/// The checkboxes of a group of values, in the order of the settings; the last checked box is
-/// disabled (docs/ui/dashboard.md › Settings). `click` receives the value of the clicked box.
-private struct CheckboxGroup<Value: CaseIterable & Hashable>: View where Value.AllCases: RandomAccessCollection {
-    let checked: [Value]
-    let label: (Value) -> String
-    let identifier: (Value) -> String
-    let click: (Value) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ForEach(Array(Value.allCases), id: \.self) { value in
-                Toggle(label(value), isOn: Binding(get: { checked.contains(value) }, set: { _ in click(value) }))
-                    .toggleStyle(.checkbox)
-                    .disabled(DashboardEdits.isLastChecked(value, in: checked))
-                    .accessibilityIdentifier(identifier(value))
-            }
-        }
     }
 }
 

@@ -140,7 +140,7 @@ second one opening (the user's choice). See [Navigation › Window reuse](naviga
 ## Layouts
 
 The panel has one layout on every screen: 360 × 460 pt at the default text size, larger with a larger text
-size, along with its icon and tool button frames. It isn't a tool window and doesn't read `toolLayout`
+size, along with its icon and tool button frames. It isn't a tool window and doesn't read `windowLayout`
 ([Foundations › Layout system](foundations.md#layout-system)).
 
 ## Accessibility

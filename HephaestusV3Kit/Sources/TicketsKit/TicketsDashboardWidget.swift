@@ -33,7 +33,7 @@ public struct TicketsDashboardWidget: View {
                                 .foregroundStyle(.textPrimary)
                             Label(status.title, systemImage: status.symbol)
                                 .foregroundStyle(.textSecondary)
-                                .labelStyle(StatusLabelStyle(color: status.color))
+                                .labelStyle(.tintedIcon(status.color))
                         }
                         .accessibilityElement(children: .combine)
                         .accessibilityIdentifier("dashboard.tickets.\(status.rawValue)")
@@ -52,20 +52,6 @@ public struct TicketsDashboardWidget: View {
 
     private func count(_ status: TicketStatus) -> Int {
         store.count(of: status, in: project.id, includingSubprojects: widget.includeSubprojects)
-    }
-}
-
-/// The status's symbol in its color before its name, as the Tickets window shows it.
-private struct StatusLabelStyle: LabelStyle {
-    let color: Color
-
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 4) {
-            configuration.icon
-                .foregroundStyle(color)
-                .accessibilityHidden(true)
-            configuration.title
-        }
     }
 }
 

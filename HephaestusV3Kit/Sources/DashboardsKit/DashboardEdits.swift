@@ -252,11 +252,6 @@ enum DashboardEdits {
         return Value.allCases.filter(values.contains)
     }
 
-    /// Whether the box of a value is the only checked box of its group, which cannot be unchecked.
-    static func isLastChecked<Value: Hashable>(_ value: Value, in checked: [Value]) -> Bool {
-        Set(checked) == [value]
-    }
-
     /// A click on a checkbox: its value is checked when the newest list does not have it, unchecked
     /// when it does, so that each of several quick clicks applies.
     static func flipping<Value: CaseIterable & Hashable>(_ value: Value, in checked: [Value]) -> [Value] {

@@ -1,3 +1,4 @@
+import AZDesign
 import Foundation
 import Testing
 import ToolsFoundation
@@ -98,9 +99,9 @@ struct MachinesLayoutTests {
     }
 
     @Test("The width picks the layout", arguments: [
-        (390.0, ToolLayout.phone), (639, .phone), (640, .pad), (899, .pad), (900, .mac), (2_560, .mac),
+        (390.0, WindowLayout.phone), (639, .phone), (640, .pad), (899, .pad), (900, .mac), (2_560, .mac),
     ])
-    func layout(width: Double, expected: ToolLayout) {
+    func layout(width: Double, expected: WindowLayout) {
         let model = MachinesModel(focus: nil, store: MockMachineStore())
         model.resize(to: width)
         #expect(model.layout == expected)

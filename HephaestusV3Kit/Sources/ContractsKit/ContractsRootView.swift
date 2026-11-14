@@ -8,7 +8,7 @@ public struct ContractsRootView: View {
     @State private var model: ContractsModel
 
     @Environment(\.reportChatSubject) private var reportChatSubject
-    @Environment(\.toolLayout) private var layout
+    @Environment(\.windowLayout) private var layout
 
     /// The contract of `project`, with `focus` (an operation id) selected when it opens.
     public init(project: Project, focus: String? = nil) {

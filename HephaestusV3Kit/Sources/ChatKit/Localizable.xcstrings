@@ -95,9 +95,6 @@
     "Items Claude reads or you attach show here." : {
 
     },
-    "Message" : {
-      "comment" : "The composer's field, for VoiceOver"
-    },
     "Model" : {
 
     },
@@ -170,12 +167,6 @@
       "comment" : "A run of Builds, as a chip names it"
     },
     "Sample reply" : {
-
-    },
-    "Send" : {
-
-    },
-    "Send (Return)" : {
 
     },
     "Show Inspector" : {

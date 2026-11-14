@@ -13,7 +13,7 @@ public struct BuildsRootView: View {
     @State private var model: BuildsModel
 
     @Environment(\.reportChatSubject) private var reportChatSubject
-    @Environment(\.toolLayout) private var layout
+    @Environment(\.windowLayout) private var layout
 
     /// The builds of `project`, with the item `focus` names selected when it opens: a run number
     /// (`1288`) or a release (`release:v1.4.0`).

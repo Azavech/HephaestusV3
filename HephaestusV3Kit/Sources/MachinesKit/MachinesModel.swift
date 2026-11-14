@@ -1,3 +1,4 @@
+import AZDesign
 import Foundation
 import Observation
 import ToolsFoundation
@@ -55,7 +56,7 @@ final class MachinesModel {
     let opensSelection: Bool
 
     /// The layout the window's width picks. The Mac's until the window is measured.
-    private(set) var layout: ToolLayout = .mac
+    private(set) var layout: WindowLayout = .mac
     /// Whether the sidebar shows beside the detail. An iPad's folds it while the inspector shows.
     private(set) var showsSidebar = true
     /// Whether the inspector shows beside the machine's screen. An iPad's folds it away at first.
@@ -107,10 +108,14 @@ final class MachinesModel {
 
     // MARK: Layout
 
-    /// Picks the layout for a window `width` points wide. A new layout shows its panes afresh: a
-    /// Mac's sidebar and inspector, an iPad's sidebar with the inspector folded away.
+    /// Picks the layout for a window `width` points wide (see `apply(_:)`).
     func resize(to width: CGFloat) {
-        let layout = ToolLayout.forWidth(width, macWidth: Self.macWidth)
+        apply(WindowLayout.forWidth(width, macWidth: Self.macWidth))
+    }
+
+    /// Takes the window's layout. A new layout shows its panes afresh: a Mac's sidebar and inspector,
+    /// an iPad's sidebar with the inspector folded away.
+    func apply(_ layout: WindowLayout) {
         guard layout != self.layout else { return }
         self.layout = layout
         showsSidebar = true

@@ -1,9 +1,37 @@
 # Components
 
-The pieces several windows share. Most live in `ToolsFoundation` (`Components.swift`, `ToolLayout.swift`,
-`ChatVocabulary.swift`). The project switcher lives in `ProjectsKit`. Following the workspace rules, each
-is a style, a modifier or a small view that takes values, bindings and closures, and moves into AZDesign
-once a second app needs it.
+The pieces several windows share, of two kinds:
+
+- **The app's own**, which know its types: the project switcher (`ProjectsKit`), the project icon
+  (`ToolsFoundation/Components.swift`) and the chat panel's button (`ToolsFoundation/ChatVocabulary.swift`).
+- **AZDesign's** (AZDesign 0.4.0), generic and shared by every app: the status dot, the badge and tinted-icon
+  styles, figures, sections, detail rows, stacked properties, card shapes, the checkbox group, the message
+  composer, the suggestion style, the toolbar label padding, the phone stack, the adaptive window and the
+  preview traits. AZDesign's reference (`~/Developer/Apple/Libraries/AZDesign/docs/`: `styles.md`,
+  `components.md`, `layout.md`) specifies each of them; this page says where Hephaestus V3 uses them.
+
+Each is a style, a modifier or a small view that takes values, bindings and closures.
+
+## Where the app uses AZDesign's components
+
+| AZDesign | Used for |
+| --- | --- |
+| `StatusDot` | Health beside environment names (Projects, Dashboard, Service Map) |
+| `.badge(_:)` | Ticket statuses and priorities, build outcomes, health, releases |
+| `.tintedIcon(_:)` | The Dashboard's ticket counts |
+| `.foreground(_:onSelection:)` | Colored durations and statuses in tables and lists |
+| `Figure` | The Projects overview's figures, the Service Map's and the Virtual Machines' summaries |
+| `DetailSection` | A ticket's sections: Description, Linked, Activity |
+| `InspectorSection` | The Service Map's details column: Calls, Logs, Timeline |
+| `.labeledContentStyle(.detailRow)` | A machine's Address and Project, an image's System, Size and Status |
+| `.labeledContentStyle(.stacked)` | A ticket's properties |
+| `CardShape` (`.well`, `.card`, `.field`) | Dashboard widgets (`.card`), the chat's tool-call rows and change previews (6 pt), approval cards (`.card`), the composer (`.field`) |
+| `CheckboxGroup` (`keepsOneChecked`) | The Dashboard settings' **Fields** and **Statuses** |
+| `MessageComposer` | The Chat window's and the chat panel's composer (identifier `chat.composer`) |
+| `.buttonStyle(.suggestion)` | The chat's suggestions |
+| `.toolbarLabelPadding()` | Every text label in a toolbar |
+| `PhoneStack`, `adaptiveWindow(_:layout:)`, `WindowLayout` | Every window's layouts ([Foundations › Layout system](foundations.md#layout-system)) |
+| `.appChrome`, `.padLayout`, `.phoneLayout`, `.largestText` | Every view's previews |
 
 ## Project switcher
 
@@ -26,7 +54,8 @@ The first toolbar item of every tool window (`ProjectSwitcher`).
   Each opening starts afresh: an empty filter, the window's project highlighted.
 - **Rows.** The current project has a checkmark. A project without the window's tool is disabled and says
   "No <Tool>", such as "No Contracts". VoiceOver reads the highlighted row as selected.
-- **Picking a project.** Moves this window to it and clears the window's selection. No new window opens.
+- **Picking a project.** Moves this window to it: the tool starts afresh, on its default selection, such as
+  the first ticket or the newest run. No new window opens.
   Picking the project the window already shows changes nothing: the popover closes and the tool keeps its
   selection.
 - **Show All Projects.** Opens the Projects window on the window's project.
@@ -40,12 +69,12 @@ follows it.
 
 ## Status dot
 
-`StatusDot(color)`: a filled circle, 8 pt, scaled with Dynamic Type (`@ScaledMetric`), hidden from VoiceOver.
+From AZDesign. `StatusDot(color)`: a filled circle, 8 pt, scaled with Dynamic Type (`@ScaledMetric`), hidden from VoiceOver.
 It marks a health or a state beside a name, and is always paired with words.
 
 ## Badge
 
-`.labelStyle(.badge(color))`: a capsule for a status, a priority, an HTTP method or a health.
+From AZDesign. `.labelStyle(.badge(color))`: a capsule for a status, a priority, an HTTP method or a health.
 
 | Part | Look |
 | --- | --- |
@@ -58,13 +87,13 @@ The same selection rule is available on its own as `.foreground(color, onSelecti
 
 ## Figure
 
-`Figure(value, caption:)`: a figure for the summaries at the top of a window. The value is `title2`
+From AZDesign. `Figure(value, caption:)`: a figure for the summaries at the top of a window. The value is `title2`
 semibold with monospaced digits, and the caption is a caption in `textSecondary` under it. VoiceOver reads
 them as one element.
 
 ## Toolbar label padding
 
-`.toolbarLabelPadding()`: 6 pt on each side of a toolbar control's text. The system leaves text about 6 pt
+From AZDesign. `.toolbarLabelPadding()`: 6 pt on each side of a toolbar control's text. The system leaves text about 6 pt
 from a toolbar capsule's rounded ends, which reads as cramped next to segmented controls (the user asked for
 more padding). Every text label in a toolbar uses it: the project switcher, environment menus, Edit and
 Done, a ticket's next step.
@@ -76,6 +105,8 @@ Done, a ticket's next step.
 list.
 
 ## Phone stack
+
+From AZDesign.
 
 `PhoneStack(selection:opensSelection:list:page:)`: the iPhone layout's one pane at a time.
 

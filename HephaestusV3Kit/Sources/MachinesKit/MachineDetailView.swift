@@ -155,7 +155,7 @@ private struct MachineInfo: View {
                 }
 
                 VStack(spacing: 0) {
-                    DetailRow(String(localized: "Address", bundle: #bundle)) {
+                    LabeledContent(String(localized: "Address", bundle: #bundle)) {
                         if let address = machine.address {
                             Text(verbatim: address)
                                 .monospaced()
@@ -164,10 +164,11 @@ private struct MachineInfo: View {
                             Text("None while stopped", bundle: #bundle)
                         }
                     }
+                    .labeledContentStyle(.detailRow)
                     .accessibilityIdentifier("machines.info.address")
                     Divider()
                     // The project's name is a link of its own, so the row keeps its parts apart.
-                    DetailRow(String(localized: "Project", bundle: #bundle), combinesChildren: false) {
+                    LabeledContent(String(localized: "Project", bundle: #bundle)) {
                         if let projectID = machine.projectID, let project = Project.sample(projectID) {
                             Button {
                                 openRoute(.project(project.id))
@@ -184,6 +185,7 @@ private struct MachineInfo: View {
                             Text("None", bundle: #bundle, comment: "The project of a virtual machine that tests no project")
                         }
                     }
+                    .labeledContentStyle(.detailRow(combinesChildren: false))
                     .accessibilityIdentifier("machines.info.project")
                 }
 
@@ -265,40 +267,6 @@ private struct SnapshotRow: View {
         .padding(.vertical, 4)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("machines.snapshot.\(snapshot.id)")
-    }
-}
-
-/// A name on the leading side, its value on the trailing side; the value goes under the name at the
-/// largest text sizes. VoiceOver reads the row as one element unless its value has a control of its own.
-struct DetailRow<Value: View>: View {
-    let title: String
-    let combinesChildren: Bool
-    let value: Value
-
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    /// A row named `title`, a string already localized.
-    init(_ title: String, combinesChildren: Bool = true, @ViewBuilder value: () -> Value) {
-        self.title = title
-        self.combinesChildren = combinesChildren
-        self.value = value()
-    }
-
-    var body: some View {
-        let stacked = dynamicTypeSize.isAccessibilitySize
-        let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout())
-        layout {
-            Text(title)
-                .foregroundStyle(.textSecondary)
-            if !stacked {
-                Spacer(minLength: 16)
-            }
-            value
-                .foregroundStyle(.textPrimary)
-        }
-        .padding(.vertical, 7)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: combinesChildren ? .combine : .contain)
     }
 }
 

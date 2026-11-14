@@ -19,12 +19,9 @@ public struct ProjectsRootView: View {
     /// The width the projects and the overview need side by side; narrower, an iPad's layout.
     static let macWidth: CGFloat = 900
 
-    /// The window's width, which picks the Mac's, an iPad's or an iPhone's layout. Wide until measured.
-    @State private var windowWidth: CGFloat = 10_000
-    /// The window's size classes, from its size. Regular until measured.
-    @State private var sizeClasses = WindowSizeClasses.regular
-    /// Whether the window has shown a regular width since it opened.
-    @State private var wasRegularWidth = false
+    /// The window's size, size classes and whether it narrowed from a regular width (AZDesign), which
+    /// pick the Mac's, an iPad's or an iPhone's layout.
+    @State private var adaptiveWindow = AdaptiveWindowState()
     /// The projects column: shown on a Mac, folded behind the sidebar button on an iPad.
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
@@ -63,17 +60,9 @@ public struct ProjectsRootView: View {
                 splitBody
             }
         }
-        .environment(\.toolLayout, layout)
-        // The system's size classes, as iPadOS and iOS would set them for a window this size.
-        .windowSizeClasses(sizeClasses)
-        .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
-            windowWidth = size.width
-            sizeClasses = WindowSizeClasses(size: size)
-            if sizeClasses.horizontal == .regular {
-                wasRegularWidth = true
-            }
-        }
-        .environment(\.collapsedFromRegularWidth, wasRegularWidth && sizeClasses.horizontal == .compact)
+        // Measures the window and gives its views their layout, size classes and whether it narrowed
+        // from a regular width (AZDesign's adaptive window).
+        .adaptiveWindow($adaptiveWindow, layout: layout)
         .frame(minWidth: Self.minimumOverviewSize.width, minHeight: Self.minimumOverviewSize.height)
         .navigationTitle(Text("Projects", bundle: #bundle))
         .toolbar {
@@ -147,8 +136,8 @@ public struct ProjectsRootView: View {
 
     /// The Mac's layout while the projects and the overview fit side by side, an iPad's below that,
     /// an iPhone's at compact width.
-    private var layout: ToolLayout {
-        ToolLayout.forWidth(windowWidth, macWidth: Self.macWidth)
+    private var layout: WindowLayout {
+        adaptiveWindow.layout(macWidth: Self.macWidth)
     }
 
     private var addMenu: some View {

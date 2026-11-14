@@ -71,8 +71,8 @@ System fonts with Dynamic Type, in text styles:
 
 - **Code font.** Code views use Fira Code, with its ligatures, from AZDesign's `AZDesignCode` target: build
   logs, request URLs, JSON and other request or response bodies, consoles. Views set it with
-  `.codeFont(.callout)` or `Font.code(.body)`. It takes the size of the text style it is given, so it follows
-  Dynamic Type.
+  `.codeFont(.callout)`, and `.codeFont(.caption)` for the Service Map's log lines. It takes the size of the
+  text style it is given, so it follows Dynamic Type.
 - **Monospaced** (the system's): identifiers, paths, URLs, cluster and namespace names and commit hashes in
   lists and metadata. They are data, not code views.
 - **The graph** sets its own sizes, multiplied by the zoom level, as the previous app's graph does. Its names
@@ -80,8 +80,9 @@ System fonts with Dynamic Type, in text styles:
 
 ## Shapes
 
-- **Corners** are never hard-coded. Cards use concentric rectangles with a minimum radius (6 pt for wells,
-  8–10 pt for cards, 12 pt for the composer), so they follow the window's corners.
+- **Corners** are never hard-coded. Cards use AZDesign's `CardShape`, a concentric rectangle with a minimum
+  radius: `.well` (6 pt), `.card` (10 pt), `.field` (12 pt, the composer), so they follow the window's
+  corners.
 - **Capsules** are used for badges, chips and the Liquid Glass overlays.
 - **Circles** are used for status dots, avatars and the graph's nodes.
 
@@ -119,15 +120,15 @@ widgets and its chips.
 ## Motion
 
 Motion marks a change; it is never decoration. Every animation uses one of AZDesign's named presets
-(`Motion`, AZDesign 0.3.0), through `withMotion(_:)`, `.motionAnimation(_:value:)` and
-`.motionTransition(_:edge:)`. With Reduce Motion on, each preset becomes a 0.15-second ease in and out, and
-anything that would move fades instead.
+(`Motion`; AZDesign's `docs/motion.md`), through `withMotion(_:)` and `.motionTransition(_:edge:)`. With
+Reduce Motion on, each preset's animation becomes a 0.15-second ease in and out, and the chat panel, which
+uses `motionTransition`, fades instead of sliding.
 
 | Preset | Animation | Transition | Used for |
 | --- | --- | --- | --- |
-| `panel` | `smooth`, 0.3 s | Moves in from an edge | A panel sliding in or out: the chat panel. |
-| `layout` | `snappy`, 0.25 s | Moves in from an edge | A layout or a selection that moves. |
-| `fade` | Ease in and out, 0.2 s | Opacity | Content that appears or changes in place. |
+| `panel` | `smooth`, 0.3 s | Moves in from an edge | The chat panel sliding in or out; the Virtual Machines inspector. |
+| `layout` | `snappy`, 0.25 s | Moves in from an edge | The Dashboard's widgets moving after a keyboard or VoiceOver step. |
+| `fade` | Ease in and out, 0.2 s | Opacity | Not used yet. |
 
 - **The chat panel** slides in from the window's right edge and back out (`panel`). On a Mac layout, the tool
   beside it narrows over the same animation.
@@ -138,9 +139,9 @@ anything that would move fades instead.
 
 Every window adapts to its size as an app does on iPad and iPhone, by the system's size classes (the user's
 choice: windows conform to the system's compact and regular sizes). A window measures itself and works out
-its size classes (`WindowSizeClasses` in `ToolsFoundation/ToolLayout.swift`). It writes them into the
-system's own environment values, `horizontalSizeClass` and `verticalSizeClass`, so views read them as they
-would on iPad or iPhone.
+its size classes with AZDesign's adaptive window (`AdaptiveWindowState`, `adaptiveWindow(_:layout:)`;
+AZDesign's `docs/layout.md`). It writes them into the system's own environment values,
+`horizontalSizeClass` and `verticalSizeClass`, so views read them as they would on iPad or iPhone.
 
 | Size class | Compact | Regular | As on |
 | --- | --- | --- | --- |
@@ -148,7 +149,8 @@ would on iPad or iPhone.
 | **Height** | Lower than 500 pt | 500 pt and higher | Compact: an iPhone held sideways. Regular: an iPad, an iPhone held upright. |
 
 From the width, a window then picks one of three layouts, after the three platforms (the user's choice), and
-sets it in the `toolLayout` environment value. Each tool adapts its own panes.
+sets it in AZDesign's `windowLayout` environment value (`WindowLayout`: `mac`, `pad`, `phone`). Each tool
+adapts its own panes.
 
 | Layout | When | What changes |
 | --- | --- | --- |
@@ -221,7 +223,7 @@ a fixed size and doesn't switch layouts.
 
 Every view has an Xcode preview per meaningful state, each with a stable name, such as "Loaded", "Empty",
 "No Results" or "iPhone", so a state can be named in a review: "TicketListView, Empty". Previews use the
-views' models with sample stores. Shared traits from `ToolsFoundation`:
+views' models with sample stores. Shared traits from AZDesign:
 
 | Trait | Gives |
 | --- | --- |

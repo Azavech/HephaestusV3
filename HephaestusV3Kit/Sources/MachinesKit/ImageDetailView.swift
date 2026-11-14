@@ -22,21 +22,22 @@ struct ImageDetail: View {
                 }
 
                 VStack(spacing: 0) {
-                    DetailRow(String(localized: "System", bundle: #bundle)) {
+                    LabeledContent(String(localized: "System", bundle: #bundle)) {
                         Text(verbatim: image.system.name)
                     }
                     .accessibilityIdentifier("machines.imageDetail.system")
                     Divider()
-                    DetailRow(String(localized: "Size", bundle: #bundle)) {
+                    LabeledContent(String(localized: "Size", bundle: #bundle)) {
                         Text(image.formattedSize())
                     }
                     .accessibilityIdentifier("machines.imageDetail.size")
                     Divider()
-                    DetailRow(String(localized: "Status", bundle: #bundle)) {
+                    LabeledContent(String(localized: "Status", bundle: #bundle)) {
                         Text(status)
                     }
                     .accessibilityIdentifier("machines.imageDetail.status")
                 }
+                .labeledContentStyle(.detailRow)
 
                 switch image.state {
                 case .ready:

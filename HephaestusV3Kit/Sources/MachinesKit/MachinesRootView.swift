@@ -8,10 +8,9 @@ import ToolsFoundation
 /// It adapts to its width as the tool windows do: a Mac's sidebar, screen and inspector side by side;
 /// an iPad's with the inspector folded behind its button; an iPhone's one pane at a time.
 public struct MachinesRootView: View {
-    /// The window's size classes, from its size. Regular until measured.
-    @State private var sizeClasses = WindowSizeClasses.regular
-    /// Whether the window has shown a regular width since it opened.
-    @State private var wasRegularWidth = false
+    /// The window's size, size classes and whether it narrowed from a regular width (AZDesign), which
+    /// pick the Mac's, an iPad's or an iPhone's layout.
+    @State private var adaptiveWindow = AdaptiveWindowState()
     @State private var model: MachinesModel
 
     /// No window gets narrower than an iPhone, or lower than the tool windows.
@@ -35,17 +34,12 @@ public struct MachinesRootView: View {
                 splitBody
             }
         }
-        .environment(\.toolLayout, model.layout)
-        // The system's size classes, as iPadOS and iOS would set them for a window this size.
-        .windowSizeClasses(sizeClasses)
-        .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
-            model.resize(to: size.width)
-            sizeClasses = WindowSizeClasses(size: size)
-            if sizeClasses.horizontal == .regular {
-                wasRegularWidth = true
-            }
+        // Measures the window and gives its views their layout, size classes and whether it narrowed
+        // from a regular width (AZDesign's adaptive window); the model shows the new layout's panes.
+        .adaptiveWindow($adaptiveWindow, layout: adaptiveWindow.layout(macWidth: MachinesModel.macWidth))
+        .onChange(of: adaptiveWindow.layout(macWidth: MachinesModel.macWidth), initial: true) { _, layout in
+            model.apply(layout)
         }
-        .environment(\.collapsedFromRegularWidth, wasRegularWidth && sizeClasses.horizontal == .compact)
         .frame(minWidth: Self.minimumSize.width, minHeight: Self.minimumSize.height)
         // A route to a machine while the window is open selects it, again if the user picked
         // another item since.
@@ -144,7 +138,7 @@ public struct MachinesRootView: View {
 extension View {
     /// Names the item shown: the window's subtitle beside the list, the page's title on an iPhone's
     /// page, where Back takes the list's place.
-    @ViewBuilder fileprivate func pageName(_ name: String, layout: ToolLayout) -> some View {
+    @ViewBuilder fileprivate func pageName(_ name: String, layout: WindowLayout) -> some View {
         if layout == .phone {
             navigationTitle(Text(verbatim: name))
         } else {

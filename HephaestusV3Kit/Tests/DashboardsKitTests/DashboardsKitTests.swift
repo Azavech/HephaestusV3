@@ -1,3 +1,4 @@
+import AZDesign
 import CoreGraphics
 import Foundation
 import Observation
@@ -378,7 +379,8 @@ struct DashboardSettingsTests {
     func checkboxes() {
         #expect(DashboardEdits.flipping(TicketStatus.done, in: [.done]) == [.done])
         #expect(DashboardEdits.flipping(TicketStatus.draft, in: [.done, .created]) == [.draft, .created, .done])
-        #expect(DashboardEdits.isLastChecked(DashboardProjectField.name, in: [.name]))
+        // AZDesign's CheckboxGroup locks the last checked box (keepsOneChecked).
+        #expect(CheckboxGroup<DashboardProjectField>.isLastChecked(.name, of: DashboardProjectField.allCases, isChecked: { $0 == .name }))
     }
 
     @Test("Number steps within 1–20 from the newest value")

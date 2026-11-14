@@ -9,7 +9,7 @@ public struct TicketsRootView: View {
     @State private var model: TicketsModel
 
     @Environment(\.reportChatSubject) private var reportChatSubject
-    @Environment(\.toolLayout) private var layout
+    @Environment(\.windowLayout) private var layout
     /// The sidebar folds away in an iPad's layout, behind its button.
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
     /// The New Ticket sheet's width in an iPhone's layout: the window's, less 12 pt on each side, up to

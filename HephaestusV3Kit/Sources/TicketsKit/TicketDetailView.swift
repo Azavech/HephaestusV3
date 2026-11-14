@@ -155,28 +155,6 @@ struct TicketDetailView: View {
     }
 }
 
-/// A titled part of the ticket.
-private struct DetailSection<Content: View>: View {
-    /// Already localized.
-    let title: String
-    @ViewBuilder var content: Content
-
-    init(_ title: String, @ViewBuilder content: () -> Content) {
-        self.title = title
-        self.content = content()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(verbatim: title)
-                .font(.headline)
-                .foregroundStyle(.textPrimary)
-                .accessibilityAddTraits(.isHeader)
-            content
-        }
-    }
-}
-
 /// The ticket's properties, each name above its value: one column beside the ticket, or as many
 /// as fit under its description.
 private struct TicketProperties: View {
@@ -186,18 +164,18 @@ private struct TicketProperties: View {
 
     var body: some View {
         LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
-            Property(TicketWords.status) {
+            LabeledContent(TicketWords.status) {
                 Label(ticket.status.title, systemImage: ticket.status.symbol)
                     .labelStyle(.badge(ticket.status.color))
             }
-            Property(TicketWords.priority) {
+            LabeledContent(TicketWords.priority) {
                 Label(ticket.priority.title, systemImage: ticket.priority.symbol)
                     .labelStyle(.badge(ticket.priority.color))
             }
-            Property(String(localized: "Reporter", bundle: #bundle, comment: "A ticket's property")) {
+            LabeledContent(String(localized: "Reporter", bundle: #bundle, comment: "A ticket's property")) {
                 Text(verbatim: ticket.reporter)
             }
-            Property(String(localized: "Bundle", bundle: #bundle, comment: "A ticket's property")) {
+            LabeledContent(String(localized: "Bundle", bundle: #bundle, comment: "A ticket's property")) {
                 if let bundle {
                     Label {
                         Text(verbatim: bundle.title)
@@ -211,13 +189,13 @@ private struct TicketProperties: View {
                         .foregroundStyle(.textSecondary)
                 }
             }
-            Property(String(localized: "Created On", bundle: #bundle, comment: "A ticket's property")) {
+            LabeledContent(String(localized: "Created On", bundle: #bundle, comment: "A ticket's property")) {
                 Text(ticket.createdAt, format: .dateTime.day().month().year())
             }
-            Property(String(localized: "Last Updated", bundle: #bundle, comment: "A ticket's property")) {
+            LabeledContent(String(localized: "Last Updated", bundle: #bundle, comment: "A ticket's property")) {
                 Text(ticket.updatedAt, format: .dateTime.day().month().year())
             }
-            Property(String(localized: "Labels", bundle: #bundle, comment: "A ticket's property")) {
+            LabeledContent(String(localized: "Labels", bundle: #bundle, comment: "A ticket's property")) {
                 HStack(spacing: 6) {
                     ForEach(ticket.labels, id: \.self) { label in
                         Text(verbatim: label)
@@ -230,31 +208,8 @@ private struct TicketProperties: View {
                 }
             }
         }
+        .labeledContentStyle(.stacked)
         .accessibilityIdentifier("ticket.properties")
-    }
-}
-
-/// One property: its name, and its value under it.
-private struct Property<Value: View>: View {
-    /// Already localized.
-    let title: String
-    @ViewBuilder var value: Value
-
-    init(_ title: String, @ViewBuilder value: () -> Value) {
-        self.title = title
-        self.value = value()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(verbatim: title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.textSecondary)
-            value
-                .foregroundStyle(.textPrimary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
     }
 }
 

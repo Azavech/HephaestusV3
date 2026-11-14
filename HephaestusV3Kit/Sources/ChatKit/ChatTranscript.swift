@@ -5,15 +5,6 @@ import ToolsFoundation
 // The parts of a conversation, shared by the Chat window and the side panel. They take values and
 // closures only: the window's and the panel's models do the work.
 
-/// A card's outline: concentric, as the workspace asks, never squarer than `minimum`.
-nonisolated struct ChatCardShape: Shape {
-    let minimum: CGFloat
-
-    func path(in rect: CGRect) -> Path {
-        ConcentricRectangle(corners: .concentric(minimum: .fixed(minimum)), isUniform: true).path(in: rect)
-    }
-}
-
 /// The turns of a conversation, then Claude at work while a reply is coming.
 struct ChatTranscript: View {
     let conversation: ChatConversation
@@ -165,7 +156,7 @@ struct ToolCallRow: View {
         .font(.callout)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(.surfaceSunken, in: ChatCardShape(minimum: 6))
+        .background(.surfaceSunken, in: CardShape(minimum: 6))
         // One element: what was read, the tool's answer, and Open as its action.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(reading.action)
@@ -208,7 +199,7 @@ struct ApprovalCard: View {
                 .textSelection(.enabled)
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.surfaceSunken, in: ChatCardShape(minimum: 6))
+                .background(.surfaceSunken, in: CardShape(minimum: 6))
             ViewThatFits(in: .horizontal) {
                 HStack {
                     note
@@ -222,9 +213,9 @@ struct ApprovalCard: View {
             }
         }
         .padding(12)
-        .background(.surface, in: ChatCardShape(minimum: 10))
+        .background(.surface, in: CardShape(minimum: 10))
         .overlay {
-            ChatCardShape(minimum: 10)
+            CardShape(minimum: 10)
                 .stroke(approval.decision == nil ? Color.warning.opacity(0.5) : Color.divider, lineWidth: 1)
         }
         .accessibilityElement(children: .contain)
@@ -321,59 +312,6 @@ struct ProjectChip: View {
     }
 }
 
-/// Where the user writes: what the message will carry, the field, and Send. Return sends; Option-Return
-/// starts a new line.
-struct ChatComposer<Chips: View>: View {
-    @Binding var text: String
-    let prompt: Text
-    let isResponding: Bool
-    let send: () -> Void
-    @ViewBuilder let chips: Chips
-
-    @FocusState private var isFocused: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                chips
-            }
-            HStack(alignment: .bottom, spacing: 8) {
-                TextField(String(localized: "Message", bundle: #bundle, comment: "The composer's field, for VoiceOver"), text: $text, prompt: prompt, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .lineLimit(1...8)
-                    .focused($isFocused)
-                    .onSubmit(sendIfReady)
-                    .accessibilityIdentifier("chat.composer.field")
-                Button(String(localized: "Send", bundle: #bundle), systemImage: "arrow.up", action: sendIfReady)
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.borderedProminent)
-                    .buttonBorderShape(.circle)
-                    .disabled(!canSend)
-                    .help(String(localized: "Send (Return)", bundle: #bundle))
-                    .accessibilityIdentifier("chat.composer.send")
-            }
-        }
-        .padding(12)
-        .background(.surface, in: ChatCardShape(minimum: 12))
-        .overlay {
-            ChatCardShape(minimum: 12)
-                .stroke(isFocused ? Color.focus : Color.divider, lineWidth: 1)
-        }
-        .onAppear {
-            isFocused = true
-        }
-    }
-
-    private var canSend: Bool {
-        !isResponding && !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    private func sendIfReady() {
-        guard canSend else { return }
-        send()
-    }
-}
-
 /// Questions to start from, as buttons that send them.
 struct SuggestionList: View {
     let suggestions: [String]
@@ -386,15 +324,8 @@ struct SuggestionList: View {
                     pick(suggestion)
                 } label: {
                     Text(verbatim: suggestion)
-                        .font(.callout)
-                        .multilineTextAlignment(.leading)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .overlay(Capsule().stroke(Color.accent.opacity(0.4)))
-                        .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.accent)
+                .buttonStyle(.suggestion)
                 .accessibilityIdentifier(ChatSuggestion.identifier(for: suggestion))
             }
         }

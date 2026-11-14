@@ -27,7 +27,7 @@ The window opens at 1,320 × 840 points and can't be made smaller than 390 × 42
 ![The Service Map of Orders in dark appearance](images/servicemap-dark.png)
 *Orders opens on orders-api in dark appearance, with the whole namespace behind it. Back and Show All mark the way back.*
 
-**First environment.** The first of the project's environments that isn't Healthy, or else its first environment. Orders, Payments and Shop open on Staging. Edge Gateway, healthy everywhere, opens on Local.
+**First environment.** The first of the project's environments that isn't Healthy, or else its first environment. The sub projects use Shop's settings, so they read Shop's environments ([Projects](projects.md)): Orders, Payments, Edge Gateway and Shop all open on Staging, which is Degraded.
 
 ## Anatomy
 

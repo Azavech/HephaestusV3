@@ -2,31 +2,6 @@ import Foundation
 import Testing
 @testable import ToolsFoundation
 
-@Suite("Tool layout")
-struct ToolLayoutTests {
-    @Test("Below 640 points a window is an iPhone", arguments: [390.0, 500, 639])
-    func phone(width: Double) {
-        #expect(ToolLayout.forWidth(width, macWidth: 900) == .phone)
-    }
-
-    @Test("Between the iPhone and the Mac widths a window is an iPad", arguments: [640.0, 760, 899])
-    func pad(width: Double) {
-        #expect(ToolLayout.forWidth(width, macWidth: 900) == .pad)
-    }
-
-    @Test("From the tool's Mac width a window is a Mac")
-    func mac() {
-        #expect(ToolLayout.forWidth(900, macWidth: 900) == .mac)
-        #expect(ToolLayout.forWidth(2_560, macWidth: 900) == .mac)
-    }
-
-    @Test("An open chat panel needs its room on top of the tool's Mac width")
-    func panel() {
-        #expect(ToolLayout.forWidth(1_000, macWidth: 900, panelWidth: 341) == .pad)
-        #expect(ToolLayout.forWidth(1_241, macWidth: 900, panelWidth: 341) == .mac)
-    }
-}
-
 @Suite("Routes")
 struct RouteTests {
     @Test("Two requests for the same item are two requests, so the second selects it again")

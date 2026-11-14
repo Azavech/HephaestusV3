@@ -15,7 +15,7 @@ public struct ChatRootView: View {
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     @Environment(\.toolReader) private var toolReader
-    @Environment(\.toolLayout) private var layout
+    @Environment(\.windowLayout) private var layout
 
     /// The chats of `project`, with `focus` (a conversation id) selected, or the latest one. A later
     /// route's focus arrives as a focus request, which selects it without starting afresh.
@@ -150,10 +150,11 @@ public struct ChatRootView: View {
                     model.send(suggestion, reader: toolReader)
                 }
             }
-            ChatComposer(
+            MessageComposer(
                 text: $model.draft,
                 prompt: Text("Ask about \(model.project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
-                isResponding: model.isResponding,
+                isBusy: model.isResponding,
+                identifier: "chat.composer",
                 send: { model.sendDraft(reader: toolReader) }
             ) {
                 ProjectChip(project: model.project)

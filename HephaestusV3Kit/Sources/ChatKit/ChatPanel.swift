@@ -48,10 +48,11 @@ public struct ChatPanel: View {
             } else {
                 emptyState(attachment)
             }
-            ChatComposer(
+            MessageComposer(
                 text: $model.draft,
                 prompt: Text("Ask about \(attachment?.title ?? project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
-                isResponding: model.isResponding,
+                isBusy: model.isResponding,
+                identifier: "chat.composer",
                 send: { model.sendDraft(project: project, origin: origin, subject: subject, reader: toolReader) }
             ) {
                 chip(attachment)
