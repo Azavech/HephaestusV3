@@ -27,7 +27,10 @@ a project's other files stay as V2 left them.
 | Ticket file | `<project>/.hephaestus/ticket/<TICKET-ID>.yml` | `TicketFile` | Tickets |
 | Bundle file | `<project>/.hephaestus/bundle/<BUNDLE-ID>.yml` | `BundleFile` | Tickets |
 | Attachments | `<project>/.hephaestus/attachments/<TICKET-ID>/<id>-<name>` | — (any file) | Tickets |
-| Chats | `<project>/.hephaestus/chats/` | — | Chat (not yet read) |
+| Chat file | `<project>/.hephaestus/chats/<CHAT-ID>.yml` | `ChatFile` | Chat |
+| Chat transcript | `<project>/.hephaestus/chats/<CHAT-ID>.jsonl` | `ChatItem` on each line | Chat |
+| Chat MCP configuration | `<data folder>/Runtime/mcp/<CHAT-ID>.json` | — (JSON) | Chat |
+| Chat log | `<data folder>/Logs/claude-<CHAT-ID>.log` | — (text) | Chat |
 
 `<data folder>` is the App Group container, or the folder `HEPHAESTUS_DATA_DIR` names ([Data
 folder](#data-folder)).
@@ -117,6 +120,10 @@ The files that belong to this Mac rather than to a project.
 | --- | --- |
 | `registry.yml` | The top-level projects ([Registry file](#registry-file)). |
 | `current-environments.yml` | The environment chosen for each service ([Current environments file](#current-environments-file)); absent until a first choice. |
+| `settings.yml`, `secrets.json` | The app's settings and the MCP server's token ([Settings file](#settings-file), [Secrets file](#secrets-file)). |
+| `Runtime/mcp/<CHAT-ID>.json` | A running chat's MCP configuration, mode 0600, deleted when its process ends ([Chat processes](#chat-processes)). |
+| `Runtime/claude-cwd/` | The empty folder the CLI's model probe runs in. |
+| `Logs/claude-<CHAT-ID>.log` | A chat's CLI log: a line per launch, then the CLI's standard error; emptied at a launch once over 10 MB. |
 
 ## Import from HephaestusV2
 
@@ -715,6 +722,273 @@ the Trash fails with `<path> cannot be moved to the Trash: <reason>.`; the write
   whose status changed (or that appeared or went), and to each bundle whose set of tickets changed, in bundle
   number order. A status changed outside V3 adds no history entry.
 
+## Chats
+
+A chat is one Claude Code session, run by the Claude CLI in the project's folder ([UI › Chat](ui/chat.md)). Its
+files are V2's: the metadata file and the transcript, in the project's `.hephaestus/chats/`, which
+`.hephaestus/.gitignore` keeps out of git (the first chat of a project adds the line `chats/` when it is
+missing). V3 reads V2's chats of every kind and writes its own in the same format, with two V3 additions: the
+`origin` of a chat and the `references` of a message. `<CHAT-ID>` is an uppercase UUID, also the CLI's session
+id. Names in `chats/` that aren't `<CHAT-ID>.yml` or `<CHAT-ID>.jsonl` are ignored: V2's per-chat folders
+(attachments, agents) stay as they are.
+
+### Chat file
+
+`.hephaestus/chats/<CHAT-ID>.yml`, Swift type `ChatFile`, keys in this order:
+
+| Swift name | Key | Type | Required | Default | Rules |
+| --- | --- | --- | --- | --- | --- |
+| schema | `schema` | `Int` | no | `1` | |
+| id | `id` | `String` | yes | — | An uppercase UUID (`ChatIDs.isChatID`), equal to the file's name. |
+| title | `title` | `String` | no | `New Chat` | One line. V3 titles a new chat with the first line of its first message that isn't empty, at most 80 characters; a rename takes 1 to 100 characters on one line. |
+| kind | `kind` | `ChatFile.Kind` | yes | — | `project`, `ticket`, `bundle`, `feedback`, `ci` or `setup` ([Chat kinds](#chat-kinds)). V3 makes `project` chats only. |
+| ticketID | `ticket` | `String?` | no | `null` | Always written, `null` when absent. |
+| bundleID | `bundle` | `String?` | no | `null` | Always written, `null` when absent. |
+| orchestratorChatID | `orchestrator` | `String?` | no | absent | V2's orchestrated chats. Written only when set. |
+| imageID | `image` | `String?` | no | absent | V2's Auto Setup chats. Written only when set. |
+| created | `created` | `Date` | yes | — | Never changed. |
+| updated | `updated` | `Date` | no | `created` | Set by a message sent, a turn's end, a rename, a settings change. The Chat window lists chats by it, the latest first. |
+| settings | `settings` | `ChatSettings` | no | defaults | [Chat settings](#chat-settings). |
+| sessionStarted | `sessionStarted` | `Bool` | no | `false` | True once the CLI has started the session (its first `system/init`): later launches resume it. |
+| closed | `closed` | `Bool` | no | `false` | V2's closed chats. A message sent sets it back to `false`. |
+| questionsBlocked | `questionsBlocked` | `Bool` | no | `false` | V2's implement chats. Written only when `true`. |
+| origin | `origin` | `String?` | no | absent | **V3 addition.** The tool whose chat panel started the chat, a `ToolKind` value such as `tickets`; absent for a chat of the Chat window and for V2's chats. Written only when set. |
+| unknownKeys | — | `YAMLMapping` | — | empty | Kept and written after the known keys, V2's `contextUsage` among them ([Unknown keys](#unknown-keys)). V2's runtime keys (`projectID`, `state`, `backgroundWork`, `compactingSince`, `costUSD`, `mentionedIDs`) are ignored when read and never written. |
+
+A V2 chat file is written back byte for byte. Example, a chat V3 started from the Tickets window's panel:
+
+```yaml
+schema: 1
+id: 3F2504E0-4F89-11D3-9A0C-0305E82C3301
+title: Why did the checkout fail?
+kind: project
+ticket: null
+bundle: null
+created: 2026-11-14T10:00:00Z
+updated: 2026-11-14T10:00:41Z
+settings:
+  model: default
+  effort: high
+  permissionMode: manual
+  ultracode: false
+  contextWindow: auto
+sessionStarted: true
+closed: false
+origin: tickets
+```
+
+### Chat kinds
+
+V2's rules; a file that breaks them is invalid and isn't listed:
+
+| Kind | `ticket` | `bundle` | Other |
+| --- | --- | --- | --- |
+| `project` | `null` | `null` | |
+| `ticket` | required | `null` | may have an `orchestrator` |
+| `bundle` | `null` | required | |
+| `feedback` | `null`, or the first ticket it made | `null` | |
+| `ci` | exactly one of `ticket` and `bundle` | | `orchestrator` required |
+| `setup` | `null` | `null` | `image` required |
+
+Only `ticket` and `ci` chats have an `orchestrator`, only `setup` chats an `image`, only `ticket` chats
+`questionsBlocked`.
+
+### Chat settings
+
+Swift type `ChatSettings`, keys in this order: `model` (`String`, default `default`: a CLI model value, not
+empty, no white space), `effort` (`low`, `medium`, `high`, `xhigh` or `max`, default `high`), then V2's
+`permissionMode` (default `manual`), `ultracode` (default `false`) and `contextWindow` (default `auto`), kept as
+read and not used by V3, then unknown keys. A new chat takes the model and effort of [Settings
+file](#settings-file) › `chatModel` and `chatEffort`.
+
+### Chat transcript file
+
+`.hephaestus/chats/<CHAT-ID>.jsonl`: JSON Lines, one `{"op": "add" | "update", "item": <ChatItem>}` per line,
+appended and never rewritten.
+
+- **Writes.** Each item added or replaced appends one line: compact JSON, keys sorted, slashes not escaped, then
+  LF, in one `write(2)` with `O_APPEND`, the file created mode 0644 by the first. The first append to a
+  transcript since the app started adds an LF first when the file doesn't end with one, so a line a crash cut
+  short stays apart. Streamed text is never written; only finished items are.
+- **Replay.** Lines in order: `add` appends the item, or replaces the one with its `id` in place; `update`
+  replaces it, or appends it. A line that isn't JSON, has another `op`, an item type V3 doesn't read or lacks a
+  required key is skipped.
+- **Reading.** A transcript is read when its chat opens in a window, off the main thread; the app keeps at most
+  12 in memory besides those of running chats, the oldest read dropped first. A request still waiting in a
+  transcript read while the chat has no process is cancelled: an `update` line with `decision` `deny` and
+  `decidedBy` `null`.
+
+### Chat items
+
+Every item has `type`, `id` (unique in the transcript) and `created` (ISO 8601, UTC, seconds). The other keys,
+with `null` written for an absent optional:
+
+| `type` | Keys | Id |
+| --- | --- | --- |
+| `user` | `text` (the message as written, without what V3 adds for Claude), `attachments` (V2's files, kept), `sender` (the Mac's name), `linkedItems` (V2's, kept), `references` (**V3 addition**: `[{tool, project, focus, title, environment}]`, the item the message's chip carried; `tool` is a `ToolKind` value or `project`) | a new uppercase UUID, also the message's `uuid` for the CLI |
+| `assistant` | `text`, `messageID`, `parentToolUseID`, `model` (the CLI's model id), `effort` | `<message id>#<block index>` |
+| `thinking` | `text`, `parentToolUseID` (kept; not shown) | `<message id>#<block index>` |
+| `toolUse` | `toolUseID`, `name` (without `mcp__<server>__`), `server` (`hephaestus` for the app's tools, `null` for the CLI's), `input`, `parentToolUseID` | `<message id>#<block index>` |
+| `toolResult` | `toolUseID`, `text`, `isError`, `images` (V2's, kept) | `<tool use id>#result` |
+| `permissionRequest` | `requestID`, `toolName` (the CLI's name, `mcp__hephaestus__add_comment`), `input`, `reason`, `decision` (`allow`, `allowAlways`, `deny`; `null` while it waits), `decidedBy` (the Mac whose user answered; `null` while it waits and when the app cancelled it) | `perm-<request id>` |
+| `system` | `text` (in English, as V2 wrote them), `level` (`info`, `warning`, `error`) | a new uppercase UUID |
+| `result` | `durationMs`, `costUSD` (kept; not shown), `isError`, `summary` | a new uppercase UUID |
+
+V2's other items, `questions`, `symbol`, `color`, `sound`, `shortcut`, `font`, `animation` and `images`, belong
+to features V3 doesn't bring over: they are skipped when a transcript is read, and stay in the file. A string
+longer than 100,000 characters in a call's input or a result's text is cut, followed by `… [truncated <n>
+characters]`.
+
+The `system` lines V3 writes:
+
+| When | Level | Text |
+| --- | --- | --- |
+| The CLI can't be started | error | `Claude failed to start: <reason>` |
+| No `system/init` within 60 s | error | `Claude did not start within 60 seconds.` |
+| The CLI exits during a turn, not ended by the app | error | `Claude exited with code <n>: <last line of its standard error>`, or `Claude exited with code <n>.`, or `Claude was terminated by signal <n>.` |
+| The first `system/init` lists no usable `hephaestus` server | warning | `The Hephaestus tools aren't available in this session: the app's MCP server is <failed, needs-auth, disabled or missing>.` |
+| A resumed session the CLI doesn't find | warning | `Claude's session for this chat was not found. A new session started: Claude doesn't remember this chat's earlier messages.` |
+| The CLI refuses a model or effort change | warning | `Claude did not accept the new <model or effort> now: <reason>. It applies the next time Claude starts.` |
+| Stop | info | `Stopped by the user.` |
+| The app quits during a turn | warning | `Stopped because Hephaestus quit.` |
+| A compaction | info | `Conversation compacted (<automatic or manual>, <tokens> tokens before)`, tokens as `24.6K`, `967K`, `1.2M` |
+
+### Stream mapping
+
+`StreamMapper` turns each line the CLI writes (stream-json, checked against V2's captures of Claude Code
+2.1.309, copied into `ChatDataTests/Fixtures`) into items and events. A line that isn't a JSON object is
+skipped.
+
+| Line | Result |
+| --- | --- |
+| `system` `init` | A CLI turn opens. The first of a process sets `sessionStarted` and checks `mcp_servers` for `hephaestus`. |
+| `system` `status` | `compacting` starts a compaction; the next `status` ends it. |
+| `system` `compact_boundary` | The compaction line, from `compact_metadata.trigger` and `pre_tokens`. |
+| `stream_event` | `message_start` records the message's id and model; `content_block_start` opens block `index`; a `text_delta` (main conversation) streams text into the chat; `thinking_delta` accumulates. Others are ignored. A line's message is its `api_message_id`, else the latest `message_start` of its `parent_tool_use_id`. |
+| `assistant` | One item per block of `message.content`: `text` → `assistant` (none when empty), `thinking` → `thinking` (none when empty), `tool_use` → `toolUse`. A block takes the index of the first open block of its message with its type and no item yet, else the next index of the message. |
+| `user` with `tool_result` blocks | One `toolResult` each: `content` as a string, or its `text` parts joined with LF, then one line of compact JSON per part that is neither text nor image. |
+| `control_request` `can_use_tool` | A `permissionRequest` item: the CLI asks ([Chat processes › Permissions](#permissions)). Another subtype is refused at once: `Unsupported control request: <subtype>`. |
+| `control_response` | Matched to the app's request by `request_id`. |
+| `control_cancel_request` | The request is cancelled: `decision` `deny`, `decidedBy` `null`. |
+| `result` | Open text and thinking blocks with text become items, open calls are dropped; then a `result` item: `durationMs` = `duration_ms`, `costUSD` = `total_cost_usd`, `isError` = `is_error`, `summary` null without error, else `Stopped by the user.` for the first result after Stop, else `result` for subtype `success`, else the `errors` joined with LF, else the `subtype`. The CLI turn closes. |
+| `command_lifecycle` | The state of the message whose `uuid` is `command_uuid`. |
+| Others (`rate_limit_event`, `keep_alive`…) | Ignored. |
+
+### Chat processes
+
+How a chat's CLI runs (`ChatSession`, [Architecture › ChatData](architecture.md#chatdata)).
+
+#### The CLI
+
+The first that applies: Settings ▸ Chat's path (`claudePath`); `HEPHAESTUS_CLAUDE_PATH`; `~/.local/bin/claude`,
+`/opt/homebrew/bin/claude`, `/usr/local/bin/claude`, the first that is an executable file; `claude` in the login
+shell's `PATH`. A path set in Settings or the variable that isn't an executable file is an error, and nothing
+else is tried. Then `<path> --version` (30 s): the version is its output's first `[0-9]+(\.[0-9]+)+`.
+
+| Outcome | Status |
+| --- | --- |
+| Not found | `Claude CLI not found. Install Claude Code, or set its path in Settings ▸ Chat.` |
+| Set but not executable | `<path> is not an executable file.` |
+| `--version` fails | `<path> --version failed: <reason>.`: `timeout`, the first line of its standard error without final periods, or `exit code <n>` |
+| A version | Available. |
+
+The check runs once the projects and tools are loaded, and again after the path changes or **Look Again**. Then
+the model probe reads the CLI's models: `<path> -p --input-format stream-json --output-format stream-json
+--verbose --no-session-persistence --tools "" --strict-mcp-config --mcp-config {"mcpServers":{}}` in
+`Runtime/claude-cwd/`, writes `initialize`, takes `response.models` from its answer (30 s at most), closes stdin,
+then SIGTERM and SIGKILL 2 s later. No message is sent: the probe makes no model request. Each model entry gives
+`value`, `displayName` (default `value`), `description`, `supportedEffortLevels`, `resolvedModel`; an entry without
+`value` is skipped. Until an answer, the list is V2's fallback: Default, Opus, Fable, Sonnet, Haiku. Every chat
+process's `initialize` answer replaces the list too. A model id's name is the `displayName` of the first model
+other than `default` that resolves to it, else of the model whose value it is, else the id.
+
+#### Launch
+
+A message to a chat without a live process starts one, in the project's folder, with the login shell's
+environment (no `HEPHAESTUS_*`) plus `MCP_TOOL_TIMEOUT=1800000`, its standard error appended to the chat's log.
+The arguments, one element each, no shell:
+
+```
+<cli> -p --input-format stream-json --output-format stream-json --verbose --include-partial-messages
+  --session-id <CHAT-ID>          (or --resume <CHAT-ID> once sessionStarted)
+  --model <settings.model> --effort <settings.effort>
+  --permission-mode manual --permission-prompt-tool stdio
+  --tools ""
+  --strict-mcp-config --mcp-config <data folder>/Runtime/mcp/<CHAT-ID>.json
+  --allowedTools mcp__hephaestus__<tool>,mcp__hephaestus__<tool>,…
+```
+
+- `--tools ""` leaves Claude none of the CLI's own tools (shell, files, web, agents); `--strict-mcp-config`
+  leaves it the app's server alone. Claude reads and changes only through the app's tools, as the user does.
+- `--allowedTools` lists every tool of the app's server: the CLI runs them without asking, and the app's server
+  asks the user before a change, as Settings ▸ Chat says ([MCP › Permissions](mcp.md#permissions)).
+- No system prompt, no hook, no skill, no plugin: V3 sends Claude nothing written for it besides its tools'
+  descriptions and the line of a message's item ([Decisions › V2's prompts](decisions.md#v2s-prompts)).
+- The MCP configuration, mode 0600: `{"mcpServers":{"hephaestus":{"type":"http","url":"http://127.0.0.1:<port>/mcp","headers":{"Authorization":"Bearer <token>"}}}}`, the token a new chat token
+  ([MCP › Authentication](mcp.md#authentication)), revoked with the file when the process ends.
+
+Then the app writes `{"type":"control_request","request_id":"hephaestus-1","request":{"subtype":"initialize"}}`
+and the message. Control request ids are `hephaestus-<n>`, counting from 1 per process.
+
+#### Messages
+
+Each message is one line: `{"type":"user","message":{"role":"user","content":[{"type":"text","text":<text>}]},"uuid":<user item id>}`.
+`<text>` is the message, then, for the item its chip carried, a blank line and one line V3 writes:
+
+| Item | Line |
+| --- | --- |
+| The project | `Attached: project ORD` |
+| A ticket | `Attached: ticket ORD-142 of project ORD` |
+| A service, a request | `Attached: service payments-api of project ORD, as seen in Staging`; `Attached: request req-8f3a of project ORD, as seen in Staging` |
+| A run, a release | `Attached: run 1288 of project ORD`; `Attached: release v1.4.0 of project ORD` |
+| An operation | `Attached: operation createOrder of project ORD` |
+
+#### Turns
+
+A turn runs from a message written (or a CLI turn the CLI begins) until no message written is outstanding and
+no CLI turn is open. Each message written is outstanding; `command_lifecycle` records its `state`, and a state
+other than `queued` and `started` finishes it; a `result` closes the CLI turn and finishes the messages
+`started`, or the oldest without a state. A message sent during a turn is written at once: the CLI runs it
+after its current CLI turn. The turn's end writes `updated`.
+
+| State | When |
+| --- | --- |
+| `starting` | A process was started; its first `system/init` hasn't come. |
+| `running` | A turn runs. |
+| `waitingPermission` | A card waits: the CLI's request, or the app's. |
+| `error` | The CLI couldn't start, didn't start in 60 s, or exited during a turn on its own. Until the next message. |
+| `idle` | Otherwise. |
+
+#### Permissions
+
+- **The app's cards.** Before a change by a chat's Claude that Settings ▸ Chat sets to Ask First, the server's
+  gate calls `ChatSession.requestApproval`: a `permissionRequest` item with a new lowercase UUID as request id
+  and `mcp__hephaestus__<tool>` as `toolName`; the call waits for the answer.
+- **The CLI's requests.** A `can_use_tool` request (one the CLI makes on its own, such as for a tool the user's
+  Claude Code settings deny) becomes a card too. Allow writes
+  `{"type":"control_response","response":{"subtype":"success","request_id":<id>,"response":{"behavior":"allow","updatedInput":<input>}}}`;
+  Don't Allow writes `"behavior":"deny","message":"Permission denied by the user."`.
+- An answer records `decision` and `decidedBy`, this Mac's name.
+
+#### Stop, end and quit
+
+| Event | What happens |
+| --- | --- |
+| Stop | Each card waiting is refused (the CLI's with `The user stopped Claude.`), recorded with this Mac's name; the line `Stopped by the user.`; the `interrupt` control request. Without a `result` 5 s later, SIGINT, then SIGTERM, then SIGKILL, 5 s apart, to the process group. |
+| No turn for 20 min | stdin closed, then SIGTERM and SIGKILL, 5 s apart. The next message starts a process with `--resume`. |
+| No `system/init` in 60 s | SIGTERM, SIGKILL 5 s later; the error line. |
+| The app quits | A turn in progress gets its line and its cards are cancelled; SIGTERM, SIGKILL after 3 s. |
+| A resumed process exits before its `system/init`, its standard error saying `No conversation found with session ID` | `sessionStarted` false, the warning line, and one launch again with `--session-id`, writing the same messages. |
+| Any exit | Open blocks finish as items; the cards still waiting are cancelled; the token and the MCP configuration go. |
+| `set_model`, `apply_flag_settings` | A model or effort change of a chat whose process runs: `{"subtype":"set_model","model":<model>}`, `{"subtype":"apply_flag_settings","settings":{"effortLevel":<effort>}}`. |
+
+### Chat loading and outside changes
+
+`ChatSession.start`, once the projects and tools are loaded, reads the chat files of every loaded project (names
+`<CHAT-ID>.yml` only; an invalid file, or one whose `id` differs from its name, is skipped), and again when the
+projects change or a batch of file events names a `chats/` folder. Transcripts aren't followed: a transcript
+changed outside the app shows when its chat is read again.
+
 ## Settings file
 
 `<data folder>/settings.yml`: the app's settings. V3's own file: V2's `settings.yml` isn't imported. Swift
@@ -725,6 +999,9 @@ and gives the defaults (`DataFolder.readSettings()`).
 | --- | --- | --- | --- | --- | --- |
 | schema | `schema` | `Int` | no | `1` | |
 | mcpPort | `mcpPort` | `Int` | no | `47830` | The MCP server's port on 127.0.0.1: 1024–65535 (`SettingsFile.isPort`). `HEPHAESTUS_MCP_PORT` replaces it while set, without changing the file ([MCP](mcp.md#server-lifecycle)). |
+| claudePath | `claudePath` | `String?` | no | absent | The Claude CLI the chats run: an absolute path or one from `~/`; absent finds it ([Chat processes › The CLI](#the-cli)). Written only when set. |
+| chatModel | `chatModel` | `String?` | no | absent | The model of new chats, a CLI model value such as `opus`; absent for `default`. Written only when set. |
+| chatEffort | `chatEffort` | `String?` | no | absent | The effort of new chats (`low`, `medium`, `xhigh`, `max`); absent for `high`. Written only when set. |
 | unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
 
 ```yaml

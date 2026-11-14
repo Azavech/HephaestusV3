@@ -35,9 +35,9 @@ public struct ChatPanel: View {
             Divider()
             if let conversation = model.conversation {
                 ScrollView {
-                    ChatTranscript(conversation: conversation, isResponding: model.isResponding, compact: true) { approval, allow in
+                    ChatTranscript(conversation: conversation, activity: model.activity, compact: true, decide: { approval, allow in
                         model.decide(approval, allow: allow)
-                    }
+                    }, stop: model.stop)
                     .padding(14)
                 }
                 // A short chat starts at the top; a long one opens on its end and follows new turns.
@@ -48,12 +48,17 @@ public struct ChatPanel: View {
             } else {
                 emptyState(attachment)
             }
+            if let failure = model.failure {
+                ChatFailure(message: failure)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+            }
             MessageComposer(
                 text: $model.draft,
                 prompt: Text("Ask about \(attachment?.title ?? project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
                 isBusy: model.isResponding,
                 identifier: "chat.composer",
-                send: { model.sendDraft(project: project, origin: origin, subject: subject, reader: toolReader) }
+                send: { Task { await model.sendDraft(project: project, origin: origin, subject: subject, reader: toolReader) } }
             ) {
                 chip(attachment)
             }
@@ -62,6 +67,9 @@ public struct ChatPanel: View {
         .background(.canvas)
         .onChange(of: subject) {
             model.subjectChanged()
+        }
+        .task(id: model.conversationID) {
+            await model.openConversation()
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.panel")
@@ -127,7 +135,7 @@ public struct ChatPanel: View {
                 .foregroundStyle(.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 SuggestionList(suggestions: model.suggestions(for: subject, reader: toolReader)) { suggestion in
-                    model.send(suggestion, project: project, origin: origin, subject: subject, reader: toolReader)
+                    Task { await model.send(suggestion, project: project, origin: origin, subject: subject, reader: toolReader) }
                 }
             }
             .padding(14)
@@ -164,25 +172,49 @@ public struct ChatPanel: View {
 /// user's choice).
 @Observable
 public final class ChatPanelModel {
-    private let store: ChatStore
+    let store: any ChatStore
     /// The conversation the panel shows; nil before the first message, and after New Chat.
     var conversationID: ChatConversation.ID?
     /// The message being written.
     var draft = ""
     /// The subject the user took off the next message; it comes back when the selection changes.
     var leftOut: ChatReference.ID?
+    /// Why the last message wasn't sent; the next message clears it.
+    var failure: String?
 
-    public init(store: ChatStore = .shared) {
-        self.store = store
+    /// The panel of a window of the app, on its chats.
+    public convenience init(store: LiveChatStore) {
+        self.init(chats: store)
+    }
+
+    init(chats: any ChatStore) {
+        self.store = chats
     }
 
     var conversation: ChatConversation? {
         store.conversation(conversationID)
     }
 
+    /// What Claude is doing in the open conversation; nil when nothing.
+    var activity: ChatActivity? {
+        store.activity(conversationID)
+    }
+
     /// Whether the open conversation waits for a reply, which disables Send.
     var isResponding: Bool {
-        store.isResponding(conversationID)
+        activity != nil
+    }
+
+    /// Stops Claude in the open conversation; nil where nothing can be stopped.
+    var stop: (() -> Void)? {
+        guard store.canStop, let conversationID else { return nil }
+        return { [store] in store.stop(conversationID) }
+    }
+
+    /// Reads the open conversation's turns.
+    func openConversation() async {
+        guard let conversationID else { return }
+        await store.open(conversationID)
     }
 
     /// New Chat leaves an open conversation; with none, there is nothing to leave.
@@ -217,9 +249,10 @@ public final class ChatPanelModel {
         attachment(for: subject).map { ChatSuggestion.about($0, reader: reader) } ?? ChatSuggestion.project
     }
 
-    /// Sends the draft, with the attachment, and clears it.
-    func sendDraft(project: Project, origin: ToolKind, subject: ChatReference?, reader: ToolReader) {
-        if send(draft, project: project, origin: origin, subject: subject, reader: reader) {
+    /// Sends the draft, with the attachment, and clears it once sent.
+    func sendDraft(project: Project, origin: ToolKind, subject: ChatReference?, reader: ToolReader) async {
+        let text = draft
+        if await send(text, project: project, origin: origin, subject: subject, reader: reader), draft == text {
             draft = ""
         }
     }
@@ -227,13 +260,16 @@ public final class ChatPanelModel {
     /// Sends `text`, with the attachment, to the open conversation; the first message starts one, with
     /// the window's project and its tool as the origin. The draft stays as it is.
     @discardableResult
-    func send(_ text: String, project: Project, origin: ToolKind, subject: ChatReference?, reader: ToolReader) -> Bool {
+    func send(_ text: String, project: Project, origin: ToolKind, subject: ChatReference?, reader: ToolReader) async -> Bool {
         let attachments = attachment(for: subject).map { [$0] } ?? []
-        guard let id = store.send(text, to: conversationID, project: project, origin: origin, attachments: attachments, reader: reader) else {
+        do throws(ChatSendError) {
+            conversationID = try await store.send(text, to: conversationID, project: project, origin: origin, attachments: attachments, reader: reader)
+            failure = nil
+            return true
+        } catch {
+            failure = error.message.isEmpty ? nil : error.message
             return false
         }
-        conversationID = id
-        return true
     }
 
     /// The user's answer to a change Claude asked to make in the open conversation.
@@ -247,6 +283,7 @@ public final class ChatPanelModel {
         conversationID = nil
         draft = ""
         leftOut = nil
+        failure = nil
     }
 
     /// The project's Chat window, on the open conversation, if any.
@@ -260,8 +297,8 @@ public final class ChatPanelModel {
 private let ord142 = ChatReference(tool: .tickets, projectID: "ORD", focus: "ORD-142", title: "ORD-142")
 
 /// A panel model on the samples, with `conversation` open.
-private func previewModel(_ store: ChatStore = .transient(), open conversation: ChatConversation.ID? = nil) -> ChatPanelModel {
-    let model = ChatPanelModel(store: store)
+private func previewModel(_ store: SampleChatStore = .transient(), open conversation: ChatConversation.ID? = nil) -> ChatPanelModel {
+    let model = ChatPanelModel(chats: store)
     model.conversationID = conversation
     return model
 }
@@ -290,18 +327,17 @@ private func previewModel(_ store: ChatStore = .transient(), open conversation: 
 }
 
 #Preview("Panel, Approval Answered", traits: .appChrome, .fixedLayout(width: 341, height: 720)) {
-    let store = ChatStore.transient()
+    let store = SampleChatStore.transient()
     let _ = store.decide("chat-checkout.comment", in: "chat-checkout", allow: true)
     ChatPanel(project: Project.samples[0], origin: .tickets, subject: ord142, model: previewModel(store, open: "chat-checkout"), hide: {})
 }
 
 #Preview("Panel, Reading", traits: .appChrome, .fixedLayout(width: 341, height: 640)) {
     // An engine that takes its time, so the reply stays on its way.
-    let store = ChatStore(engine: SampleChatEngine(delay: .seconds(3_600)))
-    let model = previewModel(store)
-    let _ = model.send(
-        "Is run 1288 enough to close it?", project: Project.samples[0], origin: .tickets, subject: ord142, reader: ToolReader { _ in nil }
-    )
+    let store = SampleChatStore(engine: SampleChatEngine(delay: .seconds(3_600)))
+    let id = try? store.send("Is run 1288 enough to close it?", to: nil, project: Project.samples[0], origin: .tickets, attachments: [ord142],
+                             reader: ToolReader { _ in nil })
+    let model = previewModel(store, open: id)
     ChatPanel(project: Project.samples[0], origin: .tickets, subject: ord142, model: model, hide: {})
 }
 

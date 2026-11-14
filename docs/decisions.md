@@ -17,7 +17,7 @@ which rules the app enforces, and never tells Claude how to work.
 | What about the tool descriptions written in Phases 1 to 3? | Rewritten in V3's words: no sentence of V2's descriptions is left, and no advice to Claude ("ask the user for the name", "set in_progress when you start", "use add_comment to report work"). What remains in common with V2 is the API itself: field, status and argument names. | [MCP › What Claude reads](mcp.md#what-claude-reads) |
 | Does the server send instructions? | No: `initialize` has no `instructions` member. | [MCP › Methods](mcp.md#methods) |
 | What happens to the ticket template? | Dropped: it existed so Claude's tickets followed V2's six headings. Claude's descriptions are taken as written, like the user's. | [Data › Ticket rules](data.md#ticket-rules) |
-| What does the Chat (Phase 5) send the Claude CLI? | No V2 system prompt, skill or hook text: no `--append-system-prompt` built from V2's skills, and no hook that adds the linked items to a message. The permission hook stays, since it carries approvals, not text for Claude. Anything V3 adds is written for V3 and documented with the Chat. | The Chat's pages, written in Phase 5 |
+| What does the Chat (Phase 5) send the Claude CLI? | No V2 system prompt, skill or hook text: no `--append-system-prompt`, no `--settings` hooks, no plugin. V3's only addition is one line after a message, naming the item its chip carried ("Attached: ticket ORD-142 of project ORD"). No hook is needed for approvals either: the app's MCP server asks the user before a change ([MCP › Permissions](mcp.md#permissions)). | [Data › Launch](data.md#launch), [Data › Messages](data.md#messages) |
 
 ## Phase 0: Foundation (13 November 2026)
 
@@ -109,3 +109,23 @@ which rules the app enforces, and never tells Claude how to work.
 | What about V2's **Last 7 days** window? | Kept when stored, and shown as the last hour until the Service Map brings the window over (Phase 8). | [Data › Project file](data.md#project-file) |
 | What do the Tickets widget's statuses include? | V3's Draft too, for widgets V3 adds; a V2 widget keeps its four. | [Data › Dashboard widget](data.md#dashboard-widget) |
 | How does a failed change show? | Its message under the toolbar until the next change; the stored list shows again, and the changes queued after it are dropped (V2 showed the engine's message in red under the bar). | [UI › Dashboard › Applying changes](ui/dashboard.md#applying-changes) |
+
+## Phase 5: Chat on the Claude CLI (14 November 2026)
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| Which of the CLI's own tools does Claude get in a chat? | None (`--tools ""`), and no MCP server but the app's (`--strict-mcp-config`): Claude reads and changes only through the app's tools, as the Chat's design says ("Nothing it reads or changes goes around them"). V2's chats could run commands and edit files; for that, Claude Code in a terminal with the app's MCP server does it. | [Data › Launch](data.md#launch) |
+| Where do the user's permissions hold? | In the app's MCP server, before each call of a chat's Claude (`ChatGate`), not in the CLI's permission modes: the CLI runs the app's tools without asking (`--allowedTools`), so an allow rule in the user's own Claude Code settings can't skip a card. V2's permission modes, Ultracode and context window are kept in the chat files as read and not used. | [MCP › Permissions](mcp.md#permissions) |
+| What does Always mean for deletions? | They ask first anyway, as in V2, where the deleting tools were never pre-approved; Never refuses them. | same |
+| Which permission covers projects? | A new **Change projects** (Never, Ask First, Always; Ask First by default) beside Change tickets, in Settings ▸ Chat and the inspector: Claude can add, change and remove projects through the MCP tools, which no permission covered. | [UI › Chat › Settings ▸ Chat](ui/chat.md#settings--chat) |
+| How does Claude know what a message is about? | One line V3 writes after the message: the item of its chip, or the project from the Chat window. It describes the item only. | [Data › Messages](data.md#messages) |
+| Which chats does V3 list? | Every chat in the projects' `.hephaestus/chats/`, V2's of every kind; V3 makes `project` chats, with V3's `origin` for the panel's. Their items V3 doesn't bring over (V2's pickers, shown images) are skipped. | [Data › Chats](data.md#chats) |
+| How is a new chat titled without Haiku? | The first line of its first message that isn't empty, at most 80 characters, as the Chat's design titled new conversations; `rename_chat` lets Claude rename one when asked. | [Data › Chat file](data.md#chat-file) |
+| Where do the model and effort of new chats live? | `settings.yml` (`chatModel`, `chatEffort`), set in Settings ▸ Chat › Replies; each chat keeps its own, set in the inspector. | [Data › Settings file](data.md#settings-file) |
+| Does V3 read the CLI's models before a chat starts? | Yes, as V2: a probe that only answers `initialize` (no session, no tools, no message), after the CLI is found. | [Data › The CLI](data.md#the-cli) |
+| How does Stop show? | A **Stop** button (⌘.) on the activity line at the transcript's end, rather than turning Send into Stop, so the composer's Send keeps its one role. | [UI › Chat › Activity](ui/chat.md#activity) |
+| Can the user send while Claude works? | No: Send stays disabled during a turn, as the design had it while a reply was coming; Stop ends the turn. | [UI › Chat › Composer](ui/chat.md#composer) |
+| What shows of the transcript? | The user's messages, Claude's text (inline Markdown), the calls of the app's tools, the cards, and the app's lines; not thinking, not sub-agents' work, not the end of a turn that went well, no cost. | [UI › Chat › Turns](ui/chat.md#turns) |
+| In which language are the app's lines? | English, as stored in the transcript, as V2 stored them; the rows' and cards' wording is the tools', in the user's language. | [Data › Chat items](data.md#chat-items) |
+| How many transcripts stay in memory? | Those of chats open in a window and of running chats, plus at most 12 others, the oldest read dropped first (keep RAM low). | [Data › Chat transcript file](data.md#chat-transcript-file) |
+| What happens to the sample engine? | It stays for previews and the documentation's captures only. | [UI › Chat › Samples](ui/chat.md#samples) |

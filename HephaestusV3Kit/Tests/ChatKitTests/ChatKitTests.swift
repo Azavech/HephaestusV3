@@ -42,9 +42,9 @@ struct ChatStoreTests {
     @Test("The first message starts a conversation titled with its first 80 characters")
     func startsConversation() async throws {
         let engine = MockChatEngine()
-        let store = ChatStore(conversations: [], engine: engine)
+        let store = SampleChatStore(conversations: [], engine: engine)
         let text = String(repeating: "a", count: 100)
-        let id = try #require(store.send("  \(text)\n", to: nil, project: orders, origin: .tickets, attachments: [ord142], reader: reader()))
+        let id = try (store.send("  \(text)\n", to: nil, project: orders, origin: .tickets, attachments: [ord142], reader: reader()))
         let conversation = try #require(store.conversation(id))
         #expect(conversation.title == String(repeating: "a", count: 80))
         #expect(conversation.projectID == "ORD")
@@ -52,14 +52,14 @@ struct ChatStoreTests {
         #expect(conversation.turns.count == 1)
         #expect(conversation.turns[0].author == .user)
         #expect(conversation.turns[0].attachments == [ord142])
-        #expect(store.isResponding(id))
+        #expect((store.activity(id) != nil))
 
         await store.repliesArrived()
         let replied = try #require(store.conversation(id))
         #expect(replied.turns.count == 2)
         #expect(replied.turns[1].author == .claude)
         #expect(replied.turns[1].isSample == false)
-        #expect(!store.isResponding(id))
+        #expect(!(store.activity(id) != nil))
         #expect(engine.messages.map(\.text) == [text])
         #expect(engine.messages.first?.attachments == [ord142])
     }
@@ -68,16 +68,16 @@ struct ChatStoreTests {
     func sampleReply() async {
         let engine = MockChatEngine()
         engine.repliesAreSamples = true
-        let store = ChatStore(conversations: [], engine: engine)
-        let id = store.send("Hello", to: nil, project: orders, origin: nil, attachments: [], reader: reader())
+        let store = SampleChatStore(conversations: [], engine: engine)
+        let id = try? store.send("Hello", to: nil, project: orders, origin: nil, attachments: [], reader: reader())
         await store.repliesArrived()
         #expect(store.conversation(id)?.turns.last?.isSample == true)
     }
 
     @Test("A later message goes to the same conversation")
     func laterMessage() async {
-        let store = ChatStore(conversations: [conversation("a", minutesAgo: 10)], engine: MockChatEngine())
-        let id = store.send("Again", to: "a", project: orders, origin: nil, attachments: [], reader: reader())
+        let store = SampleChatStore(conversations: [conversation("a", minutesAgo: 10)], engine: MockChatEngine())
+        let id = try? store.send("Again", to: "a", project: orders, origin: nil, attachments: [], reader: reader())
         #expect(id == "a")
         #expect(store.conversations.count == 1)
         await store.repliesArrived()
@@ -87,14 +87,14 @@ struct ChatStoreTests {
     @Test("An empty or blank message isn't sent")
     func blankMessage() {
         let engine = MockChatEngine()
-        let store = ChatStore(conversations: [], engine: engine)
-        #expect(store.send(" \n ", to: nil, project: orders, origin: nil, attachments: [], reader: reader()) == nil)
+        let store = SampleChatStore(conversations: [], engine: engine)
+        #expect((try? store.send(" \n ", to: nil, project: orders, origin: nil, attachments: [], reader: reader())) == nil)
         #expect(store.conversations.isEmpty)
     }
 
     @Test("Conversations of a set of projects, the latest first")
     func latestFirst() {
-        let store = ChatStore(conversations: [
+        let store = SampleChatStore(conversations: [
             conversation("old", minutesAgo: 60), conversation("new", minutesAgo: 1), conversation("other", project: "PAY", minutesAgo: 0),
         ], engine: MockChatEngine())
         #expect(store.conversations(of: ["ORD"]).map(\.id) == ["new", "old"])
@@ -103,10 +103,10 @@ struct ChatStoreTests {
 
     @Test("A decision answers the approval it names, and only that one")
     func decide() {
-        let first = ChatApproval(id: "first", change: .comment, reference: ord142, preview: "One")
-        let second = ChatApproval(id: "second", change: .comment, reference: ord142, preview: "Two")
+        let first = ChatApproval.comment(id: "first", on: ord142, preview: "One")
+        let second = ChatApproval.comment(id: "second", on: ord142, preview: "Two")
         let turn = ChatTurn(id: "a.1", author: .claude, date: .now, blocks: [ChatBlock(.approval(first)), ChatBlock(.approval(second))])
-        let store = ChatStore(conversations: [conversation("a", minutesAgo: 1, turns: [turn])], engine: MockChatEngine())
+        let store = SampleChatStore(conversations: [conversation("a", minutesAgo: 1, turns: [turn])], engine: MockChatEngine())
         store.decide("second", in: "a", allow: false)
         let decisions = store.conversation("a")!.turns[0].blocks.compactMap { block -> ChatApproval.Decision?? in
             if case .approval(let approval) = block.content { return approval.decision }
@@ -175,9 +175,9 @@ struct SampleChatEngineTests {
 
 @Suite("Chat panel")
 struct ChatPanelModelTests {
-    private func model(_ engine: MockChatEngine = MockChatEngine()) -> (ChatPanelModel, ChatStore) {
-        let store = ChatStore(conversations: [], engine: engine)
-        return (ChatPanelModel(store: store), store)
+    private func model(_ engine: MockChatEngine = MockChatEngine()) -> (ChatPanelModel, SampleChatStore) {
+        let store = SampleChatStore(conversations: [], engine: engine)
+        return (ChatPanelModel(chats: store), store)
     }
 
     @Test("The tool's selection is attached until the user takes it off, and comes back with a new selection")
@@ -200,7 +200,7 @@ struct ChatPanelModelTests {
         let engine = MockChatEngine()
         let (model, store) = model(engine)
         model.draft = "What's left?"
-        model.sendDraft(project: orders, origin: .tickets, subject: ord142, reader: reader())
+        await model.sendDraft(project: orders, origin: .tickets, subject: ord142, reader: reader())
         let id = try #require(model.conversationID)
         #expect(model.draft.isEmpty)
         #expect(store.conversation(id)?.origin == .tickets)
@@ -212,17 +212,17 @@ struct ChatPanelModelTests {
 
         model.leaveOut(ord142)
         model.draft = "And without it?"
-        model.sendDraft(project: orders, origin: .tickets, subject: ord142, reader: reader())
+        await model.sendDraft(project: orders, origin: .tickets, subject: ord142, reader: reader())
         #expect(model.conversationID == id)
         #expect(store.conversation(id)?.turns[2].attachments == [])
         #expect(store.conversations.count == 1)
     }
 
     @Test("A suggestion sends at once and keeps the draft")
-    func suggestion() {
+    func suggestion() async {
         let (model, store) = model()
         model.draft = "Half a thought"
-        model.send("Summarize ORD-142", project: orders, origin: .tickets, subject: ord142, reader: reader())
+        await model.send("Summarize ORD-142", project: orders, origin: .tickets, subject: ord142, reader: reader())
         #expect(model.draft == "Half a thought")
         #expect(store.conversation(model.conversationID)?.turns.first?.attachments == [ord142])
     }
@@ -261,10 +261,10 @@ struct ChatPanelModelTests {
 
     @Test("A decision goes to the open conversation")
     func decide() {
-        let approval = ChatApproval(id: "a.comment", change: .comment, reference: ord142, preview: "Seen again")
+        let approval = ChatApproval.comment(id: "a.comment", on: ord142, preview: "Seen again")
         let turn = ChatTurn(id: "a.1", author: .claude, date: .now, blocks: [ChatBlock(.approval(approval))])
-        let store = ChatStore(conversations: [conversation("a", minutesAgo: 1, turns: [turn])], engine: MockChatEngine())
-        let model = ChatPanelModel(store: store)
+        let store = SampleChatStore(conversations: [conversation("a", minutesAgo: 1, turns: [turn])], engine: MockChatEngine())
+        let model = ChatPanelModel(chats: store)
         model.decide("a.comment", allow: true)
         model.conversationID = "a"
         model.decide("a.comment", allow: true)
@@ -280,7 +280,7 @@ struct ChatPanelModelTests {
 
 @Suite("Chat window")
 struct ChatWindowModelTests {
-    private let store = ChatStore(conversations: [
+    private let store = SampleChatStore(conversations: [
         conversation("ord-old", minutesAgo: 60), conversation("ord-new", minutesAgo: 5),
         conversation("pay", project: "PAY", minutesAgo: 1), conversation("shop", project: "SHOP", minutesAgo: 30),
     ], engine: MockChatEngine())
@@ -349,12 +349,12 @@ struct ChatWindowModelTests {
     }
 
     @Test("Sending from a new chat's page starts a conversation without an origin, and shows it")
-    func sendFromNewChat() throws {
-        let store = ChatStore(conversations: [], engine: MockChatEngine())
+    func sendFromNewChat() async throws {
+        let store = SampleChatStore(conversations: [], engine: MockChatEngine())
         let model = ChatWindowModel(project: orders, focus: nil, store: store)
         model.startNewChat(asPage: true)
         model.draft = "What changed?"
-        model.sendDraft(reader: reader())
+        await model.sendDraft(reader: reader())
         let id = try #require(model.selection)
         #expect(id != ChatWindowModel.newChatID)
         #expect(store.conversation(id)?.origin == nil)
@@ -364,10 +364,10 @@ struct ChatWindowModelTests {
     }
 
     @Test("A suggestion keeps the draft")
-    func suggestion() {
-        let model = ChatWindowModel(project: orders, focus: nil, store: ChatStore(conversations: [], engine: MockChatEngine()))
+    func suggestion() async {
+        let model = ChatWindowModel(project: orders, focus: nil, store: SampleChatStore(conversations: [], engine: MockChatEngine()))
         model.draft = "Half a thought"
-        model.send("What changed this week?", reader: reader())
+        await model.send("What changed this week?", reader: reader())
         #expect(model.draft == "Half a thought")
         #expect(model.conversation?.title == "What changed this week?")
     }
@@ -379,7 +379,7 @@ struct ChatWindowModelTests {
 struct ChatWordingTests {
     @Test("An approval asks in a whole sentence")
     func approvalSentence() {
-        let approval = ChatApproval(id: "a", change: .comment, reference: ord142, preview: "")
+        let approval = ChatApproval.comment(id: "a", on: ord142, preview: "")
         #expect(approval.request == "Claude wants to comment on ORD-142")
     }
 

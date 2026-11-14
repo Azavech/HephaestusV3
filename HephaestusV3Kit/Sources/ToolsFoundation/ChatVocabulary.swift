@@ -33,9 +33,9 @@ nonisolated public struct ChatReference: Hashable, Codable, Sendable, Identifiab
         self.environment = environment
     }
 
-    /// The window that shows the item, with it selected.
+    /// The window that shows the item, with it selected; the tool's window alone for an empty focus.
     public var route: Route {
-        .tool(tool, project: projectID, focus: focus)
+        .tool(tool, project: projectID, focus: focus.isEmpty ? nil : focus)
     }
 }
 

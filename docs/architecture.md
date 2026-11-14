@@ -18,7 +18,7 @@ meet the workspace's rules (`~/Developer/Apple/CLAUDE.md`), [Open issues](#open-
 3. [The Xcode project](#the-xcode-project)
 4. [The package](#the-package)
 5. [The data targets](#the-data-targets): [FileStorage](#filestorage), [ExternalTools](#externaltools),
-   [ProjectData](#projectdata), [MCPKit](#mcpkit), [TicketData](#ticketdata), [TextFormats](text.md)
+   [ProjectData](#projectdata), [MCPKit](#mcpkit), [TicketData](#ticketdata), [ChatData](#chatdata), [TextFormats](text.md)
 6. [ToolsFoundation](#toolsfoundation)
 7. [ToolsScenes](#toolsscenes)
 8. [The tool kits](#the-tool-kits): [ProjectsKit](#projectskit), [DashboardsKit](#dashboardskit),
@@ -196,6 +196,7 @@ Shared values in the manifest:
 | `ProjectData` | The data folder, the import from HephaestusV2, the project files and their rules, the settings and secrets files. | FileStorage, ExternalTools | `.target(name:, dependencies:)` |
 | `MCPKit` | The MCP server: JSON values, input schemas, tool operations and their registry, JSON-RPC, HTTP on 127.0.0.1, tokens. | — | `.target(name:)` |
 | `TicketData` | The ticket, bundle and attachment files and their rules: the `TicketLibrary` actor and the `TicketSession`. | FileStorage, ProjectData | `.target(name:, dependencies:)` |
+| `ChatData` | The chat files, the Claude CLI and its protocol, the chats' processes: the `ChatSession`. | FileStorage, ExternalTools, ProjectData, MCPKit | `.target(name:, dependencies:)` |
 | `TextFormats` | Markdown to a block model and syntax highlighting, from HephaestusV2 without its markers ([Text](text.md)). | swift-markdown | `.target(name:, dependencies:)` |
 | `ToolsFoundation` | Shared vocabulary: projects, tools, routes, chat vocabulary, the Dashboard model, `ProjectIcon`. | AZDesign | `.target` |
 | `ProjectsKit` | The project selector: the Projects window, the project switcher, the menu bar panel; New Project, Project Settings, Settings ▸ Projects; the mapping of the app's projects; the project tools of the MCP server. | ToolsFoundation, AZDesign, AZDesignCode, ProjectData, ExternalTools, MCPKit | `toolTarget(_:data:)` |
@@ -257,7 +258,7 @@ Commit both `Package.resolved` files with it.
 ## The data targets
 
 Targets without UI hold the data code that V3 brings over from HephaestusV2: `FileStorage`, `ExternalTools`,
-`ProjectData`, `MCPKit`, `TicketData` and `TextFormats`. They import no SwiftUI, have no default isolation (a `@MainActor`
+`ProjectData`, `MCPKit`, `TicketData`, `ChatData` and `TextFormats`. They import no SwiftUI, have no default isolation (a `@MainActor`
 session type says so itself), and keep shared state in `Mutex`es and actors. Each feature wires them into its
 windows as it comes over ([Open issues](#open-issues)).
 
@@ -467,18 +468,21 @@ The MCP server of [MCP](mcp.md). No UI, no default isolation. Source files in `S
 | --- | --- |
 | `JSONValue.swift` | `JSONValue` (`null`, `bool`, `int`, `double`, `string`, `array`, `object`): `parse(_:)` (`JSONSerialization`, fragments allowed; a number is a boolean when it is a `CFBoolean`, an integer when it isn't a float type or is a float with an integral value below 9.2e18), `data` and `text` (sorted keys, slashes not escaped), `init(encoding:)` (`JSONEncoder` with sorted keys), accessors, `subscript(key:)`, `removingNullMembers`, literals |
 | `ToolSchema.swift` | `ToolSchema` (`object`, `string`, `integer`, `boolean`, `array` builders; `json`; `violation(of:)`, the validation of [MCP › Argument validation](mcp.md#argument-validation)) |
-| `ToolOperation.swift` | `ToolError` (`code`, `message`), `ToolPermission` (`read`, `change`), `ToolOperation` (`name`, `description`, `inputSchema`, `permission`, `run: @Sendable (JSONValue) async throws(ToolError) -> JSONValue`, `listing`), `ToolRegistry` (`operations`, `names`, `subscript(name:)`; names unique), `JSONValue.string(_:)` |
-| `MCPProtocol.swift` | `MCPReply` (`json`, `accepted`, `unsupportedVersion`), `MCPProtocol` (`supportedVersions`, `serverName`, `handle(body:protocolVersions:)`) |
+| `ToolOperation.swift` | `ToolError` (`code`, `message`), `ToolPermission` (`read`, `changeTickets`, `deleteTickets`, `changeProjects`, `removeProjects`, `renameChats`; `changes`), `ToolCallText` (`action`, `request`, `preview`, `item`), `ToolItem` (`tool`, `projectID`, `focus`, `title`), `ToolOperation` (`name`, `description`, `inputSchema`, `permission`, `describe: (@Sendable (JSONValue) -> ToolCallText)?`, `run: @Sendable (JSONValue) async throws(ToolError) -> JSONValue`, `listing`), `ToolRegistry` (`operations`, `names`, `subscript(name:)`; names unique), `JSONValue.string(_:)` |
+| `MCPProtocol.swift` | `MCPReply` (`json`, `accepted`, `unsupportedVersion`), `MCPProtocol` (`supportedVersions`, `serverName`, `Gate`, `init(registry:version:gate:)`, `handle(body:protocolVersions:caller:)`) |
 | `HTTP.swift` | `HTTPHead`, `HTTPResponse` (the rejections' texts, `data`), `HTTPParser` (`head(in:)`, `body(of:in:)`, the limits) |
-| `MCPTokens.swift` | `MCPTokens` (`replace(with:)`, `accepts(_:)` in constant time, `generate()` with `SecRandomCopyBytes`, `bearer(_:)`) |
+| `MCPTokens.swift` | `MCPCaller` (`external`, `chat(String)`, `chatID`, the task-local `current`), `MCPTokens` (a token → caller map: `replace(with:)` for the external tokens, `issue(forChat:)`, `revoke(_:)`, `caller(for:)` and `accepts(_:)` in constant time, `generate()` with `SecRandomCopyBytes`, `bearer(_:)`) |
 | `MCPServer.swift` | `MCPServer` (actor: `state`, `states`, `start(port:)`, `stop()`), the private `MCPConnection` and `OneShot` |
 
 - **Operations.** A kit declares its tools as `ToolOperation`s whose `run` is a `@MainActor` closure calling
   the same function its window calls (ProjectsKit's `ProjectTools.operations(session:)`, TicketsKit's
-  `TicketTools.operations(tickets:projects:)`). ToolsScenes gathers them in order
-  (`AppTools.registry(session:tickets:open:)`), adds `open_in_app`, and hands the registry to an
-  `MCPProtocol`. `MCPProtocol.call` validates the arguments, runs the operation with `null` members removed,
-  and wraps its JSON, or its error's message, in a tool result.
+  `TicketTools.operations(tickets:projects:)`, ChatKit's `ChatTools.operations(chats:projects:)`). Each also
+  gives `describe`, its wording of a call for the chat (`TicketTools.text`, `ProjectTools.text`). ToolsScenes
+  gathers them in order (`AppTools.registry(session:tickets:chats:open:)`), adds `open_in_app`, and hands the
+  registry to an `MCPProtocol` with its gate. `handle` runs the request with `MCPCaller.$current` set to the
+  token's caller; `MCPProtocol.call` validates the arguments, removes `null` members, asks the gate (nil runs
+  the call; an error refuses it as a tool error), runs the operation, and wraps its JSON, or its error's
+  message, in a tool result. The gate is `ChatGate.check` ([MCP › Permissions](mcp.md#permissions)).
 - **The server** binds an `NWListener` whose `requiredLocalEndpoint` is `127.0.0.1:<port>` (local endpoint
   reuse allowed) on a private dispatch queue; `start(port:)` awaits the listener's `ready` or `failed` state
   through a `OneShot`, five attempts a second apart. Each connection reads with `receive(minimumIncompleteLength: 1,
@@ -520,6 +524,41 @@ isolation. Source files in `Sources/TicketData/`:
   in-app project changes. Its changes forward to the library as the user on this Mac (`device` is
   `SCDynamicStoreCopyComputerName`) and keep the snapshot they return when its revision is higher. The MCP
   tools use `library` directly with the actor `.claude(chat:)`, then call `refresh()`.
+
+### ChatData
+
+The chats of [Data › Chats](data.md#chats): their files, the Claude CLI, its stream-json protocol and the chats'
+processes. No UI, no default isolation; `ChatSession` and `ChatRun` are `@MainActor`. Depends on FileStorage,
+ExternalTools, ProjectData and MCPKit. Source files in `Sources/ChatData/`:
+
+| File | Contents |
+| --- | --- |
+| `ChatFile.swift` | `ChatFile` (`Kind`, the keys of [Data › Chat file](data.md#chat-file), `kindViolation`), `ChatSettings` (`model`, `effort`, V2's kept keys, `isModel`), `Effort`, `ChatIDs` (`make`, `isChatID`) |
+| `ChatItem.swift` | `ChatItem` (`user`, `assistant`, `thinking`, `toolUse`, `toolResult`, `permissionRequest`, `system`, `result`; `id`, `created`, `json`, `init?(json:)`), the item structs, `ChatItemReference` (`projectTool`), `ToolUseItem.split(_:)` |
+| `Transcript.swift` | `Transcript` (`Op`, `replay(_:)`, `line(_:_:)`, `append(_:to:endingLine:)`) |
+| `StreamMapper.swift` | `StreamOutput`, `StreamMapper` (`effort`, `stopping`, `map(_:)`, `finish()`, `itemID`, `mcpProblem`, `tokens`, `truncated`) |
+| `ClaudeCLI.swift` | `ClaudeStatus`, `ClaudeModel` (`fallback`, `list(_:)`, `name(of:in:)`), `ClaudeCLI` (`locate`, `status`) |
+| `ClaudeProcess.swift` | `ChatLaunch` (`arguments`, `request`, `logLine`, `mcpConfiguration`), `ClaudeInput` (the lines written: `message`, `control`, `allow`, `deny`, `unsupported`, `text(_:carrying:)`, `attachedLine`), `ClaudeConnection` and `ClaudeLaunching` (protocols), `SystemClaudeLauncher`, `SystemClaudeConnection` |
+| `ChatSession.swift` | `LoadedChat`, `ChatState`, `ChatError`, `StreamingText`, `ChatSession` (state, start, the CLI's check, settings, reading, files, `refreshState`) |
+| `ChatRun.swift` | `ChatRun` (one live process), and `ChatSession`'s `send`, launch, output handling, turns, exit, `stop`, `stopAll`, `answer`, `requestApproval`, `setSettings`, `rename`, `probeModels` |
+
+- **`ChatSession`** (`@MainActor @Observable`, one for the app, made by `AppData`) publishes `chats` (every
+  loaded project's, by id), `status`, `models`, `transcripts` (those read: of chats open in a window and of
+  running ones, at most 12 others), `streaming`, `states`, `turnStarts`, `compacting`, `defaults` and
+  `claudePath`. `start(tools:port:)` runs after the MCP server starts: settings, chats, file events, the
+  projects' snapshot (`Observations`), then the CLI's check and model probe. Files are written on the main
+  actor: metadata with `YAMLFile.write` and its `OwnWrites`, transcript lines with `Transcript.append`; only
+  transcript reads go off the main actor.
+- **Processes.** `send` writes the message's item, then writes it to the chat's `ChatRun` or launches one:
+  a chat token from `MCPTokens.issue(forChat:)`, the MCP configuration, `ClaudeLaunching.launch`, the
+  `initialize` request and the messages. A `Task` reads `connection.lines` on the main actor through the
+  run's `StreamMapper`, then awaits the exit. Timers (start 60 s, idle 20 min, Stop's signals 5 s apart) are
+  `Task`s on the run. Every rule is in [Data › Chat processes](data.md#chat-processes).
+- **Approvals.** `requestApproval(_:tool:input:)` writes a `permissionRequest` item and suspends on a
+  `CheckedContinuation` kept per chat and request; `answer`, `stop`, the exit and `stopAll` resume it. A
+  CLI's `can_use_tool` request is kept with its input until `answer` writes the control response.
+- **Testing.** Tests pass a `FakeLauncher` whose connections replay V2's captures (`ChatDataTests/Fixtures`)
+  and record the lines written, and a runner that answers `--version`: no test starts Claude.
 
 ## ToolsFoundation
 
@@ -1029,7 +1068,7 @@ reader, if any, is a `public enum` with a `public static func read`, plus intern
 | ServiceMapKit | `ServiceMapRootView` | `ServiceMapModel` | `ServiceMapStore` → `SampleServiceMapStore` | `ServiceMapReader` | `service:<name>`, `request:<id>` | Instances and the four service widgets | — | inspected service or request |
 | ContractsKit | `ContractsRootView` | `ContractsModel` | `ContractStore` → `SampleContractStore` | `ContractsReader` | operation id | — | — | selected operation |
 | BuildsKit | `BuildsRootView` | `BuildsModel` | `BuildStore` → `SampleBuildStore` | `BuildsReader` | run number, `release:<tag>` | Recent Builds | — | selected run or release |
-| ChatKit | `ChatRootView`, `ChatPanel`, `ChatSettingsView` | `ChatWindowModel`, `ChatPanelModel`, `ChatStore` | `ChatEngine` → `SampleChatEngine` | — | conversation id | — | New Chat | — |
+| ChatKit | `ChatRootView`, `ChatPanel`, `ChatSettingsView` | `ChatWindowModel`, `ChatPanelModel` | `ChatStore` → `LiveChatStore`, `SampleChatStore` | — | conversation id | — | New Chat | — |
 | MachinesKit | `MachinesRootView` | `MachinesModel` | `MachineStore` → `SampleMachineStore` | — | machine id | — | New Machine… | — |
 
 ### ProjectsKit
@@ -1502,86 +1541,76 @@ placement, or a menu in `.phone`. Refresh has an empty action. It reports `chatS
 
 ### ChatKit
 
-Spec: [Chat](ui/chat.md): the Chat window, the chat panel, Settings ▸ Chat.
+Spec: [Chat](ui/chat.md): the Chat window, the chat panel, Settings ▸ Chat. Depends on ChatData and MCPKit.
 
 | File | Contents |
 | --- | --- |
-| `ChatModel.swift` | `ChatConversation`, `ChatTurn`, `ChatBlock`, `ChatApproval`, `ChangePermission`, `ChatPreferences` |
-| `ChatStore.swift` | `ChatStore` |
+| `ChatModel.swift` | `ChatConversation`, `ChatTurn`, `ChatBlock` (`Content`: `text`, `call`, `approval`, `notice`; `toolCall(_:_:)`), `ChatToolCall`, `ChatNotice`, `ChatApproval` (`Channel`, `comment(id:on:preview:decision:)`), `ChangePermission`, `ChatPreferences` |
+| `ChatStore.swift` | `ChatStore` (protocol), `ChatSendError`, `SampleChatStore` |
+| `LiveChatStore.swift` | `LiveChatStore`, `EnvironmentValues.chatStore` |
+| `ChatTools.swift` | `ChatGate`, `ChatTools` (`list_chats`, `get_chat`, `rename_chat`) |
 | `ChatEngine.swift` | `ChatEngine`, `SampleChatEngine` |
 | `ChatSuggestion.swift` | `ChatSuggestion` |
 | `ChatWindowModel.swift` | `ChatWindowModel` |
 | `ChatPanel.swift` | `ChatPanel`, `ChatPanelModel` |
 | `ChatRootView.swift` | `ChatRootView`, `ChatList`, `NewChatPrompt`, `ChatInspector` |
-| `ChatTranscript.swift` | `ChatTranscript`, `ChatAuthorRow`, `ChatTurnView`, `ToolCallRow`, `ApprovalCard`, `ContextChip`, `ProjectChip`, `SuggestionList` |
-| `ChatSettingsView.swift` | `ChatSettingsView`, `ChatPermissionsSection`, `ModelRow` |
+| `ChatTranscript.swift` | `ChatTranscript`, `ChatActivity`, `ChatActivityText`, `ChatAuthorRow`, `ChatTurnView`, `NoticeRow`, `ToolCallRow`, `ApprovalCard`, `ChatFailure`, `ContextChip`, `ProjectChip`, `SuggestionList` |
+| `ChatSettingsView.swift` | `ChatSettingsView`, `ReplySettingsRows`, `ChatPermissionsSection`, `ModelRow` |
 | `ChatSamples.swift` | `ChatConversation.samples` |
 
 **Public API**
 
-- `ChatRootView(project: Project, focus: String? = nil, store: ChatStore = .shared)`.
-- `ChatPanel(project: Project, origin: ToolKind, subject: ChatReference?, model: ChatPanelModel, hide: @escaping () -> Void)`.
-- `ChatPanelModel(store: ChatStore = .shared)`: `@Observable public final class`.
-- `ChatSettingsView()`.
-- `ChatStore`: `@Observable public final class`, `static let shared`, `static func transient()` (a fresh store with the samples, for previews).
+- `ChatRootView(project:focus:store: LiveChatStore, directory: ProjectDirectory)`; an internal
+  `init(project:focus:samples:)` for previews.
+- `ChatPanel(project:origin:subject:model:hide:)`; `ChatPanelModel(store: LiveChatStore)`, and the internal
+  `init(chats:)` for previews and tests.
+- `ChatSettingsView()`: reads `\.chatStore`; the internal `init(previewStatus:)` for previews.
+- `LiveChatStore(session: ChatSession, describe: @MainActor (String, JSONValue) -> ToolCallText?)`, its
+  `session`, and `EnvironmentValues.chatStore`.
+- `ChatGate.check(_:_:_:chats:defaults:)`, `ChatTools.operations(chats:projects:)`.
 - `ChatPreferences.showsPanelKey` (`"chat.showsPanel"`).
 
-**Model.** `ChatConversation`: `id`, `projectID`, `title`, `origin: ToolKind?` (the tool whose panel started
-it; nil from the Chat window), `createdAt`, `turns`; `updatedAt`; `references` (every item attached or read,
-once, in order). `ChatTurn`: `id` (`"<conversation>.<n>"` in the samples, a UUID otherwise), `author`
-(`user`, `claude`), `date`, `attachments: [ChatReference]`, `blocks`, `isSample`. `ChatBlock`: `id: UUID`,
-`content` `.text(String)`, `.toolCall(ChatReference, ToolReading)` or `.approval(ChatApproval)`.
-`ChatApproval`: `id`, `change` (`.comment`), `reference`, `preview`, `decision` (`allowed`, `declined`, nil
-while waiting); `request` is a whole sentence. `ChangePermission`: `never`, `askFirst`, `always`.
+**Model.** `ChatConversation`: `id`, `projectID`, `title`, `origin: ToolKind?`, `createdAt`, `turns`,
+`updated`; `updatedAt`; `references` (every item attached or read, once, in order). `ChatTurn`: `id`, `author`
+(`user`, `claude`), `date`, `attachments`, `blocks`, `isSample`. `ChatBlock`: `id: String`, `content`.
+`ChatToolCall`: `action`, `reference?`, `detail?` (nil asks the item's tool through `toolReader`), `failed`.
+`ChatApproval`: `id`, `request`, `preview?`, `reference?`, `channel?` (the tool's title and symbol), `decision`.
 
-**Store.** `ChatStore(conversations: = ChatConversation.samples, engine: = SampleChatEngine())` holds every
-conversation of the app, shared by the Chat windows and every panel, for as long as the app runs.
+**Stores.** `protocol ChatStore` (`@MainActor`, internal): `conversation(_:)`, `conversations(of:)`,
+`open(_:) async`, `activity(_:) -> ChatActivity?`, `canStop`, `send(_:to:project:origin:attachments:reader:)
+async throws(ChatSendError) -> ID`, `decide(_:in:allow:)`, `stop(_:)`, `models`, `replySettings(of:)`,
+`setReplySettings(_:of:)`.
 
-| Member | Role |
-| --- | --- |
-| `conversations` (private set), `responding: Set<ID>` (private set) | All conversations; those waiting for a reply. |
-| `conversation(_:)`, `conversations(of: Set<Project.ID>)` (latest first), `isResponding(_:)` | Reading. |
-| `send(_:to:project:origin:attachments:reader:) -> ID?` | Trims the text (nil if empty); appends to the conversation, or starts one titled with the first 80 characters; appends the user's turn; starts a `Task` that awaits `engine.reply` and appends Claude's turn with `isSample = engine.repliesAreSamples`. |
-| `repliesArrived()` | Awaits every reply on its way (for tests). |
-| `decide(_:in:allow:)` | Records the decision on the approval it names. |
+- `LiveChatStore` maps `ChatSession`: a conversation is a `LoadedChat`, its turns made by `turns(_:streaming:)`
+  from the transcript (a user item starts a user turn; the items after it, the streaming text last, make one
+  Claude turn: assistant text, calls, cards, system lines, results that failed other than a stop; sub-agents'
+  items and thinking skipped; a result fills its call's `failed` and `detail`). A call of a `hephaestus` tool
+  is worded by `describe`; a card's `channel` is the item's tool, or Projects for `projects`. `send` adds the
+  project's `ChatItemReference` when the message carries no item.
+- `SampleChatStore(conversations: = .samples, engine: = SampleChatEngine())`: the samples and the sample
+  engine, for previews and the captures; `activity` is `.reading` while a reply is on its way, and it has no
+  models.
 
-**Engine.** `protocol ChatEngine { var repliesAreSamples: Bool { get }; func reply(to:attachments:project:reader:) async -> [ChatBlock] }`.
-An engine reaches the tools only through `reader`. `SampleChatEngine` (`delay = .milliseconds(700)`) reads
-`references(for:attachments:project:)`: the attachments, then the items the message names, each once. Its
-`mentions(in:project:)` finds ticket ids `\b([A-Z]{2,5})-\d+\b` whose prefix is a sample project, requests
-`\breq-[0-9a-f]{4}\b` and runs `(?i)\brun\s+#?(\d+)\b`. It returns a `.toolCall` block per item its tool can
-read, then a text that says no model is connected.
+**Window and panel models.** `ChatWindowModel(project:focus:store:directory:)` and `ChatPanelModel` keep their
+earlier roles; `send` and `sendDraft` are `async` (the draft clears once sent), `failure` holds why a message
+wasn't sent, `activity`, `stop` (nil when the store can't stop) and `openSelection()`/`openConversation()`
+(called by the views' `.task(id:)`). The window model gives the inspector `replySettings` and
+`setReplySettings(_:)`.
 
-**`ChatWindowModel`**, `init(project:focus:store:)`: `project`, `selection` (the focus, else the latest
-conversation of the family), `draft`, `opensSelection`, `newChatID = "chat-new"` (the iPhone's new-chat page),
-`family`, `isGrouped`, `sections` (one per family member with conversations), `hasNoConversations`,
-`conversation`, `isResponding`, `references`, `suggestions` (`ChatSuggestion.project`), `select(focus:)`,
-`startNewChat(asPage:)`, `sendDraft(reader:)`, `send(_:reader:)` (no attachments, `origin: nil`), `decide(_:allow:)`.
+**Data flow.** The tool reports its selection with `reportChatSubject` → `ToolWindowRoot.chatSubject` →
+`ChatPanel(subject:)` → `ChatPanelModel.attachment(for:)` → `LiveChatStore.send` → `ChatSession.send` → the
+CLI → `mcp__hephaestus__<tool>` over HTTP → `ChatGate.check` → the tool's operation → a `toolUse` item → a
+`.call` block worded by the operation's `describe`, its detail from `appToolReader`.
 
-**`ChatPanelModel`**: `conversationID`, `draft`, `leftOut: ChatReference.ID?` (the subject the user took off);
-`conversation`, `isResponding`, `canStartNewChat`, `attachment(for:)`, `leaveOut(_:)`, `attach()`,
-`subjectChanged()`, `suggestions(for:reader:)`, `sendDraft(project:origin:subject:reader:)`,
-`send(_:project:origin:subject:reader:)`, `decide(_:allow:)`, `startNewChat()`, and `chatWindowRoute(for:)`,
-which is `.tool(.chat, project:, focus: conversationID)`. Each tool window owns one, so hiding the panel keeps
-its conversation and draft until New Chat or a project switch.
-
-**Suggestions.** `ChatSuggestion.project` (two questions about the project), `about(_:reader:)` (the tool's
-suggestions for the item, else `general(about:)`), and `identifier(for:)`:
-`chat.suggestion.<the question's words, lowercased, joined with ->`.
-
-**Data flow of the panel.** The tool reports its selection with `reportChatSubject` →
-`ToolWindowRoot.chatSubject` → `ChatPanel(subject:)` → `ChatPanelModel.attachment(for:)` →
-`ChatStore.send(…, attachments:, reader: toolReader)` → `ChatEngine.reply` → `appToolReader` →
-`<Tool>Reader.read` → a `.toolCall` block. A tool-call row opens `reference.route`.
-
-**Preferences.** `ChatSettingsView` binds `@AppStorage` to `chat.showsPanel` (default true),
-`chat.ticketChanges` (`ChangePermission`, default `askFirst`) and `chat.buildStarts` (default `never`; offers
-Never and Ask First). The Chat window's inspector binds the same two permissions. Nothing else reads them yet.
+**Preferences.** `@AppStorage` keys `chat.showsPanel` (default true), `chat.ticketChanges` and
+`chat.projectChanges` (`ChangePermission`, default `askFirst`), `chat.buildStarts` (default `never`). The Chat
+window's inspector binds the same three permissions; `ChatGate` reads them.
 
 **Root view.** `NavigationSplitView` (list 220–340) with an `.inspector` (260–400) in `.mac` and `.pad` (on an
 iPad, one side column at a time), or a `PhoneStack` with the inspector as a sheet in `.phone`. Toolbar: New Chat
 and the inspector toggle. ⇧⌘N is "New Chat". It applies `onFocusRequest`. The composer is AZDesign's
-`MessageComposer` with identifier `chat.composer`. The Chat window has no chat panel.
+`MessageComposer` with identifier `chat.composer`, with `ChatFailure` over it when a message wasn't sent. The
+Chat window has no chat panel.
 
 ### MachinesKit
 
@@ -1732,8 +1761,8 @@ identifiers from it (`chat.composer.field`, `chat.composer.send`).
 | Chat panel shown | Scene storage of each tool window | `chatPanelShown` | `Bool`, default false |
 | A tool window's project and focus | Window restoration | — | `ToolWindowValue` (`Codable`) |
 
-Everything else lasts as long as the app runs: conversations (`ChatStore.shared`), selections, filters,
-folded parents, drafts. The Projects window's selection starts on `ORD` at each launch.
+Everything else lasts as long as the app runs: selections, filters, folded parents, drafts. Chats are files
+of their projects ([Data › Chats](data.md#chats)). The Projects window's selection starts on `ORD` at each launch.
 
 The files of [Data](data.md) (the project files, `registry.yml`, `current-environments.yml`) are read and
 written by the data targets, which no window uses yet. As each feature comes over from V2, its data moves from
@@ -1786,7 +1815,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 480 tests). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 505 tests). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
@@ -1796,6 +1825,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ExternalToolsTests | Child processes, The login shell's environment, Finding the tools, git ssh and kubectl | Output, status, input, folder, environment, signals, missing executables; the timeout ending a whole process group; `terminateAll`; `env -0` parsing and every capture outcome; `PATH` lookup and the git stub; the commands, arguments, parsing and failures of git, ssh and kubectl. Uses `FakeRunner`. |
 | MCPKitTests | JSON values and schemas, JSON-RPC, HTTP, Server | Number kinds and sorted output; every validation message in order; the classification table; initialize, ping, unknown methods and the version header; tools/list and tools/call results, errors and validation; heads, chunked and sized bodies and their limits; bearer tokens; a real listener on a free port answering with the token and refusing the rest. |
 | ProjectDataTests | Project file, Dashboard widgets, Registry and current environments, Data folder, Import from HephaestusV2, Rules and GitHub, Loading, Outside changes, Creating opening and removing, Inherited settings, Current environment, GitHub page, Session | V2's complete project file written back byte for byte; every V2 example round-tripping with all its keys; defaults; environments, base URLs and overrides; V3's additions; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; the import's list, skips, choices, single run and missing V2; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints; loading depth first with every issue; data folder files set aside; outside changes (changed, invalid, renamed identifier, deleted and returning files, the registry, own writes, relevance); create, open and remove with their refusals and sub projects; update with its write rules; inheritance on, off, nested and across types; the current environment chosen, renamed, removed and forgotten; GitHub pages from origins, aliases, typed pages and parents, `.git/config`; the session's start, lock, changes and a real outside change. Fixtures: V2's examples. Uses `FakeRunner`.; Dashboard widgets: keys of another kind kept, V3's Recent Builds, unknown kinds and statuses refused, each write rule with its message, stored widgets written back as they are, repeated ids. |
+| ChatDataTests | Chat files, Transcripts, Stream mapping, Chats on the Claude CLI, Launching the CLI | V2's chat file written back byte for byte, V3's `origin`, the kinds' rules; replay (add, update, lines skipped), lines written by V3, the LF after a line cut short; V2's captures of Claude Code 2.1.309 mapped to items with V2's ids, streamed text, the CLI's permission request, compaction lines, results after Stop; the CLI located in order, its version and models; a first message (arguments without prompt, hooks or the CLI's tools, the MCP configuration and its chat token, the attached line), a turn replayed to idle, the app's card and the CLI's request answered, Stop, an exit in error, a missing session started again, model and effort. A `FakeLauncher` replays the captures; nothing starts Claude. |
 | TicketDataTests | Ticket and bundle files, Ticket library | V2's complete ticket and bundle written back byte for byte; defaults, the creation entry and unknown keys; numbers from the counters, skipping existing files; provisional titles and the title, description and status messages; Claude's descriptions taken as written; drafts; link rules 1–7 with their messages and inverse links; history entries in order and changes that write nothing; Claude's status limits; the Complete and Reopened rules, Claude's bundle limits and the Complete rule at load; deletion order and the Trash; comments and their files; attachment copies, names, limits and paths; outside changes, invalid files and removals. Fixtures: V2's examples. Uses a test Trash folder. |
 | TextFormatsTests | Language detection, Token kinds, Word lists, Highlighter fixtures, Tokenizer edge cases, Markdown block model, Links, Heading anchors, Ticket and bundle ids, Linked ids, Soft line breaks | V2's suites without the markers and the HTML output: every tokenizer against its fixtures and the word lists of [Text](text.md); the block model of every Markdown feature; links, images and path resolution read from [Text](text.md); ids. Fixtures: V2's highlighting examples (without the 1 MB ones). |
 | ToolsScenesTests | MCP documentation | docs/mcp.md's tools, descriptions and input schemas equal the registry's. |
@@ -1807,7 +1837,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ContractsKitTests | Opening, Route focus, Filter, Request, Responses, Reader and chat, Sample contracts | Opening selection and environment; repeated routes, filters cleared, drafts kept; sections and matching; examples, URLs, draft keeping, Send; duration formats; reader sentences and suggestions; sample contracts. Uses `MockContractStore`. |
 | BuildsKitTests | Focus, Model, Reader, Samples and logs, Recent Builds widget | Focus parsing; default selection, focus by mode, repeated routes, steps, mode selections, chat subject; reader text and owner repository; default steps, open jobs, log line kinds, sample releases; recent runs within 1–20. Uses `MockBuildStore`. |
 | MachinesKitTests | Machines window: selection and routes, Machines window: layouts, Machines: states and sizes | Opening and route selection, unknown machines, images; Mac width, layout by width, side columns per layout; actions per state; size and download formats; sample ids. Uses `MockMachineStore`. |
-| ChatKitTests | Chat store, Sample engine, Chat panel, Chat window, Chat wording | Starting and continuing conversations, empty messages, ordering, decisions; mentions and reads; attachments, sending, New Chat, the Chat window route, suggestions; window selection, grouping, new chat, sending; approval sentences, suggestion wording and identifiers, references, unique sample ids. Uses `MockChatEngine`. |
+| ChatKitTests | Chat store, Sample engine, Chat panel, Chat window, Chat wording | Starting and continuing conversations, empty messages, ordering, decisions; mentions and reads; attachments, sending, New Chat, the Chat window route, suggestions; window selection, grouping, new chat, sending; approval sentences, suggestion wording and identifiers, references, unique sample ids; the live store's turns from a transcript (users' items, calls worded by their tools, failed calls, cards and their channels, notices, streamed text); the gate's rules. Uses `MockChatEngine`, and a chat session without projects. |
 
 ToolsScenesTests check that docs/mcp.md lists exactly the registered tools, in order, with their
 descriptions and input schemas; scenes, routes, `WindowDirectory` and the menus are checked by running the app.

@@ -47,20 +47,35 @@
     "Attach %@" : {
 
     },
+    "Change projects" : {
+
+    },
     "Change tickets" : {
 
     },
     "Chat" : {
 
     },
+    "Chats run Claude Code from this Mac. Empty, the app finds it in ~/.local/bin, /opt/homebrew/bin, /usr/local/bin, or your shell's PATH." : {
+
+    },
     "Claude" : {
+
+    },
+    "Claude CLI" : {
 
     },
     "Claude Can" : {
       "comment" : "A section: what Claude may do"
     },
+    "Claude Code %@" : {
+      "comment" : "The CLI's version, such as 2.1.322"
+    },
     "Claude acts through each tool, as you would. Nothing it reads or changes goes around them." : {
 
+    },
+    "Claude is working… %@" : {
+      "comment" : "The time since the turn began, such as 0:12"
     },
     "Claude reads it through %@, and asks before it changes anything." : {
       "comment" : "The item's tool, such as Tickets"
@@ -71,11 +86,29 @@
     "Claude wants to comment on %@" : {
 
     },
+    "Claude wants to use %@" : {
+
+    },
+    "Claude's turn ended with an error." : {
+
+    },
+    "Compacting the conversation… %@" : {
+      "comment" : "The time since it began, such as 0:12"
+    },
     "Don't Allow" : {
 
     },
     "Done" : {
       "comment" : "Closes the inspector sheet"
+    },
+    "Effort" : {
+      "comment" : "How hard Claude thinks"
+    },
+    "Extra High" : {
+      "comment" : "An effort level"
+    },
+    "Found automatically" : {
+
     },
     "Hide Chat" : {
 
@@ -86,6 +119,9 @@
     "Hide the Chat Panel (⌃⌘C)" : {
 
     },
+    "High" : {
+      "comment" : "An effort level"
+    },
     "In This Chat" : {
       "comment" : "A section: the items this chat attached or read"
     },
@@ -94,6 +130,24 @@
     },
     "Items Claude reads or you attach show here." : {
 
+    },
+    "Listed the chats of %@" : {
+
+    },
+    "Look Again" : {
+      "comment" : "Looks for the Claude CLI again"
+    },
+    "Looking…" : {
+      "comment" : "The app looks for the Claude CLI"
+    },
+    "Low" : {
+      "comment" : "An effort level"
+    },
+    "Max" : {
+      "comment" : "An effort level"
+    },
+    "Medium" : {
+      "comment" : "An effort level"
     },
     "Model" : {
 
@@ -105,6 +159,9 @@
       "comment" : "File menu item, ⇧⌘N"
     },
     "New Chat (⇧⌘N)" : {
+
+    },
+    "New chats start with these. Each chat keeps its own, in the Chat window's inspector." : {
 
     },
     "No Chats" : {
@@ -148,6 +205,15 @@
     "Open in the Chat Window" : {
 
     },
+    "Path" : {
+      "comment" : "The Claude CLI's path"
+    },
+    "Projects" : {
+      "comment" : "The Projects window, as a tool"
+    },
+    "Read a chat" : {
+      "comment" : "Claude read another chat's messages"
+    },
     "Read tickets, services, contracts and builds" : {
 
     },
@@ -156,6 +222,9 @@
     },
     "Remove %@" : {
 
+    },
+    "Renamed a chat “%@”" : {
+      "comment" : "Claude renamed a chat; the value is the new title"
     },
     "Replies" : {
       "comment" : "A section: what answers the user's messages"
@@ -181,6 +250,18 @@
     "Start builds" : {
 
     },
+    "Starting Claude…" : {
+
+    },
+    "Status" : {
+      "comment" : "The Claude CLI's status"
+    },
+    "Stop" : {
+      "comment" : "Stops Claude's turn"
+    },
+    "Stop (⌘.)" : {
+
+    },
     "Summarize %@" : {
       "comment" : "A suggestion; the value is a ticket id, such as ORD-142"
     },
@@ -192,6 +273,15 @@
     },
     "Through %@, as if you did it" : {
       "comment" : "How Claude would make a change: through a tool, such as Tickets"
+    },
+    "Through the Claude CLI" : {
+      "comment" : "A change Claude would make with a tool of its own"
+    },
+    "Used %@" : {
+      "comment" : "A call of a tool, by its name"
+    },
+    "Waiting for your answer" : {
+      "comment" : "A card waits for the user"
     },
     "What calls %@?" : {
       "comment" : "A suggestion; the value is a service, such as payments-api"

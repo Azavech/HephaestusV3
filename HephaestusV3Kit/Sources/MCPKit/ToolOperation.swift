@@ -17,10 +17,59 @@ public struct ToolError: Error, Sendable, Hashable {
     }
 }
 
-/// What a tool may do: read, or change the user's data. The chat's approvals use it.
-public enum ToolPermission: String, Sendable, Hashable {
+/// What a tool may do, and which of the user's permissions covers it in a chat (docs/mcp.md › Permissions).
+public enum ToolPermission: String, Sendable, Hashable, CaseIterable {
+    /// Reads, or opens a window: always allowed.
     case read
-    case change
+    /// Creates or changes tickets, bundles and comments: Settings ▸ Chat › Change tickets.
+    case changeTickets
+    /// Deletes tickets, bundles, comments or attachments: asks first, unless Change tickets is Never.
+    case deleteTickets
+    /// Adds a project or changes its settings: Settings ▸ Chat › Change projects.
+    case changeProjects
+    /// Removes a project from the app: asks first, unless Change projects is Never.
+    case removeProjects
+    /// Renames a chat: always allowed.
+    case renameChats
+
+    /// True for the permissions that change the user's data.
+    public var changes: Bool { self != .read }
+}
+
+/// How a chat shows a call of an operation, in its tool's words (docs/ui/chat.md › Tool-call rows).
+public struct ToolCallText: Sendable, Hashable {
+    /// What the call does: `Read ticket ORD-142`, `Listed the tickets of ORD`.
+    public var action: String
+    /// For a change, the approval card's title: `Claude wants to comment on ORD-142`.
+    public var request: String?
+    /// For a change, what it would write: a comment's text, a new title.
+    public var preview: String?
+    /// The item it reads or changes, which the chat opens in its tool.
+    public var item: ToolItem?
+
+    public init(action: String, request: String? = nil, preview: String? = nil, item: ToolItem? = nil) {
+        self.action = action
+        self.request = request
+        self.preview = preview
+        self.item = item
+    }
+}
+
+/// An item of a tool, as a route opens it: `tickets`, `ORD`, `ORD-142`, `ORD-142`.
+public struct ToolItem: Sendable, Hashable {
+    /// The tool, a `ToolKind` value; `projects` for a project.
+    public var tool: String
+    public var projectID: String
+    /// The tool's id for the item, empty for the tool's window without a selection.
+    public var focus: String
+    public var title: String
+
+    public init(tool: String, projectID: String, focus: String, title: String) {
+        self.tool = tool
+        self.projectID = projectID
+        self.focus = focus
+        self.title = title
+    }
 }
 
 /// One operation of a tool, which the MCP server offers to Claude: its name, description and input schema,
@@ -31,16 +80,20 @@ public struct ToolOperation: Sendable {
     public let description: String
     public let inputSchema: ToolSchema
     public let permission: ToolPermission
+    /// How a chat shows a call with these arguments; nil shows the tool's name.
+    public let describe: (@Sendable (JSONValue) -> ToolCallText)?
     /// Runs the call with its arguments, already validated against `inputSchema`, `null` members removed;
     /// returns the result as JSON.
     public let run: @Sendable (JSONValue) async throws(ToolError) -> JSONValue
 
     public init(name: String, description: String, inputSchema: ToolSchema, permission: ToolPermission,
+                describe: (@Sendable (JSONValue) -> ToolCallText)? = nil,
                 run: @escaping @Sendable (JSONValue) async throws(ToolError) -> JSONValue) {
         self.name = name
         self.description = description
         self.inputSchema = inputSchema
         self.permission = permission
+        self.describe = describe
         self.run = run
     }
 

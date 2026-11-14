@@ -16,7 +16,7 @@ and the menus and shortcuts that reach them.
 | **Chat** | One per project | ⌘6, a tile, the menu bar panel, the chat panel | 1180 × 780 pt | [Chat](chat.md) |
 | **Virtual Machines** | One window | ⌘7 (Window menu) | 1100 × 760 pt | [Virtual Machines](virtual-machines.md) |
 | **Project Settings** | One per project | ⇧⌘, (File menu), the Projects window's More menu | 600 × 720 pt | [Project Settings](project-settings.md) |
-| **Settings** | One window | ⌘, | 520 × 440 pt | Tabs: [Projects](projects.md#settings--projects), [MCP](../mcp.md#settings--mcp), [Chat](chat.md) (once Chat comes over) |
+| **Settings** | One window | ⌘, | 520 × 440 pt | Tabs: [Projects](projects.md#settings--projects), [MCP](../mcp.md#settings--mcp), [Chat](chat.md#settings--chat) |
 | **Menu bar panel** | Menu bar item | The `wrench.and.screwdriver` icon | 360 × 460 pt | [Menu bar](menu-bar.md) |
 
 - Tool windows don't open at launch. macOS restores those that were open when the app quit.
@@ -37,7 +37,8 @@ every window as the `availableTools` environment value, and the menus read it di
 | Projects | The Projects window, Project Settings, Settings ▸ Projects, the menu bar panel | Yes |
 | Dashboard | The Dashboard window, its tile, Window ▸ Dashboard (⌘1), its menu bar button; its widgets show as their tools come ([Dashboard › Which widgets show](dashboard.md#which-widgets-show)) | Yes |
 | Tickets | The Tickets window, its tile, Window ▸ Tickets (⌘2), its menu bar button | Yes |
-| Service Map, Contracts, Builds, Chat | Their tool windows, Settings ▸ Chat | Not yet |
+| Chat | The Chat window, its tile, Window ▸ Chat (⌘6), its menu bar button, the chat panel of the available tools' windows, Settings ▸ Chat | Yes |
+| Service Map, Contracts, Builds | Their tool windows | Not yet |
 | Virtual Machines | Its window | Not yet |
 
 Previews and the screenshots of the spec show every tool: the environment value's default is all of them.

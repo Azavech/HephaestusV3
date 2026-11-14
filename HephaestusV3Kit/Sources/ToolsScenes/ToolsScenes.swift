@@ -110,6 +110,7 @@ public struct ToolsScenes: Scene {
                     }
                 if AppData.availableTools.contains(.chat) {
                     ChatSettingsView()
+                        .environment(\.chatStore, appData.chatStore)
                         .tabItem {
                             Label(ToolKind.chat.title, systemImage: ToolKind.chat.symbol)
                         }
@@ -223,6 +224,7 @@ private struct RouteHost<Content: View>: View {
             .environment(\.projectDirectory, appData.directory)
             .environment(\.ticketStore, appData.ticketStore)
             .environment(\.dashboardStore, appData.dashboardStore)
+            .environment(\.chatStore, appData.chatStore)
             .environment(\.availableTools, AppData.availableTools)
             .task {
                 if appData.openRoute == nil { appData.openRoute = openRouteAction }
@@ -240,6 +242,7 @@ private struct ToolWindowRoot: View {
     @Environment(\.projectDirectory) private var directory
     @Environment(\.ticketStore) private var ticketStore
     @Environment(\.dashboardStore) private var dashboardStore
+    @Environment(\.chatStore) private var chatStore
 
     /// Whether this window shows the chat panel; each window keeps its own, across launches.
     @SceneStorage("chatPanelShown") private var chatPanelShown = false
@@ -249,7 +252,7 @@ private struct ToolWindowRoot: View {
     @State private var chatSubject: ChatReference?
     /// The panel's conversation and draft, kept while the panel is hidden, until the window switches
     /// to another project.
-    @State private var chatPanelModel = ChatPanelModel()
+    @State private var chatPanelModel: ChatPanelModel?
     /// A route's ask to select an item in this window, once it is open.
     @State private var focusRequest: FocusRequest?
     /// The window's size, size classes and whether it narrowed from a regular width (AZDesign), which
@@ -273,8 +276,8 @@ private struct ToolWindowRoot: View {
                 $value.wrappedValue?.focus = focus
             }
             // Another project starts a new conversation in the panel.
-            .onChange(of: value?.projectID) {
-                chatPanelModel = ChatPanelModel()
+            .onChange(of: value?.projectID, initial: true) {
+                chatPanelModel = chatStore.map { ChatPanelModel(store: $0) }
                 chatSubject = nil
             }
     }
@@ -294,7 +297,7 @@ private struct ToolWindowRoot: View {
                     })
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(.trailing, showsChatPanel && layout == .mac ? Self.panelWidth : 0)
-                if showsChatPanel {
+                if showsChatPanel, let chatPanelModel {
                     HStack(spacing: 0) {
                         if layout != .phone {
                             Divider()
@@ -379,7 +382,10 @@ private struct ToolWindowRoot: View {
         case .serviceMap: ServiceMapRootView(project: project, focus: focus)
         case .contracts: ContractsRootView(project: project, focus: focus)
         case .builds: BuildsRootView(project: project, focus: focus)
-        case .chat: ChatRootView(project: project, focus: focus)
+        case .chat:
+            if let chatStore {
+                ChatRootView(project: project, focus: focus, store: chatStore, directory: directory)
+            }
         }
     }
 

@@ -11,8 +11,10 @@ struct ChatConversation: Identifiable, Hashable {
     let origin: ToolKind?
     let createdAt: Date
     var turns: [ChatTurn]
+    /// The last change, as the chat's file has it; nil takes the last turn's date.
+    var updated: Date?
 
-    var updatedAt: Date { turns.last?.date ?? createdAt }
+    var updatedAt: Date { updated ?? turns.last?.date ?? createdAt }
 
     /// Every item the conversation attached or read, in the order it first came up.
     var references: [ChatReference] {
@@ -20,7 +22,7 @@ struct ChatConversation: Identifiable, Hashable {
         var result: [ChatReference] = []
         for turn in turns {
             let read = turn.blocks.compactMap { block -> ChatReference? in
-                if case .toolCall(let reference, _) = block.content { return reference }
+                if case .call(let call) = block.content { return call.reference }
                 return nil
             }
             for reference in turn.attachments + read where seen.insert(reference.id).inserted {
@@ -63,20 +65,49 @@ struct ChatTurn: Identifiable, Hashable {
 /// A piece of a turn.
 struct ChatBlock: Identifiable, Hashable {
     enum Content: Hashable {
+        /// What the user or Claude wrote; Claude's is Markdown.
         case text(String)
-        /// An item Claude read through its tool, and what the tool said.
-        case toolCall(ChatReference, ToolReading)
+        /// A call of a tool: what it read or changed, and the way to its window.
+        case call(ChatToolCall)
         /// A change Claude asks to make; nothing changes until the user allows it.
         case approval(ChatApproval)
+        /// A line from the app, such as an error of the Claude CLI.
+        case notice(ChatNotice)
+
+        /// An item Claude read through its tool, and what the tool said.
+        static func toolCall(_ reference: ChatReference, _ reading: ToolReading) -> Content {
+            .call(ChatToolCall(action: reading.action, reference: reference, detail: reading.detail))
+        }
     }
 
-    let id: UUID
+    let id: String
     var content: Content
 
-    init(id: UUID = UUID(), _ content: Content) {
+    init(id: String = UUID().uuidString, _ content: Content) {
         self.id = id
         self.content = content
     }
+}
+
+/// A call of a tool by Claude, as its tool words it.
+struct ChatToolCall: Hashable {
+    /// `Read ticket ORD-142`.
+    let action: String
+    /// The item it read or changed; nil when it has none, such as a list of projects.
+    let reference: ChatReference?
+    /// The gist: the tool's one-line answer, or the error. Nil asks the item's tool for its answer.
+    var detail: String?
+    var failed = false
+}
+
+/// A line from the app in a conversation.
+struct ChatNotice: Hashable {
+    enum Level: Hashable {
+        case info, warning, error
+    }
+
+    let text: String
+    let level: Level
 }
 
 /// A change Claude wants to make through a tool, waiting for the user.
@@ -86,27 +117,52 @@ struct ChatApproval: Identifiable, Hashable {
         case declined
     }
 
-    /// A change Claude can ask to make. Each is worded as a whole sentence, so a translation can order
-    /// its words as its language needs.
-    enum Change: Hashable {
-        /// A comment added to the item, a ticket.
-        case comment
-    }
-
-    /// Stable for the conversation's life, as a model's tool call is: `chat-checkout.comment`.
+    /// The request's id, stable for the conversation's life: `chat-checkout.comment`.
     let id: String
-    let change: Change
-    /// The item it would change.
-    let reference: ChatReference
-    /// What it would write.
-    let preview: String
+    /// The request as one sentence, worded by the tool so that a translation orders its words as its language
+    /// needs: "Claude wants to comment on ORD-142".
+    let request: String
+    /// What it would write; nil when the change writes nothing to show.
+    let preview: String?
+    /// The item it would change, if one.
+    let reference: ChatReference?
+    /// The tool it goes through; nil for a tool of the Claude CLI.
+    let channel: Channel?
     var decision: Decision?
 
-    /// "Claude wants to comment on ORD-142".
-    var request: String {
-        switch change {
-        case .comment: String(localized: "Claude wants to comment on \(reference.title)", bundle: #bundle)
+    /// A tool of the app, as the card names it.
+    struct Channel: Hashable {
+        let title: String
+        let symbol: String
+
+        init(title: String, symbol: String) {
+            self.title = title
+            self.symbol = symbol
         }
+
+        init(_ tool: ToolKind) {
+            self.init(title: tool.title, symbol: tool.symbol)
+        }
+
+        /// The Projects window's tools.
+        static var projects: Channel {
+            Channel(title: String(localized: "Projects", bundle: #bundle, comment: "The Projects window, as a tool"), symbol: "folder")
+        }
+    }
+
+    init(id: String, request: String, preview: String?, reference: ChatReference?, channel: Channel?, decision: Decision? = nil) {
+        self.id = id
+        self.request = request
+        self.preview = preview
+        self.reference = reference
+        self.channel = channel
+        self.decision = decision
+    }
+
+    /// A comment Claude wants to add to a ticket.
+    static func comment(id: String, on reference: ChatReference, preview: String, decision: Decision? = nil) -> ChatApproval {
+        ChatApproval(id: id, request: String(localized: "Claude wants to comment on \(reference.title)", bundle: #bundle),
+                     preview: preview, reference: reference, channel: Channel(reference.tool), decision: decision)
     }
 }
 
@@ -132,5 +188,6 @@ public enum ChatPreferences {
     /// Whether tool windows offer the chat panel at all. Off, the panel and its button are gone.
     public static let showsPanelKey = "chat.showsPanel"
     static let ticketChangesKey = "chat.ticketChanges"
+    static let projectChangesKey = "chat.projectChanges"
     static let buildStartsKey = "chat.buildStarts"
 }

@@ -84,6 +84,15 @@
     "Change Status" : {
 
     },
+    "Changed %@" : {
+
+    },
+    "Changed a comment on %@" : {
+
+    },
+    "Changed bundle %@" : {
+
+    },
     "Claude" : {
       "comment" : "Claude, as the author of a ticket"
     },
@@ -131,8 +140,61 @@
         }
       }
     },
+    "Claude wants to change %@" : {
+
+    },
+    "Claude wants to change a comment on %@" : {
+
+    },
+    "Claude wants to change bundle %@" : {
+
+    },
+    "Claude wants to comment on %@" : {
+
+    },
+    "Claude wants to create a bundle in %@" : {
+
+    },
+    "Claude wants to create a ticket in %@" : {
+
+    },
+    "Claude wants to delete %@" : {
+
+    },
+    "Claude wants to delete a comment on %@" : {
+
+    },
+    "Claude wants to delete bundle %@" : {
+
+    },
+    "Claude wants to move %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Claude wants to move %1$@ to %2$@"
+          }
+        }
+      }
+    },
+    "Claude wants to move bundle %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Claude wants to move bundle %1$@ to %2$@"
+          }
+        }
+      }
+    },
+    "Claude wants to remove an attachment from %@" : {
+
+    },
     "Comment" : {
       "comment" : "The button that adds a comment"
+    },
+    "Commented on %@" : {
+
     },
     "Contract" : {
       "comment" : "The kind of an item a ticket links to"
@@ -155,6 +217,12 @@
     "Created On" : {
       "comment" : "A ticket's property"
     },
+    "Created a bundle in %@" : {
+
+    },
+    "Created a ticket in %@" : {
+
+    },
     "Delete" : {
 
     },
@@ -170,6 +238,15 @@
     "Delete this comment?" : {
 
     },
+    "Deleted %@" : {
+
+    },
+    "Deleted a comment on %@" : {
+
+    },
+    "Deleted bundle %@" : {
+
+    },
     "Delete…" : {
 
     },
@@ -180,7 +257,10 @@
 
     },
     "Done" : {
-      "comment" : "A bundle's status"
+      "comment" : "A bundle's status\nA ticket's status"
+    },
+    "Draft" : {
+      "comment" : "A ticket's status"
     },
     "Drop files here or click Add Files…" : {
 
@@ -210,7 +290,10 @@
 
     },
     "In Progress" : {
-      "comment" : "A bundle's status"
+      "comment" : "A bundle's status\nA ticket's status"
+    },
+    "In Review" : {
+      "comment" : "A ticket's status"
     },
     "Is %@ ready to be marked as done?" : {
 
@@ -239,6 +322,9 @@
     "Labels, separated by commas" : {
 
     },
+    "Labels: %@" : {
+
+    },
     "Last Updated" : {
       "comment" : "A ticket's property"
     },
@@ -246,6 +332,12 @@
 
     },
     "Linked" : {
+
+    },
+    "Listed the bundles of %@" : {
+
+    },
+    "Listed the tickets of %@" : {
 
     },
     "Loading Tickets" : {
@@ -262,6 +354,26 @@
     },
     "Medium" : {
       "comment" : "A ticket's priority"
+    },
+    "Moved %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Moved %1$@ to %2$@"
+          }
+        }
+      }
+    },
+    "Moved bundle %@ to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Moved bundle %1$@ to %2$@"
+          }
+        }
+      }
     },
     "Named after its tickets" : {
 
@@ -341,10 +453,16 @@
     "Priority" : {
       "comment" : "The word for a ticket's priority, as a label: a property, a field of the New Ticket sheet"
     },
+    "Priority: %@" : {
+
+    },
     "Project" : {
 
     },
     "Projects" : {
+
+    },
+    "Read bundle %@" : {
 
     },
     "Read ticket %@" : {
@@ -363,6 +481,9 @@
 
     },
     "Remove from %@" : {
+
+    },
+    "Removed an attachment from %@" : {
 
     },
     "Remove…" : {
@@ -437,8 +558,11 @@
     "Title" : {
 
     },
+    "Title: %@" : {
+
+    },
     "To Do" : {
-      "comment" : "A bundle's status"
+      "comment" : "A bundle's status\nA ticket's status"
     },
     "Try Again" : {
 

@@ -54,6 +54,8 @@ let package = Package(
         // Tickets and bundles: their files, rules and changes.
         .target(name: "TicketData", dependencies: ["FileStorage", "ProjectData"]),
         .target(name: "TextFormats", dependencies: [.product(name: "Markdown", package: "swift-markdown")]),
+        // Chats: their files, the Claude CLI and its stream-json protocol, the chats' processes.
+        .target(name: "ChatData", dependencies: ["FileStorage", "ExternalTools", "ProjectData", "MCPKit"]),
 
         // Shared vocabulary: projects, tools, routes and the few components every tool uses.
         .target(name: "ToolsFoundation", dependencies: [design], resources: strings, swiftSettings: isolation),
@@ -70,13 +72,13 @@ let package = Package(
         toolTarget("BuildsKit"),
         toolTarget("MachinesKit"),
         // Claude as one more client of the tools: the Chat window and the panel beside each tool.
-        toolTarget("ChatKit"),
+        toolTarget("ChatKit", data: ["ChatData", "MCPKit"]),
 
         // The only target that knows every tool: scenes, menu commands and route handling.
         .target(
             name: "ToolsScenes",
             dependencies: [
-                "ToolsFoundation", "ProjectData", "FileStorage", "MCPKit", "TicketData", "ProjectsKit",
+                "ToolsFoundation", "ProjectData", "FileStorage", "MCPKit", "TicketData", "ChatData", "ProjectsKit",
                 "DashboardsKit", "TicketsKit", "ServiceMapKit", "ContractsKit", "BuildsKit", "MachinesKit", "ChatKit",
                 design,
             ],
@@ -90,6 +92,7 @@ let package = Package(
         testTarget("MCPKit", settings: []),
         testTarget("TicketData", resources: [.copy("Fixtures")], settings: []),
         testTarget("TextFormats", resources: [.copy("Fixtures")], settings: []),
+        testTarget("ChatData", resources: [.copy("Fixtures")], settings: []),
         testTarget("ToolsFoundation"),
         testTarget("ProjectsKit"),
         testTarget("DashboardsKit"),

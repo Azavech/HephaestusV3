@@ -1,3 +1,5 @@
+import ChatData
+import ChatKit
 import Foundation
 import MCPKit
 import ProjectData
@@ -11,8 +13,10 @@ import ToolsFoundation
 @MainActor
 enum AppTools {
     /// `open` shows a route in a window, and says whether a window could.
-    static func registry(session: ProjectSession, tickets: TicketSession, open: @escaping @MainActor (Route) -> Bool) -> ToolRegistry {
+    static func registry(session: ProjectSession, tickets: TicketSession, chats: ChatSession,
+                         open: @escaping @MainActor (Route) -> Bool) -> ToolRegistry {
         ToolRegistry(ProjectTools.operations(session: session) + TicketTools.operations(tickets: tickets, projects: session)
+            + ChatTools.operations(chats: chats, projects: session)
             + [openInApp(session: session, tickets: tickets, open: open)])
     }
 
@@ -32,7 +36,8 @@ enum AppTools {
                     required: ["kind"]
                 )),
             ], required: ["target"]),
-            permission: .read
+            permission: .read,
+            describe: { _ in ToolCallText(action: String(localized: "Opened a window of Hephaestus", bundle: #bundle)) }
         ) { @MainActor arguments throws(ToolError) in
             guard let target = arguments["target"] else { throw ToolError(.invalid, "target: required.") }
             let route: Route

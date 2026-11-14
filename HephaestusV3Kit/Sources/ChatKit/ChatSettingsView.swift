@@ -1,14 +1,26 @@
 import AZDesign
+import ChatData
 import SwiftUI
 import ToolsFoundation
 
-/// The chat's pane of the Settings window: the panel switch, what Claude may do, and what replies.
+/// The chat's pane of the Settings window: the panel switch, the Claude CLI, what Claude may do, and what
+/// replies to new chats.
 public struct ChatSettingsView: View {
     @AppStorage(ChatPreferences.showsPanelKey) private var showsPanel = true
     @AppStorage(ChatPreferences.ticketChangesKey) private var ticketChanges = ChangePermission.askFirst
+    @AppStorage(ChatPreferences.projectChangesKey) private var projectChanges = ChangePermission.askFirst
     @AppStorage(ChatPreferences.buildStartsKey) private var buildStarts = ChangePermission.never
+    @Environment(\.chatStore) private var store
+    @State private var path = ""
+    @State private var failure: String?
+    /// The CLI as a preview shows it, without the app's chats.
+    private var previewStatus: ClaudeStatus?
 
     public init() {}
+
+    init(previewStatus: ClaudeStatus) {
+        self.previewStatus = previewStatus
+    }
 
     public var body: some View {
         Form {
@@ -20,15 +32,154 @@ public struct ChatSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.textSecondary)
             }
-            ChatPermissionsSection(ticketChanges: $ticketChanges, buildStarts: $buildStarts, identifier: "settings.chat.permissions")
+            if let status = store?.session.status ?? previewStatus {
+                cliSection(status)
+            }
+            ChatPermissionsSection(ticketChanges: $ticketChanges, projectChanges: $projectChanges, buildStarts: $buildStarts,
+                                   identifier: "settings.chat.permissions")
             Section {
-                ModelRow(identifier: "settings.chat.model")
+                if let store {
+                    ReplySettingsRows(models: store.session.models, settings: store.session.defaults, identifier: "settings.chat") { settings in
+                        do throws(ChatError) {
+                            try store.session.setDefaults(model: settings.model, effort: settings.effort)
+                        } catch {
+                            failure = error.description
+                        }
+                    }
+                } else if previewStatus != nil {
+                    ReplySettingsRows(models: ClaudeModel.fallback, settings: ChatSettings(), identifier: "settings.chat") { _ in }
+                } else {
+                    ModelRow(identifier: "settings.chat.model")
+                }
             } header: {
                 Text("Replies", bundle: #bundle, comment: "A section: what answers the user's messages")
                     .accessibilityAddTraits(.isHeader)
+            } footer: {
+                if store != nil || previewStatus != nil {
+                    Text("New chats start with these. Each chat keeps its own, in the Chat window's inspector.", bundle: #bundle)
+                        .font(.caption)
+                        .foregroundStyle(.textSecondary)
+                }
             }
         }
         .formStyle(.grouped)
+        .onAppear {
+            path = store?.session.claudePath ?? ""
+        }
+    }
+
+    /// The CLI the chats run: found, or the path the user set, with its version or why it can't run.
+    private func cliSection(_ status: ClaudeStatus) -> some View {
+        Section {
+            LabeledContent(String(localized: "Status", bundle: #bundle, comment: "The Claude CLI's status")) {
+                if status.checking {
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.small)
+                        Text("Looking…", bundle: #bundle, comment: "The app looks for the Claude CLI")
+                    }
+                } else if let version = status.version {
+                    Label {
+                        Text("Claude Code \(version)", bundle: #bundle, comment: "The CLI's version, such as 2.1.322")
+                    } icon: {
+                        Image(systemName: "checkmark.circle.fill").foregroundStyle(.success)
+                    }
+                } else {
+                    Label {
+                        Text(verbatim: status.error ?? "")
+                            .multilineTextAlignment(.trailing)
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.danger)
+                    }
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("settings.chat.cli.status")
+            TextField(String(localized: "Path", bundle: #bundle, comment: "The Claude CLI's path"), text: $path,
+                      prompt: Text(verbatim: status.path ?? String(localized: "Found automatically", bundle: #bundle)))
+                .font(.body.monospaced())
+                .onSubmit(applyPath)
+                .accessibilityIdentifier("settings.chat.cli.path")
+            HStack {
+                if let failure {
+                    Text(verbatim: failure)
+                        .font(.caption)
+                        .foregroundStyle(.danger)
+                }
+                Spacer()
+                Button(String(localized: "Look Again", bundle: #bundle, comment: "Looks for the Claude CLI again"), action: applyPath)
+                    .disabled(status.checking)
+                    .accessibilityIdentifier("settings.chat.cli.lookAgain")
+            }
+        } header: {
+            Text("Claude CLI", bundle: #bundle)
+                .accessibilityAddTraits(.isHeader)
+        } footer: {
+            Text("Chats run Claude Code from this Mac. Empty, the app finds it in ~/.local/bin, /opt/homebrew/bin, /usr/local/bin, or your shell's PATH.", bundle: #bundle)
+                .font(.caption)
+                .foregroundStyle(.textSecondary)
+        }
+    }
+
+    private func applyPath() {
+        guard let store else { return }
+        do throws(ChatError) {
+            try store.session.setClaudePath(path)
+            failure = nil
+        } catch {
+            failure = error.description
+        }
+    }
+}
+
+/// The model and effort of a chat, or of new chats: pop-up buttons over the CLI's models, the effort's
+/// over the model's levels. `identifier` qualifies theirs: `<identifier>.model`, `<identifier>.effort`.
+struct ReplySettingsRows: View {
+    let models: [ClaudeModel]
+    let settings: ChatSettings
+    let identifier: String
+    let set: (ChatSettings) -> Void
+
+    var body: some View {
+        Picker(String(localized: "Model", bundle: #bundle), selection: Binding(get: { settings.model }, set: { model in
+            var changed = settings
+            changed.model = model
+            set(changed)
+        })) {
+            ForEach(models) { model in
+                Text(verbatim: model.displayName).tag(model.value)
+            }
+            if !models.contains(where: { $0.value == settings.model }) {
+                Text(verbatim: settings.model).tag(settings.model)
+            }
+        }
+        .accessibilityIdentifier("\(identifier).model")
+        if !efforts.isEmpty {
+            Picker(String(localized: "Effort", bundle: #bundle, comment: "How hard Claude thinks"), selection: Binding(get: { settings.effort }, set: { effort in
+                var changed = settings
+                changed.effort = effort
+                set(changed)
+            })) {
+                ForEach(efforts, id: \.self) { effort in
+                    Text(Self.title(effort)).tag(effort)
+                }
+            }
+            .accessibilityIdentifier("\(identifier).effort")
+        }
+    }
+
+    /// The model's levels; every level for a model the list doesn't have; none for a model without effort.
+    private var efforts: [Effort] {
+        models.first { $0.value == settings.model }?.efforts ?? Effort.allCases
+    }
+
+    static func title(_ effort: Effort) -> String {
+        switch effort {
+        case .low: String(localized: "Low", bundle: #bundle, comment: "An effort level")
+        case .medium: String(localized: "Medium", bundle: #bundle, comment: "An effort level")
+        case .high: String(localized: "High", bundle: #bundle, comment: "An effort level")
+        case .xhigh: String(localized: "Extra High", bundle: #bundle, comment: "An effort level")
+        case .max: String(localized: "Max", bundle: #bundle, comment: "An effort level")
+        }
     }
 }
 
@@ -36,6 +187,7 @@ public struct ChatSettingsView: View {
 /// window's inspector. `identifier` qualifies its controls' identifiers: `<identifier>.tickets`.
 struct ChatPermissionsSection: View {
     @Binding var ticketChanges: ChangePermission
+    @Binding var projectChanges: ChangePermission
     @Binding var buildStarts: ChangePermission
     let identifier: String
 
@@ -55,6 +207,12 @@ struct ChatPermissionsSection: View {
                 }
             }
             .accessibilityIdentifier("\(identifier).tickets")
+            Picker(String(localized: "Change projects", bundle: #bundle), selection: $projectChanges) {
+                ForEach(ChangePermission.allCases) { permission in
+                    Text(permission.title).tag(permission)
+                }
+            }
+            .accessibilityIdentifier("\(identifier).projects")
             Picker(String(localized: "Start builds", bundle: #bundle), selection: $buildStarts) {
                 ForEach([ChangePermission.never, .askFirst]) { permission in
                     Text(permission.title).tag(permission)
@@ -83,14 +241,22 @@ struct ModelRow: View {
 }
 
 #Preview("Settings", traits: .appChrome, .fixedLayout(width: 520, height: 440)) {
-    ChatSettingsView()
+    ChatSettingsView(previewStatus: ClaudeStatus(path: "/Users/you/.local/bin/claude", version: "2.1.322"))
+}
+
+#Preview("Settings, CLI Not Found", traits: .appChrome, .fixedLayout(width: 520, height: 440)) {
+    ChatSettingsView(previewStatus: ClaudeStatus(error: "Claude CLI not found. Install Claude Code, or set its path in Settings ▸ Chat."))
+}
+
+#Preview("Settings, Looking", traits: .appChrome, .fixedLayout(width: 520, height: 440)) {
+    ChatSettingsView(previewStatus: .checking)
 }
 
 #Preview("Settings, Dark", traits: .appChrome, .fixedLayout(width: 520, height: 440)) {
-    ChatSettingsView()
+    ChatSettingsView(previewStatus: ClaudeStatus(path: "/Users/you/.local/bin/claude", version: "2.1.322"))
         .preferredColorScheme(.dark)
 }
 
 #Preview("Settings, Largest Text", traits: .largestText, .fixedLayout(width: 520, height: 440)) {
-    ChatSettingsView()
+    ChatSettingsView(previewStatus: ClaudeStatus(path: "/Users/you/.local/bin/claude", version: "2.1.322"))
 }

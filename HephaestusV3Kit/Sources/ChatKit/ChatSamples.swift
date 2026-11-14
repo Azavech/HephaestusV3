@@ -49,8 +49,8 @@ extension ChatConversation {
 
                 ORD-142 already tracks this, and run 1288 adds backoff to the payments client. It's still running.
                 """)),
-                ChatBlock(.approval(ChatApproval(
-                    id: "chat-checkout.comment", change: .comment, reference: ord142,
+                ChatBlock(.approval(ChatApproval.comment(
+                    id: "chat-checkout.comment", on: ord142,
                     preview: "Seen again on Staging: req-8f3a retried 3 times in 4.2 s and ended in a 504. Waiting on run 1288."
                 ))),
             ]),

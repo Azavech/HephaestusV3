@@ -10,7 +10,7 @@ private let registry = ToolRegistry([
         ("mode", .string("Mode.", oneOf: ["a", "b"])),
         ("items", .array("Items.", of: .object(properties: [("label", .string())], required: ["label"]))),
     ], required: ["text"]), permission: .read) { arguments throws(ToolError) in arguments },
-    ToolOperation(name: "fail", description: "Fail.", inputSchema: .object(), permission: .change) { _ throws(ToolError) in
+    ToolOperation(name: "fail", description: "Fail.", inputSchema: .object(), permission: .changeTickets) { _ throws(ToolError) in
         throw ToolError(.conflict, "It conflicts.")
     },
 ])

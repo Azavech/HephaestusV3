@@ -10,20 +10,33 @@ public struct SettingsFile: Codable, Sendable, Hashable {
     public var schema: Int
     /// The port of the MCP server on 127.0.0.1, 1024–65535.
     public var mcpPort: Int
+    /// The Claude CLI the chats run, as set in Settings ▸ Chat; nil finds it (docs/ui/chat.md › Claude CLI).
+    public var claudePath: String?
+    /// The model of new chats: `default`, or a value of the CLI's model list; nil for `default`.
+    public var chatModel: String?
+    /// The effort of new chats; nil for `high`.
+    public var chatEffort: String?
     public var unknownKeys: YAMLMapping
 
-    public init(schema: Int = 1, mcpPort: Int = SettingsFile.defaultMCPPort, unknownKeys: YAMLMapping = [:]) {
+    public init(schema: Int = 1, mcpPort: Int = SettingsFile.defaultMCPPort, claudePath: String? = nil, chatModel: String? = nil,
+                chatEffort: String? = nil, unknownKeys: YAMLMapping = [:]) {
         self.schema = schema
         self.mcpPort = mcpPort
+        self.claudePath = claudePath
+        self.chatModel = chatModel
+        self.chatEffort = chatEffort
         self.unknownKeys = unknownKeys
     }
 
-    static let knownKeys: Set<String> = ["schema", "mcpPort"]
+    static let knownKeys: Set<String> = ["schema", "mcpPort", "claudePath", "chatModel", "chatEffort"]
 
     public init(from decoder: any Decoder) throws {
         let c = try MappingReader(decoder)
         schema = try c.schema()
         mcpPort = try c.value("mcpPort", default: Self.defaultMCPPort)
+        claudePath = try c.optional("claudePath")
+        chatModel = try c.optional("chatModel")
+        chatEffort = try c.optional("chatEffort")
         unknownKeys = try c.unknownKeys(known: Self.knownKeys)
     }
 
@@ -31,6 +44,9 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         var c = MappingWriter(encoder)
         try c.encode(schema, "schema")
         try c.encode(mcpPort, "mcpPort")
+        try c.encodeIfPresent(claudePath, "claudePath")
+        try c.encodeIfPresent(chatModel, "chatModel")
+        try c.encodeIfPresent(chatEffort, "chatEffort")
         try c.encodeUnknownKeys(unknownKeys, known: Self.knownKeys)
     }
 

@@ -1,15 +1,45 @@
+import ChatData
 import Foundation
 import Observation
 import ToolsFoundation
 
 /// Every conversation of the app, shared by the Chat windows and the tool windows' side panels: a chat
-/// started beside a ticket is listed in the Chat window too. Its `engine` answers the messages.
-///
-/// Conversations last as long as the app runs; the samples come back at each launch.
-@Observable
-public final class ChatStore {
-    public static let shared = ChatStore()
+/// started beside a ticket is listed in the Chat window too. The app's is `LiveChatStore`, on the Claude CLI;
+/// previews use `SampleChatStore`.
+protocol ChatStore: AnyObject {
+    func conversation(_ id: ChatConversation.ID?) -> ChatConversation?
+    /// The conversations of these projects, the latest first. Their turns may be left out: `conversation(_:)`
+    /// gives them.
+    func conversations(of projects: Set<Project.ID>) -> [ChatConversation]
+    /// Reads the conversation's turns, when they aren't read yet.
+    func open(_ id: ChatConversation.ID) async
+    /// What Claude is doing in the conversation; nil when nothing.
+    func activity(_ id: ChatConversation.ID?) -> ChatActivity?
+    /// Whether Claude's turns can be stopped.
+    var canStop: Bool { get }
+    /// Sends `text` with `attachments` to the conversation, or to a new one about `project` when `id` names
+    /// none, and returns the conversation's id. Throws why it can't, as the user reads it.
+    func send(_ text: String, to id: ChatConversation.ID?, project: Project, origin: ToolKind?, attachments: [ChatReference],
+              reader: ToolReader) async throws(ChatSendError) -> ChatConversation.ID
+    /// The user's answer to a change Claude asked to make.
+    func decide(_ approvalID: ChatApproval.ID, in conversationID: ChatConversation.ID, allow: Bool)
+    func stop(_ id: ChatConversation.ID)
+    /// The models Claude can answer with; empty when no model is connected (the samples).
+    var models: [ClaudeModel] { get }
+    /// The model and effort of the conversation, or of new chats when `id` is nil; nil without models.
+    func replySettings(of id: ChatConversation.ID?) -> ChatSettings?
+    func setReplySettings(_ settings: ChatSettings, of id: ChatConversation.ID?) throws(ChatSendError)
+}
 
+/// Why a message wasn't sent, or a setting not changed: the sentence the composer shows.
+struct ChatSendError: Error, Hashable {
+    let message: String
+}
+
+/// The sample conversations and engine, for previews and captures: they come back at each launch, and new
+/// ones last as long as the app runs.
+@Observable
+final class SampleChatStore: ChatStore {
     private(set) var conversations: [ChatConversation]
     /// The conversations waiting for a reply.
     private(set) var responding: Set<ChatConversation.ID> = []
@@ -23,38 +53,33 @@ public final class ChatStore {
         self.engine = engine
     }
 
-    /// A store with the samples only, for previews and captures.
-    public static func transient() -> ChatStore {
-        ChatStore()
+    /// A store with the samples only.
+    static func transient() -> SampleChatStore {
+        SampleChatStore()
     }
 
     func conversation(_ id: ChatConversation.ID?) -> ChatConversation? {
         conversations.first { $0.id == id }
     }
 
-    /// The conversations of these projects, the latest first.
     func conversations(of projects: Set<Project.ID>) -> [ChatConversation] {
         conversations.filter { projects.contains($0.projectID) }.sorted { $0.updatedAt > $1.updatedAt }
     }
 
-    /// Whether the conversation waits for a reply.
-    func isResponding(_ id: ChatConversation.ID?) -> Bool {
-        id.map(responding.contains) ?? false
+    func open(_ id: ChatConversation.ID) async {}
+
+    func activity(_ id: ChatConversation.ID?) -> ChatActivity? {
+        id.map(responding.contains) == true ? .reading : nil
     }
 
-    /// Sends `text` with `attachments` to the conversation, or to a new one about `project` when `id`
-    /// names none, and asks the engine for the reply. Returns the conversation's id; nil when the text
-    /// is empty or only whitespace.
-    ///
-    /// A new conversation's title is the message's first 80 characters, and `origin` is the tool beside
-    /// which it started.
-    @discardableResult
-    func send(
-        _ text: String, to id: ChatConversation.ID?, project: Project, origin: ToolKind?,
-        attachments: [ChatReference], reader: ToolReader
-    ) -> ChatConversation.ID? {
+    var canStop: Bool { false }
+
+    /// A new conversation's title is the message's first 80 characters, and `origin` is the tool beside which
+    /// it started.
+    func send(_ text: String, to id: ChatConversation.ID?, project: Project, origin: ToolKind?, attachments: [ChatReference],
+              reader: ToolReader) throws(ChatSendError) -> ChatConversation.ID {
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty else { return nil }
+        guard !message.isEmpty else { throw ChatSendError(message: "") }
         let now = Date()
         let conversationID: ChatConversation.ID
         if let id, conversations.contains(where: { $0.id == id }) {
@@ -88,7 +113,6 @@ public final class ChatStore {
         }
     }
 
-    /// The user's answer to a change Claude asked to make.
     func decide(_ approvalID: ChatApproval.ID, in conversationID: ChatConversation.ID, allow: Bool) {
         update(conversationID) { conversation in
             for turnIndex in conversation.turns.indices {
@@ -101,6 +125,14 @@ public final class ChatStore {
             }
         }
     }
+
+    func stop(_ id: ChatConversation.ID) {}
+
+    var models: [ClaudeModel] { [] }
+
+    func replySettings(of id: ChatConversation.ID?) -> ChatSettings? { nil }
+
+    func setReplySettings(_ settings: ChatSettings, of id: ChatConversation.ID?) throws(ChatSendError) {}
 
     private func update(_ id: ChatConversation.ID, _ change: (inout ChatConversation) -> Void) {
         guard let index = conversations.firstIndex(where: { $0.id == id }) else { return }

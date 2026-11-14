@@ -23,7 +23,8 @@ public enum ProjectTools {
         ToolOperation(
             name: "list_projects",
             description: "Returns every project in Hephaestus V3, sub projects included, each with its identifier, name, type, folder, parent and sub projects.",
-            inputSchema: .object(), permission: .read
+            inputSchema: .object(), permission: .read,
+            describe: ProjectTools.describe("list_projects")
         ) { @MainActor _ throws(ToolError) in
             try encode(session.snapshot.projects.map(ProjectSummaryJSON.init))
         }
@@ -34,7 +35,8 @@ public enum ProjectTools {
         ToolOperation(
             name: "get_project",
             description: "Returns one project: its settings (name, type, color, icon, docs folder, GitHub page, use parent settings, graph enabled), folder, parent and sub projects, and its environments. environments holds those that apply: for a sub project on its parent's settings, the parent's with this project's changes, then its own. inheritedEnvironments holds the parent's as they are, and currentEnvironment the one selected in the app.",
-            inputSchema: .object(properties: [("projectID", projectID)], required: ["projectID"]), permission: .read
+            inputSchema: .object(properties: [("projectID", projectID)], required: ["projectID"]), permission: .read,
+            describe: ProjectTools.describe("get_project")
         ) { @MainActor arguments throws(ToolError) in
             try detail(session, try arguments.string("projectID"))
         }
@@ -52,7 +54,8 @@ public enum ProjectTools {
                 ("type", .string("none, goService (a service), swiftApplication (an app) or library.", oneOf: types)),
                 ("parentID", .string("The parent's identifier, for a sub project.")),
             ], required: ["path", "name", "identifier"]),
-            permission: .change
+            permission: .changeProjects,
+            describe: ProjectTools.describe("create_project")
         ) { @MainActor arguments throws(ToolError) in
             let path = try expanded(try arguments.string("path"))
             let kind = ProjectKind(rawValue: arguments["type"]?.stringValue ?? "none") ?? ProjectKind.none
@@ -81,7 +84,8 @@ public enum ProjectTools {
                 ("icon", .string("An SF Symbol name, such as hammer.")),
                 ("docsPath", .string("The docs folder, relative to the project's folder, such as docs.")),
             ], required: ["projectID"]),
-            permission: .change
+            permission: .changeProjects,
+            describe: ProjectTools.describe("update_project")
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("projectID")
             guard session.snapshot.project(id) != nil else { throw notFound(id) }
@@ -110,7 +114,8 @@ public enum ProjectTools {
         ToolOperation(
             name: "remove_project",
             description: "Removes a project and its sub projects from Hephaestus V3. Nothing on disk is deleted: adding the folder again restores the project.",
-            inputSchema: .object(properties: [("projectID", projectID)], required: ["projectID"]), permission: .change
+            inputSchema: .object(properties: [("projectID", projectID)], required: ["projectID"]), permission: .removeProjects,
+            describe: ProjectTools.describe("remove_project")
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("projectID")
             do throws(ProjectError) {
@@ -246,5 +251,44 @@ struct ProjectDetailJSON: Encodable {
         inheritedEnvironments = project.resolved.inheritedEnvironments.map(Environment.init)
         currentEnvironment = project.resolved.currentEnvironment
         fileIssue = project.fileIssue
+    }
+}
+
+// MARK: Chat
+
+extension ProjectTools {
+    /// How a chat shows a call of the tool `name` (docs/ui/chat.md › Tool-call rows). A project's item has the
+    /// tool `projects`: no window of a tool shows it alone, so the row has no Open.
+    static func describe(_ name: String) -> @Sendable (JSONValue) -> ToolCallText {
+        { arguments in text(name, arguments) }
+    }
+
+    nonisolated static func text(_ name: String, _ arguments: JSONValue) -> ToolCallText {
+        let id = (arguments["projectID"]?.stringValue ?? arguments["identifier"]?.stringValue ?? "").uppercased()
+        let projectName = arguments["name"]?.stringValue ?? id
+        let item = ToolItem(tool: "projects", projectID: id, focus: "", title: projectName)
+        switch name {
+        case "list_projects":
+            return ToolCallText(action: String(localized: "Listed the projects", bundle: #bundle))
+        case "get_project":
+            return ToolCallText(action: String(localized: "Read project \(id)", bundle: #bundle), item: item)
+        case "create_project":
+            let path = arguments["path"]?.stringValue ?? ""
+            return ToolCallText(action: String(localized: "Added the project \(projectName)", bundle: #bundle),
+                                request: String(localized: "Claude wants to add the project \(projectName)", bundle: #bundle),
+                                preview: "\(id) · \(path)", item: item)
+        case "update_project":
+            let changes = (arguments.objectValue ?? [:]).filter { $0.key != "projectID" }.sorted { $0.key < $1.key }
+                .map { "\($0.key): \($0.value.stringValue ?? $0.value.text)" }
+            return ToolCallText(action: String(localized: "Changed the settings of \(id)", bundle: #bundle),
+                                request: String(localized: "Claude wants to change the settings of \(id)", bundle: #bundle),
+                                preview: changes.isEmpty ? nil : changes.joined(separator: "\n"), item: item)
+        case "remove_project":
+            return ToolCallText(action: String(localized: "Removed \(id) from Hephaestus", bundle: #bundle),
+                                request: String(localized: "Claude wants to remove \(id) from Hephaestus", bundle: #bundle),
+                                preview: String(localized: "The project's folder and files stay on this Mac.", bundle: #bundle), item: item)
+        default:
+            return ToolCallText(action: name)
+        }
     }
 }

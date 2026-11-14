@@ -170,12 +170,17 @@ private final class MCPConnection: Sendable {
         if !head.values("Origin").isEmpty { return .originRefused }
         guard head.path == "/mcp" else { return .notFound }
         guard head.method == "POST" else { return .methodNotAllowed }
-        guard let token = MCPTokens.bearer(head.values("Authorization")), tokens.accepts(token) else { return .unauthorized }
+        guard caller(head) != nil else { return .unauthorized }
         return nil
     }
 
+    private func caller(_ head: HTTPHead) -> MCPCaller? {
+        MCPTokens.bearer(head.values("Authorization")).flatMap(tokens.caller(for:))
+    }
+
     private func answer(_ head: HTTPHead, body: Data) async -> HTTPResponse {
-        switch await mcp.handle(body: body, protocolVersions: head.values("MCP-Protocol-Version")) {
+        guard let caller = caller(head) else { return .unauthorized }
+        switch await mcp.handle(body: body, protocolVersions: head.values("MCP-Protocol-Version"), caller: caller) {
         case .json(let value):
             return HTTPResponse(status: 200, headers: ["Content-Type": "application/json"], body: value.data)
         case .accepted:

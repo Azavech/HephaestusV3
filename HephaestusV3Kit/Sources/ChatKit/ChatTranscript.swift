@@ -8,28 +8,78 @@ import ToolsFoundation
 /// The turns of a conversation, then Claude at work while a reply is coming.
 struct ChatTranscript: View {
     let conversation: ChatConversation
-    let isResponding: Bool
+    /// What Claude is doing; nil when it has nothing to do.
+    let activity: ChatActivity?
     /// Tighter, for the side panel.
     var compact = false
     /// The user's answer to a change Claude asked to make: allow or not.
     let decide: (ChatApproval.ID, Bool) -> Void
+    /// Stops Claude's turn; nil where nothing can be stopped (the samples).
+    var stop: (() -> Void)?
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: compact ? 16 : 22) {
             ForEach(conversation.turns) { turn in
                 ChatTurnView(turn: turn, compact: compact, decide: decide)
             }
-            if isResponding {
+            if let activity {
                 ChatAuthorRow(author: .claude, isSample: false) {
                     HStack(spacing: 8) {
                         ProgressView()
                             .controlSize(.small)
-                        Text("Reading…", bundle: #bundle, comment: "Claude reads through the tools while a reply is coming")
+                        ChatActivityText(activity: activity)
                             .foregroundStyle(.textSecondary)
+                        if let stop {
+                            Button(String(localized: "Stop", bundle: #bundle, comment: "Stops Claude's turn"), systemImage: "stop.circle", action: stop)
+                                .buttonStyle(.borderless)
+                                .keyboardShortcut(".", modifiers: .command)
+                                .help(String(localized: "Stop (⌘.)", bundle: #bundle))
+                                .accessibilityIdentifier("chat.stop")
+                        }
                     }
                 }
-                .accessibilityElement(children: .combine)
+                .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("chat.responding")
+            }
+        }
+    }
+}
+
+/// What Claude is doing in a conversation, for the line at its end.
+enum ChatActivity: Hashable {
+    /// The sample engine reads through the tools.
+    case reading
+    /// The Claude CLI starts.
+    case starting
+    /// Claude works on the messages, since the date.
+    case working(since: Date)
+    /// The CLI compacts the conversation, since the date.
+    case compacting(since: Date)
+    /// A card waits for the user's answer.
+    case waiting
+}
+
+/// "Claude is working… 0:12", its time counting while it shows.
+struct ChatActivityText: View {
+    let activity: ChatActivity
+
+    var body: some View {
+        switch activity {
+        case .reading:
+            Text("Reading…", bundle: #bundle, comment: "Claude reads through the tools while a reply is coming")
+        case .starting:
+            Text("Starting Claude…", bundle: #bundle)
+        case .waiting:
+            Text("Waiting for your answer", bundle: #bundle, comment: "A card waits for the user")
+        case .working(let since), .compacting(let since):
+            TimelineView(.periodic(from: since, by: 1)) { context in
+                let elapsed = Duration.seconds(max(0, Int(context.date.timeIntervalSince(since))))
+                let time = elapsed.formatted(.time(pattern: .minuteSecond))
+                if case .compacting = activity {
+                    Text("Compacting the conversation… \(time)", bundle: #bundle, comment: "The time since it began, such as 0:12")
+                } else {
+                    Text("Claude is working… \(time)", bundle: #bundle, comment: "The time since the turn began, such as 0:12")
+                }
             }
         }
     }
@@ -99,59 +149,110 @@ struct ChatTurnView: View {
             ForEach(turn.blocks) { block in
                 switch block.content {
                 case .text(let text):
-                    Text(text)
-                        .foregroundStyle(.textPrimary)
-                        .textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
-                case .toolCall(let reference, let reading):
-                    ToolCallRow(turnID: turn.id, reference: reference, reading: reading, compact: compact)
+                    Group {
+                        if turn.author == .claude {
+                            Text(Self.markdown(text))
+                        } else {
+                            Text(verbatim: text)
+                        }
+                    }
+                    .foregroundStyle(.textPrimary)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                case .call(let call):
+                    ToolCallRow(turnID: turn.id, blockID: block.id, call: call, compact: compact)
                 case .approval(let approval):
                     ApprovalCard(approval: approval) { allow in
                         decide(approval.id, allow)
                     }
+                case .notice(let notice):
+                    NoticeRow(notice: notice)
                 }
             }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.turn.\(turn.id)")
     }
+
+    /// Claude's Markdown: emphasis, code and links inline, line breaks kept.
+    static func markdown(_ text: String) -> AttributedString {
+        (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text)
+    }
 }
 
-/// An item Claude read through its tool: what it read, the gist, and the way to the tool's window.
+/// A line from the app: an error of the Claude CLI, a warning, a compaction.
+struct NoticeRow: View {
+    let notice: ChatNotice
+
+    var body: some View {
+        Label {
+            Text(verbatim: notice.text)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: symbol)
+                .accessibilityHidden(true)
+        }
+        .font(.callout)
+        .foregroundStyle(color)
+        .accessibilityIdentifier("chat.notice")
+    }
+
+    private var symbol: String {
+        switch notice.level {
+        case .info: "info.circle"
+        case .warning: "exclamationmark.triangle"
+        case .error: "xmark.octagon"
+        }
+    }
+
+    private var color: Color {
+        switch notice.level {
+        case .info: .textSecondary
+        case .warning: .warning
+        case .error: .danger
+        }
+    }
+}
+
+/// A call Claude made through a tool: what it read or changed, the gist, and the way to the tool's window.
 struct ToolCallRow: View {
-    /// The turn that read it: an item read in two turns has two rows.
+    /// The turn that made it: an item read in two turns has two rows.
     let turnID: ChatTurn.ID
-    let reference: ChatReference
-    let reading: ToolReading
+    let blockID: ChatBlock.ID
+    let call: ChatToolCall
     var compact = false
 
     @Environment(\.openRoute) private var openRoute
+    @Environment(\.toolReader) private var toolReader
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: reference.tool.symbol)
-                .foregroundStyle(.accent)
+            Image(systemName: call.failed ? "exclamationmark.triangle" : call.reference?.tool.symbol ?? "wrench.and.screwdriver")
+                .foregroundStyle(call.failed ? Color.danger : Color.accent)
                 .frame(width: 18)
                 .accessibilityHidden(true)
             if compact {
-                Text(reading.action)
+                Text(verbatim: call.action)
                     .foregroundStyle(.textPrimary)
                     .lineLimit(1)
-                    .help(reading.detail)
+                    .help(detail)
             } else {
-                Text(reading.action)
+                Text(verbatim: call.action)
                     .foregroundStyle(.textPrimary)
                     .fixedSize()
-                Text(reading.detail)
-                    .foregroundStyle(.textSecondary)
+                Text(verbatim: detail)
+                    .foregroundStyle(call.failed ? Color.danger : Color.textSecondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
-                    .help(reading.detail)
+                    .help(detail)
             }
             Spacer(minLength: 8)
-            Button(String(localized: "Open", bundle: #bundle, comment: "Opens an item in its tool's window"), action: open)
-                .buttonStyle(.borderless)
-                .help(openHelp)
+            if call.reference != nil {
+                Button(String(localized: "Open", bundle: #bundle, comment: "Opens an item in its tool's window"), action: open)
+                    .buttonStyle(.borderless)
+                    .help(openHelp)
+            }
         }
         .font(.callout)
         .padding(.horizontal, 10)
@@ -159,20 +260,26 @@ struct ToolCallRow: View {
         .background(.surfaceSunken, in: CardShape(minimum: 6))
         // One element: what was read, the tool's answer, and Open as its action.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(reading.action)
-        .accessibilityValue(reading.detail)
+        .accessibilityLabel(call.action)
+        .accessibilityValue(detail)
         .accessibilityHint(openHelp)
-        .accessibilityAddTraits(.isButton)
+        .accessibilityAddTraits(call.reference == nil ? [] : .isButton)
         .accessibilityAction(.default, open)
-        .accessibilityIdentifier("chat.toolCall.\(turnID).\(reference.id)")
+        .accessibilityIdentifier("chat.toolCall.\(turnID).\(call.reference?.id ?? blockID)")
+    }
+
+    /// The call's own detail, else the item's tool's one-line answer.
+    private var detail: String {
+        call.detail ?? call.reference.flatMap { toolReader($0)?.detail } ?? ""
     }
 
     private var openHelp: String {
-        String(localized: "Open \(reference.title) in \(reference.tool.title)", bundle: #bundle, comment: "An item, then its tool: Open ORD-142 in Tickets")
+        guard let reference = call.reference else { return "" }
+        return String(localized: "Open \(reference.title) in \(reference.tool.title)", bundle: #bundle, comment: "An item, then its tool: Open ORD-142 in Tickets")
     }
 
     private func open() {
-        openRoute(reference.route)
+        if let reference = call.reference { openRoute(reference.route) }
     }
 }
 
@@ -193,13 +300,16 @@ struct ApprovalCard: View {
                     .accessibilityHidden(true)
             }
             .accessibilityAddTraits(.isHeader)
-            Text(verbatim: approval.preview)
-                .font(.callout)
-                .foregroundStyle(.textPrimary)
-                .textSelection(.enabled)
-                .padding(10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.surfaceSunken, in: CardShape(minimum: 6))
+            if let preview = approval.preview {
+                Text(verbatim: preview)
+                    .font(.callout)
+                    .foregroundStyle(.textPrimary)
+                    .textSelection(.enabled)
+                    .lineLimit(20)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.surfaceSunken, in: CardShape(minimum: 6))
+            }
             ViewThatFits(in: .horizontal) {
                 HStack {
                     note
@@ -222,15 +332,21 @@ struct ApprovalCard: View {
         .accessibilityIdentifier("chat.approval.\(approval.id)")
     }
 
-    private var note: some View {
-        Label {
-            Text("Through \(approval.reference.tool.title), as if you did it", bundle: #bundle, comment: "How Claude would make a change: through a tool, such as Tickets")
-        } icon: {
-            Image(systemName: approval.reference.tool.symbol)
-                .accessibilityHidden(true)
+    @ViewBuilder private var note: some View {
+        if let channel = approval.channel {
+            Label {
+                Text("Through \(channel.title), as if you did it", bundle: #bundle, comment: "How Claude would make a change: through a tool, such as Tickets")
+            } icon: {
+                Image(systemName: channel.symbol)
+                    .accessibilityHidden(true)
+            }
+            .font(.caption)
+            .foregroundStyle(.textSecondary)
+        } else {
+            Text("Through the Claude CLI", bundle: #bundle, comment: "A change Claude would make with a tool of its own")
+                .font(.caption)
+                .foregroundStyle(.textSecondary)
         }
-        .font(.caption)
-        .foregroundStyle(.textSecondary)
     }
 
     @ViewBuilder private var answer: some View {
@@ -252,6 +368,25 @@ struct ApprovalCard: View {
                 .foregroundStyle(.textSecondary)
                 .accessibilityIdentifier("chat.approval.\(approval.id).decision")
         }
+    }
+}
+
+/// Why the last message wasn't sent, or a setting not changed, over the composer.
+struct ChatFailure: View {
+    let message: String
+
+    var body: some View {
+        Label {
+            Text(verbatim: message)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .accessibilityHidden(true)
+        }
+        .font(.callout)
+        .foregroundStyle(.danger)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityIdentifier("chat.failure")
     }
 }
 
@@ -357,9 +492,8 @@ struct SuggestionList: View {
 
 private extension ChatApproval {
     static func preview(decision: Decision?) -> ChatApproval {
-        ChatApproval(
-            id: "preview.comment", change: .comment,
-            reference: ChatReference(tool: .tickets, projectID: "ORD", focus: "ORD-142", title: "ORD-142"),
+        ChatApproval.comment(
+            id: "preview.comment", on: ChatReference(tool: .tickets, projectID: "ORD", focus: "ORD-142", title: "ORD-142"),
             preview: "Seen again on Staging: req-8f3a retried 3 times in 4.2 s and ended in a 504. Waiting on run 1288.",
             decision: decision
         )

@@ -1,3 +1,4 @@
+import ChatData
 import Foundation
 import Observation
 import ToolsFoundation
@@ -15,7 +16,8 @@ final class ChatWindowModel {
     }
 
     let project: Project
-    private let store: ChatStore
+    let store: any ChatStore
+    private let directory: ProjectDirectory
     /// The conversation shown; nil for a new chat. In an iPhone's layout, `newChatID` opens a new chat
     /// as a page.
     var selection: ChatConversation.ID?
@@ -23,16 +25,19 @@ final class ChatWindowModel {
     var draft = ""
     /// Opened on a conversation: an iPhone's layout starts on its page.
     let opensSelection: Bool
+    /// Why the last message wasn't sent; the next message clears it.
+    var failure: String?
 
     /// In an iPhone's layout, the page of a new chat, before it has an id of its own.
     static let newChatID = "chat-new"
 
     /// The chats of `project` and its sub projects, with `focus` (a conversation id) selected, or the
     /// latest one when the focus names none of them.
-    init(project: Project, focus: String?, store: ChatStore) {
+    init(project: Project, focus: String?, store: any ChatStore, directory: ProjectDirectory = .previewSamples) {
         self.project = project
         self.store = store
-        let family = Set(Project.tree.family(of: project.id).map(\.id))
+        self.directory = directory
+        let family = Set(directory.tree.family(of: project.id).map(\.id))
         let conversations = store.conversations(of: family)
         let focused = conversations.first { $0.id == focus }
         opensSelection = focused != nil
@@ -41,7 +46,7 @@ final class ChatWindowModel {
 
     /// The project and its sub projects, in tree order.
     var family: [Project] {
-        Project.tree.family(of: project.id)
+        directory.tree.family(of: project.id)
     }
 
     /// Whether the list groups its conversations by project: only for a project with sub projects.
@@ -67,9 +72,26 @@ final class ChatWindowModel {
         store.conversation(selection)
     }
 
+    /// What Claude is doing in the shown conversation; nil when nothing.
+    var activity: ChatActivity? {
+        store.activity(selection)
+    }
+
     /// Whether the shown conversation waits for a reply, which disables Send.
     var isResponding: Bool {
-        store.isResponding(selection)
+        activity != nil
+    }
+
+    /// Stops Claude in the shown conversation; nil where nothing can be stopped.
+    var stop: (() -> Void)? {
+        guard store.canStop, let selection, selection != Self.newChatID else { return nil }
+        return { [store] in store.stop(selection) }
+    }
+
+    /// Reads the shown conversation's turns.
+    func openSelection() async {
+        guard let selection, selection != Self.newChatID else { return }
+        await store.open(selection)
     }
 
     /// What the shown conversation attached or read, for the inspector.
@@ -94,28 +116,48 @@ final class ChatWindowModel {
         draft = ""
     }
 
-    /// Sends the draft and clears it.
-    func sendDraft(reader: ToolReader) {
-        if send(draft, reader: reader) {
+    /// Sends the draft and clears it, once sent.
+    func sendDraft(reader: ToolReader) async {
+        let text = draft
+        if await send(text, reader: reader), draft == text {
             draft = ""
         }
     }
 
     /// Sends `text` to the shown conversation, or starts one about the project, and shows it. Messages
-    /// from the Chat window carry no attachments: the items they name are read instead. The draft stays.
+    /// from the Chat window carry the project, not an item. The draft stays.
     @discardableResult
-    func send(_ text: String, reader: ToolReader) -> Bool {
+    func send(_ text: String, reader: ToolReader) async -> Bool {
         let target = selection == Self.newChatID ? nil : selection
-        guard let id = store.send(text, to: target, project: project, origin: nil, attachments: [], reader: reader) else {
+        do throws(ChatSendError) {
+            let id = try await store.send(text, to: target, project: project, origin: nil, attachments: [], reader: reader)
+            failure = nil
+            selection = id
+            return true
+        } catch {
+            failure = error.message.isEmpty ? nil : error.message
             return false
         }
-        selection = id
-        return true
     }
 
     /// The user's answer to a change Claude asked to make in the shown conversation.
     func decide(_ approvalID: ChatApproval.ID, allow: Bool) {
         guard let selection else { return }
         store.decide(approvalID, in: selection, allow: allow)
+    }
+
+    // MARK: Replies
+
+    /// The shown conversation's model and effort, or those of new chats; nil without a model (the samples).
+    var replySettings: ChatSettings? {
+        store.replySettings(of: selection == Self.newChatID ? nil : selection)
+    }
+
+    func setReplySettings(_ settings: ChatSettings) {
+        do throws(ChatSendError) {
+            try store.setReplySettings(settings, of: selection == Self.newChatID ? nil : selection)
+        } catch {
+            failure = error.message
+        }
     }
 }

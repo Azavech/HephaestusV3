@@ -78,6 +78,9 @@
     "Add Project" : {
 
     },
+    "Added the project %@" : {
+
+    },
     "Allow invalid certificates" : {
 
     },
@@ -108,6 +111,9 @@
     "Can’t Remove “%@”" : {
 
     },
+    "Changed the settings of %@" : {
+
+    },
     "Checking the cluster" : {
 
     },
@@ -121,6 +127,15 @@
 
     },
     "Choose…" : {
+
+    },
+    "Claude wants to add the project %@" : {
+
+    },
+    "Claude wants to change the settings of %@" : {
+
+    },
+    "Claude wants to remove %@ from Hephaestus" : {
 
     },
     "Command-Line Tools" : {
@@ -278,6 +293,9 @@
     "Last run on %@" : {
 
     },
+    "Listed the projects" : {
+
+    },
     "Loading Projects…" : {
 
     },
@@ -398,6 +416,9 @@
     "Projects" : {
 
     },
+    "Read project %@" : {
+
+    },
     "Reading…" : {
       "comment" : "The login shell's environment is being read"
     },
@@ -411,6 +432,9 @@
 
     },
     "Remove “%@” from Hephaestus V3?" : {
+
+    },
+    "Removed %@ from Hephaestus" : {
 
     },
     "Service" : {
@@ -462,6 +486,9 @@
 
     },
     "The project shows as it was before the file changed. Fix the file, or change a setting to write it again." : {
+
+    },
+    "The project's folder and files stay on this Mac." : {
 
     },
     "This copy of Hephaestus V3 has no data folder: it was built without its App Group." : {

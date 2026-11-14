@@ -17,7 +17,7 @@ function the window calls ([Architecture › MCPKit](architecture.md#mcpkit)). T
 | JSON-RPC methods | `initialize`, `ping`, `tools/list`, `tools/call`; every notification is accepted and ignored |
 | Server name | `hephaestus`, so Claude names the tools `mcp__hephaestus__<tool>` |
 | Authentication | `Authorization: Bearer <token>` with the external token ([Authentication](#authentication)) |
-| Tools | [Tools](#tools): 22 today |
+| Tools | [Tools](#tools): 25 today |
 | Instructions to Claude | None: no `instructions` in `initialize`, no system prompt, no skills ([What Claude reads](#what-claude-reads)) |
 
 ## Server lifecycle
@@ -85,7 +85,12 @@ Each request goes through these steps in order; the first that fails sends its r
   time and never logged.
 - **Regenerate…** in Settings ▸ MCP replaces it at once: requests with the old one get 401. When
   `secrets.json` can't be written, the old token stays and Settings shows "Regenerate failed: <reason>".
-- The chats' own tokens come with the Chat feature.
+- Each **chat token** belongs to one chat's Claude process: made from `SecRandomCopyBytes` when the process
+  starts, passed in its MCP configuration file ([Data › Launch](data.md#launch)), and ended with the process.
+  The server knows which chat a token belongs to: the call runs with that **caller**
+  (`MCPCaller.chat(<chat id>)`, a task-local value), the external token's as `MCPCaller.external`. The ticket
+  tools record a chat's id with Claude's changes ([Data › Ticket history](data.md#ticket-file)), and the
+  [permissions](#permissions) apply to chats only.
 
 ## JSON-RPC
 
@@ -174,6 +179,31 @@ gets the same message the window shows.
 `<path>` names the argument from the top level, indexes from 0: `projectID`, `target.kind`, `items[2].label`;
 `arguments` for the whole value. These failures have the code `invalid`.
 
+## Permissions
+
+The user decides what a chat's Claude may change, in Settings ▸ Chat › Claude Can and the Chat window's
+inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are validated, the server's gate
+(`MCPProtocol.Gate`, `ChatGate.check`) decides by the caller and the operation's permission:
+
+| Permission | Tools | External token | A chat's Claude |
+| --- | --- | --- | --- |
+| `read` | the `list_` and `get_` tools, `open_in_app` | runs | runs |
+| `renameChats` | `rename_chat` | runs | runs |
+| `changeTickets` | `create_ticket`, `update_ticket`, `set_ticket_status`, `add_comment`, `update_comment`, the bundle tools but `delete_bundle` | runs | Change tickets: Always runs; Ask First shows a card and waits; Never refuses |
+| `deleteTickets` | `delete_ticket`, `delete_comment`, `remove_attachment`, `delete_bundle` | runs | Change tickets Never refuses; otherwise a card, even under Always |
+| `changeProjects` | `create_project`, `update_project` | runs | Change projects, as Change tickets |
+| `removeProjects` | `remove_project` | runs | Change projects Never refuses; otherwise a card |
+
+- A card is a `permissionRequest` item of the chat (`ChatSession.requestApproval`): the call waits until the
+  user answers, Stop, or the chat's process ends. The CLI waits up to `MCP_TOOL_TIMEOUT`, 30 minutes.
+- A refusal is a tool error (`forbidden`) with one of these messages: `The user doesn't let Claude change
+  tickets from chats (Settings ▸ Chat).`, `The user doesn't let Claude change projects from chats (Settings ▸
+  Chat).`, `The user didn't allow this call.`
+- The permissions are the user defaults `chat.ticketChanges` and `chat.projectChanges`: `never`, `askFirst`
+  (the default) or `always`. `chat.buildStarts` waits for the Builds tools.
+- The CLI runs every tool of the server without asking (`--allowedTools`): the gate is where the user's
+  permissions hold, whatever the CLI's own settings say.
+
 ## External use
 
 Terminal Claude Code sessions on this Mac use the server with the external token. Settings ▸ MCP shows this
@@ -212,25 +242,32 @@ what it returns and which rules the app enforces; it never tells Claude how to w
 what to ask the user, how to write a ticket. None of V2's prompts come over: not its system prompts and skills,
 not its hook texts, not its tool descriptions, which V3 wrote anew (the owner's rule:
 [Decisions › V2's prompts](decisions.md#v2s-prompts)). Claude follows the same rules as the user, except the
-changes reserved to the user ([Data › Ticket rules](data.md#ticket-rules)).
+changes reserved to the user ([Data › Ticket rules](data.md#ticket-rules)). In the app's chats, Claude also
+reads one line V3 writes with each message, naming the item the message carries ([Data ›
+Messages](data.md#messages)); nothing else.
 
 ## Tools
 
 Each tool runs the operation its kit declares ([Architecture › MCPKit](architecture.md#mcpkit)); its section
 gives what it calls, its result, its errors, then the exact `description` and `inputSchema` of `tools/list`.
-Every tool can also return the [argument validation](#argument-validation) errors. The tools aren't limited to
+Every tool can also return the [argument validation](#argument-validation) errors, and a chat's call the
+[permissions](#permissions)' refusals. Each operation also words its calls for the chat, in the user's
+language: the row's action, and for a change the card's sentence and preview ([UI › Chat › Tool-call
+rows](ui/chat.md#tool-call-rows)); that text is the user's, never sent to Claude. The tools aren't limited to
 a project: Claude may read and change every project of this Mac, as the user can.
 
 | Tool | Kit | Permission | Calls |
 | --- | --- | --- | --- |
 | `list_projects` | ProjectsKit | read | the session's snapshot |
 | `get_project` | ProjectsKit | read | the session's snapshot |
-| `create_project` | ProjectsKit | change | `ProjectSession.create` |
-| `update_project` | ProjectsKit | change | `ProjectSession.update` |
-| `remove_project` | ProjectsKit | change | `ProjectSession.remove` |
+| `create_project` | ProjectsKit | changeProjects | `ProjectSession.create` |
+| `update_project` | ProjectsKit | changeProjects | `ProjectSession.update` |
+| `remove_project` | ProjectsKit | removeProjects | `ProjectSession.remove` |
 | `list_tickets`, `get_ticket`, `list_bundles`, `get_bundle` | TicketsKit | read | the ticket library's snapshot |
-| `create_ticket`, `update_ticket`, `delete_ticket`, `set_ticket_status`, `add_comment`, `update_comment`, `delete_comment`, `remove_attachment` | TicketsKit | change | `TicketLibrary`, as Claude (`TicketTools`) |
-| `create_bundle`, `update_bundle`, `set_bundle_status`, `delete_bundle` | TicketsKit | change | `TicketLibrary`, as Claude |
+| `create_ticket`, `update_ticket`, `delete_ticket`, `set_ticket_status`, `add_comment`, `update_comment`, `delete_comment`, `remove_attachment` | TicketsKit | changeTickets (the deletions and `remove_attachment`: deleteTickets) | `TicketLibrary`, as Claude (`TicketTools`) |
+| `create_bundle`, `update_bundle`, `set_bundle_status`, `delete_bundle` | TicketsKit | changeTickets (`delete_bundle`: deleteTickets) | `TicketLibrary`, as Claude |
+| `list_chats`, `get_chat` | ChatKit | read | the chat session |
+| `rename_chat` | ChatKit | renameChats | `ChatSession.rename` |
 | `open_in_app` | ToolsScenes | read | a route ([Navigation › Routes](ui/navigation.md#routes)) |
 
 A project's JSON (`get_project`, `create_project`, `update_project`): `id`, `name`, `type` (`none`,
@@ -243,8 +280,8 @@ use or a folder that holds a project, `conflict`; a broken rule or a folder outs
 unknown project or folder, `notFound`; no data folder, `unavailable`; a file that can't be written,
 `internal`. The messages are the English ones of [Data › Validation](data.md#validation) and `ProjectError`.
 
-**Tickets and bundles.** The ticket tools act as Claude (`TicketActor.claude(chat: "external")`, the external
-token; the chats' tokens come with Chat), so V2's rules for Claude hold ([Data › Ticket rules](data.md#ticket-rules)),
+**Tickets and bundles.** The ticket tools act as Claude (`TicketActor.claude(chat:)`: the chat's id with a chat
+token, `external` with the external token), so V2's rules for Claude hold ([Data › Ticket rules](data.md#ticket-rules)),
 and every change shows in the open Tickets windows at once. A ticket's JSON: `id`, `title`, `status` (`draft`,
 `todo`, `in_progress`, `review`, `done`), `created`, `updated`, `createdBy`, `description`, `priority` (when
 set), `labels`, `attachments` (`id`, `name`, `path` absolute, `contentType`, `size`), `comments` (`id`, `author`,
@@ -1076,6 +1113,105 @@ Input schema:
   },
   "required" : [
     "bundleID"
+  ],
+  "type" : "object"
+}
+```
+
+### list_chats
+
+- **Calls:** the chat session: the chats of the project and its loaded sub projects, the latest `updated` first.
+- **Result:** an array of chats' JSON: `id`, `project`, `title`, `kind`, `created`, `updated`, `model`,
+  `effort`, `state` (`idle`, `starting`, `running`, `waitingPermission`, `error`), and when set `origin`,
+  `ticket`, `bundle`.
+- **Errors:** an unknown project (`notFound`, `Project <ID> not found.`).
+
+Description:
+
+```text
+Returns a project's chats, its sub projects' included, the latest first: id, project, title, kind, created, updated, origin, model, effort and state.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID"
+  ],
+  "type" : "object"
+}
+```
+
+### get_chat
+
+- **Calls:** the chat session, which reads the chat's transcript when it isn't read yet.
+- **Result:** the chat's JSON, as `list_chats` gives it, with `items`: every item of its transcript, as the
+  file holds it ([Data › Chat items](data.md#chat-items)).
+- **Errors:** an unknown chat (`notFound`, `Chat <ID> not found.`).
+
+Description:
+
+```text
+Returns a chat with its messages: the user's messages, Claude's replies, the tool calls and their results, the permission requests and their answers, in order.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "chatID" : {
+      "description" : "Chat id, an uppercase UUID.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "chatID"
+  ],
+  "type" : "object"
+}
+```
+
+### rename_chat
+
+- **Calls:** `ChatSession.rename`, which writes the chat's file with the new `title` and `updated`.
+- **Result:** the chat's JSON.
+- **Errors:** an unknown chat (`notFound`); a title that is empty, longer than 100 characters or on more than
+  one line (`invalid`, `title: use 1 to 100 characters on one line.`).
+
+Description:
+
+```text
+Renames a chat. The title is 1 to 100 characters on one line. Returns the chat.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "chatID" : {
+      "description" : "Chat id, an uppercase UUID.",
+      "type" : "string"
+    },
+    "title" : {
+      "description" : "The new title.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "chatID",
+    "title"
   ],
   "type" : "object"
 }

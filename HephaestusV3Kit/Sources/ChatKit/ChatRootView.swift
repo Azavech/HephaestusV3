@@ -1,4 +1,5 @@
 import AZDesign
+import ChatData
 import SwiftUI
 import ToolsFoundation
 
@@ -19,8 +20,13 @@ public struct ChatRootView: View {
 
     /// The chats of `project`, with `focus` (a conversation id) selected, or the latest one. A later
     /// route's focus arrives as a focus request, which selects it without starting afresh.
-    public init(project: Project, focus: String? = nil, store: ChatStore = .shared) {
-        _model = State(initialValue: ChatWindowModel(project: project, focus: focus, store: store))
+    public init(project: Project, focus: String? = nil, store: LiveChatStore, directory: ProjectDirectory) {
+        _model = State(initialValue: ChatWindowModel(project: project, focus: focus, store: store, directory: directory))
+    }
+
+    /// The window on the samples, for previews.
+    init(project: Project, focus: String? = nil, samples: SampleChatStore) {
+        _model = State(initialValue: ChatWindowModel(project: project, focus: focus, store: samples))
     }
 
     public var body: some View {
@@ -127,7 +133,9 @@ public struct ChatRootView: View {
     }
 
     private var inspector: some View {
-        ChatInspector(references: model.references)
+        ChatInspector(references: model.references, models: model.store.models, settings: model.replySettings) { settings in
+            model.setReplySettings(settings)
+        }
     }
 
     /// The conversation picked, or a new one, over the field to write in.
@@ -135,9 +143,9 @@ public struct ChatRootView: View {
         VStack(spacing: 0) {
             if let conversation = model.conversation {
                 ScrollView {
-                    ChatTranscript(conversation: conversation, isResponding: model.isResponding) { approval, allow in
+                    ChatTranscript(conversation: conversation, activity: model.activity, decide: { approval, allow in
                         model.decide(approval, allow: allow)
-                    }
+                    }, stop: model.stop)
                     .padding(layout == .phone ? 16 : 24)
                 }
                 // A short chat starts at the top; a long one opens on its end and follows new turns.
@@ -147,21 +155,29 @@ public struct ChatRootView: View {
                 .id(conversation.id)
             } else {
                 NewChatPrompt(projectName: model.project.name, suggestions: model.suggestions) { suggestion in
-                    model.send(suggestion, reader: toolReader)
+                    Task { await model.send(suggestion, reader: toolReader) }
                 }
+            }
+            if let failure = model.failure {
+                ChatFailure(message: failure)
+                    .padding(.horizontal, layout == .phone ? 12 : 16)
+                    .padding(.top, 8)
             }
             MessageComposer(
                 text: $model.draft,
                 prompt: Text("Ask about \(model.project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
                 isBusy: model.isResponding,
                 identifier: "chat.composer",
-                send: { model.sendDraft(reader: toolReader) }
+                send: { Task { await model.sendDraft(reader: toolReader) } }
             ) {
                 ProjectChip(project: model.project)
             }
             .padding(layout == .phone ? 12 : 16)
         }
         .background(.canvas)
+        .task(id: model.selection) {
+            await model.openSelection()
+        }
     }
 }
 
@@ -267,8 +283,14 @@ private struct NewChatPrompt: View {
 /// What the chat touched, what Claude may do, and what answers.
 private struct ChatInspector: View {
     let references: [ChatReference]
+    /// The models Claude can answer with; empty for the samples.
+    let models: [ClaudeModel]
+    /// The conversation's model and effort, or those of new chats; nil for the samples.
+    let settings: ChatSettings?
+    let setSettings: (ChatSettings) -> Void
 
     @AppStorage(ChatPreferences.ticketChangesKey) private var ticketChanges = ChangePermission.askFirst
+    @AppStorage(ChatPreferences.projectChangesKey) private var projectChanges = ChangePermission.askFirst
     @AppStorage(ChatPreferences.buildStartsKey) private var buildStarts = ChangePermission.never
     @Environment(\.openRoute) private var openRoute
 
@@ -287,12 +309,17 @@ private struct ChatInspector: View {
                 Text("In This Chat", bundle: #bundle, comment: "A section: the items this chat attached or read")
                     .accessibilityAddTraits(.isHeader)
             }
-            ChatPermissionsSection(ticketChanges: $ticketChanges, buildStarts: $buildStarts, identifier: "chat.inspector.permissions")
+            ChatPermissionsSection(ticketChanges: $ticketChanges, projectChanges: $projectChanges, buildStarts: $buildStarts,
+                                   identifier: "chat.inspector.permissions")
             Section {
-                ModelRow(identifier: "chat.inspector.model")
-                Text("Replies are samples until a model is connected.", bundle: #bundle)
-                    .font(.caption)
-                    .foregroundStyle(.textSecondary)
+                if let settings {
+                    ReplySettingsRows(models: models, settings: settings, identifier: "chat.inspector", set: setSettings)
+                } else {
+                    ModelRow(identifier: "chat.inspector.model")
+                    Text("Replies are samples until a model is connected.", bundle: #bundle)
+                        .font(.caption)
+                        .foregroundStyle(.textSecondary)
+                }
             } header: {
                 Text("Replies", bundle: #bundle, comment: "A section: what answers the user's messages")
                     .accessibilityAddTraits(.isHeader)
@@ -330,60 +357,60 @@ private struct ChatInspector: View {
 // MARK: - Previews
 
 #Preview("Chat", traits: .appChrome, .fixedLayout(width: 1240, height: 800)) {
-    ChatRootView(project: Project.samples[0], store: .transient())
+    ChatRootView(project: Project.samples[0], samples: .transient())
 }
 
 #Preview("Chat, Dark", traits: .appChrome, .fixedLayout(width: 1240, height: 800)) {
-    ChatRootView(project: Project.samples[0], store: .transient())
+    ChatRootView(project: Project.samples[0], samples: .transient())
         .preferredColorScheme(.dark)
 }
 
 #Preview("New Chat", traits: .appChrome, .fixedLayout(width: 1000, height: 680)) {
-    ChatRootView(project: Project.samples[3], store: .transient())
+    ChatRootView(project: Project.samples[3], samples: .transient())
 }
 
 #Preview("Grouped", traits: .appChrome, .fixedLayout(width: 1240, height: 800)) {
     // Shop, whose sub projects have chats of their own.
-    ChatRootView(project: Project.tree.project("SHOP") ?? Project.samples[0], store: .transient())
+    ChatRootView(project: Project.tree.project("SHOP") ?? Project.samples[0], samples: .transient())
 }
 
 #Preview("Reading", traits: .appChrome, .fixedLayout(width: 1240, height: 800)) {
     // An engine that takes its time, so the reply stays on its way.
-    let store = ChatStore(engine: SampleChatEngine(delay: .seconds(3_600)))
-    let _ = store.send(
+    let store = SampleChatStore(engine: SampleChatEngine(delay: .seconds(3_600)))
+    let _ = try? store.send(
         "Is run 1288 enough to close ORD-142?", to: "chat-checkout", project: Project.samples[0], origin: nil,
         attachments: [], reader: ToolReader { _ in nil }
     )
-    ChatRootView(project: Project.samples[0], focus: "chat-checkout", store: store)
+    ChatRootView(project: Project.samples[0], focus: "chat-checkout", samples: store)
 }
 
 #Preview("Approval Answered", traits: .appChrome, .fixedLayout(width: 1240, height: 800)) {
-    let store = ChatStore.transient()
+    let store = SampleChatStore.transient()
     let _ = store.decide("chat-checkout.comment", in: "chat-checkout", allow: false)
-    ChatRootView(project: Project.samples[0], focus: "chat-checkout", store: store)
+    ChatRootView(project: Project.samples[0], focus: "chat-checkout", samples: store)
 }
 
 #Preview("iPad", traits: .padLayout, .fixedLayout(width: 820, height: 800)) {
-    ChatRootView(project: Project.samples[0], store: .transient())
+    ChatRootView(project: Project.samples[0], samples: .transient())
 }
 
 #Preview("iPhone", traits: .phoneLayout, .fixedLayout(width: 420, height: 800)) {
-    ChatRootView(project: Project.samples[0], store: .transient())
+    ChatRootView(project: Project.samples[0], samples: .transient())
 }
 
 #Preview("iPhone, Conversation", traits: .phoneLayout, .fixedLayout(width: 420, height: 800)) {
-    ChatRootView(project: Project.samples[0], focus: "chat-checkout", store: .transient())
+    ChatRootView(project: Project.samples[0], focus: "chat-checkout", samples: .transient())
 }
 
 #Preview("iPhone, Dark", traits: .phoneLayout, .fixedLayout(width: 420, height: 800)) {
-    ChatRootView(project: Project.samples[0], focus: "chat-checkout", store: .transient())
+    ChatRootView(project: Project.samples[0], focus: "chat-checkout", samples: .transient())
         .preferredColorScheme(.dark)
 }
 
 #Preview("Largest Text", traits: .largestText, .fixedLayout(width: 1240, height: 800)) {
-    ChatRootView(project: Project.samples[0], store: .transient())
+    ChatRootView(project: Project.samples[0], samples: .transient())
 }
 
 #Preview("New Chat, Largest Text", traits: .largestText, .fixedLayout(width: 1000, height: 680)) {
-    ChatRootView(project: Project.samples[3], store: .transient())
+    ChatRootView(project: Project.samples[3], samples: .transient())
 }

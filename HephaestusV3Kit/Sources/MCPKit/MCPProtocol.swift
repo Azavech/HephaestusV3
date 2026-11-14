@@ -16,17 +16,24 @@ public struct MCPProtocol: Sendable {
     public static let supportedVersions = ["2025-06-18", "2025-03-26"]
     public static let serverName = "hephaestus"
 
+    /// Decides, before a call runs, whether its caller may make it: nil lets it run; an error refuses it. A
+    /// chat's change may wait there for the user's answer (docs/mcp.md › Permissions).
+    public typealias Gate = @Sendable (MCPCaller, ToolOperation, JSONValue) async -> ToolError?
+
     public let registry: ToolRegistry
     /// The app's version, in `serverInfo`.
     public let version: String
+    public let gate: Gate?
 
-    public init(registry: ToolRegistry, version: String) {
+    public init(registry: ToolRegistry, version: String, gate: Gate? = nil) {
         self.registry = registry
         self.version = version
+        self.gate = gate
     }
 
-    /// Handles a body; `protocolVersions` are the values of its `MCP-Protocol-Version` header fields.
-    public func handle(body: Data, protocolVersions: [String] = []) async -> MCPReply {
+    /// Handles a body; `protocolVersions` are the values of its `MCP-Protocol-Version` header fields, `caller` who
+    /// sent it.
+    public func handle(body: Data, protocolVersions: [String] = [], caller: MCPCaller = .external) async -> MCPReply {
         guard let message = try? JSONValue.parse(body) else { return .json(Self.error(nil, -32700, "Parse error")) }
         if case .array = message { return invalid("batches are not supported") }
         guard case .object(let object) = message else { return invalid("the message must be a JSON object") }
@@ -38,7 +45,9 @@ public struct MCPProtocol: Sendable {
             case .string, .int: break
             default: return invalid("id must be a string or an integer")
             }
-            return await request(name, id: id, params: object["params"], protocolVersions: protocolVersions)
+            return await MCPCaller.$current.withValue(caller) {
+                await request(name, id: id, params: object["params"], protocolVersions: protocolVersions)
+            }
         }
         if object["result"] != nil || object["error"] != nil { return .accepted }
         return invalid("method must be a string")
@@ -87,8 +96,12 @@ public struct MCPProtocol: Sendable {
         if let violation = operation.inputSchema.violation(of: arguments) {
             return Self.toolResult(violation, isError: true)
         }
+        let arguments = arguments.removingNullMembers
+        if let refusal = await gate?(MCPCaller.current, operation, arguments) {
+            return Self.toolResult(refusal.message, isError: true)
+        }
         do throws(ToolError) {
-            let value = try await operation.run(arguments.removingNullMembers)
+            let value = try await operation.run(arguments)
             return Self.toolResult(value.text, isError: false)
         } catch {
             return Self.toolResult(error.message, isError: true)

@@ -1,4 +1,6 @@
 import AppKit
+import ChatData
+import ChatKit
 import DashboardsKit
 import ExternalTools
 import FileStorage
@@ -16,7 +18,7 @@ import ToolsFoundation
 final class AppData {
     /// The tools whose feature has come over from HephaestusV2; the others are hidden in the running app
     /// (docs/ui/navigation.md › Available tools). Previews show every tool.
-    static let availableTools: Set<ToolKind> = [.dashboard, .tickets]
+    static let availableTools: Set<ToolKind> = [.dashboard, .tickets, .chat]
     /// Whether the Virtual Machines window has come over.
     static let machinesAvailable = false
 
@@ -27,6 +29,12 @@ final class AppData {
     let ticketStore: LiveTicketStore
     /// The Dashboards of the loaded projects, kept in their project files.
     let dashboardStore: LiveDashboardStore
+    /// The chats and their Claude processes (docs/architecture.md › ChatData).
+    let chats: ChatSession
+    /// The chats as the Chat windows and panels show them.
+    let chatStore: LiveChatStore
+    /// The MCP server's tools, once it starts: the chats word their calls with them.
+    @ObservationIgnored private let operations: Operations
     @ObservationIgnored private var started = false
 
     // MARK: MCP server (docs/mcp.md)
@@ -42,7 +50,7 @@ final class AppData {
     /// What opens a route, from the first window that appears; `open_in_app` uses it.
     @ObservationIgnored var openRoute: OpenRouteAction?
     @ObservationIgnored private var server: MCPServer?
-    @ObservationIgnored private let tokens = MCPTokens()
+    @ObservationIgnored private let tokens: MCPTokens
 
     /// The port the server listens on.
     var mcpPort: Int { environmentPort ?? settingsPort }
@@ -52,6 +60,19 @@ final class AppData {
         tickets = TicketSession(projects: session)
         ticketStore = LiveTicketStore(session: tickets)
         dashboardStore = LiveDashboardStore(session: session)
+        let tokens = MCPTokens()
+        self.tokens = tokens
+        chats = ChatSession(projects: session, tokens: tokens, device: TicketSession.computerName())
+        let operations = Operations()
+        self.operations = operations
+        chatStore = LiveChatStore(session: chats) { name, input in
+            operations.registry?[name]?.describe?(input)
+        }
+    }
+
+    /// The registry, once made.
+    @MainActor private final class Operations {
+        var registry: ToolRegistry?
     }
 
     /// Starts the session once, whichever window appears first, and stops it as the app quits.
@@ -59,9 +80,12 @@ final class AppData {
         guard !started else { return }
         started = true
         follow()
+        let chats = chats
         NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { _ in
-            // The tools started for the projects end with the app; the lock goes with the process.
+            // The tools started for the projects end with the app, the chats' Claude processes too; the lock
+            // goes with the process.
             SystemProcessRunner.shared.terminateAll()
+            MainActor.assumeIsolated { chats.stopAll() }
         }
         await session.start()
         await tickets.start()
@@ -84,13 +108,19 @@ final class AppData {
         settingsPort = folder.readSettings().mcpPort
         externalToken = try? folder.externalToken(make: MCPTokens.generate)
         tokens.replace(with: Set([externalToken].compactMap { $0 }))
-        let registry = AppTools.registry(session: session, tickets: tickets) { [weak self] route in
+        let registry = AppTools.registry(session: session, tickets: tickets, chats: chats) { [weak self] route in
             guard let open = self?.openRoute else { return false }
             open(route)
             return true
         }
+        operations.registry = registry
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
-        let server = MCPServer(protocol: MCPProtocol(registry: registry, version: version), tokens: tokens)
+        let chats = chats
+        // A chat's Claude makes a change only as Settings ▸ Chat allows, asking first where it says so.
+        let gate: MCPProtocol.Gate = { caller, operation, arguments in
+            await ChatGate.check(caller, operation, arguments, chats: chats)
+        }
+        let server = MCPServer(protocol: MCPProtocol(registry: registry, version: version, gate: gate), tokens: tokens)
         self.server = server
         Task { [weak self] in
             for await state in server.states {
@@ -98,6 +128,7 @@ final class AppData {
             }
         }
         await server.start(port: mcpPort)
+        await chats.start(tools: registry.names, port: mcpPort)
     }
 
     /// Stores a new port and moves the server to it. Throws the storage error when it can't be stored.
@@ -109,6 +140,7 @@ final class AppData {
         settingsPort = port
         if environmentPort == nil {
             await server?.start(port: port)
+            chats.setPort(port)
         }
     }
 

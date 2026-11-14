@@ -17,8 +17,8 @@ public enum TicketTools {
                 tools.listBundles, tools.getBundle, tools.createBundle, tools.updateBundle, tools.setBundleStatus, tools.deleteBundle]
     }
 
-    /// Claude with the external token; the chats' own tokens come with Chat.
-    static let claude = TicketActor.claude(chat: "external")
+    /// Claude: in the chat whose token made the call, or `external` with the external token.
+    static var claude: TicketActor { .claude(chat: MCPCaller.current.chatID ?? "external") }
     static let projectID = ToolSchema.string("Project identifier, 2 to 8 letters, such as ORD.")
     static let ticketID = ToolSchema.string("Ticket id, such as ORD-12.")
     static let bundleID = ToolSchema.string("Bundle id, such as ORD-B2.")
@@ -56,7 +56,8 @@ extension TicketToolSet {
                 ("projectID", TicketTools.projectID),
                 ("status", .string("draft, todo, in_progress, review or done.", oneOf: ["draft", "todo", "in_progress", "review", "done"])),
             ], required: ["projectID"]),
-            permission: .read
+            permission: .read,
+            describe: TicketTools.describe("list_tickets")
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("projectID").uppercased()
             guard projects.snapshot.project(id) != nil else { throw ToolError(.notFound, "Project \(id) not found.") }
@@ -72,7 +73,8 @@ extension TicketToolSet {
             name: "get_ticket",
             description: "Returns a ticket: title, status, priority, labels, dates, creator, description, attachments with absolute paths, comments, chat ids, links and history. links holds the links written in this ticket (dependsOn, related); inverseLinks holds the links written in other tickets that point here (blocks, related). history records the creation, status changes, renames, link changes and description edits, each with its author and date.",
             inputSchema: .object(properties: [("ticketID", TicketTools.ticketID)], required: ["ticketID"]),
-            permission: .read
+            permission: .read,
+            describe: TicketTools.describe("get_ticket")
         ) { @MainActor arguments throws(ToolError) in
             try await ticketResult(try arguments.string("ticketID"))
         }
@@ -91,7 +93,8 @@ extension TicketToolSet {
                 ("attachments", TicketTools.attachments),
                 ("links", TicketTools.links("Links to tickets in the same project.")),
             ], required: ["projectID", "description"]),
-            permission: .change
+            permission: .changeTickets,
+            describe: TicketTools.describe("create_ticket")
         ) { @MainActor arguments throws(ToolError) in
             let projectID = try arguments.string("projectID").uppercased()
             let request = TicketLibrary.NewTicket(
@@ -124,7 +127,8 @@ extension TicketToolSet {
                 ("labels", TicketTools.labels),
                 ("links", TicketTools.links("Every link the ticket declares after the change; links missing from the list are removed, and [] removes them all.")),
             ], required: ["ticketID"]),
-            permission: .change
+            permission: .changeTickets,
+            describe: TicketTools.describe("update_ticket")
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("ticketID")
             var change = TicketLibrary.TicketChange(title: arguments["title"]?.stringValue, description: arguments["description"]?.stringValue,
@@ -141,7 +145,8 @@ extension TicketToolSet {
             name: "delete_ticket",
             description: "Deletes a ticket, moving its file and attachments to the Trash, and takes it out of every bundle and every other ticket's links.",
             inputSchema: .object(properties: [("ticketID", TicketTools.ticketID)], required: ["ticketID"]),
-            permission: .change
+            permission: .deleteTickets,
+            describe: TicketTools.describe("delete_ticket")
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("ticketID")
             try await run { library throws(TicketError) in _ = try await library.delete([id]) }
@@ -157,7 +162,8 @@ extension TicketToolSet {
                 ("ticketID", TicketTools.ticketID),
                 ("status", .string("New status.", oneOf: ["todo", "in_progress", "review", "done"])),
             ], required: ["ticketID", "status"]),
-            permission: .change
+            permission: .changeTickets,
+            describe: TicketTools.describe("set_ticket_status")
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("ticketID")
             guard let status = TicketFileStatus(rawValue: try arguments.string("status")), status != .draft else {
@@ -177,7 +183,8 @@ extension TicketToolSet {
                 ("text", .string("The comment, in Markdown.")),
                 ("attachments", TicketTools.attachments),
             ], required: ["ticketID", "text"]),
-            permission: .change
+            permission: .changeTickets,
+            describe: TicketTools.describe("add_comment")
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("ticketID")
             let files = try files(arguments["attachments"], in: TicketIDs.parseTicket(id.uppercased())?.project ?? "")
@@ -196,7 +203,8 @@ extension TicketToolSet {
                 ("commentID", .string("The comment's UUID, as get_ticket returns it.")),
                 ("text", .string("The new text, in Markdown.")),
             ], required: ["ticketID", "commentID", "text"]),
-            permission: .change
+            permission: .changeTickets,
+            describe: TicketTools.describe("update_comment")
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("ticketID")
             let comment = try uuid(arguments, "commentID", "Comment")
@@ -214,7 +222,8 @@ extension TicketToolSet {
                 ("ticketID", TicketTools.ticketID),
                 ("commentID", .string("The comment's UUID, as get_ticket returns it.")),
             ], required: ["ticketID", "commentID"]),
-            permission: .change
+            permission: .deleteTickets,
+            describe: TicketTools.describe("delete_comment")
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("ticketID")
             let comment = try uuid(arguments, "commentID", "Comment")
@@ -231,7 +240,8 @@ extension TicketToolSet {
                 ("ticketID", TicketTools.ticketID),
                 ("attachmentID", .string("The attachment's UUID, as get_ticket returns it.")),
             ], required: ["ticketID", "attachmentID"]),
-            permission: .change
+            permission: .deleteTickets,
+            describe: TicketTools.describe("remove_attachment")
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("ticketID")
             let attachment = try uuid(arguments, "attachmentID", "Attachment")
@@ -247,7 +257,8 @@ extension TicketToolSet {
             name: "list_bundles",
             description: "Returns a project's bundles: ordered groups of its tickets, each with the status todo, in_progress or done.",
             inputSchema: .object(properties: [("projectID", TicketTools.projectID)], required: ["projectID"]),
-            permission: .read
+            permission: .read,
+            describe: TicketTools.describe("list_bundles")
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("projectID").uppercased()
             guard projects.snapshot.project(id) != nil else { throw ToolError(.notFound, "Project \(id) not found.") }
@@ -260,7 +271,8 @@ extension TicketToolSet {
             name: "get_bundle",
             description: "Returns a bundle: title, status, dates, its ticket ids in order, and chat ids.",
             inputSchema: .object(properties: [("bundleID", TicketTools.bundleID)], required: ["bundleID"]),
-            permission: .read
+            permission: .read,
+            describe: TicketTools.describe("get_bundle")
         ) { @MainActor arguments throws(ToolError) in
             try await bundleResult(try arguments.string("bundleID"))
         }
@@ -275,7 +287,8 @@ extension TicketToolSet {
                 ("ticketIDs", .array("Ids of the project's tickets, in order; one at least.", of: .string())),
                 ("title", .string("One line of 1 to 200 characters.")),
             ], required: ["projectID", "ticketIDs"]),
-            permission: .change
+            permission: .changeTickets,
+            describe: TicketTools.describe("create_bundle")
         ) { @MainActor arguments throws(ToolError) in
             let projectID = try arguments.string("projectID")
             let ids = arguments["ticketIDs"]?.arrayValue?.compactMap(\.stringValue) ?? []
@@ -300,7 +313,8 @@ extension TicketToolSet {
                 ("title", .string("The new title, one line of 1 to 200 characters.")),
                 ("ticketIDs", .array("Ids of the project's tickets, in order, replacing the whole list.", of: .string())),
             ], required: ["bundleID"]),
-            permission: .change
+            permission: .changeTickets,
+            describe: TicketTools.describe("update_bundle")
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("bundleID")
             let title = arguments["title"]?.stringValue
@@ -318,7 +332,8 @@ extension TicketToolSet {
                 ("bundleID", TicketTools.bundleID),
                 ("status", .string("New status.", oneOf: ["todo", "in_progress"])),
             ], required: ["bundleID", "status"]),
-            permission: .change
+            permission: .changeTickets,
+            describe: TicketTools.describe("set_bundle_status")
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("bundleID")
             guard let status = BundleFile.Status(rawValue: try arguments.string("status")), status != .done else {
@@ -334,7 +349,8 @@ extension TicketToolSet {
             name: "delete_bundle",
             description: "Deletes a bundle, moving its file to the Trash; its tickets stay.",
             inputSchema: .object(properties: [("bundleID", TicketTools.bundleID)], required: ["bundleID"]),
-            permission: .change
+            permission: .deleteTickets,
+            describe: TicketTools.describe("delete_bundle")
         ) { @MainActor arguments throws(ToolError) in
             let id = try arguments.string("bundleID")
             try await run { library throws(TicketError) in _ = try await library.deleteBundle(id) }
@@ -497,5 +513,108 @@ struct BundleJSON: Encodable {
         updated = ISODate.string(from: bundle.updated)
         tickets = bundle.ticketIDs
         chats = bundle.chatIDs
+    }
+}
+
+// MARK: Chat
+
+extension TicketTools {
+    /// How a chat shows a call of the tool `name` (docs/ui/chat.md › Tool-call rows): what it did, and for a
+    /// change, the card's sentence and what it would write.
+    static func describe(_ name: String) -> @Sendable (JSONValue) -> ToolCallText {
+        { arguments in text(name, arguments) }
+    }
+
+    nonisolated static func text(_ name: String, _ arguments: JSONValue) -> ToolCallText {
+        func value(_ key: String) -> String { arguments[key]?.stringValue ?? "" }
+        let ticket = value("ticketID").uppercased()
+        let bundle = value("bundleID").uppercased()
+        let project = name.contains("bundle") && !bundle.isEmpty ? prefix(bundle) : (ticket.isEmpty ? value("projectID").uppercased() : prefix(ticket))
+        let list = ToolItem(tool: "tickets", projectID: project, focus: "", title: project)
+        let ticketItem = ToolItem(tool: "tickets", projectID: project, focus: ticket, title: ticket)
+        let bundleItem = ToolItem(tool: "tickets", projectID: project, focus: bundle, title: bundle)
+        let status = statusTitle(value("status"))
+        switch name {
+        case "list_tickets":
+            return ToolCallText(action: String(localized: "Listed the tickets of \(project)", bundle: #bundle), item: list)
+        case "get_ticket":
+            return ToolCallText(action: String(localized: "Read ticket \(ticket)", bundle: #bundle), item: ticketItem)
+        case "create_ticket":
+            let preview = [value("title"), value("description")].filter { !$0.isEmpty }.joined(separator: "\n\n")
+            return ToolCallText(action: String(localized: "Created a ticket in \(project)", bundle: #bundle),
+                                request: String(localized: "Claude wants to create a ticket in \(project)", bundle: #bundle),
+                                preview: preview, item: list)
+        case "update_ticket":
+            var lines: [String] = []
+            if let title = arguments["title"]?.stringValue { lines.append(String(localized: "Title: \(title)", bundle: #bundle)) }
+            if let priority = arguments["priority"]?.stringValue {
+                lines.append(String(localized: "Priority: \(priority.isEmpty ? "—" : priority)", bundle: #bundle))
+            }
+            if let labels = arguments["labels"]?.arrayValue {
+                lines.append(String(localized: "Labels: \(labels.compactMap(\.stringValue).joined(separator: ", "))", bundle: #bundle))
+            }
+            if let description = arguments["description"]?.stringValue { lines.append(description) }
+            return ToolCallText(action: String(localized: "Changed \(ticket)", bundle: #bundle),
+                                request: String(localized: "Claude wants to change \(ticket)", bundle: #bundle),
+                                preview: lines.isEmpty ? nil : lines.joined(separator: "\n"), item: ticketItem)
+        case "delete_ticket":
+            return ToolCallText(action: String(localized: "Deleted \(ticket)", bundle: #bundle),
+                                request: String(localized: "Claude wants to delete \(ticket)", bundle: #bundle), item: ticketItem)
+        case "set_ticket_status":
+            return ToolCallText(action: String(localized: "Moved \(ticket) to \(status)", bundle: #bundle),
+                                request: String(localized: "Claude wants to move \(ticket) to \(status)", bundle: #bundle), item: ticketItem)
+        case "add_comment":
+            return ToolCallText(action: String(localized: "Commented on \(ticket)", bundle: #bundle),
+                                request: String(localized: "Claude wants to comment on \(ticket)", bundle: #bundle),
+                                preview: value("text"), item: ticketItem)
+        case "update_comment":
+            return ToolCallText(action: String(localized: "Changed a comment on \(ticket)", bundle: #bundle),
+                                request: String(localized: "Claude wants to change a comment on \(ticket)", bundle: #bundle),
+                                preview: value("text"), item: ticketItem)
+        case "delete_comment":
+            return ToolCallText(action: String(localized: "Deleted a comment on \(ticket)", bundle: #bundle),
+                                request: String(localized: "Claude wants to delete a comment on \(ticket)", bundle: #bundle), item: ticketItem)
+        case "remove_attachment":
+            return ToolCallText(action: String(localized: "Removed an attachment from \(ticket)", bundle: #bundle),
+                                request: String(localized: "Claude wants to remove an attachment from \(ticket)", bundle: #bundle), item: ticketItem)
+        case "list_bundles":
+            return ToolCallText(action: String(localized: "Listed the bundles of \(project)", bundle: #bundle), item: list)
+        case "get_bundle":
+            return ToolCallText(action: String(localized: "Read bundle \(bundle)", bundle: #bundle), item: bundleItem)
+        case "create_bundle":
+            let tickets = (arguments["ticketIDs"]?.arrayValue ?? []).compactMap(\.stringValue).joined(separator: ", ")
+            return ToolCallText(action: String(localized: "Created a bundle in \(project)", bundle: #bundle),
+                                request: String(localized: "Claude wants to create a bundle in \(project)", bundle: #bundle),
+                                preview: [value("title"), tickets].filter { !$0.isEmpty }.joined(separator: "\n"), item: list)
+        case "update_bundle":
+            let tickets = (arguments["ticketIDs"]?.arrayValue ?? []).compactMap(\.stringValue).joined(separator: ", ")
+            return ToolCallText(action: String(localized: "Changed bundle \(bundle)", bundle: #bundle),
+                                request: String(localized: "Claude wants to change bundle \(bundle)", bundle: #bundle),
+                                preview: [value("title"), tickets].filter { !$0.isEmpty }.joined(separator: "\n"), item: bundleItem)
+        case "set_bundle_status":
+            return ToolCallText(action: String(localized: "Moved bundle \(bundle) to \(status)", bundle: #bundle),
+                                request: String(localized: "Claude wants to move bundle \(bundle) to \(status)", bundle: #bundle), item: bundleItem)
+        case "delete_bundle":
+            return ToolCallText(action: String(localized: "Deleted bundle \(bundle)", bundle: #bundle),
+                                request: String(localized: "Claude wants to delete bundle \(bundle)", bundle: #bundle), item: bundleItem)
+        default:
+            return ToolCallText(action: name)
+        }
+    }
+
+    /// `ORD` of `ORD-142` or `ORD-B2`.
+    nonisolated static func prefix(_ id: String) -> String {
+        String(id.split(separator: "-", maxSplits: 1).first ?? "")
+    }
+
+    nonisolated static func statusTitle(_ status: String) -> String {
+        switch status {
+        case "draft": String(localized: "Draft", bundle: #bundle, comment: "A ticket's status")
+        case "todo": String(localized: "To Do", bundle: #bundle, comment: "A ticket's status")
+        case "in_progress": String(localized: "In Progress", bundle: #bundle, comment: "A ticket's status")
+        case "review": String(localized: "In Review", bundle: #bundle, comment: "A ticket's status")
+        case "done": String(localized: "Done", bundle: #bundle, comment: "A ticket's status")
+        default: status
+        }
     }
 }

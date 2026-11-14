@@ -94,6 +94,15 @@ public enum JSONValue: Sendable, Hashable {
         return nil
     }
 
+    /// A decimal, or an integer as a decimal.
+    public var doubleValue: Double? {
+        switch self {
+        case .double(let value): value
+        case .int(let value): Double(value)
+        default: nil
+        }
+    }
+
     public var boolValue: Bool? {
         if case .bool(let value) = self { return value }
         return nil
