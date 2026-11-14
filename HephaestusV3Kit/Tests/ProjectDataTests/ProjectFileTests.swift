@@ -13,7 +13,12 @@ struct ProjectFileTests {
         #expect(project.type == .swiftApplication)
         #expect(project.color == "#34C759")
         #expect(project.subprojects == ["backend", "apps/ios"])
-        #expect(project.keptV2Keys.keys == ["webTabs", "skills", "chatDefaults", "dashboardWidgets", "deletedChats", "commentAnswers"])
+        #expect(project.keptV2Keys.keys == ["webTabs", "skills", "chatDefaults", "deletedChats", "commentAnswers"])
+        let widgets = try #require(project.dashboardWidgets)
+        #expect(widgets.map(\.kind) == [.project, .tickets, .recentChats, .cost])
+        #expect(widgets[0].fields == [.name, .identifier, .folder])
+        #expect(widgets[1].statuses == [.todo, .inProgress, .review] && !widgets[1].includeSubprojects)
+        #expect(widgets[2].chatCount == 3 && widgets[2].chatKinds == [.ticket])
         #expect(String(decoding: try YAMLCoding.encodeData(project), as: UTF8.self) == String(decoding: data, as: UTF8.self))
     }
 
@@ -67,7 +72,10 @@ struct ProjectFileTests {
         #expect(staging.jaeger == "tracing/jaeger")
         #expect(staging.argoCDApplication == "argocd/orders-staging")
         #expect(staging.kubeconfig == "~/.kube/staging.yaml")
-        #expect(project.keptV2Keys.keys == ["dashboardWidgets", "dashboardGraphWindow"])
+        #expect(project.keptV2Keys.isEmpty)
+        #expect(project.dashboardWidgets?.map(\.kind) == [.serviceGraph, .failedRequests])
+        #expect(project.dashboardWidgets?[1].count == 10)
+        #expect(project.dashboardGraphWindow == .day)
     }
 
     @Test("A sub project's changes to the environments it inherits")

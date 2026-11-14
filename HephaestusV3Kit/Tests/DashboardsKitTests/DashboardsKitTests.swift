@@ -6,9 +6,17 @@ import Testing
 import ToolsFoundation
 @testable import DashboardsKit
 
-/// A store that keeps the layouts in memory and records each write.
+/// What the mock keeps of a project's Dashboard.
+nonisolated struct DashboardLayout: Equatable {
+    var widgets: [DashboardWidget]?
+    var window: TimeWindow?
+    var environment: String?
+}
+
+/// A store that keeps the layouts in memory and records each write. A project with nothing kept shows its
+/// sample layout, as in the previews.
 @Observable
-final class MockDashboardLayoutStore: DashboardLayoutStore {
+final class MockDashboardLayoutStore: DashboardStore {
     var layouts: [Project.ID: DashboardLayout]
     private(set) var writes: [Project.ID] = []
 
@@ -16,12 +24,34 @@ final class MockDashboardLayoutStore: DashboardLayoutStore {
         self.layouts = layouts
     }
 
-    func layout(of project: Project.ID) -> DashboardLayout? {
-        layouts[project]
+    func widgets(of project: Project.ID) -> [DashboardWidget]? {
+        layouts[project]?.widgets ?? DashboardWidget.sample(for: project)
     }
 
-    func setLayout(_ layout: DashboardLayout, of project: Project.ID) {
-        layouts[project] = layout
+    func window(of project: Project.ID) -> TimeWindow? {
+        layouts[project]?.window
+    }
+
+    func environment(of project: Project.ID) -> String? {
+        layouts[project]?.environment
+    }
+
+    func failure(of project: Project.ID) -> String? {
+        nil
+    }
+
+    func setWidgets(_ widgets: [DashboardWidget], of project: Project.ID) {
+        layouts[project, default: DashboardLayout()].widgets = widgets
+        writes.append(project)
+    }
+
+    func setWindow(_ window: TimeWindow, of project: Project.ID) {
+        layouts[project, default: DashboardLayout()].window = window
+        writes.append(project)
+    }
+
+    func setEnvironment(_ name: String, of project: Project.ID) {
+        layouts[project, default: DashboardLayout()].environment = name
         writes.append(project)
     }
 }
@@ -69,9 +99,9 @@ private func noOverlap(_ widgets: [DashboardWidget]) -> Bool {
 
 @Suite("What the Dashboard shows")
 struct DashboardContentTests {
-    @Test("A project with nothing saved shows its sample layout")
+    @Test("In the previews, a sample project with nothing saved shows its sample layout")
     func sampleLayout() {
-        let model = DashboardModel(project: orders, store: MockDashboardLayoutStore())
+        let model = DashboardModel(project: orders, store: SampleDashboardStore())
         #expect(model.widgets == DashboardWidget.sample(for: "ORD"))
         #expect(model.widgets.count == 8)
     }
@@ -399,23 +429,5 @@ struct DashboardSettingsTests {
         let first = DashboardSlot.slots(of: model.widgets)[0]
         model.update(first) { $0.count = 9 }
         #expect(store.layouts["TLS"]?.widgets?.allSatisfy { $0.cells == nil } == true)
-    }
-}
-
-@Suite("Saving")
-struct DashboardSavingTests {
-    @Test("A saved entry reads leniently: missing values take their defaults")
-    func lenient() throws {
-        let json = #"{"widgets":[{"id":"A0000000-0000-0000-0000-000000000001","kind":"tickets"}],"window":"day"}"#
-        let layout = try JSONDecoder().decode(DashboardLayout.self, from: Data(json.utf8))
-        #expect(layout.window == .day)
-        #expect(layout.environment == nil)
-        #expect(layout.widgets?.first?.statuses == TicketStatus.allCases)
-        #expect(layout.widgets?.first?.count == 5)
-    }
-
-    @Test("Each project is saved under its own key")
-    func key() {
-        #expect(UserDefaultsDashboardLayoutStore.key("ORD") == "dashboard.ORD")
     }
 }

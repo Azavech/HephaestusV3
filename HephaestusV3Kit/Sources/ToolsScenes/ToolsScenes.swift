@@ -222,6 +222,7 @@ private struct RouteHost<Content: View>: View {
             .environment(\.toolReader, appToolReader)
             .environment(\.projectDirectory, appData.directory)
             .environment(\.ticketStore, appData.ticketStore)
+            .environment(\.dashboardStore, appData.dashboardStore)
             .environment(\.availableTools, AppData.availableTools)
             .task {
                 if appData.openRoute == nil { appData.openRoute = openRouteAction }
@@ -238,6 +239,7 @@ private struct ToolWindowRoot: View {
     @Binding var value: ToolWindowValue?
     @Environment(\.projectDirectory) private var directory
     @Environment(\.ticketStore) private var ticketStore
+    @Environment(\.dashboardStore) private var dashboardStore
 
     /// Whether this window shows the chat panel; each window keeps its own, across launches.
     @SceneStorage("chatPanelShown") private var chatPanelShown = false
@@ -365,8 +367,10 @@ private struct ToolWindowRoot: View {
     @ViewBuilder private func content(for project: Project, focus: String?) -> some View {
         switch tool {
         case .dashboard:
-            DashboardRootView(project: project) { widget, context in
-                DashboardWidgetView(widget: widget, context: context)
+            if let dashboardStore {
+                DashboardRootView(project: project, store: dashboardStore) { widget, context in
+                    DashboardWidgetView(widget: widget, context: context)
+                }
             }
         case .tickets:
             if let ticketStore {
@@ -593,6 +597,9 @@ private struct DashboardWidgetView: View {
             BuildsDashboardWidget(widget: widget, context: context)
         case .instances, .serviceGraph, .busiestCalls, .failedRequests, .requestsPerMinute:
             ServiceMapDashboardWidget(widget: widget, context: context)
+        case .recentChats, .cost:
+            // V2's: kept in the list, never shown.
+            EmptyView()
         }
     }
 }

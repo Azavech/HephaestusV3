@@ -44,7 +44,7 @@ public struct ServiceMapDashboardWidget: View {
                 FailedRequestsContent(project: context.project, requests: reading.failedRequests(limit: rowLimit), editing: context.editing)
             case .requestsPerMinute:
                 RequestsPerMinuteContent(counts: reading.map.requestsPerMinute(in: context.window))
-            case .project, .tickets, .recentBuilds:
+            case .project, .tickets, .recentBuilds, .recentChats, .cost:
                 EmptyView()
             }
         } else {

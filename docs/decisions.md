@@ -95,3 +95,17 @@ which rules the app enforces, and never tells Claude how to work.
 | Which ticket tools does Claude get? | V2's sixteen, without `implement_ticket` and `implement_bundle`; `create_ticket` and `update_ticket` also take V3's `title`, `priority` and `labels`, and `list_tickets` filters drafts too. The descriptions drop V2's Haiku naming and implementation workflow. | [MCP › Tools](mcp.md#tools) |
 | Which attachment paths do results give? | Absolute ones in every result, not only `get_ticket`'s as in V2: one ticket JSON everywhere. | same |
 | How does a change by Claude reach the windows? | The tool calls the shared `TicketLibrary`, then `TicketSession.refresh()`, so open Tickets windows show it at once rather than at the next file event. | [Architecture › TicketData](architecture.md#ticketdata) |
+
+## Phase 4: Dashboard (14 November 2026)
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| Where is a Dashboard kept? | In the project file, as V2 kept it: `dashboardWidgets` and `dashboardGraphWindow`, written in V2's layout. The proof of concept's user defaults entries are no longer read. | [Data › Dashboard widget](data.md#dashboard-widget), [UI › Dashboard › Saving](ui/dashboard.md#saving) |
+| Which environment do the widgets read? | The project's current environment, as V2's widgets did; choosing one on the Dashboard makes it the project's current environment for every window. The proof of concept kept its own per Dashboard. | [UI › Dashboard › Environment and time window](ui/dashboard.md#environment-and-time-window) |
+| Which widgets show while their tool hasn't come over? | None: Project always, Tickets now, the others with their tools. Hidden widgets take no place and keep their stored positions, as V2's hidden graph widgets did, so a layout made in V2 comes back whole. | [UI › Dashboard › Which widgets show](ui/dashboard.md#which-widgets-show) |
+| What happens to V2's Recent Chats and Cost widgets? | Kept in the file with their settings and never shown: Recent Builds replaced them in V3's design, and costs aren't brought over. | same |
+| Which list does a project without a stored list show? | V3's default list (Project, Tickets, Recent Builds, Service Graph for a service), not V2's (Project, Tickets, Recent Chats, Cost). | [UI › Dashboard › Default list and sample layouts](ui/dashboard.md#default-list-and-sample-layouts) |
+| What about the sample layouts of Orders and Shop? | Previews and screenshots only: a real project named ORD or SHOP shows the default list. | same |
+| What about V2's **Last 7 days** window? | Kept when stored, and shown as the last hour until the Service Map brings the window over (Phase 8). | [Data › Project file](data.md#project-file) |
+| What do the Tickets widget's statuses include? | V3's Draft too, for widgets V3 adds; a V2 widget keeps its four. | [Data › Dashboard widget](data.md#dashboard-widget) |
+| How does a failed change show? | Its message under the toolbar until the next change; the stored list shows again, and the changes queued after it are dropped (V2 showed the engine's message in red under the bar). | [UI › Dashboard › Applying changes](ui/dashboard.md#applying-changes) |

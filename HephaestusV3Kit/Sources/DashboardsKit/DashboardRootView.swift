@@ -37,9 +37,12 @@ enum DashboardSpace {
 /// its own data, and ToolsScenes puts them together.
 public struct DashboardRootView<WidgetContent: View>: View {
     @State private var model: DashboardModel
+    /// The project as loaded now, passed on to the model.
+    private let project: Project
     let widgetContent: (DashboardWidget, DashboardContext) -> WidgetContent
 
     @Environment(\.windowLayout) private var layout
+    @Environment(\.availableTools) private var availableTools
     /// The Dashboard's own width, which picks the grid or the list. Wide until measured.
     @State private var viewWidth: CGFloat = 10_000
     /// The list's width, which sets its cards' width.
@@ -49,19 +52,20 @@ public struct DashboardRootView<WidgetContent: View>: View {
     @State private var scroll = DashboardScroll()
     @State private var scrollBarWidth = DashboardSpace.scrollBarWidth
 
-    /// The Dashboard of `project`, saved in the user defaults; `widgetContent` draws each widget's
+    /// The Dashboard of `project`, kept in its project file by `store`; `widgetContent` draws each widget's
     /// content.
     public init(
         project: Project,
+        store: LiveDashboardStore,
         @ViewBuilder widgetContent: @escaping (DashboardWidget, DashboardContext) -> WidgetContent
     ) {
-        self.init(model: DashboardModel(project: project, store: UserDefaultsDashboardLayoutStore.shared),
-                  widgetContent: widgetContent)
+        self.init(model: DashboardModel(project: project, store: store), widgetContent: widgetContent)
     }
 
     /// The Dashboard of a model: for previews and tests.
     init(model: DashboardModel, @ViewBuilder widgetContent: @escaping (DashboardWidget, DashboardContext) -> WidgetContent) {
         _model = State(initialValue: model)
+        project = model.project
         self.widgetContent = widgetContent
     }
 
@@ -87,13 +91,45 @@ public struct DashboardRootView<WidgetContent: View>: View {
                 .accessibilityIdentifier("dashboard.empty")
             }
         }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if let failure = model.failure {
+                failureBanner(failure)
+            }
+        }
         .toolbar { toolbar }
+        .onChange(of: project, initial: true) {
+            if model.project != project {
+                model.project = project
+            }
+        }
+        .onChange(of: availableTools, initial: true) {
+            if model.tools != availableTools {
+                model.tools = availableTools
+            }
+        }
         .onChange(of: showsList) {
             // The widgets are placed and sized on the grid only: the list has no edit mode.
             if showsList {
                 model.endEditing()
             }
         }
+    }
+
+    /// Why the last change failed, under the toolbar until the next change (V2: in red under the bar).
+    private func failureBanner(_ message: String) -> some View {
+        Label {
+            Text(verbatim: message)
+        } icon: {
+            Image(systemName: "exclamationmark.triangle.fill")
+        }
+        .foregroundStyle(.danger)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, DashboardSpace.margin)
+        .padding(.vertical, 8)
+        .background(.bar)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text("The change failed: \(message)", bundle: #bundle))
+        .accessibilityIdentifier("dashboard.failure")
     }
 
     private var emptyDescription: Text {
@@ -852,7 +888,7 @@ struct DashboardWidgetSettings: View {
                     Text("Number", bundle: #bundle)
                     countStepper(widget)
                 }
-            case .instances, .serviceGraph, .requestsPerMinute:
+            case .instances, .serviceGraph, .requestsPerMinute, .recentChats, .cost:
                 // The Title setting only.
                 EmptyView()
             }
@@ -1013,17 +1049,19 @@ private struct PreviewWidget: View {
 }
 
 /// A Dashboard of a sample project, kept in memory.
-private func previewDashboard(_ project: Project, editing: Bool = false, saved: DashboardLayout? = nil) -> some View {
-    let store = SampleDashboardLayoutStore(saved.map { [project.id: $0] } ?? [:])
-    return DashboardRootView(model: DashboardModel(project: project, store: store, editing: editing)) {
+private func previewDashboard(_ project: Project, editing: Bool = false, saved: [DashboardWidget]? = nil, failure: String? = nil,
+                              tools: Set<ToolKind> = Set(ToolKind.allCases)) -> some View {
+    let store = SampleDashboardStore(saved.map { [project.id: $0] } ?? [:], failures: failure.map { [project.id: $0] } ?? [:])
+    return DashboardRootView(model: DashboardModel(project: project, store: store, tools: tools, editing: editing)) {
         PreviewWidget(widget: $0, context: $1)
     }
+    .environment(\.availableTools, tools)
 }
 
 /// The settings popover of a widget of the Orders sample, as it shows in edit mode on a 1240-point
 /// window.
 private func previewSettings(_ kind: DashboardWidgetKind) -> some View {
-    let model = DashboardModel(project: Project.samples[0], store: SampleDashboardLayoutStore(), editing: true)
+    let model = DashboardModel(project: Project.samples[0], store: SampleDashboardStore(), editing: true)
     model.areaWidth = 1160
     let slot = DashboardSlot.slots(of: model.widgets)[model.widgets.firstIndex { $0.kind == kind } ?? 0]
     return DashboardWidgetSettings(model: model, slot: slot)
@@ -1048,7 +1086,16 @@ private func previewSettings(_ kind: DashboardWidgetKind) -> some View {
 }
 
 #Preview("No Widgets", traits: .appChrome, .fixedLayout(width: 1000, height: 640)) {
-    previewDashboard(Project.samples[0], saved: DashboardLayout(widgets: []))
+    previewDashboard(Project.samples[0], saved: [])
+}
+
+#Preview("Tools Not Yet Brought Over", traits: .appChrome, .fixedLayout(width: 1000, height: 640)) {
+    previewDashboard(Project.samples[0], tools: [.dashboard, .tickets])
+}
+
+#Preview("Change Failed", traits: .appChrome, .fixedLayout(width: 1000, height: 640)) {
+    previewDashboard(Project.samples[3], editing: true,
+                     failure: "Couldn't write /Users/example/Developer/Gateway/.hephaestus/project.yml: permission denied.")
 }
 
 #Preview("Editing, Largest Text", traits: .largestText, .fixedLayout(width: 1240, height: 820)) {

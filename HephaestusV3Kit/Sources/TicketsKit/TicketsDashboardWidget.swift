@@ -5,18 +5,20 @@ import ToolsFoundation
 /// The Dashboard's Tickets widget: one count per status checked in its settings, side by side in
 /// workflow order, each a number in a large font above its label (V2's docs/dashboard.md › Widgets).
 /// With `Include sub projects`, the counts cover the project and its sub projects, as its Tickets
-/// window lists them.
+/// window lists them. The counts are the app's tickets, those the Tickets windows show.
 public struct TicketsDashboardWidget: View {
     let widget: DashboardWidget
     let project: Project
-    let store: any TicketStore
+    /// The store the previews give; the app's otherwise.
+    let store: (any TicketStore)?
     @Environment(\.projectDirectory) private var directory
+    @Environment(\.ticketStore) private var appStore
 
     public init(widget: DashboardWidget, context: DashboardContext) {
-        self.init(widget: widget, project: context.project, store: SampleTicketStore())
+        self.init(widget: widget, project: context.project, store: nil)
     }
 
-    init(widget: DashboardWidget, project: Project, store: any TicketStore) {
+    init(widget: DashboardWidget, project: Project, store: (any TicketStore)?) {
         self.widget = widget
         self.project = project
         self.store = store
@@ -52,7 +54,8 @@ public struct TicketsDashboardWidget: View {
     }
 
     private func count(_ status: TicketStatus) -> Int {
-        store.count(of: status, in: project.id, includingSubprojects: widget.includeSubprojects, tree: directory.tree)
+        let store: any TicketStore = store ?? appStore ?? SampleTicketStore()
+        return store.count(of: status, in: project.id, includingSubprojects: widget.includeSubprojects, tree: directory.tree)
     }
 }
 

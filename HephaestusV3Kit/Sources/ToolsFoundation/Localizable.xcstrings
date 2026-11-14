@@ -28,6 +28,9 @@
     "Contracts" : {
 
     },
+    "Cost" : {
+
+    },
     "Created" : {
 
     },
@@ -110,6 +113,9 @@
       "comment" : "A project's tint"
     },
     "Recent Builds" : {
+
+    },
+    "Recent Chats" : {
 
     },
     "Requests per Minute" : {

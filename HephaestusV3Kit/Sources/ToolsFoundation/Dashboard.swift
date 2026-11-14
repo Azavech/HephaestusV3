@@ -9,7 +9,7 @@ import Foundation
 /// (docs/ui/dashboard.md › Grid, Widgets and Settings).
 ///
 /// Every setting has a property, but a widget reads only those of its kind.
-nonisolated public struct DashboardWidget: Codable, Sendable, Hashable, Identifiable {
+nonisolated public struct DashboardWidget: Sendable, Hashable, Identifiable {
     public var id: UUID
     public var kind: DashboardWidgetKind
     /// The `Title` setting; empty means the title of the kind.
@@ -52,22 +52,6 @@ nonisolated public struct DashboardWidget: Codable, Sendable, Hashable, Identifi
         self.statuses = statuses
         self.includeSubprojects = includeSubprojects
         self.count = count
-    }
-
-    /// A list saved by an older build may lack a setting: it takes its default.
-    public init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        id = try c.decode(UUID.self, forKey: .id)
-        kind = try c.decode(DashboardWidgetKind.self, forKey: .kind)
-        title = try c.decodeIfPresent(String.self, forKey: .title) ?? ""
-        column = try c.decodeIfPresent(Int.self, forKey: .column)
-        row = try c.decodeIfPresent(Int.self, forKey: .row)
-        width = try c.decodeIfPresent(Int.self, forKey: .width)
-        height = try c.decodeIfPresent(Int.self, forKey: .height)
-        fields = try c.decodeIfPresent([DashboardProjectField].self, forKey: .fields) ?? DashboardProjectField.allCases
-        statuses = try c.decodeIfPresent([TicketStatus].self, forKey: .statuses) ?? TicketStatus.allCases
-        includeSubprojects = try c.decodeIfPresent(Bool.self, forKey: .includeSubprojects) ?? true
-        count = try c.decodeIfPresent(Int.self, forKey: .count) ?? 5
     }
 
     /// The stored position and size, brought back inside the grid; nil for a widget without
@@ -181,14 +165,14 @@ nonisolated public enum DashboardGrid {
         return result
     }
 
-    /// The cells of each widget of a list, nil for a service widget hidden while the project's
-    /// Service Map cannot be read. A widget with a stored position starts from it; the widgets
+    /// The cells of each widget of a list, nil for a widget of a kind the Dashboard doesn't show
+    /// (`DashboardWidgetKind.isShown`), which takes no place. A widget with a stored position starts from it; the widgets
     /// without position are taken in list order, two per row at columns 0 and 12, each 12 columns
     /// wide and `rows` high, the first pair under every widget that has a stored position and each
     /// pair under the previous one; then the placement rule applies to all of them. `rows` gives the
     /// rows the content of the widget at an index needs, at the cell size of the window.
-    public static func layout(of widgets: [DashboardWidget], graphEnabled: Bool, rows: (Int) -> Int) -> [DashboardCells?] {
-        let shown = widgets.indices.filter { graphEnabled || !widgets[$0].kind.isGraph }
+    public static func layout(of widgets: [DashboardWidget], shown kinds: Set<DashboardWidgetKind>, rows: (Int) -> Int) -> [DashboardCells?] {
+        let shown = widgets.indices.filter { kinds.contains(widgets[$0].kind) }
         var cells: [Int: DashboardCells] = [:]
         for index in shown {
             cells[index] = widgets[index].cells
@@ -231,11 +215,16 @@ nonisolated public enum DashboardGrid {
 }
 
 /// What a widget shows (docs/ui/dashboard.md › Widgets). V2's Recent Chats and Cost were about Claude's
-/// chats; Hephaestus V3 has neither, and lists the project's builds instead.
+/// chats: Hephaestus V3 keeps them in the project file and never shows them, and lists the project's builds
+/// instead.
 nonisolated public enum DashboardWidgetKind: String, Codable, Sendable, Hashable, CaseIterable, Identifiable {
     case project
     case tickets
     case recentBuilds
+    /// V2's, kept in the list and never shown.
+    case recentChats
+    /// V2's, kept in the list and never shown.
+    case cost
     /// The pods of the project's service in the Dashboard's environment (docs/ui/dashboard.md ›
     /// Instances widget).
     case instances
@@ -253,8 +242,28 @@ nonisolated public enum DashboardWidgetKind: String, Codable, Sendable, Hashable
     public var isGraph: Bool {
         switch self {
         case .serviceGraph, .busiestCalls, .failedRequests, .requestsPerMinute: true
-        case .project, .tickets, .recentBuilds, .instances: false
+        case .project, .tickets, .recentBuilds, .recentChats, .cost, .instances: false
         }
+    }
+
+    /// Whether the Dashboard shows widgets of the kind for `project` when the app offers `tools`: the tool
+    /// whose data it shows is offered, and a service widget needs a project whose Service Map can be read.
+    /// V2's Recent Chats and Cost never show. A widget that doesn't show takes no place and keeps its stored
+    /// position (docs/ui/dashboard.md › Placement).
+    public func isShown(for project: Project, tools: Set<ToolKind>) -> Bool {
+        switch self {
+        case .project: true
+        case .tickets: tools.contains(.tickets)
+        case .recentBuilds: tools.contains(.builds)
+        case .instances: tools.contains(.serviceMap)
+        case .serviceGraph, .busiestCalls, .failedRequests, .requestsPerMinute: tools.contains(.serviceMap) && Self.hasServiceMap(project)
+        case .recentChats, .cost: false
+        }
+    }
+
+    /// The kinds the Dashboard shows for `project` when the app offers `tools`.
+    public static func shown(for project: Project, tools: Set<ToolKind>) -> Set<DashboardWidgetKind> {
+        Set(allCases.filter { $0.isShown(for: project, tools: tools) })
     }
 
     /// Whether the content fills the widget, whatever its size, instead of keeping the height it
@@ -273,13 +282,11 @@ nonisolated public enum DashboardWidgetKind: String, Codable, Sendable, Hashable
         project.tools.contains(.serviceMap) && !project.environments.isEmpty
     }
 
-    /// The kinds the Add Widget menu lists for `project`, in this order: Instances only for a
-    /// service, then the service widgets only when its map can be read (docs/ui/dashboard.md › Edit mode).
-    public static func addable(for project: Project) -> [DashboardWidgetKind] {
+    /// The kinds the Add Widget menu lists for `project` when the app offers `tools`, in this order: the kinds
+    /// the Dashboard shows, Instances only for a service (docs/ui/dashboard.md › Edit mode).
+    public static func addable(for project: Project, tools: Set<ToolKind>) -> [DashboardWidgetKind] {
         allCases.filter { kind in
-            if kind == .instances { return project.kind == .service }
-            if kind.isGraph { return hasServiceMap(project) }
-            return true
+            kind.isShown(for: project, tools: tools) && (kind != .instances || project.kind == .service)
         }
     }
 }

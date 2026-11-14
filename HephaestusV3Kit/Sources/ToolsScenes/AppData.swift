@@ -1,4 +1,5 @@
 import AppKit
+import DashboardsKit
 import ExternalTools
 import FileStorage
 import MCPKit
@@ -15,7 +16,7 @@ import ToolsFoundation
 final class AppData {
     /// The tools whose feature has come over from HephaestusV2; the others are hidden in the running app
     /// (docs/ui/navigation.md › Available tools). Previews show every tool.
-    static let availableTools: Set<ToolKind> = [.tickets]
+    static let availableTools: Set<ToolKind> = [.dashboard, .tickets]
     /// Whether the Virtual Machines window has come over.
     static let machinesAvailable = false
 
@@ -24,6 +25,8 @@ final class AppData {
     /// The tickets and bundles of the loaded projects, and the store the Tickets windows read.
     let tickets: TicketSession
     let ticketStore: LiveTicketStore
+    /// The Dashboards of the loaded projects, kept in their project files.
+    let dashboardStore: LiveDashboardStore
     @ObservationIgnored private var started = false
 
     // MARK: MCP server (docs/mcp.md)
@@ -48,6 +51,7 @@ final class AppData {
         session = ProjectSession(dataFolder: DataFolder.resolve())
         tickets = TicketSession(projects: session)
         ticketStore = LiveTicketStore(session: tickets)
+        dashboardStore = LiveDashboardStore(session: session)
     }
 
     /// Starts the session once, whichever window appears first, and stops it as the app quits.

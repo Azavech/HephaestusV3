@@ -199,7 +199,7 @@ Shared values in the manifest:
 | `TextFormats` | Markdown to a block model and syntax highlighting, from HephaestusV2 without its markers ([Text](text.md)). | swift-markdown | `.target(name:, dependencies:)` |
 | `ToolsFoundation` | Shared vocabulary: projects, tools, routes, chat vocabulary, the Dashboard model, `ProjectIcon`. | AZDesign | `.target` |
 | `ProjectsKit` | The project selector: the Projects window, the project switcher, the menu bar panel; New Project, Project Settings, Settings ▸ Projects; the mapping of the app's projects; the project tools of the MCP server. | ToolsFoundation, AZDesign, AZDesignCode, ProjectData, ExternalTools, MCPKit | `toolTarget(_:data:)` |
-| `DashboardsKit` | The Dashboard's grid, edit mode, settings and saving; the Project widget. | same | `toolTarget` |
+| `DashboardsKit` | The Dashboard's grid, edit mode, settings and saving in the project files; the Project widget. | same, plus ProjectData | `toolTarget(data: ["ProjectData"])` |
 | `TicketsKit` | Tickets; the Tickets widget; the tickets reader. | same | `toolTarget` |
 | `ServiceMapKit` | The Service Map and its graph; the service widgets; the Service Map reader. | same | `toolTarget` |
 | `ContractsKit` | Contracts and the request builder; the contracts reader. | same | `toolTarget` |
@@ -410,6 +410,7 @@ The files of [Data](data.md). Source files in `Sources/ProjectData/`:
 | File | Contents |
 | --- | --- |
 | `ProjectFile.swift` | `ProjectFile`, `ProjectKind`, `ProjectColor`, `EnvironmentEntry` (`baseURL`), `EnvironmentOverride` (`isEmpty`, `applied(to:)`) |
+| `DashboardWidgetEntry.swift` | `DashboardWidgetEntry` (`Kind`, `Field`, `Status` with `v2Statuses`, `ChatKind`; `countRange`, `titleLimit`, `defaultID(_:)`, `checked(_:keeping:)`, V2's keys per kind and write rules), `DashboardGraphWindow` |
 | `RegistryFile.swift` | `RegistryFile` (`loadableEntries`) |
 | `CurrentEnvironmentsFile.swift` | `CurrentEnvironmentsFile` |
 | `ProjectFolder.swift` | `ProjectFolder`: the `.hephaestus/` paths, `isProject`, `ensureGitignore(ownWrites:)`, `gitignoreLine` |
@@ -710,7 +711,8 @@ them and tools can't import DashboardsKit. The grid and its placement rule are H
 unchanged. The rules themselves are specified in [Dashboard › Grid, Placement, Lists without
 positions](ui/dashboard.md#grid).
 
-**`DashboardWidget`** (`Codable, Sendable, Hashable, Identifiable`):
+**`DashboardWidget`** (`Sendable, Hashable, Identifiable`): what the Dashboard shows of a widget. DashboardsKit's
+`LiveDashboardStore` maps it to and from the project file's `DashboardWidgetEntry` (ProjectData).
 
 | Property | Type | Default | Used by |
 | --- | --- | --- | --- |
@@ -724,10 +726,16 @@ positions](ui/dashboard.md#grid).
 | `count` | `Int` | `5` | Recent Builds, Busiest Calls, Failed Requests |
 
 - `countRange = 1...20`; `titleLimit = 100`.
-- `init(from:)` decodes leniently: a missing setting takes its default, so older saved lists still read.
 - `cells: DashboardCells?` gets the four position values, brought inside the grid by `DashboardGrid.clamped`,
   or nil when any is missing; setting it writes all four.
-- `defaultList(for:)`: Project, Tickets, Recent Builds, plus Service Graph when `hasServiceMap(project)`.
+- `defaultList(for:)`: Project, Tickets, Recent Builds, plus Service Graph when `hasServiceMap(project)`, with
+  the ids `00000000-0000-0000-0000-00000000000<n>`.
+- `DashboardWidgetKind` adds V2's `recentChats` and `cost`, kept and never shown. `isShown(for:tools:)`: Project
+  always; Tickets with `.tickets`; Recent Builds with `.builds`; Instances with `.serviceMap`; the four service
+  widgets with `.serviceMap` and `hasServiceMap(project)`; Recent Chats and Cost never. `shown(for:tools:)` is
+  the set of those kinds; `addable(for:tools:)` the shown kinds, Instances only for a service.
+- `DashboardGrid.layout(of:shown:rows:)` places the widgets whose kind is in `shown`; the others get nil and
+  take no place.
   Their ids are fixed: `00000000-0000-0000-0000-00000000000N`, N from 1.
 
 **`DashboardCells`** (`column`, `row`, `width`, `height`; `bottom`; `overlaps(_:)`).
@@ -1016,7 +1024,7 @@ reader, if any, is a `public enum` with a `public static func read`, plus intern
 | Kit | Public root view | Model | Store → sample store | Reader | Focus format | Dashboard widget | ⇧⌘N | Chat subject |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | ProjectsKit | `ProjectsRootView`, `ProjectSwitcher`, `ProjectLauncher` | `ProjectsModel`, `ProjectPickerModel` | `ProjectStore` → `SampleProjectStore` | — | project id | — | New Project… | — |
-| DashboardsKit | `DashboardRootView`, `DashboardProjectWidget` | `DashboardModel` | `DashboardLayoutStore` → `UserDefaultsDashboardLayoutStore.shared` (app), `SampleDashboardLayoutStore` (previews) | — | none | Project | — | — |
+| DashboardsKit | `DashboardRootView`, `DashboardProjectWidget` | `DashboardModel` | `DashboardStore` → `LiveDashboardStore` (app), `SampleDashboardStore` (previews) | — | none | Project | — | — |
 | TicketsKit | `TicketsRootView` | `TicketsModel` | `TicketStore` → `SampleTicketStore` | `TicketsReader` | ticket id | Tickets | New Ticket… | selected ticket |
 | ServiceMapKit | `ServiceMapRootView` | `ServiceMapModel` | `ServiceMapStore` → `SampleServiceMapStore` | `ServiceMapReader` | `service:<name>`, `request:<id>` | Instances and the four service widgets | — | inspected service or request |
 | ContractsKit | `ContractsRootView` | `ContractsModel` | `ContractStore` → `SampleContractStore` | `ContractsReader` | operation id | — | — | selected operation |
@@ -1163,14 +1171,16 @@ switcher's Show All Projects opens `.project(id)`; the launcher's Return opens `
 
 ### DashboardsKit
 
-The Dashboard's grid, edit mode, settings and saving. The widgets' content comes from the tools. Spec:
+The Dashboard's grid, edit mode, settings and saving in the project files. The widgets' content comes from
+the tools. Spec:
 [Dashboard](ui/dashboard.md). The grid code is HephaestusV2's (`DashboardView.swift`,
 `DashboardGridLayout.swift`), kept as it was except for imports, AZDesign's color, its strings and `nonisolated`.
 
 | File | Contents |
 | --- | --- |
 | `DashboardModel.swift` | `DashboardModel`, `DashboardGridState`, `DashboardItem` |
-| `DashboardLayoutStore.swift` | `DashboardLayout`, `DashboardLayoutStore`, `UserDefaultsDashboardLayoutStore`, `SampleDashboardLayoutStore` |
+| `DashboardStore.swift` | `DashboardStore`, `SampleDashboardStore` |
+| `LiveDashboardStore.swift` | `LiveDashboardStore`, the mapping to and from `DashboardWidgetEntry`, `EnvironmentValues.dashboardStore` |
 | `DashboardEdits.swift` | `DashboardContent`, `DashboardSlot`, `DashboardArrangement`, `DashboardStep`, `DashboardEdits` |
 | `DashboardGridLayout.swift` | `DashboardSmallestSize`, `DashboardGridMetrics`, `DashboardFrame`, `DashboardGridLayout`, `DashboardDrag`, `DashboardAutoScroll`, `DashboardResizeHandle`, `DashboardOverflow`, `DashboardOverflowLayout`, `DashboardWidgetScroll` |
 | `DashboardRootView.swift` | `DashboardSpace`, `DashboardRootView`, the list, the grid, `DashboardScroll`, `DashboardWidgetMenu`, `DashboardWidgetCard`, `DashboardWidgetTitleRow`, `DashboardWidgetSettings`, `DashboardProjectWidget` |
@@ -1178,40 +1188,54 @@ The Dashboard's grid, edit mode, settings and saving. The widgets' content comes
 
 **Public API**
 
-- `DashboardRootView<WidgetContent: View>(project: Project, @ViewBuilder widgetContent: @escaping (DashboardWidget, DashboardContext) -> WidgetContent)`.
-  It uses `UserDefaultsDashboardLayoutStore.shared`.
+- `DashboardRootView<WidgetContent: View>(project: Project, store: LiveDashboardStore, @ViewBuilder widgetContent: @escaping (DashboardWidget, DashboardContext) -> WidgetContent)`.
+  It passes each new `project` and the `availableTools` environment value to its model (`onChange`, initial),
+  and shows the store's failure under the toolbar (`safeAreaInset(edge: .top)`, `dashboard.failure`).
+- `LiveDashboardStore(session: ProjectSession)`, `@MainActor @Observable`; ToolsScenes' `AppData` makes one and
+  gives it to every window as `EnvironmentValues.dashboardStore` (nil in previews).
 - `DashboardProjectWidget(widget: DashboardWidget, context: DashboardContext)`: the Project widget's fields.
 
 **Store and saving.**
 
-- `DashboardLayout: Codable, Equatable`: `widgets: [DashboardWidget]?`, `window: TimeWindow?`,
-  `environment: String?`; nil means the user never changed it.
-- `protocol DashboardLayoutStore: AnyObject { func layout(of: Project.ID) -> DashboardLayout?; func setLayout(_:of:) }`.
-  A store is a shared `@Observable` reference, so a change in one Dashboard window shows at once in every
-  other window of the project.
-- `UserDefaultsDashboardLayoutStore.shared` uses `UserDefaults.standard`. At init it reads the entries of
-  `Project.samples` (an entry that doesn't decode counts as nothing). `setLayout` writes JSON (`JSONEncoder`)
-  under `key(_:)`, `"dashboard.<project id>"`, only when the value changed.
-- `SampleDashboardLayoutStore(_ layouts: [Project.ID: DashboardLayout] = [:])` keeps everything in memory.
+- `@MainActor protocol DashboardStore: AnyObject`: `widgets(of:) -> [DashboardWidget]?` (nil: no stored list),
+  `window(of:) -> TimeWindow?`, `environment(of:) -> String?` (a choice not yet the project's current
+  environment), `failure(of:) -> String?`, `setWidgets(_:of:)`, `setWindow(_:of:)`, `setEnvironment(_:of:)`. A
+  store is a shared `@Observable` reference, so a change in one Dashboard window shows at once in every other
+  window of the project.
+- `LiveDashboardStore` reads `session.snapshot.project(id)?.file.dashboardWidgets` and `dashboardGraphWindow`.
+  A change goes into a private `shown` overlay at once, then into a queue: each write is a `Task` that awaits
+  the previous one, then calls `session.update(id, ProjectChange(dashboardWidgets:))` (the list merged with the
+  stored entries when its turn comes), `ProjectChange(dashboardGraphWindow:)` or
+  `session.setCurrentEnvironment(id, to:)`. When a project's last queued write ends, its overlay is dropped and
+  the file's values show. A failure keeps `ProjectError.description` in `failure(of:)` until the next change,
+  drops the overlay, and raises the project's generation, so the writes queued before it are skipped. `settle()`
+  awaits the queue (tests).
+- Mapping: `widget(_:)` and `entries(_:merging:)`. A widget takes the stored entry of its slot (same id, same
+  rank among equal ids), so V2's Recent Chats settings and unknown keys survive; a new widget takes the
+  file's defaults. Statuses map `draft`↔Draft, `todo`↔Created, `in_progress`↔In Progress, `review`↔In Review,
+  `done`↔Done; `week` maps to no `TimeWindow` (nil: the last hour shows).
+- `SampleDashboardStore(_ widgets: [Project.ID: [DashboardWidget]] = [:], failures: [Project.ID: String] = [:])`
+  keeps everything in memory; a project with nothing kept shows `DashboardWidget.sample(for:)`, its sample
+  layout, or the default list.
 
-**`DashboardModel`**, `init(project:store:editing: = false)`:
+**`DashboardModel`**, `init(project:store:tools: = Set(ToolKind.allCases), editing: = false)`:
 
 | Group | Members |
 | --- | --- |
-| State | `project`, `editing` (private set), `settingsSlot: DashboardSlot?`, `drag: DashboardDrag?` (private set), `areaWidth` (0 until laid out), `neededHeights: [DashboardSlot: CGFloat]`, `smallestSizes: [DashboardSlot: CGSize]` |
-| What it shows | `widgets` (stored list, else `DashboardWidget.sample(for:)`, else `defaultList(for:)`), `widget(_:)`, `graphEnabled`, `showsTimeWindow`, `showsEnvironment`, `showsNoWidgets`, `addableKinds`, `environment` (the one saved, else the first not healthy of `deploymentEnvironments`, else the first), `window` (saved, else `.hour`), `setEnvironment(_:)`, `setWindow(_:)`, `context` |
+| State | `project` (the view passes each new version), `tools`, `editing` (private set), `settingsSlot: DashboardSlot?`, `drag: DashboardDrag?` (private set), `areaWidth` (0 until laid out), `neededHeights: [DashboardSlot: CGFloat]`, `smallestSizes: [DashboardSlot: CGSize]` |
+| What it shows | `widgets` (stored list, else `defaultList(for:)`), `widget(_:)`, `shownKinds`, `showsTimeWindow`, `showsEnvironment`, `showsNoWidgets`, `addableKinds`, `failure`, `environment` (the store's choice, else `project.currentEnvironment`, else the first not healthy of `deploymentEnvironments`, else the first), `window` (stored, else `.hour`), `setEnvironment(_:)`, `setWindow(_:)` (both ignore the value already shown), `context` |
 | Arrangement | `metrics`, `arrangement(_:)`, `cells(of:)`, `listOrder` (shown widgets by row then column), `grid(metrics:) -> DashboardGridState` (items, the floating widget and the placeholder during a drag) |
 | Edit mode | `startEditing()`, `endEditing()` (closes settings, ends a drag), `add(_:rows:)`, `remove(_:)`, `update(_:_:)`, `canStep(_:_:)`, `steps(of:)`, `step(_:_:)` |
 | Drag | `dragChanged(_:_:start:location:scrollOffset:)`, `dragEnded(_:_:location:)`, `scrolled(to:)` |
 | Measures | `measured(_:height:)`, `measuredSmallest(_:size:)`, `keep(_:)` (forgets widgets that left) |
-| Saving | Private `change(_:)` applies an edit to the newest list and saves it only if it changed; private `save(_:)` reads, changes and writes the project's `DashboardLayout`. |
+| Saving | Private `change(_:)` applies an edit to the newest list and gives it to `store.setWidgets` only if it changed. |
 
 The view reports what only its layout knows: the widget area's width, each widget's needed height and its
 title row's size.
 
 **Edits.** `DashboardSlot` (`id: UUID`, `occurrence: Int`) names a widget even when a hand-edited list
 repeats an id; `identifier` is the uuid, or `"<uuid>-<n>"` from the second occurrence.
-`DashboardArrangement` (`graphEnabled`, `rows: [DashboardSlot: Int]`) gives `cells(of:)` and `storing(_:in:)`.
+`DashboardArrangement` (`shown: Set<DashboardWidgetKind>`, `rows: [DashboardSlot: Int]`) gives `cells(of:)` and `storing(_:in:)`.
 `DashboardStep` has `moveLeft`, `moveRight`, `moveUp`, `moveDown`, `wider`, `narrower`, `taller`, `shorter`.
 `DashboardEdits` makes each change a new list: `appending`, `removing`, `placing`, `stepping`, `target`,
 `resized`, `updating`, `toggling`, `flipping`, `steppingCount`. A move, resize, addition or removal stores the
@@ -1762,7 +1786,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 467 tests). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 480 tests). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
@@ -1771,13 +1795,13 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | FileStorageTests | YAML coding, Dates, Atomic writes, Own writes the folder lock and the Trash, File events | Kept keys written back in order and layout; read rules (UTF-8, root mapping, keys twice, YAML errors); BOM and CR LF; defaults and required keys; schema; dates read and written; quoting and literal blocks; atomic writes (modes, links, failures, leftovers); own writes; the lock; a test Trash; `YAMLFile`; batches by quiet and maximum delay; one real FSEvents stream in a temporary folder; flag kinds. |
 | ExternalToolsTests | Child processes, The login shell's environment, Finding the tools, git ssh and kubectl | Output, status, input, folder, environment, signals, missing executables; the timeout ending a whole process group; `terminateAll`; `env -0` parsing and every capture outcome; `PATH` lookup and the git stub; the commands, arguments, parsing and failures of git, ssh and kubectl. Uses `FakeRunner`. |
 | MCPKitTests | JSON values and schemas, JSON-RPC, HTTP, Server | Number kinds and sorted output; every validation message in order; the classification table; initialize, ping, unknown methods and the version header; tools/list and tools/call results, errors and validation; heads, chunked and sized bodies and their limits; bearer tokens; a real listener on a free port answering with the token and refusing the rest. |
-| ProjectDataTests | Project file, Registry and current environments, Data folder, Import from HephaestusV2, Rules and GitHub, Loading, Outside changes, Creating opening and removing, Inherited settings, Current environment, GitHub page, Session | V2's complete project file written back byte for byte; every V2 example round-tripping with all its keys; defaults; environments, base URLs and overrides; V3's additions; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; the import's list, skips, choices, single run and missing V2; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints; loading depth first with every issue; data folder files set aside; outside changes (changed, invalid, renamed identifier, deleted and returning files, the registry, own writes, relevance); create, open and remove with their refusals and sub projects; update with its write rules; inheritance on, off, nested and across types; the current environment chosen, renamed, removed and forgotten; GitHub pages from origins, aliases, typed pages and parents, `.git/config`; the session's start, lock, changes and a real outside change. Fixtures: V2's examples. Uses `FakeRunner`. |
+| ProjectDataTests | Project file, Dashboard widgets, Registry and current environments, Data folder, Import from HephaestusV2, Rules and GitHub, Loading, Outside changes, Creating opening and removing, Inherited settings, Current environment, GitHub page, Session | V2's complete project file written back byte for byte; every V2 example round-tripping with all its keys; defaults; environments, base URLs and overrides; V3's additions; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; the import's list, skips, choices, single run and missing V2; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints; loading depth first with every issue; data folder files set aside; outside changes (changed, invalid, renamed identifier, deleted and returning files, the registry, own writes, relevance); create, open and remove with their refusals and sub projects; update with its write rules; inheritance on, off, nested and across types; the current environment chosen, renamed, removed and forgotten; GitHub pages from origins, aliases, typed pages and parents, `.git/config`; the session's start, lock, changes and a real outside change. Fixtures: V2's examples. Uses `FakeRunner`.; Dashboard widgets: keys of another kind kept, V3's Recent Builds, unknown kinds and statuses refused, each write rule with its message, stored widgets written back as they are, repeated ids. |
 | TicketDataTests | Ticket and bundle files, Ticket library | V2's complete ticket and bundle written back byte for byte; defaults, the creation entry and unknown keys; numbers from the counters, skipping existing files; provisional titles and the title, description and status messages; Claude's descriptions taken as written; drafts; link rules 1–7 with their messages and inverse links; history entries in order and changes that write nothing; Claude's status limits; the Complete and Reopened rules, Claude's bundle limits and the Complete rule at load; deletion order and the Trash; comments and their files; attachment copies, names, limits and paths; outside changes, invalid files and removals. Fixtures: V2's examples. Uses a test Trash folder. |
 | TextFormatsTests | Language detection, Token kinds, Word lists, Highlighter fixtures, Tokenizer edge cases, Markdown block model, Links, Heading anchors, Ticket and bundle ids, Linked ids, Soft line breaks | V2's suites without the markers and the HTML output: every tokenizer against its fixtures and the word lists of [Text](text.md); the block model of every Markdown feature; links, images and path resolution read from [Text](text.md); ids. Fixtures: V2's highlighting examples (without the 1 MB ones). |
 | ToolsScenesTests | MCP documentation | docs/mcp.md's tools, descriptions and input schemas equal the registry's. |
 | ToolsFoundationTests | Routes, Strings, Inherited settings | Each `FocusRequest` is new; `ChatReference.route` and ids per environment; shared titles from the catalog; unique tool shortcuts; inherited environments. |
 | ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker, Projects from the app's data, New Project, Projects window on the app's data, Project Settings, Project tools | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`.; the mapping of kinds, tints and environments; New Project's following fields, rules, type and parent from the folder, sub project folders and default location; the loading, empty and unavailable states; the selection after a removal and at load.; Project Settings' fields, rules and messages, environments added, renamed and removed, pending fields applied together, and inherited environments changed in the sub project's changes.; the five project tools through JSON-RPC on a real session, their refusals and `~/` expansion. |
-| DashboardsKitTests | What the Dashboard shows, Edit mode, Steps of the keyboard and VoiceOver, Settings, Saving | Sample, default and saved lists; hidden service widgets; toolbar environment and time window; a change in every window of a project; list order; titles; Done, remove, add, first save, drags; every step and its limits; title, checkbox and Number rules; lenient decoding; keys. Uses `MockDashboardLayoutStore`. |
+| DashboardsKitTests | What the Dashboard shows, Edit mode, Steps of the keyboard and VoiceOver, Settings, The Dashboard on the project files, Widgets of tools not brought over yet | Sample, default and saved lists; hidden service widgets; toolbar environment and time window; a change in every window of a project; list order; titles; Done, remove, add, first save, drags; every step and its limits; title, checkbox and Number rules. The live store on a real session in a temporary folder: the default list whatever the identifier, V2's widgets read and written back in V2's layout with Recent Chats and unknown keys kept, the first change storing the default ids, the time window, a failed change and its message, a change made elsewhere, the mapping. Widgets shown by available tool; hidden widgets keep their places. Uses `MockDashboardLayoutStore`. |
 | TicketsKitTests | The store, The list, Selection and route focus, Comments, New Ticket, The reader, Changes, Tickets from the app's data, Ticket tools | Store queries and counts; grouping, filters, counts, bundles; default selection, focus, repeated routes, hidden and missing tickets, chat subject; comment drafts; the sheet's project, validation, creation and failure; reader sentences and suggestions; next step and status, comments with files, editing, links, deletion, bundles, the store's phases; the live store's mapping of statuses, priorities, links, blocking and activity; the ticket tools on real sessions in temporary folders (creation with a free description, comments with files, absolute paths, filters, Claude's status limits, bundles, deletion). Uses `MockTicketStore` and `SampleTicketStore`. |
 | ServiceMapKitTests | Focus formats, Service Map model, Service Map reader, Service widgets, Formats | Focus parsing; opening environment and view; history, Back, Show All; taps; repeated routes; missing items; chat subject; summary; request order and sorting; graph contents; logs; reader per environment, details and suggestions; widget readings; durations, literals, stable layout. Uses `MockServiceMapStore`. |
 | ContractsKitTests | Opening, Route focus, Filter, Request, Responses, Reader and chat, Sample contracts | Opening selection and environment; repeated routes, filters cleared, drafts kept; sections and matching; examples, URLs, draft keeping, Send; duration formats; reader sentences and suggestions; sample contracts. Uses `MockContractStore`. |

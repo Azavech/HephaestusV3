@@ -143,6 +143,8 @@ public enum ProjectRuleError: Error, Sendable, Hashable, CustomStringConvertible
     case githubPage
     case color
     case duplicateEnvironment(String)
+    case widget(field: String, message: String)
+    case duplicateWidget(String)
 
     public var description: String {
         switch self {
@@ -159,6 +161,8 @@ public enum ProjectRuleError: Error, Sendable, Hashable, CustomStringConvertible
         case .githubPage: "githubPage: use a page of the form https://github.com/<owner>/<name>."
         case .color: "color: use a tint or a color of the form #RRGGBB."
         case let .duplicateEnvironment(name): "An environment named “\(name)” already exists."
+        case let .widget(field, message): "\(field): \(message)."
+        case let .duplicateWidget(id): "Widget \(id) is listed more than once."
         }
     }
 }

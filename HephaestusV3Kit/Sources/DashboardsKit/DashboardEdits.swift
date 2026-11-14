@@ -65,22 +65,22 @@ nonisolated struct DashboardSlot: Hashable {
     }
 }
 
-/// What the place of the widgets depends on besides their list: whether the service widgets show,
+/// What the place of the widgets depends on besides their list: the kinds the Dashboard shows,
 /// and the rows the content of each widget needs at the cell size of the window, which are known
 /// once the widget has been laid out (docs/ui/dashboard.md › Placement, Lists without positions).
 nonisolated struct DashboardArrangement: Equatable {
-    var graphEnabled = false
+    var shown: Set<DashboardWidgetKind>
     var rows: [DashboardSlot: Int] = [:]
 
-    /// The cells of each widget of a list, nil for a hidden service widget. A widget without
+    /// The cells of each widget of a list, nil for a widget whose kind doesn't show. A widget without
     /// position whose rows are not known yet counts one row.
     func cells(of widgets: [DashboardWidget]) -> [DashboardCells?] {
         let slots = DashboardSlot.slots(of: widgets)
-        return DashboardGrid.layout(of: widgets, graphEnabled: graphEnabled) { rows[slots[$0]] ?? 1 }
+        return DashboardGrid.layout(of: widgets, shown: shown) { rows[slots[$0]] ?? 1 }
     }
 
-    /// The list with `cells` as the stored position and size of each shown widget. A hidden service
-    /// widget keeps its own, and a widget without position whose rows are not known yet stays
+    /// The list with `cells` as the stored position and size of each shown widget. A hidden widget
+    /// keeps its own, and a widget without position whose rows are not known yet stays
     /// without position.
     func storing(_ cells: [DashboardCells?], in widgets: [DashboardWidget]) -> [DashboardWidget] {
         let slots = DashboardSlot.slots(of: widgets)

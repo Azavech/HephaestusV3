@@ -190,6 +190,9 @@ public enum ProjectMessages {
             String(localized: "Choose a tint.", bundle: #bundle)
         case .duplicateEnvironment(let name):
             String(localized: "An environment named “\(name)” already exists.", bundle: #bundle)
+        case .widget, .duplicateWidget:
+            // Only the Dashboard changes widgets; its windows show the data's own message.
+            rule.description
         }
     }
 }

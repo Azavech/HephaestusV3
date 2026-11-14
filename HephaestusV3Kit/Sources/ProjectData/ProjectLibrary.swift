@@ -237,6 +237,10 @@ public actor ProjectLibrary {
             if let overrides = change.environmentOverrides {
                 file.environmentOverrides = try Self.checked(overrides, keeping: node.file.environmentOverrides)
             }
+            if let widgets = change.dashboardWidgets {
+                file.dashboardWidgets = try DashboardWidgetEntry.checked(widgets, keeping: node.file.dashboardWidgets ?? [])
+            }
+            if let window = change.dashboardGraphWindow { file.dashboardGraphWindow = window }
         } catch {
             throw .rule(error)
         }
@@ -718,10 +722,15 @@ public struct ProjectChange: Sendable, Hashable {
     public var environments: [EnvironmentEntry]?
     /// All the changes to inherited environments, with the change applied.
     public var environmentOverrides: [String: EnvironmentOverride]?
+    /// The whole list of the Dashboard's widgets, with the change applied.
+    public var dashboardWidgets: [DashboardWidgetEntry]?
+    /// The time window of the Dashboard's service widgets.
+    public var dashboardGraphWindow: DashboardGraphWindow?
 
     public init(name: String? = nil, kind: ProjectKind? = nil, color: String?? = nil, icon: String?? = nil,
                 docsPath: String? = nil, githubPage: String?? = nil, useParentSettings: Bool? = nil, graphEnabled: Bool? = nil,
-                environments: [EnvironmentEntry]? = nil, environmentOverrides: [String: EnvironmentOverride]? = nil) {
+                environments: [EnvironmentEntry]? = nil, environmentOverrides: [String: EnvironmentOverride]? = nil,
+                dashboardWidgets: [DashboardWidgetEntry]? = nil, dashboardGraphWindow: DashboardGraphWindow? = nil) {
         self.name = name
         self.kind = kind
         self.color = color
@@ -732,5 +741,7 @@ public struct ProjectChange: Sendable, Hashable {
         self.graphEnabled = graphEnabled
         self.environments = environments
         self.environmentOverrides = environmentOverrides
+        self.dashboardWidgets = dashboardWidgets
+        self.dashboardGraphWindow = dashboardGraphWindow
     }
 }

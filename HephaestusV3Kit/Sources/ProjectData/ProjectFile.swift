@@ -5,9 +5,8 @@ import Foundation
 /// GitHub page, sub projects and environments (docs/data.md › Project file).
 ///
 /// HephaestusV2's format, read and written in V2's key order. The keys of V2 that V3 doesn't use yet
-/// (`webTabs`, `skills`, `chatDefaults`, `dashboardWidgets`, `dashboardGraphWindow`, `deletedChats`,
-/// `commentAnswers`) are kept exactly as read, at their place; V3 never adds them. Keys neither knows
-/// follow, in the order they were read.
+/// (`webTabs`, `skills`, `chatDefaults`, `deletedChats`, `commentAnswers`) are kept exactly as read, at their
+/// place; V3 never adds them. Keys neither knows follow, in the order they were read.
 public struct ProjectFile: Codable, Sendable, Hashable {
     public var schema: Int
     /// The identifier (`ProjectRules.isIdentifier`). Set at creation, never changed.
@@ -37,6 +36,10 @@ public struct ProjectFile: Codable, Sendable, Hashable {
     public var environments: [EnvironmentEntry]
     /// The changes of a sub project to the environments it inherits, by environment name.
     public var environmentOverrides: [String: EnvironmentOverride]
+    /// The widgets of the project's Dashboard, in their order; nil shows the default list, `[]` no widget.
+    public var dashboardWidgets: [DashboardWidgetEntry]?
+    /// The time window of the Dashboard's service widgets; nil is `hour`.
+    public var dashboardGraphWindow: DashboardGraphWindow?
     /// V2's keys that V3 doesn't use yet, as read; absent keys stay absent.
     public var keptV2Keys: YAMLMapping
     /// The keys neither V2 nor V3 knows, in the order they were read.
@@ -46,7 +49,8 @@ public struct ProjectFile: Codable, Sendable, Hashable {
                 icon: String? = nil, nextTicketNumber: Int = 1, nextBundleNumber: Int = 1, docsPath: String = "docs",
                 githubPage: String? = nil, useParentSettings: Bool = true, subprojects: [String] = [],
                 graphEnabled: Bool = false, environments: [EnvironmentEntry] = [],
-                environmentOverrides: [String: EnvironmentOverride] = [:], keptV2Keys: YAMLMapping = [:],
+                environmentOverrides: [String: EnvironmentOverride] = [:], dashboardWidgets: [DashboardWidgetEntry]? = nil,
+                dashboardGraphWindow: DashboardGraphWindow? = nil, keptV2Keys: YAMLMapping = [:],
                 unknownKeys: YAMLMapping = [:]) {
         self.schema = schema
         self.id = id
@@ -64,6 +68,8 @@ public struct ProjectFile: Codable, Sendable, Hashable {
         self.graphEnabled = graphEnabled
         self.environments = environments
         self.environmentOverrides = environmentOverrides
+        self.dashboardWidgets = dashboardWidgets
+        self.dashboardGraphWindow = dashboardGraphWindow
         self.keptV2Keys = keptV2Keys
         self.unknownKeys = unknownKeys
     }
@@ -75,9 +81,7 @@ public struct ProjectFile: Codable, Sendable, Hashable {
         "environments", "environmentOverrides", "dashboardWidgets", "dashboardGraphWindow", "deletedChats", "commentAnswers",
     ]
     /// V2's keys that V3 keeps as read.
-    static let keptKeys: Set<String> = [
-        "webTabs", "skills", "chatDefaults", "dashboardWidgets", "dashboardGraphWindow", "deletedChats", "commentAnswers",
-    ]
+    static let keptKeys: Set<String> = ["webTabs", "skills", "chatDefaults", "deletedChats", "commentAnswers"]
     static let knownKeys = Set(keyOrder)
 
     public init(from decoder: any Decoder) throws {
@@ -109,6 +113,8 @@ public struct ProjectFile: Codable, Sendable, Hashable {
         graphEnabled = try c.value("graphEnabled", default: false)
         environments = try c.value("environments", default: [])
         environmentOverrides = try c.value("environmentOverrides", default: [:])
+        dashboardWidgets = try c.optional("dashboardWidgets")
+        dashboardGraphWindow = try c.optional("dashboardGraphWindow")
         var kept = YAMLMapping()
         for key in Self.keyOrder where Self.keptKeys.contains(key) {
             kept[key] = try c.raw(key)
@@ -140,7 +146,9 @@ public struct ProjectFile: Codable, Sendable, Hashable {
         }
         try c.encode(environments, "environments")
         try c.encode(EnvironmentOverride.SortedMap(environmentOverrides), "environmentOverrides")
-        for key in ["dashboardWidgets", "dashboardGraphWindow", "deletedChats", "commentAnswers"] {
+        try c.encodeIfPresent(dashboardWidgets, "dashboardWidgets")
+        try c.encodeIfPresent(dashboardGraphWindow, "dashboardGraphWindow")
+        for key in ["deletedChats", "commentAnswers"] {
             try c.encodeIfPresent(keptV2Keys[key], key)
         }
         try c.encodeUnknownKeys(unknownKeys, known: Self.knownKeys)

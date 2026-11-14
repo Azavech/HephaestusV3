@@ -188,6 +188,8 @@ extension DashboardWidgetKind {
         case .project: String(localized: "Project", bundle: #bundle)
         case .tickets: String(localized: "Tickets", bundle: #bundle)
         case .recentBuilds: String(localized: "Recent Builds", bundle: #bundle)
+        case .recentChats: String(localized: "Recent Chats", bundle: #bundle)
+        case .cost: String(localized: "Cost", bundle: #bundle)
         case .instances: String(localized: "Instances", bundle: #bundle)
         case .serviceGraph: String(localized: "Service Graph", bundle: #bundle)
         case .busiestCalls: String(localized: "Busiest Calls", bundle: #bundle)
@@ -201,6 +203,8 @@ extension DashboardWidgetKind {
         case .project: "folder"
         case .tickets: ToolKind.tickets.symbol
         case .recentBuilds: ToolKind.builds.symbol
+        case .recentChats: ToolKind.chat.symbol
+        case .cost: "dollarsign.circle"
         case .instances: "shippingbox"
         case .serviceGraph: ToolKind.serviceMap.symbol
         case .busiestCalls: "arrow.right.arrow.left"

@@ -167,7 +167,8 @@ Defaults chosen at design time: the import's trigger, its content, and the skipp
 
 `.hephaestus/project.yml`: the project's identity, type, color, icon, counters, documentation folder, GitHub
 page, sub projects and environments. Swift type `ProjectFile`. The table is V2's, in its order; the keys
-marked **kept** are V2's keys that V3 doesn't use yet ([Unknown keys](#unknown-keys)).
+marked **kept** are V2's keys that V3 doesn't use yet ([Unknown keys](#unknown-keys)): `webTabs`, `skills`,
+`chatDefaults`, `deletedChats`, `commentAnswers`.
 
 | Swift name | Key | Type | Required | Default | Rules |
 | --- | --- | --- | --- | --- | --- |
@@ -190,8 +191,8 @@ marked **kept** are V2's keys that V3 doesn't use yet ([Unknown keys](#unknown-k
 | graphEnabled | `graphEnabled` | `Bool` | no | `false` | Whether the service's graph is enabled. Left out of the file while `false`. |
 | environments | `environments` | `[EnvironmentEntry]` | no | `[]` | The environments of a service, in the order they were added; names unique, letter case included ([Project environment](#project-environment)). Kept when the type changes. |
 | environmentOverrides | `environmentOverrides` | `[String: EnvironmentOverride]` | no | `{}` | A sub project's changes to the environments it inherits, by environment name, written in Unicode code point order ([Environment override](#environment-override)). A change for a name no inherited environment has is kept and ignored. |
-| — | `dashboardWidgets` | kept | no | absent | V2's Dashboard widgets. |
-| — | `dashboardGraphWindow` | kept | no | absent | V2's time window of the Dashboard's graph widgets. |
+| dashboardWidgets | `dashboardWidgets` | `[DashboardWidgetEntry]?` | no | `null` | The widgets of the project's [Dashboard](ui/dashboard.md), in their order ([Dashboard widget](#dashboard-widget)). `null` shows the default list and `[]` no widget. Left out of the file while the project has no stored list. |
+| dashboardGraphWindow | `dashboardGraphWindow` | `DashboardGraphWindow?` | no | `null` | The time window of the Dashboard's service widgets: `fiveMinutes`, `hour`, `day` or `week`; `null` is `hour`. Any other value makes the file invalid. Left out of the file while `null`. V3 has no `week` window yet: a stored `week` is kept, and the Dashboard shows the last hour. |
 | — | `deletedChats` | kept | no | absent | V2's costs of deleted chats. |
 | — | `commentAnswers` | kept | no | absent | V2's costs of comment answers. |
 | keptV2Keys | — | `YAMLMapping` | — | empty | The kept keys present in the file, as read. |
@@ -232,6 +233,53 @@ page too (`GitRemote`), in the forms git writes:
 each with or without a final `.git`. The remote's page is `https://github.com/<owner>/<name>` when its host is
 `github.com` in any letter case, or, for the two SSH forms, when the host is an alias whose real host name,
 the `hostname` line of `ssh -G <alias>`, is `github.com`.
+
+### Dashboard widget
+
+Swift type `DashboardWidgetEntry`, one element of `dashboardWidgets`: a widget of the project's Dashboard with
+its position and size on the Dashboard's grid and its settings ([UI › Dashboard](ui/dashboard.md)). V2's format;
+the Dashboard changes the list through [Update](#changes) and `ProjectChange.dashboardWidgets`.
+
+| Swift name | Key | Type | Required | Default | Rules |
+| --- | --- | --- | --- | --- | --- |
+| id | `id` | `UUID` | yes | — | Unique within the list. |
+| kind | `kind` | `Kind` | yes | — | `project`, `tickets`, `recentChats`, `cost`, `instances`, `serviceGraph`, `busiestCalls`, `failedRequests`, `requestsPerMinute`, or **V3 addition** `recentBuilds`. Any other value makes the file invalid. |
+| title | `title` | `String` | no | `""` | The Title setting: one line, at most 100 characters, trimmed; empty means the title of the kind. |
+| column | `column` | `Int?` | no | `null` | The first column the widget covers, 0–23. |
+| row | `row` | `Int?` | no | `null` | The first row it covers, from 0. |
+| width | `width` | `Int?` | no | `null` | The columns it covers, 1–24; `column` + `width` is at most 24. |
+| height | `height` | `Int?` | no | `null` | The rows it covers, from 1. |
+| fields | `fields` | `[Field]` | no | all four | `project`: the fields shown, among `name`, `identifier`, `type` and `folder`. At least one, each once. |
+| statuses | `statuses` | `[Status]` | no | V2's four | `tickets`: the counts shown, among `todo`, `in_progress`, `review`, `done` and **V3 addition** `draft`. At least one, each once. The default is V2's four; V3 writes the list a widget it adds starts with: all five. |
+| includeSubprojects | `includeSubprojects` | `Bool` | no | `true` | `tickets` and `cost`: whether the counts or the total cover the loaded sub projects. |
+| chatCount | `chatCount` | `Int` | no | `5` | `recentChats` (V2's): the most chats listed, 1–20. |
+| chatKinds | `chatKinds` | `[ChatKind]` | no | all four | `recentChats` (V2's): `project`, `ticket`, `bundle`, `feedback`. At least one, each once. |
+| count | `count` | `Int` | no | `5` | `busiestCalls`, `failedRequests` and **V3 addition** `recentBuilds`: the most rows listed, 1–20. |
+| unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
+
+- A widget has the keys `id`, `kind` and `title`, then the four position keys while it has a stored position,
+  then the keys of its kind only, in the order of the table: `fields` for `project`; `statuses` and
+  `includeSubprojects` for `tickets`; `chatCount` and `chatKinds` for `recentChats`; `includeSubprojects` for
+  `cost`; `count` for `busiestCalls`, `failedRequests` and `recentBuilds`; none for `instances`,
+  `serviceGraph` and `requestsPerMinute`. A key of another kind is an unknown key of the widget, kept after its
+  own keys.
+- The position keys are written together, by the Dashboard, when the user moves, resizes, adds or removes a
+  widget. A file edited by hand that holds only some of them, or values outside the rules, still loads: the
+  Dashboard brings them inside the grid and counts a widget with only some of them as one without position.
+- **Write rules**, checked on each widget the list adds or changes, in order (V2's
+  `DashboardWidget.normalized`); a widget equal to a stored one is written back as it is, as many times as the
+  stored list holds it, and a further copy is a widget the list adds:
+  - title: `dashboardWidgets[<n>]: use a title of at most 100 characters on one line.`;
+  - only some position keys: `dashboardWidgets[<n>]: give the column, row, width and height together.`;
+  - outside the columns: `dashboardWidgets[<n>]: use a column and a width inside the 24 columns.`;
+  - a row below 0 or a height below 1: `dashboardWidgets[<n>]: use a row from 0 and a height of at least 1.`;
+  - fields, statuses or chat kinds empty or repeated: `dashboardWidgets[<n>]: use at least one <field | status | chat kind>, each once.`;
+  - `count` outside 1–20: `dashboardWidgets[<n>]: use a number of rows from 1 to 20.`;
+  - `chatCount` outside 1–20: `dashboardWidgets[<n>]: use a number of chats from 1 to 20.`;
+  - then an id another widget of the list has: `Widget <ID> is listed more than once.`
+- The ids of the default list are `00000000-0000-0000-0000-00000000000<n>` for its n-th widget
+  (`DashboardWidgetEntry.defaultID`); V3's default list differs from V2's ([UI › Dashboard › Default list](ui/dashboard.md#default-list)).
+- `recentChats` and `cost` are V2's: V3 keeps them, with their settings, and never shows them.
 
 ### Project environment
 
@@ -455,7 +503,7 @@ Every change goes through `ProjectLibrary`, one at a time, and gives a new snaps
 | --- | --- | --- |
 | **Create** (`NewProject`) | Name: one line, 1–100 characters, trimmed. Identifier: uppercased, 2–8 letters A–Z, used by no loaded project. With a parent: the folder is strictly inside the parent's folder (`Choose a folder inside “<parent name>”.`), checked before anything is written. The folder is created when missing and `createsFolder` is set; otherwise it must exist. A folder that already holds a project is refused: open it instead. The new file has `created` = now, the name, the identifier and the type; every other key takes its default. | 1. the project file and `.gitignore` 2. the parent's `subprojects` (the given parent, else the innermost loaded project whose folder holds it), or the registry |
 | **Open** (a folder) | A folder already loaded gives its project. Otherwise it must hold a valid project file whose identifier no loaded project uses. Registry entries that its file lists as its descendants, at any depth, leave the registry: they load under it. | 1. `.gitignore` 2. the innermost loaded project's `subprojects`, or the registry |
-| **Update** (`ProjectChange`) | Only the values the change sets: name; type; color (a tint, or `#RRGGBB` uppercased, or none); icon (trimmed, none when empty); docs folder (a relative path, not `.hephaestus` or inside it); GitHub page (validated, none when empty); Use parent settings; graph; the whole list of the project's own environments; all its changes to inherited environments. An environment or a change equal to a stored one is written back as it is, even when a hand edit made it break a rule (each stored environment keeps at most one equal environment: a copy is checked); any other is checked ([Validation](#validation)), its names trimmed, a change that sets nothing dropped. An own environment can't take a name another environment has, inherited ones included. | the project file, then `current-environments.yml` when a choice follows a rename or is forgotten |
+| **Update** (`ProjectChange`) | Only the values the change sets: name; type; color (a tint, or `#RRGGBB` uppercased, or none); icon (trimmed, none when empty); docs folder (a relative path, not `.hephaestus` or inside it); GitHub page (validated, none when empty); Use parent settings; graph; the whole list of the project's own environments; all its changes to inherited environments; the whole list of Dashboard widgets ([Dashboard widget](#dashboard-widget) › Write rules); the Dashboard's time window. An environment or a change equal to a stored one is written back as it is, even when a hand edit made it break a rule (each stored environment keeps at most one equal environment: a copy is checked); any other is checked ([Validation](#validation)), its names trimmed, a change that sets nothing dropped. An own environment can't take a name another environment has, inherited ones included. | the project file, then `current-environments.yml` when a choice follows a rename or is forgotten |
 | **Remove** | The project and its loaded sub projects leave the app: its entry leaves the parent's `subprojects` or the registry, and their chosen environments are forgotten. No file of theirs changes. | 1. the parent's project file, or the registry 2. `current-environments.yml` |
 | **Choose the current environment** | One of the project's environments as they apply. | `current-environments.yml` |
 

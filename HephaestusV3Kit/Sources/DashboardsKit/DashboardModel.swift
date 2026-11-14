@@ -5,14 +5,17 @@ import ToolsFoundation
 
 /// A Dashboard window: the project's widgets, the environment and the time window it shows, edit mode
 /// with the widget being dragged and the one whose settings are open, and every change the user makes,
-/// saved at once in a `DashboardLayoutStore` (docs/ui/dashboard.md).
+/// saved at once in a `DashboardStore` (docs/ui/dashboard.md).
 ///
 /// The view reports what only its layout knows: the width of the widget area, the height each widget
 /// needs, and the size of each title row, which the arrangement and the smallest size depend on.
 @Observable
 final class DashboardModel {
-    let project: Project
-    private let store: any DashboardLayoutStore
+    /// The project as loaded now: the view passes each new version.
+    var project: Project
+    /// The tools the app offers: a widget shows only once its tool does (docs/ui/dashboard.md › Widgets).
+    var tools: Set<ToolKind>
+    private let store: any DashboardStore
 
     /// Whether the widgets can be added, removed, moved, resized and set up. Edit mode belongs to the
     /// window: it ends with `Done`, in the list, and when the window switches project or closes.
@@ -32,18 +35,18 @@ final class DashboardModel {
     /// widget, known in edit mode (docs/ui/dashboard.md › Edit mode).
     private(set) var smallestSizes: [DashboardSlot: CGSize] = [:]
 
-    init(project: Project, store: any DashboardLayoutStore, editing: Bool = false) {
+    init(project: Project, store: any DashboardStore, tools: Set<ToolKind> = Set(ToolKind.allCases), editing: Bool = false) {
         self.project = project
         self.store = store
+        self.tools = tools
         self.editing = editing
     }
 
     // MARK: What it shows
 
-    /// The stored list, the project's sample layout, or the default list (docs/ui/dashboard.md ›
-    /// Default list and sample layouts).
+    /// The stored list, or the default list (docs/ui/dashboard.md › Default list).
     var widgets: [DashboardWidget] {
-        store.layout(of: project.id)?.widgets ?? DashboardWidget.sample(for: project.id) ?? DashboardWidget.defaultList(for: project)
+        store.widgets(of: project.id) ?? DashboardWidget.defaultList(for: project)
     }
 
     /// The widget of a slot, nil once it left the list.
@@ -52,35 +55,47 @@ final class DashboardModel {
         return slot.index(in: list).map { list[$0] }
     }
 
-    /// Whether the project's Service Map can be read: its service widgets show and are offered.
-    var graphEnabled: Bool {
-        DashboardWidgetKind.hasServiceMap(project)
+    /// The kinds the Dashboard shows: those whose tool the app offers, the service widgets only for a
+    /// project whose Service Map can be read, never V2's Recent Chats and Cost.
+    var shownKinds: Set<DashboardWidgetKind> {
+        DashboardWidgetKind.shown(for: project, tools: tools)
+    }
+
+    /// The widgets of the list that show.
+    private var shownWidgets: [DashboardWidget] {
+        let kinds = shownKinds
+        return widgets.filter { kinds.contains($0.kind) }
     }
 
     /// Whether the Dashboard shows a service widget: the time window shows in the toolbar.
     var showsTimeWindow: Bool {
-        graphEnabled && widgets.contains { $0.kind.isGraph }
+        shownWidgets.contains { $0.kind.isGraph }
     }
 
     /// Whether a shown widget reads the environment: the environment shows in the toolbar.
     var showsEnvironment: Bool {
-        !project.deploymentEnvironments.isEmpty && (showsTimeWindow || widgets.contains { $0.kind == .instances })
+        !project.deploymentEnvironments.isEmpty && shownWidgets.contains { $0.kind.isGraph || $0.kind == .instances }
     }
 
-    /// Whether no widget shows: the list is empty, or holds only service widgets that are hidden.
+    /// Whether no widget shows: the list is empty, or holds only widgets that are hidden.
     var showsNoWidgets: Bool {
-        !widgets.contains { graphEnabled || !$0.kind.isGraph }
+        shownWidgets.isEmpty
     }
 
     /// The kinds the Add Widget menu offers.
     var addableKinds: [DashboardWidgetKind] {
-        DashboardWidgetKind.addable(for: project)
+        DashboardWidgetKind.addable(for: project, tools: tools)
     }
 
-    /// The environment the Instances and service widgets read: the one chosen last, or, as the Service
-    /// Map opens, the first that is not healthy, or the first.
+    /// Why the last change failed, until the next change.
+    var failure: String? {
+        store.failure(of: project.id)
+    }
+
+    /// The environment the Instances and service widgets read: the project's current environment, the
+    /// one the user chose last, or else the first that is not healthy, or the first.
     var environment: DeploymentEnvironment? {
-        if let name = store.layout(of: project.id)?.environment,
+        if let name = store.environment(of: project.id) ?? project.currentEnvironment,
            let chosen = project.deploymentEnvironments.first(where: { $0.name == name }) {
             return chosen
         }
@@ -89,16 +104,17 @@ final class DashboardModel {
 
     /// The time window of the service widgets, the last hour by default as in V2.
     var window: TimeWindow {
-        store.layout(of: project.id)?.window ?? .hour
+        store.window(of: project.id) ?? .hour
     }
 
     func setEnvironment(_ name: String) {
-        guard project.deploymentEnvironments.contains(where: { $0.name == name }) else { return }
-        save { $0.environment = name }
+        guard project.deploymentEnvironments.contains(where: { $0.name == name }), name != environment?.name else { return }
+        store.setEnvironment(name, of: project.id)
     }
 
     func setWindow(_ window: TimeWindow) {
-        save { $0.window = window }
+        guard window != self.window else { return }
+        store.setWindow(window, of: project.id)
     }
 
     /// What each widget's content reads besides its settings.
@@ -115,7 +131,7 @@ final class DashboardModel {
     /// What the arrangement depends on now: the rows each widget needs at the cell size `metrics`
     /// gives.
     func arrangement(_ metrics: DashboardGridMetrics) -> DashboardArrangement {
-        DashboardArrangement(graphEnabled: graphEnabled, rows: neededHeights.mapValues { metrics.cells(holding: $0) })
+        DashboardArrangement(shown: shownKinds, rows: neededHeights.mapValues { metrics.cells(holding: $0) })
     }
 
     /// The cells a widget shows at the window's cell size; nil for a hidden service widget.
@@ -128,7 +144,7 @@ final class DashboardModel {
     /// The one-per-row list: the indexes of the shown widgets in the grid's order, by row, then by
     /// column (docs/ui/dashboard.md › One widget per row).
     var listOrder: [Int] {
-        let cells = DashboardArrangement(graphEnabled: graphEnabled).cells(of: widgets)
+        let cells = DashboardArrangement(shown: shownKinds).cells(of: widgets)
         let shown: [Int] = cells.indices.filter { cells[$0] != nil }
         return shown.sorted { a, b in
             let (first, second) = (cells[a]!, cells[b]!)
@@ -298,13 +314,7 @@ final class DashboardModel {
     private func change(_ edit: ([DashboardWidget]) -> [DashboardWidget]?) {
         let stored = widgets
         guard let list = edit(stored), list != stored else { return }
-        save { $0.widgets = list }
-    }
-
-    private func save(_ change: (inout DashboardLayout) -> Void) {
-        var layout = store.layout(of: project.id) ?? DashboardLayout()
-        change(&layout)
-        store.setLayout(layout, of: project.id)
+        store.setWidgets(list, of: project.id)
     }
 }
 
