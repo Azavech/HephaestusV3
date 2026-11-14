@@ -188,16 +188,13 @@ which rules the app enforces, and never tells Claude how to work.
 
 ## Phase 10: Release (14 November 2026)
 
-The owner chose the install page without V2's updater, releases built by GitHub Actions, and the page on GitHub
-Pages.
+The owner chose a GitHub release built by GitHub Actions, without an install page, an updater, Developer ID signing
+or notarization.
 
 | Question | Default chosen | Where |
 | --- | --- | --- |
 | When does a release build? | Only when asked (Actions ▸ Release, with the version), since every phase is pushed. V2 released on every push to `main`. | [Release › Running a release](release.md#running-a-release) |
-| How are versions numbered? | The version is the workflow's input; the build is the commit count, as V2's. No conventional-commit bumps: V3's commits don't follow them. | [Release › Build script](release.md#build-script) |
-| What if the secrets are missing? | The workflow fails. V2 signed ad-hoc then; the workspace wants Developer ID and notarization for the Mac. | same |
-| How is the app signed? | Built unsigned by Xcode, then signed by the script with the Developer ID identity and a Developer ID profile (the App Group needs it), agent first, as V2's script did. | same |
-| How does the runner fetch AZDesign? | A read-only token for that repository, through a git URL rewrite. | [Release › Workflow](release.md#workflow) |
-| Where is the `.dmg`? | On the page itself and on the GitHub release; the page holds the latest only. | [Release › Install page](release.md#install-page) |
-| What does the page show? | The app, its version, the download, the steps, a note for iPhone and iPad, the SHA-256; `noindex`. | same |
-| Is there CI on pushes? | No: only the release runs tests on the runner. | [Release](release.md) |
+| How are versions numbered? | The version is the workflow's input; the build is the commit count, as V2's. | [Release › Build script](release.md#build-script) |
+| How is the app signed? | Ad-hoc, with its entitlements, agent first, as V2's releases were without their secrets. | same |
+| How does the runner fetch AZDesign? | A read-only deploy key of AZDesign, stored as the secret `AZDESIGN_DEPLOY_KEY`. | [Release › Setup](release.md#setup) |
+| Is there CI on pushes? | No: only a release runs the tests on the runner. | [Release](release.md) |

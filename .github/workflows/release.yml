@@ -1,5 +1,5 @@
-# Builds, signs, notarizes and publishes a release of Hephaestus V3, then deploys the install page
-# (docs/release.md). Run it from the Actions tab, or: gh workflow run release.yml -f version=1.0.0
+# Builds a release of Hephaestus V3, signed ad-hoc and not notarized, and publishes it as a GitHub release with
+# its .dmg (docs/release.md). Run it from the Actions tab, or: gh workflow run release.yml -f version=1.0.0
 name: Release
 
 on:
@@ -16,8 +16,6 @@ concurrency:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 defaults:
   run:
@@ -26,9 +24,6 @@ defaults:
 jobs:
   release:
     runs-on: xcode-27
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     env:
       VERSION: ${{ inputs.version }}
     steps:
@@ -53,12 +48,17 @@ jobs:
 
       - name: Reach AZDesign
         env:
-          AZDESIGN_READ_TOKEN: ${{ secrets.AZDESIGN_READ_TOKEN }}
+          AZDESIGN_DEPLOY_KEY: ${{ secrets.AZDESIGN_DEPLOY_KEY }}
         run: |
-          # The package fetches AZDesign over SSH (git@github.com:Azavech/AZDesign.git); the runner reads it over HTTPS
-          # with a token that can read that repository only.
-          [ -n "$AZDESIGN_READ_TOKEN" ] || { echo "AZDESIGN_READ_TOKEN is not set (docs/release.md)." >&2; exit 1; }
-          git config --global url."https://x-access-token:${AZDESIGN_READ_TOKEN}@github.com/Azavech/AZDesign".insteadOf "git@github.com:Azavech/AZDesign"
+          # The package fetches AZDesign over SSH (git@github.com:Azavech/AZDesign.git) with AZDesign's read-only
+          # deploy key; GitHub's host key is pinned.
+          [ -n "$AZDESIGN_DEPLOY_KEY" ] || { echo "AZDESIGN_DEPLOY_KEY is not set (docs/release.md)." >&2; exit 1; }
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          (umask 077; printf '%s\n' "$AZDESIGN_DEPLOY_KEY" > ~/.ssh/azdesign_deploy)
+          echo "github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl" >> ~/.ssh/known_hosts
+          printf 'Host github.com\n  IdentityFile ~/.ssh/azdesign_deploy\n  IdentitiesOnly yes\n' >> ~/.ssh/config
+          git ls-remote git@github.com:Azavech/AZDesign.git HEAD > /dev/null
 
       - name: Check the release doesn't exist
         env:
@@ -76,15 +76,8 @@ jobs:
           (cd HephaestusV3Kit && swift test)
           (cd GuestAgent && swift test)
 
-      - name: Build, sign and notarize
+      - name: Build
         id: build
-        env:
-          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
-          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-          MACOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.MACOS_PROVISIONING_PROFILE_BASE64 }}
-          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
-          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
-          NOTARY_KEY_P8_BASE64: ${{ secrets.NOTARY_KEY_P8_BASE64 }}
         run: scripts/build-release.sh --version "$VERSION"
 
       - name: Publish the release
@@ -97,13 +90,4 @@ jobs:
           git tag "v$VERSION"
           git push origin "v$VERSION"
           gh release create "v$VERSION" "$DMG" --title "Hephaestus V3 $VERSION ($BUILD)" \
-            --notes "Built from $(git rev-parse --short HEAD). SHA-256 of the disk image: $SHA256"
-
-      - name: Upload the install page
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: build/site
-
-      - name: Deploy the install page
-        id: deployment
-        uses: actions/deploy-pages@v4
+            --notes "Built from $(git rev-parse --short HEAD). Signed ad-hoc, not notarized: after copying the app to Applications, open it once with Control-click ▸ Open, or run xattr -dr com.apple.quarantine /Applications/HephaestusV3.app. SHA-256 of the disk image: $SHA256"
