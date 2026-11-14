@@ -17,12 +17,6 @@ struct NewProjectSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var error: ProjectError?
     @State private var isWorking = false
-    @State private var choosing: Choice?
-
-    private enum Choice: Identifiable {
-        case location, existingFolder
-        var id: Self { self }
-    }
 
     init(model: NewProjectModel, create: @escaping (NewProject) async throws(ProjectError) -> String,
          addInstead: @escaping (String) async throws(ProjectError) -> String, done: @escaping (Project.ID) -> Void) {
@@ -99,15 +93,10 @@ struct NewProjectSheet: View {
             footer
         }
         .frame(minWidth: 480, idealWidth: 520, minHeight: 440)
-        .fileImporter(isPresented: Binding { choosing != nil } set: { if !$0 { choosing = nil } },
-                      allowedContentTypes: [.folder]) { result in
+        // The panel's binding closes it before the result arrives: the field it fills is the model's.
+        .fileImporter(isPresented: $model.choosingFolder, allowedContentTypes: [.folder]) { result in
             guard case .success(let url) = result else { return }
-            switch choosing {
-            case .location: model.location = url
-            case .existingFolder: model.existingFolder = url
-            case nil: break
-            }
-            choosing = nil
+            model.chose(url)
         }
         .accessibilityIdentifier("newProject")
     }
@@ -127,7 +116,7 @@ struct NewProjectSheet: View {
         .accessibilityIdentifier("newProject.parent")
     }
 
-    private func pathRow(_ title: String, path: String?, choice: Choice) -> some View {
+    private func pathRow(_ title: String, path: String?, choice: NewProjectModel.FolderChoice) -> some View {
         LabeledContent(title) {
             HStack(spacing: 8) {
                 Text(verbatim: path ?? "")
@@ -136,7 +125,7 @@ struct NewProjectSheet: View {
                     .truncationMode(.middle)
                     .foregroundStyle(.textSecondary)
                 Button(String(localized: "Choose…", bundle: #bundle)) {
-                    choosing = choice
+                    model.chooseFolder(for: choice)
                 }
                 .accessibilityIdentifier("newProject.choose")
             }

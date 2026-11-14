@@ -56,6 +56,25 @@ struct ProjectMappingTests {
 
 @Suite("New Project")
 struct NewProjectModelTests {
+    @Test("Choose… fills the field it was opened for, though the panel closes before the folder arrives")
+    func chooseFolder() {
+        let model = NewProjectModel(projects: [], location: URL(fileURLWithPath: "/Users/example/Developer", isDirectory: true))
+        model.name = "YeenCloud"
+        model.chooseFolder(for: .location)
+        #expect(model.choosingFolder)
+        // SwiftUI sets the panel's binding to false first, then calls the completion with the folder.
+        model.choosingFolder = false
+        model.chose(URL(fileURLWithPath: "/Users/example/Work", isDirectory: true))
+        #expect(model.location.path == "/Users/example/Work")
+        #expect(model.projectFolder == "/Users/example/Work/YeenCloud")
+        model.folderMode = .existingFolder
+        model.chooseFolder(for: .existingFolder)
+        model.choosingFolder = false
+        model.chose(URL(fileURLWithPath: "/Users/example/Work/Existing", isDirectory: true))
+        #expect(model.existingFolder?.path == "/Users/example/Work/Existing")
+        #expect(model.location.path == "/Users/example/Work")
+    }
+
     private let developer = URL(fileURLWithPath: "/Users/someone/Developer", isDirectory: true)
 
     @Test("The identifier and the folder name follow the name until the user edits them")

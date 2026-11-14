@@ -40,6 +40,17 @@ final class NewProjectModel {
     private(set) var folderNameEdited = false
     var existingFolder: URL?
 
+    /// The field a folder panel fills.
+    enum FolderChoice: Sendable, Hashable {
+        case location, existingFolder
+    }
+
+    /// Whether the folder panel shows.
+    var choosingFolder = false
+    /// The field the folder panel fills. It outlives the panel: SwiftUI closes the panel before it hands the
+    /// folder over.
+    private(set) var folderChoice = FolderChoice.location
+
     init(projects: [Project], location: URL, parentID: Project.ID? = nil, existingFolder: URL? = nil) {
         self.projects = projects
         self.location = location
@@ -68,6 +79,20 @@ final class NewProjectModel {
     func setFolderName(_ text: String) {
         folderName = text
         folderNameEdited = true
+    }
+
+    /// Opens the folder panel for a field.
+    func chooseFolder(for choice: FolderChoice) {
+        folderChoice = choice
+        choosingFolder = true
+    }
+
+    /// The folder the panel gave, for the field it was opened for.
+    func chose(_ folder: URL) {
+        switch folderChoice {
+        case .location: location = folder
+        case .existingFolder: existingFolder = folder
+        }
     }
 
     /// Picking a parent moves the location to its folder.

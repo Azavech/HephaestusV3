@@ -1241,7 +1241,10 @@ user's words for every `ProjectError` and `ProjectRuleError` (the texts of [Proj
 **`NewProjectModel`** (`@Observable`): `name` (its `didSet` makes `identifier` the suggestion and
 `folderName` the folder name while they aren't edited), `identifier`, `setIdentifier(_:)`, `pickedKind`,
 `pickedParent: Project.ID??`, `pickParent(_:)` (moves `location` to the parent's folder), `folderMode`
-(`newFolder`, `existingFolder`), `location`, `folderName`, `setFolderName(_:)`, `existingFolder`;
+(`newFolder`, `existingFolder`), `location`, `folderName`, `setFolderName(_:)`, `existingFolder`; the folder
+panel's `choosingFolder`, `folderChoice` (`FolderChoice`: `location`, `existingFolder`), `chooseFolder(for:)` and
+`chose(_:)`, which fills the field the panel was opened for (kept in the model because SwiftUI closes the panel,
+setting its binding to false, before it hands the folder over);
 `projectFolder`, `detectedKind` (service when the folder holds `go.mod`, else other), `kind`,
 `detectedParent` (the innermost project whose `path` strictly holds the folder), `parentID`, `parent`,
 `insideProject`, `parentChoices`; the messages `nameMessage`, `identifierMessage`, `folderMessage`;
@@ -1924,7 +1927,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 559 tests, and 5 in the guest agent's package). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 560 tests, and 5 in the guest agent's package). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
