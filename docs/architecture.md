@@ -669,6 +669,7 @@ defaults to the main actor.
 | `NewItemCommand.swift` | `NewItemCommand`, the `newItem` focused value, `newItemCommand(_:action:)` |
 | `ChatVocabulary.swift` | `ChatReference`, `ToolReading`, `ToolReader`, `ReportChatSubjectAction`, `ChatPanelControl`, `ChatPanelToolbarItem` |
 | `Dashboard.swift` | `DashboardWidget`, `DashboardCells`, `DashboardGrid`, `DashboardWidgetKind`, `DashboardProjectField`, `DashboardContext` |
+| `DashboardWidgetRenderer.swift` | `DashboardWidgetRenderer` (a `@MainActor @Sendable` closure from `(DashboardWidget, DashboardContext)` to `AnyView`, called with `callAsFunction`) and the `dashboardWidgetRenderer` environment value, nil by default: ToolsScenes sets it in `RouteHost` to its `DashboardWidgetView`, so that a window can draw another tool's widget (the project overview's graph) |
 | `Appearance.swift` | Titles, symbols, shortcuts and colors of the shared types |
 | `Components.swift` | `ProjectIcon` |
 
@@ -690,6 +691,7 @@ defaults to the main actor.
 | `parentID` | `Project.ID?` | The project whose folder holds this one; nil at the top level. Default nil. |
 | `environmentsAreResolved` | `Bool` | True for the app's projects: `environments` already apply inheritance, and `ProjectTree.environments(of:)` returns them as they are. Default `false`. |
 | `githubPage`, `currentEnvironment`, `fileIssue` | `String?` | The resolved GitHub page, the environment the user works in, and why the project's file is invalid now. Default nil. |
+| `graphEnabled` | `Bool` | Whether the project's graph is on, resolved (`ResolvedSettings.graphEnabled`); the samples Shop, Orders, Payments and Edge Gateway have it. Default `false`. |
 
 `tools: [ToolKind]` decides which tools apply, in menu order:
 
@@ -935,7 +937,8 @@ MachineHost(dataFolder: DataFolder.resolve())` and `machineStore = LiveMachineSt
 the MCP registry's `vm_` tools. `AppData.availableTools` (every tool) and `AppData.machinesAvailable` (true) say
 which tools and windows the app shows, all of them
 ([Navigation › Available tools](ui/navigation.md#available-tools)): the Window menu lists only those, and
-`RouteHost` gives every view `\.availableTools` and `\.projectDirectory`. The tool windows read their project
+`RouteHost` gives every view `\.availableTools`, `\.projectDirectory` and `\.dashboardWidgetRenderer` (each tool's
+widgets, as the Dashboard draws them). The tool windows read their project
 from the directory (`directory.project(value.projectID)`, `directory.tree.path(of:)`, the switcher's
 `directory.projects`). The File menu gains **Add Existing Folder…** (⌘O, `AddFolderMenuItem`), which calls
 the `addFolder` focused value the Projects window publishes. `.projectSettings(id)` brings forward the
@@ -1290,6 +1293,7 @@ only when it has a project. `ProjectListEntry` is a project with its depth.
 | `select(focus:)` | Selects the project the focus names; an unknown id changes nothing. |
 | `ancestors(of:)`, `descendantCount(of:)`, `ticketTotals(of:)` | The overview's path and figures. |
 | `environments(of:) -> ProjectEnvironments` | For the app's projects, their environments, and the parent they inherit from; for samples, the settings source's environments, and `inheritedFrom` when it isn't the project. |
+| `graphEnvironment(of:tools:) -> DeploymentEnvironment?` | The overview's Graph: nil unless the project's `graphEnabled` is on and `DashboardWidgetKind.serviceGraph.isShown(for:tools:)`; then the environment named by `currentEnvironment`, else the first of `tree.environments(of:)`. |
 | `activity(of:) -> [ActivityEntry]` | The family's events, newest first, at most 40. `ActivityEntry.id` is `"<project>.<event id>"`. |
 
 The window's selection and the model's follow each other: `onAppear` and `onChange(of: selection)` call

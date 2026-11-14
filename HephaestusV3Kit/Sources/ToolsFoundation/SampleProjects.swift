@@ -21,7 +21,8 @@ extension Project {
                 lastBuild: .passed, lastBuildAt: SampleClock.date(hours: -2),
                 contractVersion: "1.4.0", operationCount: 6, serviceCount: 8
             ),
-            parentID: "SHOP"
+            parentID: "SHOP",
+            graphEnabled: true
         ),
         Project(
             id: "PAY",
@@ -41,7 +42,8 @@ extension Project {
                 lastBuild: .failed, lastBuildAt: SampleClock.date(hours: -5),
                 contractVersion: "2.1.0", operationCount: 4, serviceCount: 8
             ),
-            parentID: "SHOP"
+            parentID: "SHOP",
+            graphEnabled: true
         ),
         Project(
             id: "GW",
@@ -61,7 +63,8 @@ extension Project {
                 lastBuild: .running, lastBuildAt: SampleClock.date(minutes: -4),
                 contractVersion: "1.0.2", operationCount: 3, serviceCount: 8
             ),
-            parentID: "SHOP"
+            parentID: "SHOP",
+            graphEnabled: true
         ),
         Project(
             id: "TLS",
@@ -107,7 +110,8 @@ extension Project {
                 openTickets: 2, ticketsInReview: 0, draftTickets: 1,
                 lastBuild: .passed, lastBuildAt: SampleClock.date(hours: -9),
                 serviceCount: 9
-            )
+            ),
+            graphEnabled: true
         ),
         // A package inside the Tools app's folder, in the same repository.
         Project(

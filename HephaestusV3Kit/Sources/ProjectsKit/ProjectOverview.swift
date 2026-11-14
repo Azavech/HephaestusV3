@@ -2,7 +2,7 @@ import AZDesign
 import SwiftUI
 import ToolsFoundation
 
-/// Where a project stands: its figures, a tile per tool, its environments and what happened lately.
+/// Where a project stands: its figures, a tile per tool, its graph, its environments and what happened lately.
 ///
 /// Nothing here has a fixed width. The tool and environment grids take as many columns as fit (all
 /// of them in one row, or an even split), the figures wrap when their row doesn't fit, and the activity
@@ -15,6 +15,10 @@ struct ProjectOverview: View {
 
     @Environment(\.openRoute) private var openRoute
     @Environment(\.availableTools) private var availableTools
+    @Environment(\.dashboardWidgetRenderer) private var widgetRenderer
+
+    /// The widget the Graph section draws: the Dashboard's Service Graph, with a fixed id.
+    private static let graphWidget = DashboardWidget(id: UUID(uuidString: "00000000-0000-0000-0000-0000000000A1")!, kind: .serviceGraph)
 
     private let spacing: CGFloat = 14
 
@@ -57,6 +61,7 @@ struct ProjectOverview: View {
                     }
                     }
                 }
+                graph
                 if !subprojects.isEmpty {
                     section(String(localized: "Sub Projects", bundle: #bundle), id: "subProjects") {
                         LazyVGrid(columns: columns(for: subprojects.count, minimum: 240), spacing: spacing) {
@@ -206,6 +211,23 @@ struct ProjectOverview: View {
         }
     }
 
+    /// The Service Map's graph of the project's current environment, while its graph is on and the Service Map
+    /// can read it: drawn by the Service Map through the app's widget renderer, as the Dashboard's Service Graph
+    /// widget is. A click opens the Service Map.
+    @ViewBuilder private var graph: some View {
+        if let widgetRenderer, let environment = model.graphEnvironment(of: project.id, tools: availableTools) {
+            section(String(localized: "Graph", bundle: #bundle), id: "graph",
+                    note: Text("In \(environment.name)", bundle: #bundle, comment: "The environment whose graph the overview shows")) {
+                GroupBox {
+                    widgetRenderer(Self.graphWidget, DashboardContext(project: project, environment: environment, window: .hour, editing: false))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: min(max(width * 0.4, 280), 520))
+                }
+                .accessibilityIdentifier("projects.graph")
+            }
+        }
+    }
+
     private func section(_ title: String, id: String, note: Text? = nil, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
@@ -298,7 +320,14 @@ private struct ToolTile: View {
             // As the Tickets window lists them: with the sub projects' tickets.
             Text("\(ticketTotals.open) open, \(ticketTotals.inReview) in review, ^[\(ticketTotals.drafts) draft](inflect: true)", bundle: #bundle)
         case .serviceMap:
-            Text("^[\(project.activity?.serviceCount ?? 0) service](inflect: true) in ^[\(environmentCount) environment](inflect: true)", bundle: #bundle)
+            // The app's projects have no figures yet: the count of services shows once a tool reports it.
+            if let activity = project.activity {
+                Text("^[\(activity.serviceCount) service](inflect: true) in ^[\(environmentCount) environment](inflect: true)", bundle: #bundle)
+            } else if environmentCount == 0 {
+                Text("No environment yet", bundle: #bundle)
+            } else {
+                Text("Services and calls in ^[\(environmentCount) environment](inflect: true)", bundle: #bundle)
+            }
         case .contracts:
             if let activity = project.activity, let version = activity.contractVersion {
                 Text("Version \(version), ^[\(activity.operationCount) operation](inflect: true)", bundle: #bundle)

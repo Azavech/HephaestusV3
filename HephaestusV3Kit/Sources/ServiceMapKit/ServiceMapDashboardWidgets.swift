@@ -52,7 +52,8 @@ public struct ServiceMapDashboardWidget: View {
                 )
             case .serviceGraph:
                 ServiceGraphContent(
-                    project: context.project, reading: reading, focusID: store.ownService(of: context.project, environment: environment.name), editing: context.editing
+                    project: context.project, reading: reading, focusID: store.ownService(of: context.project, environment: environment.name), editing: context.editing,
+                    status: store.status(of: context.project, environment: environment.name), environment: environment
                 )
             case .busiestCalls:
                 BusiestCallsContent(reading: reading, limit: rowLimit)
@@ -259,6 +260,9 @@ private struct ServiceGraphContent: View {
     /// The project's own service, with the accent border.
     let focusID: ServiceNode.ID?
     let editing: Bool
+    /// How the map's last read went, said in place of an empty map.
+    let status: MapStatus
+    let environment: DeploymentEnvironment
 
     /// The height the map counts for the rows of a widget without position and of an added widget;
     /// the map itself fills its widget.
@@ -267,6 +271,38 @@ private struct ServiceGraphContent: View {
     @Environment(\.openRoute) private var openRoute
 
     var body: some View {
+        if reading.map.nodes.isEmpty {
+            empty
+        } else {
+            map
+        }
+    }
+
+    /// Why there is no map yet: reading it, kubectl's message, or a namespace without services.
+    @ViewBuilder private var empty: some View {
+        Group {
+            switch status {
+            case .reading, .none:
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Reading the map of \(environment.name)…", bundle: #bundle)
+                }
+                .foregroundStyle(.textSecondary)
+            case .failed(let message):
+                Text(verbatim: message)
+                    .foregroundStyle(.danger)
+                    .lineLimit(4)
+            case .read:
+                Text("No services in \(environment.namespace ?? environment.name).", bundle: #bundle)
+                    .foregroundStyle(.textSecondary)
+            }
+        }
+        .font(.callout)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityIdentifier("dashboard.serviceGraph.empty")
+    }
+
+    @ViewBuilder private var map: some View {
         let nodes = reading.map.nodes
         let arrows = reading.graphArrows
         let layout = DashboardGraphLayouts.layout(nodes: nodes, arrows: arrows)

@@ -233,6 +233,7 @@ private struct RouteHost<Content: View>: View {
             .environment(\.toolReader, appToolReader(directory: appData.directory, tickets: appData.ticketStore, builds: appData.buildStore,
                                                      contracts: appData.contractStore, maps: appData.serviceMapStore))
             .environment(\.serviceMapStore, appData.serviceMapStore)
+            .environment(\.dashboardWidgetRenderer, DashboardWidgetRenderer { DashboardWidgetView(widget: $0, context: $1) })
             .environment(\.contractStore, appData.contractStore)
             .environment(\.buildStore, appData.buildStore)
             .environment(\.projectDirectory, appData.directory)

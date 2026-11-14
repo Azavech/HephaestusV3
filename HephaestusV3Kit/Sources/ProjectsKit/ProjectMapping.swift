@@ -88,7 +88,8 @@ extension Project {
             },
             activity: nil, parentID: loaded.parentID, environmentsAreResolved: true,
             githubPage: loaded.resolved.githubPage, currentEnvironment: loaded.resolved.currentEnvironment, fileIssue: loaded.fileIssue,
-            hasContract: FileManager.default.fileExists(atPath: loaded.root + "/openapi/contract.yaml")
+            hasContract: FileManager.default.fileExists(atPath: loaded.root + "/openapi/contract.yaml"),
+            graphEnabled: loaded.resolved.graphEnabled
         )
     }
 }

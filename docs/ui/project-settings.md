@@ -92,7 +92,7 @@ app) shows in every field but the one being edited.
 | **Parent** | `<name> (<ID>)` | The parent | Sub projects only. Note under it: "Settings left empty take the values of “<parent>”, shown in grey." |
 | **Docs Folder** | Text field, monospaced, placeholder `docs` | `docsPath` | A relative path, not `.hephaestus` or inside it: "Enter a folder path inside the project, for example docs." |
 | **GitHub Page** | Text field, monospaced; placeholder: the page an empty field gives (`defaultGithubPage`: the nearest ancestor's typed page, else the origin's of the project or its nearest ancestor), else `https://github.com/owner/name` | `githubPage` | `https://github.com/<owner>/<name>`, trimmed, a trailing `/` removed: "Enter a GitHub page, for example https://github.com/owner/name."; empty removes it, and the placeholder's page applies. |
-| **Enable graph** | Toggle, top-level projects | `graphEnabled` | Shows the graph as it applies. On writes `true`; off removes the key, which is off. |
+| **Enable graph** | Toggle, top-level projects | `graphEnabled` | Shows the graph as it applies. On writes `true`; off removes the key, which is off. While on, the project overview shows the Service Map's graph ([Projects › Graph](projects.md#graph)). |
 | **Graph** | Pop-up, sub projects: "Same as “<parent>”: On" (or ": Off", the parent's graph as it applies), a separator, **On**, **Off** | `graphEnabled` | The first item removes the key, so the parent's graph applies; On and Off write `true` and `false`. |
 
 ## Choosing an icon

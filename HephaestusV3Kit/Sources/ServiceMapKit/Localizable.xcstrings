@@ -466,6 +466,9 @@
     "No log lines in this time window." : {
 
     },
+    "No services in %@." : {
+
+    },
     "Node" : {
       "comment" : "A column of the Instances widget: the cluster node"
     },
@@ -554,6 +557,9 @@
           }
         }
       }
+    },
+    "Reading the map of %@…" : {
+
     },
     "Reading the map…" : {
 

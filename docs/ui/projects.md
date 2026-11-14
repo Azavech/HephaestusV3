@@ -12,7 +12,7 @@ available ([Navigation › Available tools](navigation.md#available-tools)); the
 the previews' sample projects, with every tool.
 
 ![The Projects window with Orders selected](images/projects-light.png)
-*The Projects window on Orders, a sub project of Shop: the sidebar tree, the path, the figures, six tool tiles and the environments.*
+*The Projects window on Orders, a sub project of Shop: the sidebar tree, the path, the figures, six tool tiles, the graph with orders-api as its focus, and the environments.*
 
 ## Opening it
 
@@ -147,15 +147,33 @@ Counts in the status lines agree with their number ("1 environment", "2 environm
 | --- | --- | --- |
 | Dashboard | `square.grid.2x2` | "Tickets, builds and services in widgets you arrange" for a service with a Service Map and environments; otherwise "Tickets and builds in widgets you arrange" |
 | Tickets | `checklist` | "5 open, 1 in review, 2 drafts": the figures above, sub projects included |
-| Service Map | `point.3.connected.trianglepath.dotted` | "8 services in 3 environments": the environments are those the **Environments** section lists |
+| Service Map | `point.3.connected.trianglepath.dotted` | "8 services in 3 environments": the environments are those the **Environments** section lists. A project of the app's data has no count of services yet: "Services and calls in 1 environment", or "No environment yet" without environments. |
 | Contracts | `curlybraces.square` | "Version 1.4.0, 6 operations". The tile shows only for a service with a contract, so its other text, "No contract yet", doesn't appear. |
 | Builds | `hammer` | "Last run on 11 Nov at 12:00": day, short month, hour and minute |
 | Chat | `bubble.left.and.text.bubble.right` | "Ask Claude, which reads through these tools" |
 
+### Graph
+
+The Service Map's graph of the project, under Tools, while the project's graph is on (**Enable graph** in
+[Project Settings](project-settings.md), inherited from the parent when the project sets none), the Service Map
+is available and can read the project: a service with environments (`ProjectsModel.graphEnvironment(of:tools:)`).
+The title's note is "In <environment>": the environment the user works in (`currentEnvironment`), else the
+first.
+
+- A `GroupBox` filling the width, its height 40% of the overview's width, between 280 and 520 points.
+- Its content is the Dashboard's Service Graph widget, drawn by the Service Map through the app's
+  `dashboardWidgetRenderer`, over the last hour ([Dashboard › Widgets](dashboard.md)): the whole map, the
+  project's own service as its focus, read when it shows and every 5 seconds while it does. A click opens the
+  Service Map. While the map has no services, it says why: "Reading the map of <environment>…", kubectl's
+  message in red, or "No services in <namespace>."
+- In previews and tests nothing draws other tools' widgets, so the section doesn't show.
+- Identifiers: the title `projects.section.graph`, its note `projects.section.graph.note`, the box
+  `projects.graph`, the map `dashboard.serviceGraph` (or `dashboard.serviceGraph.empty`).
+
 ### Sub Projects
 
 ![The Projects window on Shop, a parent project](images/projects-shop.png)
-*Shop, a parent project: ticket figures with its sub projects included, five tools in three plus two columns, its three sub projects and its environments.*
+*Shop, a parent project: ticket figures with its sub projects included, five tools in three plus two columns, its graph, and its three sub projects.*
 
 The section shows when the project has sub projects. It lists the **direct** sub projects only; theirs show
 in their own overview.

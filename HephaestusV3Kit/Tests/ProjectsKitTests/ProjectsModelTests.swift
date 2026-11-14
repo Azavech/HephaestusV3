@@ -211,4 +211,19 @@ struct ActivitySampleTests {
     func store() {
         #expect(SampleProjectStore().projects.map(\.id) == Project.samples.map(\.id))
     }
+
+    @Test("The overview's graph shows the current environment of a service whose graph is on")
+    func graphEnvironment() {
+        let model = ProjectsModel(store: SampleProjectStore())
+        let all = Set(ToolKind.allCases)
+        #expect(model.graphEnvironment(of: "SHOP", tools: all)?.name == "Local")
+        #expect(model.graphEnvironment(of: "ORD", tools: all)?.name == "Local")
+        #expect(model.graphEnvironment(of: "SHOP", tools: all.subtracting([.serviceMap])) == nil)
+        // Tools has no graph on; AZDesign is a library.
+        #expect(model.graphEnvironment(of: "TLS", tools: all) == nil)
+        #expect(model.graphEnvironment(of: "AZD", tools: all) == nil)
+        // Graph off: the mock store's services leave it off.
+        #expect(ProjectsModel(store: MockProjectStore()).graphEnvironment(of: "A", tools: all) == nil)
+    }
+
 }

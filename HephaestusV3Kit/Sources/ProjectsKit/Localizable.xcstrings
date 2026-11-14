@@ -264,6 +264,9 @@
     "Identifier" : {
 
     },
+    "In %@" : {
+      "comment" : "The environment whose graph the overview shows"
+    },
     "In review" : {
 
     },
@@ -364,6 +367,9 @@
     },
     "No data folder" : {
       "comment" : "Settings ▸ Projects without a data folder"
+    },
+    "No environment yet" : {
+
     },
     "No environment yet. Add one with +." : {
 
@@ -474,6 +480,9 @@
 
     },
     "Service" : {
+
+    },
+    "Services and calls in ^[%lld environment](inflect: true)" : {
 
     },
     "Settings left empty take the values of “%@”, shown in grey." : {

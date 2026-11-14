@@ -47,6 +47,9 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
     /// For a project of the app's data: whether its folder holds `openapi/contract.yaml`, the contract of
     /// Contracts (docs/ui/contracts.md).
     public let hasContract: Bool
+    /// Whether the project's graph is on (Project Settings › Service): the project overview then shows the
+    /// Service Map's graph. Resolved, so a sub project's comes from its parent when it sets none.
+    public let graphEnabled: Bool
 
     public init(
         id: String,
@@ -63,7 +66,8 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
         githubPage: String? = nil,
         currentEnvironment: String? = nil,
         fileIssue: String? = nil,
-        hasContract: Bool = false
+        hasContract: Bool = false,
+        graphEnabled: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -80,6 +84,7 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
         self.currentEnvironment = currentEnvironment
         self.fileIssue = fileIssue
         self.hasContract = hasContract
+        self.graphEnabled = graphEnabled
     }
 
     /// The tools that apply to this project, in menu order: the Dashboard first, and Chat

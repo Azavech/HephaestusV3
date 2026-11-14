@@ -38,6 +38,7 @@ struct ProjectMappingTests {
         resolved.inheritedEnvironments = [EnvironmentEntry(name: "local")]
         resolved.currentEnvironment = "replay"
         resolved.githubPage = "https://github.com/example/worker"
+        resolved.graphEnabled = true
         let file = ProjectFile(id: "WRK", name: "Worker", created: Date(timeIntervalSince1970: 0), type: .goService, icon: "gearshape")
         let project = Project(loaded(file, root: "/p/orders/worker", parentID: "ORD", resolved: resolved))
         #expect(project.kind == .service)
@@ -46,6 +47,7 @@ struct ProjectMappingTests {
         #expect(project.repository == "example/worker")
         #expect(project.activity == nil)
         #expect(project.environmentsAreResolved)
+        #expect(project.graphEnabled)
         #expect(project.environments.map(\.inheritedFrom) == ["ORD", nil])
         #expect(project.environments[0].url == "http://127.0.0.1:8080")
         #expect(project.environments[0].health == nil)

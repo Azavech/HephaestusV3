@@ -140,6 +140,16 @@ final class ProjectsModel {
         return ProjectEnvironments(environments: environments, inheritedFrom: parent)
     }
 
+    /// The environment whose graph the overview shows: the project's current environment, else its first, while
+    /// its graph is on and its Service Map can be read with `tools` (a service with environments); nil otherwise.
+    func graphEnvironment(of id: Project.ID, tools: Set<ToolKind>) -> DeploymentEnvironment? {
+        guard let project = tree.project(id), project.graphEnabled, DashboardWidgetKind.serviceGraph.isShown(for: project, tools: tools) else {
+            return nil
+        }
+        let environments = tree.environments(of: id)
+        return environments.first { $0.name == project.currentEnvironment } ?? environments.first
+    }
+
     /// What happened in the project and its sub projects, newest first, at most `activityLimit` events.
     func activity(of id: Project.ID) -> [ActivityEntry] {
         tree.family(of: id)
