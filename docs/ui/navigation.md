@@ -25,11 +25,11 @@ and the menus and shortcuts that reach them.
 
 ## Available tools
 
-V3 brings HephaestusV2's features over one at a time. A tool whose feature hasn't come over yet is hidden in
-the running app, so that no window shows sample data next to the real projects: its window doesn't open, and
-its tile, its Window menu item, its New *Tool* Window item, its menu bar buttons and ⌘ shortcuts, and its
-Settings tab don't show. `AppData.availableTools` lists the tools that have come over; ToolsScenes gives it to
-every window as the `availableTools` environment value, and the menus read it directly.
+A tool that isn't available is hidden in the running app, so that no window shows sample data next to the
+real projects: its window doesn't open, and its tile, its Window menu item, its New *Tool* Window item, its
+menu bar buttons and ⌘ shortcuts, and its Settings tab don't show. `AppData.availableTools` lists the
+available tools; ToolsScenes gives it to every window as the `availableTools` environment value, and the
+menus read it directly.
 `AppData.machinesAvailable` does the same for the Virtual Machines window.
 
 | Feature | Tools and windows | Available |

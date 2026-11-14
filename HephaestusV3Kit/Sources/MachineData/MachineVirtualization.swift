@@ -22,7 +22,7 @@ public struct MachineFailure: Error, LocalizedError, Sendable, Hashable {
 }
 
 /// The configuration of a macOS machine that boots the disk of a folder (docs/data.md › Virtual machines ›
-/// Configuration). V2's devices: one display of 2560 × 1600 at 220 ppi, Mac and USB keyboards and pointing
+/// Configuration): one display of 2560 × 1600 at 220 ppi, Mac and USB keyboards and pointing
 /// devices, a virtio disk, a NAT network device, an entropy device, a socket device for the guest agent and an
 /// optional read-only shared folder.
 @MainActor
@@ -306,7 +306,7 @@ public final class IPSWDownload: NSObject, URLSessionDataDelegate, @unchecked Se
 }
 
 /// The guest's address: the DHCP lease that macOS's NAT gave the machine's MAC address, in
-/// `/var/db/dhcpd_leases` (V3 addition: V2 showed none).
+/// `/var/db/dhcpd_leases`.
 public enum DHCPLeases {
     public static let file = URL(fileURLWithPath: "/var/db/dhcpd_leases")
 

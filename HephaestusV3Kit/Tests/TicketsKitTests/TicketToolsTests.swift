@@ -32,7 +32,7 @@ private final class ToolWorld {
         let data = DataFolder(url: root.appendingPathComponent("Data"))
         try data.createIfNeeded()
         try YAMLFile.write(RegistryFile(projects: [repo.path]), to: data.registryFile)
-        projects = ProjectSession(dataFolder: data, runner: NoProcesses(), v2Folder: root.appendingPathComponent("NoV2"), processEnvironment: [:])
+        projects = ProjectSession(dataFolder: data, runner: NoProcesses(), processEnvironment: [:])
         await projects.start()
         tickets = TicketSession(projects: projects, trash: .folder(root.appendingPathComponent("Trash")), device: "Test")
         await tickets.start()
@@ -61,7 +61,7 @@ private final class ToolWorld {
 @Suite("Ticket tools")
 @MainActor
 struct TicketToolsTests {
-    @Test("The tools are V2's, without Implement, in the order of docs/mcp.md")
+    @Test("The tools, in the order of docs/mcp.md")
     func names() async throws {
         let world = try await ToolWorld()
         defer { Task { await world.close() } }

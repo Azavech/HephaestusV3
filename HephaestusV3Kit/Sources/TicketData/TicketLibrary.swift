@@ -61,7 +61,7 @@ public struct TicketSnapshot: Sendable, Hashable {
     }
 }
 
-/// The tickets and bundles of every loaded project: it reads their files, applies V2's rules to every change
+/// The tickets and bundles of every loaded project: it reads their files, applies the rules to every change
 /// and gives a new snapshot after each (docs/data.md › Tickets).
 public actor TicketLibrary {
     private let projects: ProjectLibrary
@@ -560,7 +560,7 @@ public actor TicketLibrary {
     // MARK: Rules
 
     /// Checks the links a ticket declares, in order: a link it already declares with the same kind is kept
-    /// as it is; any other follows V2's link rules 1 to 7 (docs/data.md › Link rules).
+    /// as it is; any other follows the link rules 1 to 7 (docs/data.md › Link rules).
     private func checkedLinks(_ links: [TicketLinkEntry], of id: String?, in projectID: String,
                               declared: [TicketLinkEntry]) throws(TicketError) -> [TicketLinkEntry] {
         var result: [TicketLinkEntry] = []

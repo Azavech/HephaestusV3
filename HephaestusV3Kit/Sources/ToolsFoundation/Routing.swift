@@ -2,7 +2,7 @@ import SwiftUI
 
 /// A tool that has its own window, opened for one project at a time.
 nonisolated public enum ToolKind: String, CaseIterable, Identifiable, Codable, Sendable {
-    /// The project on one screen, in widgets the user places on a grid (V2's Dashboard).
+    /// The project on one screen, in widgets the user places on a grid.
     case dashboard
     case tickets
     case serviceMap

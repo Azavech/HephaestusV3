@@ -3,7 +3,7 @@ import Foundation
 import Testing
 @testable import ProjectData
 
-/// docs/data.md › Dashboard widget: V2's widget keys, V3's additions, and the write rules.
+/// docs/data.md › Dashboard widget: the widget keys and the write rules.
 @Suite("Dashboard widgets")
 struct DashboardWidgetEntryTests {
     private func entry(_ yaml: String) throws -> DashboardWidgetEntry {
@@ -33,7 +33,7 @@ struct DashboardWidgetEntryTests {
         #expect(try entry(try YAMLCoding.encode(widget)) == widget)
     }
 
-    @Test("A kind or a status neither app knows makes the widget unreadable, as in V2")
+    @Test("An unknown kind or status makes the widget unreadable")
     func unknownValues() {
         #expect(throws: (any Error).self) { try entry("id: 00000000-0000-0000-0000-000000000001\nkind: weather\n") }
         #expect(throws: (any Error).self) {

@@ -1,6 +1,6 @@
 # Service Map
 
-The Service Map shows the services of a project's namespace and how they call each other, after the service map of AWS X-Ray. Round nodes stand for the services and for the databases, queues and external services they call; curved arrows stand for the calls, colored by their traffic. Under the graph, a table lists the namespace's recent requests, newest first. Beside both, the details show the service in focus or the request selected. A click on a service focuses the graph on it. A request shows only its path, from a Client node. A right-click, **Back** or ⌘[ goes back to the view before. The map reads the environment's cluster with kubectl, the services' sources on GitHub with gh, and the traces of its Jaeger, by V2's rules ([Data › Clusters](../data.md#clusters)); the previews and captures use sample data (see [Sample data and limits](#sample-data-and-limits)).
+The Service Map shows the services of a project's namespace and how they call each other, after the service map of AWS X-Ray. Round nodes stand for the services and for the databases, queues and external services they call; curved arrows stand for the calls, colored by their traffic. Under the graph, a table lists the namespace's recent requests, newest first. Beside both, the details show the service in focus or the request selected. A click on a service focuses the graph on it. A request shows only its path, from a Client node. A right-click, **Back** or ⌘[ goes back to the view before. The map reads the environment's cluster with kubectl, the services' sources on GitHub with gh, and the traces of its Jaeger ([Data › Clusters](../data.md#clusters)); the previews and captures use sample data (see [Sample data and limits](#sample-data-and-limits)).
 
 ![The Service Map of Orders in Staging, focused on orders-api, in light appearance](images/servicemap-light.png)
 *Orders in Staging, opened on its own service, orders-api. The summary, zoom controls and legend float over the graph. The recent requests are under the graph, and the details of orders-api are on the right.*
@@ -22,7 +22,7 @@ The route is `.tool(.serviceMap, project:, focus:)`. The focus is `service:<name
 
 The window opens at 1,320 × 840 points and can't be made smaller than 390 × 420 points. Its title is **Service Map**, and its subtitle is the project's path, for example "Shop › Orders".
 
-**First view.** A window opened with a focus shows that view. A sub project opened with no focus shows its own service in focus, with the whole namespace behind it. Going back or **Show All** reaches the whole namespace (the previous app's rule). Any other project opens on the whole namespace. In the sample data, Orders opens on `orders-api`, Payments on `payments-api` and Edge Gateway on `edge-gateway`. Shop, their parent, opens on the whole namespace.
+**First view.** A window opened with a focus shows that view. A sub project opened with no focus shows its own service in focus, with the whole namespace behind it. Going back or **Show All** reaches the whole namespace. Any other project opens on the whole namespace. In the sample data, Orders opens on `orders-api`, Payments on `payments-api` and Edge Gateway on `edge-gateway`. Shop, their parent, opens on the whole namespace.
 
 ![The Service Map of Orders in dark appearance](images/servicemap-dark.png)
 *Orders opens on orders-api in dark appearance, with the whole namespace behind it. Back and Show All mark the way back.*
@@ -52,14 +52,14 @@ The graph sits over the requests table in a vertical split view whose divider ca
 | **Service Map** and project path | Window title and subtitle | — | — | Dropped when the window is narrower than 760 points. | Mac, iPad from 760 points |
 | **Environment** | Menu with an inline picker. The label is the current environment's name, for example **Staging**. | — | — | Picks one of the project's environments, or of the project it takes its settings from (see [Projects](projects.md)): **Local**, **Staging** or **Production** in the samples. The graph, summary, requests, details and the chat panel's subject follow the choice. The view stays: a service or request the new environment lacks shows as not found (see [States](#states)). Tooltip "Environment". | Mac, iPad |
 | **Time Window** | Segmented control on Mac, pop-up menu on iPad: **5 min**, **1 hour** (default), **24 hours** | — | — | The window of the traces the map counts, ending at each read. Tooltip "Time Window". | Mac, iPad |
-| **Live** | Toggle button, on by default | `dot.radiowaves.left.and.right` | — | On, the map is read again 5 s after each read (V2's cadence); off, only when the environment or the window changes. Tooltip "Follow new requests as they arrive". | Mac, iPad |
+| **Live** | Toggle button, on by default | `dot.radiowaves.left.and.right` | — | On, the map is read again 5 s after each read; off, only when the environment or the window changes. Tooltip "Follow new requests as they arrive". | Mac, iPad |
 | **Map Settings** | Menu | `ellipsis.circle` | — | Holds the Environment picker, the Time Window picker and the **Live** toggle. Tooltip "Environment, time window and Live". | iPhone |
 | **Details** | Button | `info.circle` | — | Pushes the details page over the map. Tooltip "Details of the service or request". | iPhone |
 | **Chat** | `ChatPanelToolbarItem` | `sidebar.right` | ⌃⌘C | Shows or hides the chat panel. It is the last item (the user's choice). It is absent when Settings › Chat turns the panel off. Tooltip "Show the Chat Panel (⌃⌘C)" or "Hide the Chat Panel (⌃⌘C)". | Mac, iPad, iPhone |
 
 ## The graph
 
-The graph reuses the previous app's graph code: its layout, geometry and numbers. It keeps that app's X-Ray look and must not be redesigned (the user's choice). Hephaestus V3 changes three things. Colors come from AZDesign, mapped to success → warning → danger (a porting adaptation). A node's border shows its health, as in X-Ray. An arrow is labeled with calls per second, or with a duration in a request view. VoiceOver support sits on top of the drawing and changes nothing on screen (see [Accessibility](#accessibility)).
+The graph keeps the look of the X-Ray service map, with the layout, geometry and numbers below, and must not be redesigned (the user's choice). Colors come from AZDesign, mapped to success → warning → danger. A node's border shows its health, as in X-Ray. An arrow is labeled with calls per second, or with a duration in a request view. VoiceOver support sits on top of the drawing and changes nothing on screen (see [Accessibility](#accessibility)).
 
 ### Nodes
 
@@ -115,7 +115,7 @@ The scale is relative to the arrows shown. A focus therefore colors its arrows a
 
 ### Layout
 
-Node positions come from the previous app's algorithm, unchanged:
+Node positions come from this algorithm:
 
 - **Rings.** A database, queue or external service that a service calls sits on the ring of the first service that calls it, 95 points from that service's center. A crowded ring grows so that two of its nodes stay 110 points apart. Each ring node goes into the widest gap left by its service's arrows and by the ring nodes already placed. The gaps are searched every 5 degrees, starting straight up. Ring nodes go above or beside their service, never below, where the service's name hangs, unless the ring has no room left there. A ring with no room for its nodes one by one is spread evenly around its service.
 - **Groups.** Services linked by calls in either direction form a group, together with their rings. An arrow to or from a ring node counts as its service's arrow. A node that nothing links to stands alone as its own group.
@@ -149,7 +149,7 @@ Node positions come from the previous app's algorithm, unchanged:
 | Service in focus | The service, the nodes it calls, the services that call it, and the arrows to and from it | A click on a service node, a row of the details' **Calls** or **Timeline**, a `service:` route, or opening a sub project | That service |
 | Request | A Client node and the nodes the request went through, with only the calls it made | Selecting a row of the requests table, or a `request:` route | That request |
 
-- **Click.** A click on a gateway, service or worker focuses on it. A click on a database, queue, external service or the Client does nothing, and so does a click on the background (the previous app's rule). Such a node can still be focused from the details' **Calls** and **Timeline** rows and from a `service:` route, such as the Activity entry `service:stripe`.
+- **Click.** A click on a gateway, service or worker focuses on it. A click on a database, queue, external service or the Client does nothing, and so does a click on the background. Such a node can still be focused from the details' **Calls** and **Timeline** rows and from a `service:` route, such as the Activity entry `service:stripe`.
 - **Request view.** The Client's arrow goes into the request's first service. Each later service is called by the closest earlier service whose span contains its own. Each caller and callee pair gets one arrow. Arrow labels and colors are durations, and the legend reads **Faster** to **Slowest**.
 - **Back.** A right-click anywhere on the graph, **Back** in the zoom controls, or ⌘[ goes back to the view before. Every new view keeps the one it replaced, so going back walks the views in reverse order and ends at the whole namespace. A request replaces the request shown instead of stacking on it: after moving from request to request, by clicking rows or with the arrow keys, going back returns to the view the first request was opened from. A right-click opens no context menu.
 - **Show All.** Goes straight to the whole namespace and forgets the views before it.
@@ -347,10 +347,10 @@ Text comes from the Service Map's own String Catalog. Counts agree with their nu
 
 ## Sample data and limits
 
-- **Live maps.** The app reads each environment with `LiveServiceMapStore`: services, databases (V2's postgres
+- **Live maps.** The app reads each environment with `LiveServiceMapStore`: services, databases (postgres
   Clusters) and buckets (as external services) from the Deployments and their sources; calls, figures, requests and
-  log lines from Jaeger's traces. V3's gateways, workers and queues don't come from V2's sources: a live map shows
-  services, databases and external services. Logs are those of the requests' span events.
+  log lines from Jaeger's traces. The sources don't tell gateways, workers or queues: a live map shows services,
+  databases and external services. Logs are those of the requests' span events.
 - **Samples.** Previews and captures use the sample namespaces (`SampleServiceMapStore`): Local, Staging and
   Production, with gateways, workers, queues and a Production-only service; their numbers are fixed.
 

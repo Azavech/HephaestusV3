@@ -12,13 +12,13 @@ struct ProjectMappingTests {
                       fileIssue: nil)
     }
 
-    @Test("V2's types become V3's kinds, and back")
+    @Test("The stored types become kinds, and back")
     func kinds() {
         #expect(ProjectKind.allCases.map { Project.Kind($0) } == [.other, .service, .app, .library])
         #expect(Project.Kind.allCases.map(\.stored) == [.goService, .swiftApplication, .library, .none])
     }
 
-    @Test("A tint name gives its tint; V2's colors the nearest hue; none or a gray gives Accent")
+    @Test("A tint name gives its tint; a #RRGGBB color the nearest hue; none or a gray gives Accent")
     func tints() {
         #expect(ProjectTint(stored: "info") == .info)
         #expect(ProjectTint(stored: nil) == .accent)

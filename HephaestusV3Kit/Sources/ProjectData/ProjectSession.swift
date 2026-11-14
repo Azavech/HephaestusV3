@@ -10,19 +10,17 @@ import Observation
 public final class ProjectSession {
     /// Where the session is in its start.
     public enum Phase: Equatable, Sendable {
-        /// Taking the lock, importing from V2, loading.
+        /// Taking the lock, loading.
         case starting
         /// The projects are loaded.
         case ready
-        /// The data folder can't be used: no App Group, the folder can't be created, or another copy of the
+        /// The data folder can't be used: there is none, the folder can't be created, or another copy of the
         /// app holds it.
         case failed(ProjectError)
     }
 
     public private(set) var phase: Phase = .starting
     public private(set) var snapshot = ProjectSnapshot.empty
-    /// What the import from V2 did, when it ran at this start.
-    public private(set) var importResult: V2Import.Result?
     /// The login shell's environment, once captured; nil while capturing.
     public private(set) var shell: ShellEnvironment.Capture?
     /// The tools found in that environment.
@@ -32,7 +30,6 @@ public final class ProjectSession {
 
     public let dataFolder: DataFolder?
     @ObservationIgnored private let runner: any ProcessRunning
-    @ObservationIgnored private let v2Folder: URL
     @ObservationIgnored private let processEnvironment: [String: String]
     @ObservationIgnored private let hub: FileEventHub
     @ObservationIgnored private var library: ProjectLibrary?
@@ -52,21 +49,18 @@ public final class ProjectSession {
     /// - Parameters:
     ///   - dataFolder: the app's data folder (`DataFolder.resolve()`); tests pass a temporary one.
     ///   - runner: starts the shell and the tools; tests pass a fake.
-    ///   - v2Folder: where V2's data folder is, for the import.
     ///   - processEnvironment: the app's own environment, the start of the shell's.
     public init(dataFolder: DataFolder?, runner: any ProcessRunning = SystemProcessRunner.shared,
-                v2Folder: URL = V2Import.defaultV2Folder(),
                 processEnvironment: [String: String] = ProcessInfo.processInfo.environment,
                 hub: FileEventHub = FileEventHub()) {
         self.dataFolder = dataFolder
         self.runner = runner
-        self.v2Folder = v2Folder
         self.processEnvironment = processEnvironment
         self.hub = hub
     }
 
     /// Starts in this order (docs/architecture.md › ProjectData): create the data folder and take its
-    /// lock, import from V2 once, load, watch the files; then, without holding the windows, capture the
+    /// lock, load, watch the files; then, without holding the windows, capture the
     /// login shell's environment, look the tools up, and read the projects' origins.
     public func start() async {
         guard phase == .starting, library == nil else { return }
@@ -84,7 +78,6 @@ public final class ProjectSession {
             phase = .failed(.noDataFolder)
             return
         }
-        importResult = try? V2Import.runIfNeeded(into: dataFolder, from: v2Folder)
         let library = ProjectLibrary(dataFolder: dataFolder, runner: runner)
         self.library = library
         apply(await library.load())

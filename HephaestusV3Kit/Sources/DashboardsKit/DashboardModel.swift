@@ -56,7 +56,7 @@ final class DashboardModel {
     }
 
     /// The kinds the Dashboard shows: those whose tool the app offers, the service widgets only for a
-    /// project whose Service Map can be read, never V2's Recent Chats and Cost.
+    /// project whose Service Map can be read, never Recent Chats and Cost.
     var shownKinds: Set<DashboardWidgetKind> {
         DashboardWidgetKind.shown(for: project, tools: tools)
     }
@@ -102,7 +102,7 @@ final class DashboardModel {
         return project.deploymentEnvironments.first { $0.health != .healthy } ?? project.deploymentEnvironments.first
     }
 
-    /// The time window of the service widgets, the last hour by default as in V2.
+    /// The time window of the service widgets, the last hour by default.
     var window: TimeWindow {
         store.window(of: project.id) ?? .hour
     }

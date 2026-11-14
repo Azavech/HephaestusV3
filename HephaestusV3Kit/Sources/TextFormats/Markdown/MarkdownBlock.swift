@@ -1,6 +1,6 @@
 import Foundation
 
-/// The block model of rendered Markdown, from HephaestusV2 without its markers (docs/text.md › Block model).
+/// The block model of rendered Markdown (docs/text.md › Block model).
 public indirect enum MarkdownBlock: Sendable, Equatable {
     case heading(level: Int, id: String, content: [MarkdownInline])
     case paragraph([MarkdownInline])

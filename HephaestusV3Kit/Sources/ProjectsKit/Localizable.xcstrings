@@ -150,7 +150,7 @@
     "Create Project Here…" : {
 
     },
-    "Create a project, or add a folder that holds one, such as a project of HephaestusV2." : {
+    "Create a project, or add a folder that holds one." : {
 
     },
     "Current" : {
@@ -226,9 +226,6 @@
 
     },
     "Found in the PATH of your login shell, as in Terminal." : {
-
-    },
-    "From HephaestusV2" : {
 
     },
     "Gave nothing; the tools run with the app’s own environment." : {
@@ -544,9 +541,6 @@
 
     },
     "^[%lld open ticket](inflect: true)" : {
-
-    },
-    "^[%lld project](inflect: true) brought over at this launch" : {
 
     },
     "^[%lld service](inflect: true) in ^[%lld environment](inflect: true)" : {

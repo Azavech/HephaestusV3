@@ -45,7 +45,7 @@ struct ProjectLauncherPanel: View {
 
     @Environment(\.openRoute) private var openRoute
     @Environment(\.dismiss) private var dismiss
-    /// Only the tools that have come over from V2 show.
+    /// Only the available tools show.
     @Environment(\.availableTools) private var availableTools
     /// The row the VoiceOver cursor is on, which the highlight follows.
     @AccessibilityFocusState private var voiceOverRow: Project.ID?

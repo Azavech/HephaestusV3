@@ -1,6 +1,6 @@
 import Foundation
 
-/// Prefilled bodies and type summaries, by V2's rules (docs/data.md › Contracts › Prefilled bodies).
+/// Prefilled bodies and type summaries (docs/data.md › Contracts › Prefilled bodies).
 enum ContractSamples {
     /// A media type's body: its `example`, the first of its `examples`, a sample of its schema, or nothing;
     /// written as the media type is.

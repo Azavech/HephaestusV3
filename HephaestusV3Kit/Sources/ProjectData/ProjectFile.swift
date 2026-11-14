@@ -4,9 +4,9 @@ import Foundation
 /// `.hephaestus/project.yml`: a project's identity, type, color, icon, counters, documentation folder,
 /// GitHub page, sub projects and environments (docs/data.md › Project file).
 ///
-/// HephaestusV2's format, read and written in V2's key order. The keys of V2 that V3 doesn't use yet
-/// (`webTabs`, `skills`, `chatDefaults`, `deletedChats`, `commentAnswers`) are kept exactly as read, at their
-/// place; V3 never adds them. Keys neither knows follow, in the order they were read.
+/// Read and written in a fixed key order. The keys the app doesn't use yet (`webTabs`, `skills`,
+/// `chatDefaults`, `deletedChats`, `commentAnswers`) are kept exactly as read, at their place; the app never
+/// adds them. Keys it doesn't know follow, in the order they were read.
 public struct ProjectFile: Codable, Sendable, Hashable {
     public var schema: Int
     /// The identifier (`ProjectRules.isIdentifier`). Set at creation, never changed.
@@ -14,7 +14,7 @@ public struct ProjectFile: Codable, Sendable, Hashable {
     public var name: String
     public var created: Date
     public var type: ProjectKind
-    /// `#RRGGBB` in uppercase (V2), or the name of a tint (V3, `ProjectColor.tintNames`); nil for no
+    /// `#RRGGBB` in uppercase, or the name of a tint (`ProjectColor.tintNames`); nil for no
     /// color.
     public var color: String?
     /// The name of an SF Symbol; nil for no icon.
@@ -40,9 +40,9 @@ public struct ProjectFile: Codable, Sendable, Hashable {
     public var dashboardWidgets: [DashboardWidgetEntry]?
     /// The time window of the Dashboard's service widgets; nil is `hour`.
     public var dashboardGraphWindow: DashboardGraphWindow?
-    /// V2's keys that V3 doesn't use yet, as read; absent keys stay absent.
-    public var keptV2Keys: YAMLMapping
-    /// The keys neither V2 nor V3 knows, in the order they were read.
+    /// The keys the app doesn't use yet, as read; absent keys stay absent.
+    public var keptKeys: YAMLMapping
+    /// The keys the app doesn't know, in the order they were read.
     public var unknownKeys: YAMLMapping
 
     public init(schema: Int = 1, id: String, name: String, created: Date, type: ProjectKind = .none, color: String? = nil,
@@ -50,7 +50,7 @@ public struct ProjectFile: Codable, Sendable, Hashable {
                 githubPage: String? = nil, useParentSettings: Bool = true, subprojects: [String] = [],
                 graphEnabled: Bool = false, environments: [EnvironmentEntry] = [],
                 environmentOverrides: [String: EnvironmentOverride] = [:], dashboardWidgets: [DashboardWidgetEntry]? = nil,
-                dashboardGraphWindow: DashboardGraphWindow? = nil, keptV2Keys: YAMLMapping = [:],
+                dashboardGraphWindow: DashboardGraphWindow? = nil, keptKeys: YAMLMapping = [:],
                 unknownKeys: YAMLMapping = [:]) {
         self.schema = schema
         self.id = id
@@ -70,17 +70,17 @@ public struct ProjectFile: Codable, Sendable, Hashable {
         self.environmentOverrides = environmentOverrides
         self.dashboardWidgets = dashboardWidgets
         self.dashboardGraphWindow = dashboardGraphWindow
-        self.keptV2Keys = keptV2Keys
+        self.keptKeys = keptKeys
         self.unknownKeys = unknownKeys
     }
 
-    /// Every key of V2's table, in its order.
+    /// Every key of the table, in its order.
     static let keyOrder = [
         "schema", "id", "name", "created", "type", "color", "icon", "nextTicketNumber", "nextBundleNumber", "docsPath",
         "githubPage", "useParentSettings", "subprojects", "webTabs", "skills", "chatDefaults", "graphEnabled",
         "environments", "environmentOverrides", "dashboardWidgets", "dashboardGraphWindow", "deletedChats", "commentAnswers",
     ]
-    /// V2's keys that V3 keeps as read.
+    /// The keys kept as read.
     static let keptKeys: Set<String> = ["webTabs", "skills", "chatDefaults", "deletedChats", "commentAnswers"]
     static let knownKeys = Set(keyOrder)
 
@@ -119,7 +119,7 @@ public struct ProjectFile: Codable, Sendable, Hashable {
         for key in Self.keyOrder where Self.keptKeys.contains(key) {
             kept[key] = try c.raw(key)
         }
-        keptV2Keys = kept
+        keptKeys = kept
         unknownKeys = try c.unknownKeys(known: Self.knownKeys)
     }
 
@@ -139,7 +139,7 @@ public struct ProjectFile: Codable, Sendable, Hashable {
         try c.encode(useParentSettings, "useParentSettings")
         try c.encode(subprojects, "subprojects")
         for key in ["webTabs", "skills", "chatDefaults"] {
-            try c.encodeIfPresent(keptV2Keys[key], key)
+            try c.encodeIfPresent(keptKeys[key], key)
         }
         if graphEnabled {
             try c.encode(graphEnabled, "graphEnabled")
@@ -149,7 +149,7 @@ public struct ProjectFile: Codable, Sendable, Hashable {
         try c.encodeIfPresent(dashboardWidgets, "dashboardWidgets")
         try c.encodeIfPresent(dashboardGraphWindow, "dashboardGraphWindow")
         for key in ["deletedChats", "commentAnswers"] {
-            try c.encodeIfPresent(keptV2Keys[key], key)
+            try c.encodeIfPresent(keptKeys[key], key)
         }
         try c.encodeUnknownKeys(unknownKeys, known: Self.knownKeys)
     }
@@ -157,7 +157,7 @@ public struct ProjectFile: Codable, Sendable, Hashable {
 
 /// The key `type`: what the project is (docs/data.md › Project kind).
 public enum ProjectKind: String, Codable, Sendable, Hashable, CaseIterable {
-    /// Neither of the others: V2's `None`, V3's Other.
+    /// Neither of the others: `none`, shown as Other.
     case none
     /// A Go service: V3's Service.
     case goService
@@ -167,7 +167,7 @@ public enum ProjectKind: String, Codable, Sendable, Hashable, CaseIterable {
     case library
 }
 
-/// The key `color`: V2 stores `#RRGGBB`; V3 stores the name of one of its tints, the semantic colors of
+/// The key `color`: `#RRGGBB`, or the name of one of the app's tints, the semantic colors of
 /// AZDesign (docs/data.md › Project file).
 public enum ProjectColor {
     /// The tints V3 writes, the names of ToolsFoundation's `ProjectTint`.
@@ -204,7 +204,7 @@ public struct EnvironmentEntry: Codable, Sendable, Hashable {
     public var argoCDApplication: String?
     /// The kubeconfig file, an absolute path or one starting with `~/`; nil uses kubectl's default.
     public var kubeconfig: String?
-    /// The keys V3 doesn't know, such as V2's old `context`, in their order.
+    /// The keys the app doesn't know, such as an old `context`, in their order.
     public var unknownKeys: YAMLMapping
 
     public init(name: String, url: String? = nil, port: Int? = nil, allowInvalidCertificates: Bool = false,

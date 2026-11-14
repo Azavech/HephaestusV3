@@ -1,8 +1,7 @@
 import FileStorage
 import Foundation
 
-/// `<data folder>/settings.yml`: the app's settings (docs/data.md › Settings file). V3's own file; V2's
-/// settings are not imported.
+/// `<data folder>/settings.yml`: the app's settings (docs/data.md › Settings file).
 public struct SettingsFile: Codable, Sendable, Hashable {
     /// The MCP server's port when nothing else sets it.
     public static let defaultMCPPort = 47830
@@ -16,7 +15,7 @@ public struct SettingsFile: Codable, Sendable, Hashable {
     public var chatModel: String?
     /// The effort of new chats; nil for `high`.
     public var chatEffort: String?
-    /// The cores, memory and disk new virtual machines start with (V2's keys); nil for 2 cores, 4 GB, 64 GB.
+    /// The cores, memory and disk new virtual machines start with; nil for 2 cores, 4 GB, 64 GB.
     public var defaultVMCores: Int?
     public var defaultVMMemoryGB: Int?
     public var defaultVMDiskGB: Int?

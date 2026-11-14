@@ -17,7 +17,7 @@ protocol ProjectSettingsBackend: AnyObject {
 extension ProjectSession: ProjectSettingsBackend {}
 
 /// A project's settings: each field applies on its own, as soon as it changes (a text field on Return or
-/// when it loses the focus), with V2's rules (docs/ui/project-settings.md).
+/// when it loses the focus), with the rules of docs/ui/project-settings.md.
 @Observable
 final class ProjectSettingsModel {
     /// A field, for its message.

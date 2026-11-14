@@ -128,7 +128,7 @@ struct GuestAgentKitTests {
         }
     }
 
-    @Test("An unknown method fails with its name; V2's setEnv is gone")
+    @Test("An unknown method fails with its name, setEnv among them")
     func unknown() throws {
         try Self.withAgent { (host: Host, _: [String: Any]) throws in
             #expect(try host.failure("noSuchMethod") == "Unknown method noSuchMethod.")

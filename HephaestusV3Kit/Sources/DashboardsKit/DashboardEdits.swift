@@ -1,8 +1,7 @@
 import Foundation
 import ToolsFoundation
 
-// From HephaestusV2's Sources/HephaestusUI/Dashboard/DashboardView.swift: the slots, the arrangement
-// and the changes of edit mode, unchanged but for the settings of Hephaestus V3's widgets and the steps of the
+// The slots, the arrangement and the changes of edit mode, with the widgets' settings and the steps of the
 // keyboard and VoiceOver, which ask for cells as a drag does.
 
 /// What the widgets show from their settings (docs/ui/dashboard.md › Widgets, Settings).

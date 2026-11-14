@@ -1,10 +1,10 @@
 import FileStorage
 import Foundation
 
-/// `.hephaestus/chats/<CHAT-ID>.yml`: a chat's metadata (docs/data.md › Chat file). V2's format, plus V3's
+/// `.hephaestus/chats/<CHAT-ID>.yml`: a chat's metadata (docs/data.md › Chat file), with its
 /// `origin`; the chat's transcript is the `.jsonl` file next to it.
 public struct ChatFile: Codable, Sendable, Hashable {
-    /// What started the chat. V3 starts `project` chats only; it reads V2's other kinds as they are.
+    /// What started the chat. The app starts `project` chats only; it reads the other kinds as they are.
     public enum Kind: String, Codable, Sendable, Hashable, CaseIterable {
         case project, ticket, bundle, feedback, ci, setup
     }
@@ -17,9 +17,9 @@ public struct ChatFile: Codable, Sendable, Hashable {
     public var kind: Kind
     public var ticketID: String?
     public var bundleID: String?
-    /// V2's orchestrating chat, for its ticket and CI chats; written only when set.
+    /// The orchestrating chat, for ticket and CI chats; written only when set.
     public var orchestratorChatID: String?
-    /// V2's virtual machine image, for its Auto Setup chats; written only when set.
+    /// The virtual machine image, for Auto Setup chats; written only when set.
     public var imageID: String?
     public var created: Date
     /// The last change: of the metadata, a message sent, a turn ended.
@@ -28,12 +28,12 @@ public struct ChatFile: Codable, Sendable, Hashable {
     /// True once the Claude CLI has created the session: later launches resume it.
     public var sessionStarted: Bool
     public var closed: Bool
-    /// V2's implement chats only; written only when true.
+    /// Implement chats only; written only when true.
     public var questionsBlocked: Bool
     /// V3 addition: the tool whose chat panel started the chat (a `ToolKind` value, such as `tickets`); nil
-    /// for a chat of the Chat window and for V2's chats. Written only when set.
+    /// for a chat of the Chat window and for the other kinds. Written only when set.
     public var origin: String?
-    /// Keys V3 doesn't read, V2's `contextUsage` among them, written back after the known ones.
+    /// Keys the app doesn't read, `contextUsage` among them, written back after the known ones.
     public var unknownKeys: YAMLMapping
 
     public init(id: String, title: String, kind: Kind = .project, created: Date, settings: ChatSettings = ChatSettings(),
@@ -55,7 +55,7 @@ public struct ChatFile: Codable, Sendable, Hashable {
     static let knownKeys: Set<String> = [
         "schema", "id", "title", "kind", "ticket", "bundle", "orchestrator", "image", "created", "updated", "settings",
         "sessionStarted", "closed", "questionsBlocked", "origin",
-        // V2's runtime keys: never in a file, ignored when they are.
+        // Runtime keys: never in a file, ignored when they are.
         "projectID", "state", "backgroundWork", "compactingSince", "costUSD", "mentionedIDs",
     ]
 
@@ -103,7 +103,7 @@ public struct ChatFile: Codable, Sendable, Hashable {
         try c.encodeUnknownKeys(unknownKeys, known: Self.knownKeys)
     }
 
-    /// V2's rules of the kinds (docs/data.md › Chat kinds); nil when the file follows them.
+    /// The rules of the kinds (docs/data.md › Chat kinds); nil when the file follows them.
     var kindViolation: String? {
         switch kind {
         case .ticket where ticketID == nil: return "a ticket chat names its ticket"
@@ -120,17 +120,17 @@ public struct ChatFile: Codable, Sendable, Hashable {
     }
 }
 
-/// A chat's model and effort, and V2's other settings, kept as read (docs/data.md › Chat settings).
+/// A chat's model and effort, and its other settings, kept as read (docs/data.md › Chat settings).
 public struct ChatSettings: Codable, Sendable, Hashable {
     /// The CLI's model value: `default`, or a value of the CLI's model list such as `opus`.
     public var model: String
     public var effort: Effort
-    /// V2's permission mode. V3 keeps it as read and doesn't use it: the user's permissions in Settings ▸ Chat
+    /// A permission mode, kept as read and not used: the user's permissions in Settings ▸ Chat
     /// decide what Claude may change.
     public var permissionMode: String
-    /// V2's Ultracode, kept as read; V3 doesn't use it.
+    /// Ultracode, kept as read and not used.
     public var ultracode: Bool
-    /// V2's context window, kept as read; V3 doesn't use it.
+    /// A context window, kept as read and not used.
     public var contextWindow: String
     public var unknownKeys: YAMLMapping
 
@@ -184,7 +184,7 @@ public enum ChatIDs {
     /// A new id.
     public static func make() -> String { UUID().uuidString }
 
-    /// True for an uppercase UUID, as V2 writes chat ids.
+    /// True for an uppercase UUID, as chat ids are written.
     public static func isChatID(_ value: String) -> Bool {
         UUID(uuidString: value)?.uuidString == value
     }

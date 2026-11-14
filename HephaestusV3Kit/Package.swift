@@ -12,7 +12,7 @@ let code: Target.Dependency = .product(name: "AZDesignCode", package: "AZDesign"
 let strings: [Resource] = [.process("Localizable.xcstrings")]
 
 /// A tool's target: ToolsFoundation, AZDesign and its code font, its own strings, and the data target of its
-/// own feature, once that feature has come over from V2.
+/// own feature.
 func toolTarget(_ name: String, data: [Target.Dependency] = []) -> Target {
     .target(name: name, dependencies: ["ToolsFoundation", design, code] + data, resources: strings, swiftSettings: isolation)
 }
@@ -43,11 +43,11 @@ let package = Package(
     ],
     targets: [
         // Data, without UI: no SwiftUI, and nothing isolated to the main actor unless it says so.
-        // Files: YAML in V2's layout, atomic writes, own writes, the folder lock, the Trash, file events.
+        // Files: YAML in a fixed layout, atomic writes, own writes, the folder lock, the Trash, file events.
         .target(name: "FileStorage", dependencies: [yams]),
         // Child processes: process groups and timeouts, the login shell's environment, git, ssh, kubectl.
         .target(name: "ExternalTools"),
-        // The data folder, the import from HephaestusV2 and the project files.
+        // The data folder and the project files.
         .target(name: "ProjectData", dependencies: ["FileStorage", "ExternalTools"]),
         // The MCP server: JSON-RPC over HTTP on 127.0.0.1, serving the tools' operations to Claude.
         .target(name: "MCPKit"),
@@ -62,7 +62,7 @@ let package = Package(
         .target(name: "BuildData", dependencies: ["ExternalTools"]),
         // Chats: their files, the Claude CLI and its stream-json protocol, the chats' processes.
         .target(name: "ChatData", dependencies: ["FileStorage", "ExternalTools", "ProjectData", "MCPKit"]),
-        // Virtual machines: V2's image and machine files, ipsw.me, the download and install of macOS, disk
+        // Virtual machines: the image and machine files, ipsw.me, the download and install of macOS, disk
         // clones, the Virtualization framework's machines and the guest agent's protocol.
         .target(name: "MachineData", dependencies: ["FileStorage", "MCPKit", "ProjectData"]),
 

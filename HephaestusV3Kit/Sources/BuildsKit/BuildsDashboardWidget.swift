@@ -2,7 +2,7 @@ import AZDesign
 import SwiftUI
 import ToolsFoundation
 
-/// The Dashboard's Recent Builds widget, in place of V2's Recent Chats: the newest runs of the
+/// The Dashboard's Recent Builds widget: the newest runs of the
 /// project's repository, at most its `Number`, each with its status, its title, its number and
 /// workflow, and when it started. A click on a row opens the run in the Builds window.
 public struct BuildsDashboardWidget: View {

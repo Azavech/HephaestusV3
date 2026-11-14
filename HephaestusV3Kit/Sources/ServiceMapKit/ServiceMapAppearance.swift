@@ -18,7 +18,7 @@ extension ServiceNode.Kind {
         }
     }
 
-    /// V2's icons where it had the kind (`cpu`, `cylinder.split.1x2`, Kafka's envelope, `person`).
+    /// The icons of the kinds (`cpu`, `cylinder.split.1x2`, Kafka's envelope, `person`).
     var symbol: String {
         switch self {
         case .gateway: "network"

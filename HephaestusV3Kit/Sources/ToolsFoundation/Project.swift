@@ -2,7 +2,7 @@ import Foundation
 
 /// A project the tools work on: a repository, and for a service, the places where it runs.
 ///
-/// A sub project is a project whose folder lies inside its parent's folder, as in V2. It has its own
+/// A sub project is a project whose folder lies inside its parent's folder. It has its own
 /// identifier and tickets; sub projects may nest. See `ProjectTree` for walking them.
 ///
 /// Plain values: this example has no store behind it. The data types of ToolsFoundation are
@@ -13,7 +13,7 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
         case service
         case app
         case library
-        /// Neither: V2's `None` type.
+        /// Neither: the `none` type.
         case other
 
         public var id: Self { self }
@@ -32,11 +32,11 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
     /// environments as they apply, inherited ones included (`environmentsAreResolved`); for a sample, its
     /// own, which `ProjectTree.environments(of:)` resolves.
     public let environments: [DeploymentEnvironment]
-    /// What its tools report; nil until the tools that report it come over from V2.
+    /// What its tools report; nil until a tool reports it.
     public let activity: ProjectActivity?
     /// The project whose folder holds this one's; nil for a top-level project.
     public let parentID: Project.ID?
-    /// For a sub project: whether it takes its parent's settings, its environments among them (V2's
+    /// For a sub project: whether it takes its parent's settings, its environments among them (
     /// `Use parent settings`, on by default).
     public let usesParentSettings: Bool
     /// Whether `environments` are already resolved, inheritance applied: true for the app's data.
@@ -87,7 +87,7 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
         self.hasContract = hasContract
     }
 
-    /// The tools that apply to this project, in menu order: the Dashboard first, as in V2, and Chat
+    /// The tools that apply to this project, in menu order: the Dashboard first, and Chat
     /// last. Contracts only for a service with one.
     public var tools: [ToolKind] {
         switch kind {

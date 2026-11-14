@@ -22,10 +22,10 @@ import ToolsFoundation
 /// in step with it.
 @MainActor @Observable
 final class AppData {
-    /// The tools whose feature has come over from HephaestusV2; the others are hidden in the running app
+    /// The tools the running app offers; the others are hidden in the running app
     /// (docs/ui/navigation.md › Available tools). Previews show every tool.
     static let availableTools: Set<ToolKind> = Set(ToolKind.allCases)
-    /// Whether the Virtual Machines window has come over.
+    /// Whether the Virtual Machines window is available.
     static let machinesAvailable = true
 
     let session: ProjectSession

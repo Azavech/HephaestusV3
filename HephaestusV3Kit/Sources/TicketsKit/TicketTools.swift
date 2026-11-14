@@ -6,7 +6,7 @@ import TicketData
 import ToolsFoundation
 
 /// The ticket and bundle operations the MCP server offers Claude (docs/mcp.md › Ticket tools): the same
-/// library the Tickets window changes, as Claude, with V2's rules for Claude.
+/// library the Tickets window changes, as Claude, with the rules for Claude.
 public enum TicketTools {
     /// The ticket tools, then the bundle tools, in the order of docs/mcp.md.
     @MainActor
@@ -426,7 +426,7 @@ extension TicketToolSet {
     }
 }
 
-/// The code of each failure, and V2's message.
+/// The code of each failure, and its message.
 func ticketToolError(_ error: TicketError) -> ToolError {
     switch error {
     case .invalid(let message): ToolError(.invalid, message)

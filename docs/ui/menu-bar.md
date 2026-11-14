@@ -79,8 +79,8 @@ A click on a row opens the project's window (see [What opening does](#what-openi
   it, so Return and ⌘1–⌘6 act on the row VoiceOver is on.
 
 **Tool buttons.** The highlighted row shows one button per available tool of its project
-([Navigation › Available tools](navigation.md#available-tools)), at its trailing edge; until a tool comes
-over from HephaestusV2, its button and its ⌘ shortcut don't show:
+([Navigation › Available tools](navigation.md#available-tools)), at its trailing edge; a tool that isn't
+available has no button and no ⌘ shortcut:
 
 - They come in menu order: Dashboard, Tickets, Service Map, Contracts, Builds, Chat. A service without a
   contract has no Contracts button, and an app or a library has only Dashboard, Tickets, Builds and Chat.

@@ -38,8 +38,8 @@ The workflow runs only when asked, never on a push. One release runs at a time (
 
 ## Workflow
 
-`release.yml`, on `workflow_dispatch` with the input `version`, on `runs-on: xcode-27` (the GitHub macOS runner V2
-used), with `contents: write`:
+`release.yml`, on `workflow_dispatch` with the input `version`, on `runs-on: xcode-27` (a GitHub macOS runner),
+with `contents: write`:
 
 | Step | Does |
 | --- | --- |

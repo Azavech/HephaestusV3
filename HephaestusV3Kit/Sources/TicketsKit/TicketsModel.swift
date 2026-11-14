@@ -33,7 +33,7 @@ struct TicketGroup: Identifiable, Hashable {
 struct NewTicketDraft: Hashable, Sendable {
     var title = ""
     var details = ""
-    /// Medium by default; none leaves the ticket without a priority, as V2's.
+    /// Medium by default; none leaves the ticket without a priority.
     var priority: TicketPriority? = .medium
     var startsAsDraft = true
     /// The project the ticket goes to: the window's project or one of its sub projects.
@@ -93,7 +93,7 @@ struct BundleDraft: Hashable, Identifiable {
 /// The Tickets window: its tickets, the sidebar's filter, the selection, what a route's focus selects,
 /// the sheets, and every change the window makes through its store.
 ///
-/// A project with sub projects also lists their tickets, at any depth, grouped by project, as in V2.
+/// A project with sub projects also lists their tickets, at any depth, grouped by project.
 /// Its bundles stay its own: a bundle never spans projects.
 @Observable
 final class TicketsModel {

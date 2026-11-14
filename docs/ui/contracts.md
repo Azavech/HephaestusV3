@@ -1,7 +1,7 @@
 # Contracts
 
 The Contracts window shows one service's OpenAPI contract: the `openapi/contract.yaml` of its folder, read with
-its `$ref` pointers resolved ([Data › Contracts](../data.md#contracts)), V2's API Explorer file. At the left, the contract's operations, grouped by
+its `$ref` pointers resolved ([Data › Contracts](../data.md#contracts)). At the left, the contract's operations, grouped by
 tag. At the right, the operation picked: what the contract says about it, a request to fill in for one of
 the service's environments, the response of its last call, and the responses the contract documents.
 
@@ -204,11 +204,11 @@ The operation pane picks one of two arrangements from its own size and the text 
 **Environment.** A pull-down menu labeled with the current environment's name, such as "Staging". It lists
 the project's environments, with a check mark on the current one. The window starts on the project's current
 environment (for a sample, Staging when it has one, otherwise its first environment). Picking another makes
-it the project's current environment, as V2's form did. Changing it changes the URL in **Request**; the values
+it the project's current environment. Changing it changes the URL in **Request**; the values
 stay. The menu is absent when the project has no environments. VoiceOver reads it as "Environment", with
 the environment's name as its value. Identifier: `contracts.environment`.
 
-**Send** (`paperplane.fill`, ⌘Return). A prominent button that sends the request, built by V2's rules with the
+**Send** (`paperplane.fill`, ⌘Return). A prominent button that sends the request, built by the app's rules with the
 stored credentials and headers ([Data › Sending a request](../data.md#sending-a-request)), from this Mac. The
 answer shows in **Last Response**, and stays while the app runs; a request without answer shows "The request
 failed." with the error's description (`contracts.response.failure`). Before a first call, **Last Response**

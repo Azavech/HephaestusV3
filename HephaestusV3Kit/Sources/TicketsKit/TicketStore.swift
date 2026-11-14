@@ -80,7 +80,7 @@ extension TicketStore {
 }
 
 /// The sample tickets and bundles (`Ticket.samples`, `TicketBundle.samples`), kept in memory. Its changes
-/// apply in memory, without V2's rules, so previews and tests can follow them.
+/// apply in memory, without the library's rules, so previews and tests can follow them.
 @MainActor @Observable
 final class SampleTicketStore: TicketStore {
     var allTickets: [Ticket]

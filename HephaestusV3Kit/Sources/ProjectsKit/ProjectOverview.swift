@@ -42,7 +42,7 @@ struct ProjectOverview: View {
                 if let fileIssue = project.fileIssue {
                     FileIssueBanner(reason: fileIssue)
                 }
-                // The tools whose feature has come over from V2; the others are hidden.
+                // The available tools; the others are hidden.
                 if !tools.isEmpty {
                     section(String(localized: "Tools", bundle: #bundle), id: "tools") {
                     LazyVGrid(columns: columns(for: tools.count, minimum: 220), spacing: spacing) {

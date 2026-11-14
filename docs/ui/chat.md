@@ -1,6 +1,6 @@
 # Chat
 
-Chat is where the user asks Claude about a project. Claude is one more client of the tools, never their center: it reads items only through each tool's read function, every read shows in the conversation with an **Open** button, and it asks before it changes anything (the user's principle). Chat appears in two places (the user's choice). The **Chat window** is a tool window like the others: it lists every conversation of a project and shows one with an inspector. The **chat panel** sits beside every other tool window and asks about the item that tool has selected. Both show the same conversations, from one shared store. Claude replies through the Claude CLI on this Mac: each conversation is a chat of the project, kept in its `.hephaestus/chats/` as HephaestusV2 kept them, V2's chats included ([Data › Chats](../data.md#chats)). Claude has none of the CLI's own tools (no shell, no file edits, no web): it reads and changes only through the app's tools, over the MCP server, and the user's permissions decide what it may change without asking.
+Chat is where the user asks Claude about a project. Claude is one more client of the tools, never their center: it reads items only through each tool's read function, every read shows in the conversation with an **Open** button, and it asks before it changes anything (the user's principle). Chat appears in two places (the user's choice). The **Chat window** is a tool window like the others: it lists every conversation of a project and shows one with an inspector. The **chat panel** sits beside every other tool window and asks about the item that tool has selected. Both show the same conversations, from one shared store. Claude replies through the Claude CLI on this Mac: each conversation is a chat of the project, kept in its `.hephaestus/chats/` ([Data › Chats](../data.md#chats)). Claude has none of the CLI's own tools (no shell, no file edits, no web): it reads and changes only through the app's tools, over the MCP server, and the user's permissions decide what it may change without asking.
 
 ![The Chat window for Orders: the conversation list, the checkout conversation with four reads and an approval card, and the inspector](images/chat-light.png)
 *The Chat window for Orders, light appearance. Claude's reply lists what it read through Service Map, Tickets and Builds, each with Open, then asks to comment on ORD-142.*
@@ -75,7 +75,7 @@ Under the name, in order:
 
 Claude's text is Markdown, shown inline: emphasis, code and links, line breaks kept. The user's text shows as written. In previews, a reply of the sample engine adds a **Sample reply** caption after **Claude**, with the tooltip "No model is connected yet: the reply comes from the example's sample engine."
 
-A turn of the user's is one message. Everything after it until the next message is one turn of Claude's: its text, its calls, its cards and the app's notices, in order. Claude's thinking, the work of its sub-agents (in V2's chats) and the end of a turn that went well don't show.
+A turn of the user's is one message. Everything after it until the next message is one turn of Claude's: its text, its calls, its cards and the app's notices, in order. Claude's thinking, the work of its sub-agents and the end of a turn that went well don't show.
 
 ### Tool-call rows
 
@@ -93,7 +93,7 @@ Each call Claude makes to one of the app's tools shows as one row on a `surfaceS
 | `api_operations`, `api_call` | Read the contract of ORD; Called POST /orders/{id}/checkout of ORD | — | The project's Contracts window |
 | The cluster and map tools | Read the deployment of ORD in Staging; Read the logs…; Restarted ORD in Staging; Scaled…; Synced… with Argo CD; Read the service map of ORD in Staging; Read request <id> | — | The Service Map (a request: on it) |
 | `open_in_app` | Opened a window of Hephaestus | — | None |
-| A tool of the CLI (in V2's chats) | Used Bash | Its result's first line when it failed | None |
+| A tool of the CLI (in a chat whose Claude had them) | Used Bash | Its result's first line when it failed | None |
 
 - A call that failed (its result is an error, a refusal included) shows `exclamationmark.triangle` and its error's first line in `danger`.
 - **Open** opens the item in its tool's window, with the item selected: the route `.tool(tool, project:, focus:)`; a window already showing it comes forward. Help: "Open ORD-142 in Tickets". A call without an item has no **Open**.
@@ -129,7 +129,7 @@ A change Claude wants to make shows as a card, when the user's permissions say A
 
 ### Notices
 
-The app's lines in a conversation, from the chat's transcript ([Data › Chat items](../data.md#chat-items)), each a `Label` in callout size: `info.circle` in `textSecondary` (Stopped by the user., Conversation compacted…), `exclamationmark.triangle` in `warning` (the app's tools unavailable, a session not found, a setting the CLI refused), `xmark.octagon` in `danger` (Claude couldn't start, exited, or its turn ended in an error, with the CLI's reason). Their text is selectable, in English as stored (V2 stored its lines so).
+The app's lines in a conversation, from the chat's transcript ([Data › Chat items](../data.md#chat-items)), each a `Label` in callout size: `info.circle` in `textSecondary` (Stopped by the user., Conversation compacted…), `exclamationmark.triangle` in `warning` (the app's tools unavailable, a session not found, a setting the CLI refused), `xmark.octagon` in `danger` (Claude couldn't start, exited, or its turn ended in an error, with the CLI's reason). Their text is selectable, in English as stored.
 
 ### Activity
 
@@ -149,7 +149,7 @@ While Claude works, the transcript ends with a **Claude** row showing a small pr
 
 The composer is a card at the bottom of the center column, with 16 pt of padding around it, or 12 pt in the iPhone layout. Its outline is `focus` while the field has focus, `divider` otherwise.
 
-- **Chips.** In the Chat window, the project's chip: its icon and name. It can't be removed. Messages from the Chat window carry no attachments; items they name are read instead (see [Mentions](#mentions)).
+- **Chips.** In the Chat window, the project's chip: its icon and name. It can't be removed. Messages from the Chat window carry no attachments; items they name are read instead (see [How Claude reaches the tools](#how-claude-reaches-the-tools)).
 - **Field.** Plain, one to eight lines, then it scrolls. Prompt: "Ask about *Orders*…". It takes focus when the composer appears.
 - **Send.** A round, prominent button with `arrow.up`. Disabled while the field is empty or only whitespace, and while Claude works in the conversation. Help: "Send (Return)".
 - **Not sent.** When a message can't be sent, the reason shows over the composer in `danger`, with `exclamationmark.triangle.fill` (`chat.failure`), and the draft stays: "Claude CLI not found. Install Claude Code, or set its path in Settings ▸ Chat.", "<path> is not an executable file.", "The Claude CLI isn't checked yet. Try again in a moment." The next message sent clears it.
@@ -479,8 +479,8 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 
 ## Sample data and limits
 
-- **Chats.** The app's chats are the projects' `.hephaestus/chats/`, V2's included. V2's chats of every kind are listed and shown; their items V3 doesn't bring over (question pickers, images Claude showed) don't show. There is no delete, no rename in the window (Claude can rename with `rename_chat`), and no file attachments in the composer.
-- **Claude.** The CLI runs with no system prompt from the app, no hooks, no skills and none of its own tools ([Decisions › V2's prompts](../decisions.md#v2s-prompts)); the user's own Claude Code settings and CLAUDE.md files apply as they do in a terminal.
+- **Chats.** The app's chats are the projects' `.hephaestus/chats/`. Chats of every kind are listed and shown; their items the app doesn't show (question pickers, images Claude showed) are skipped. There is no delete, no rename in the window (Claude can rename with `rename_chat`), and no file attachments in the composer.
+- **Claude.** The CLI runs with no system prompt from the app, no hooks, no skills and none of its own tools ([Decisions › What Claude reads](../decisions.md#what-claude-reads)); the user's own Claude Code settings and CLAUDE.md files apply as they do in a terminal.
 - **Samples.** Previews and captures use five sample conversations, about Orders (three), Payments and Shop, and the sample engine. Their replies are written as if a model had answered, so they carry no **Sample reply** caption, and their reads are fixed text, not read live. Their Service Map reads were seen in Staging.
 
 ## Previews

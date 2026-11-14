@@ -39,7 +39,7 @@ public struct ClusterTarget: Sendable, Hashable {
     }
 }
 
-/// Why a cluster call failed, with V2's messages.
+/// Why a cluster call failed, with its messages.
 public enum ClusterError: Error, Sendable, Hashable, CustomStringConvertible {
     case invalid(String)
     case unavailable(String)

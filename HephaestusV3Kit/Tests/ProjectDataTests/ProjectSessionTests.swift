@@ -27,26 +27,23 @@ struct ProjectSessionTests {
         await #expect(throws: ProjectError.noDataFolder) { try await session.remove("ORD") }
     }
 
-    @Test("Start: lock, import from V2, load, then the shell, the tools and the origins")
+    @Test("Start: lock, load, then the shell, the tools and the origins")
     func start() async throws {
         try await withTemporaryFolderAsync { world in
             let orders = try world.project("orders", id: "ORD")
-            let v2 = world.root.appendingPathComponent("V2", isDirectory: true)
-            try YAMLFile.write(RegistryFile(projects: [orders]), to: v2.appendingPathComponent("registry.yml"))
-            try? FileManager.default.removeItem(at: world.data.url)
+            try world.register(orders)
             let bin = try toolsFolder(in: world)
             let runner = FakeRunner(origins: [orders: "git@github.com:example/orders.git"], environment: "PATH=\(bin)\0HOME=/x\0")
-            let session = ProjectSession(dataFolder: world.data, runner: runner, v2Folder: v2, processEnvironment: ["PATH": "/usr/bin"])
+            let session = ProjectSession(dataFolder: world.data, runner: runner, processEnvironment: ["PATH": "/usr/bin"])
             await session.start()
             #expect(session.phase == .ready)
-            #expect(session.importResult?.imported == [orders])
             #expect(session.snapshot.projects.map(\.id) == ["ORD"])
             #expect(session.shell?.outcome == .captured(count: 2))
             #expect(session.tools.git == bin + "/git")
             #expect(session.kubectl?.executable == bin + "/kubectl")
             #expect(session.snapshot.project("ORD")?.resolved.githubPage == "https://github.com/example/orders")
 
-            let second = ProjectSession(dataFolder: world.data, runner: runner, v2Folder: v2)
+            let second = ProjectSession(dataFolder: world.data, runner: runner)
             await second.start()
             #expect(second.phase == .failed(.storage(.folderInUse(path: world.data.url.path))))
             await session.stop()
@@ -56,7 +53,7 @@ struct ProjectSessionTests {
     @Test("Changes go through the library and the session shows the result")
     func changes() async throws {
         try await withTemporaryFolderAsync { world in
-            let session = ProjectSession(dataFolder: world.data, runner: FakeRunner(), v2Folder: world.root.appendingPathComponent("none"))
+            let session = ProjectSession(dataFolder: world.data, runner: FakeRunner())
             await session.start()
             #expect(session.snapshot.projects.isEmpty)
             let id = try await session.create(NewProject(name: "Orders", identifier: "ORD", kind: .goService,
@@ -77,7 +74,7 @@ struct ProjectSessionTests {
             let orders = try world.project("orders", id: "ORD", name: "Orders")
             try world.register(orders)
             let hub = FileEventHub(quietDelay: .milliseconds(50), maximumDelay: .milliseconds(400))
-            let session = ProjectSession(dataFolder: world.data, runner: FakeRunner(), v2Folder: world.root, hub: hub)
+            let session = ProjectSession(dataFolder: world.data, runner: FakeRunner(), hub: hub)
             await session.start()
             try await Task.sleep(for: .milliseconds(300))
             try world.project("orders", id: "ORD", name: "Orders API")

@@ -55,7 +55,7 @@ enum TicketWords {
     static func renamed(by author: TicketAuthor, from: String, to: String) -> String {
         switch author {
         case .claude: String(localized: "Claude renamed it from “\(from)” to “\(to)”", bundle: #bundle)
-        case .automatic: String(localized: "It was named “\(to)”", bundle: #bundle, comment: "V2's automatic naming of a ticket")
+        case .automatic: String(localized: "It was named “\(to)”", bundle: #bundle, comment: "The automatic naming of a ticket")
         case .user: String(localized: "You renamed it from “\(from)” to “\(to)”", bundle: #bundle)
         }
     }

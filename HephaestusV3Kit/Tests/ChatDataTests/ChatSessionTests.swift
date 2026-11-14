@@ -66,7 +66,7 @@ final class FakeConnection: ClaudeConnection, @unchecked Sendable {
     }
 }
 
-/// Hands out fake connections. The models probe answers `initialize` with V2's capture of the model list.
+/// Hands out fake connections. The models probe answers `initialize` with a capture of the model list.
 final class FakeLauncher: ClaudeLaunching, @unchecked Sendable {
     private let launched = Mutex<[FakeConnection]>([])
     var chats: [FakeConnection] { launched.withLock { $0 }.filter { $0.request.arguments.contains("--include-partial-messages") } }
@@ -111,7 +111,7 @@ final class ChatWorld {
         try data.createIfNeeded()
         try YAMLFile.write(RegistryFile(projects: [repo.path]), to: data.registryFile)
         try data.writeSettings(SettingsFile(claudePath: cli.path))
-        projects = ProjectSession(dataFolder: data, runner: ChatRunner(), v2Folder: root.appendingPathComponent("NoV2"), processEnvironment: [:])
+        projects = ProjectSession(dataFolder: data, runner: ChatRunner(), processEnvironment: [:])
         await projects.start()
         session = ChatSession(projects: projects, tokens: tokens, launcher: launcher, runner: ChatRunner(), device: "Studio",
                               processEnvironment: [:])
@@ -178,7 +178,7 @@ struct ChatSessionTests {
         cli.finish(.exited(0))
     }
 
-    @Test("A turn replayed from V2's capture: items written, the session started, the chat idle at the end")
+    @Test("A turn replayed from a capture: items written, the session started, the chat idle at the end")
     func turn() async throws {
         let world = try await ChatWorld()
         defer { Task { await world.close() } }

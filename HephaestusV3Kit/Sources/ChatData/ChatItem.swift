@@ -2,8 +2,8 @@ import FileStorage
 import Foundation
 import MCPKit
 
-/// One item of a chat's transcript (docs/data.md › Chat items): V2's items that V3 reads and writes. V2's
-/// other items (its question pickers and shown images) are skipped when a transcript is read.
+/// One item of a chat's transcript (docs/data.md › Chat items): the items the app reads and writes. Other
+/// items (question pickers and shown images) are skipped when a transcript is read.
 public enum ChatItem: Sendable, Hashable, Identifiable {
     case user(UserItem)
     case assistant(AssistantItem)
@@ -48,11 +48,11 @@ public struct UserItem: Sendable, Hashable {
     /// The message as the user wrote it, without the lines V3 adds for Claude (docs/ui/chat.md › What Claude
     /// receives).
     public var text: String
-    /// V2's files sent with a message, kept as read.
+    /// Files sent with a message, kept as read.
     public var attachments: JSONValue
     /// The Mac whose user sent it.
     public var sender: String
-    /// V2's linked items, kept as read.
+    /// Linked items, kept as read.
     public var linkedItems: JSONValue
     /// V3 addition: the items the message carried, each a tool's item or the project.
     public var references: [ChatItemReference]
@@ -169,7 +169,7 @@ public struct ToolResultItem: Sendable, Hashable {
     public var toolUseID: String
     public var text: String
     public var isError: Bool
-    /// V2's images of a tool's result, kept as read.
+    /// Images of a tool's result, kept as read.
     public var images: JSONValue
 
     public init(id: String, created: Date, toolUseID: String, text: String, isError: Bool) {
@@ -237,7 +237,7 @@ public struct ResultItem: Sendable, Hashable {
     public var id: String
     public var created: Date
     public var durationMs: Int
-    /// V2 kept the cost; V3 keeps it as the CLI reports it and doesn't show it.
+    /// The cost, kept as the CLI reports it and not shown.
     public var costUSD: Double?
     public var isError: Bool
     /// Why the turn failed; nil for a turn that didn't.

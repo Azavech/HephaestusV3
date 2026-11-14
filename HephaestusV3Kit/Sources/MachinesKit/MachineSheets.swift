@@ -46,7 +46,7 @@ private struct SheetError: View {
     }
 }
 
-/// The cores, memory and disk fields of New Machine and Edit, with V2's ranges.
+/// The cores, memory and disk fields of New Machine and Edit, with their ranges.
 private struct SizeFields: View {
     @Binding var cores: Int
     @Binding var memoryGB: Int

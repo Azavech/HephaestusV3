@@ -4,7 +4,7 @@ import MCPKit
 import Observation
 import ProjectData
 
-/// A refusal of the machine host: V2's kinds and messages (docs/data.md › Virtual machines).
+/// A refusal of the machine host: its kinds and messages (docs/data.md › Virtual machines).
 public struct MachineError: Error, LocalizedError, Sendable, Hashable {
     public enum Kind: String, Sendable, Hashable { case invalid, notFound, conflict, unavailable, `internal` }
 
@@ -99,7 +99,7 @@ public struct ShellResult: Sendable, Hashable {
     }
 }
 
-/// The images and machines of the data folder and the machines that run: V2's engine for virtual machines
+/// The images and machines of the data folder and the machines that run
 /// (docs/data.md › Virtual machines). At most 2 count at once: installs, setups and machines.
 @MainActor
 @Observable
@@ -127,7 +127,6 @@ public final class MachineHost {
     @ObservationIgnored private let dataFolder: DataFolder?
     @ObservationIgnored private let backend: any MachineBackend
     @ObservationIgnored private let guestTools: GuestTools?
-    @ObservationIgnored private let v2Folder: URL?
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private var tasks: [String: Task<Void, Never>] = [:]
     @ObservationIgnored private var installQueue: [String] = []
@@ -135,15 +134,13 @@ public final class MachineHost {
     @ObservationIgnored var addressPoll: (interval: Duration, tries: Int) = (.seconds(3), 60)
     @ObservationIgnored var leases: (String) -> String? = { DHCPLeases.address(of: $0) }
 
-    /// `v2Folder`: V2's `VirtualMachines/`, cloned in once; nil imports nothing (tests).
     public init(dataFolder: DataFolder?, backend: any MachineBackend = SystemMachineBackend(),
                 guestTools: GuestTools? = .bundled(in: Bundle.main.bundleURL),
-                v2Folder: URL? = MachineLibrary.v2Folder, now: @escaping () -> Date = ISODate.now) {
+                now: @escaping () -> Date = ISODate.now) {
         self.dataFolder = dataFolder
         library = dataFolder.map { MachineLibrary(dataFolder: $0.url) }
         self.backend = backend
         self.guestTools = guestTools
-        self.v2Folder = v2Folder
         self.now = now
         defaults = MachineDefaults(dataFolder?.readSettings() ?? SettingsFile())
     }
@@ -157,12 +154,10 @@ public final class MachineHost {
 
     // MARK: Loading
 
-    /// Clones V2's images and machines in once, reads the folders, and fails the images an earlier quit
-    /// interrupted.
+    /// Reads the folders, and fails the images an earlier quit interrupted.
     public func load() {
         guard let library else { return }
         defaults = MachineDefaults(dataFolder?.readSettings() ?? SettingsFile())
-        if let v2Folder { library.importV2(from: v2Folder) }
         images = library.readImages()
         machines = library.readMachines()
         for index in images.indices where images[index].state == .downloading || images[index].state == .installing {

@@ -1,8 +1,6 @@
 import Foundation
 
-// The Dashboard's model, ported from HephaestusV2 (Sources/HephaestusCore/Models/DashboardWidget.swift and
-// V2's docs/dashboard.md); this app's spec is docs/ui/dashboard.md. The grid and its placement rule are V2's
-// code unchanged; the widgets are those of Hephaestus V3's tools. It lives here, beside the other shared values,
+// The Dashboard's model (docs/ui/dashboard.md): the grid, its placement rule, and the widgets of the tools. It lives here, beside the other shared values,
 // because each tool draws its own widgets from it.
 
 /// A widget of a project's Dashboard, with its position, its size and its settings
@@ -70,7 +68,7 @@ nonisolated public struct DashboardWidget: Sendable, Hashable, Identifiable {
     }
 
     /// The list a project without a stored list shows, with fixed ids, an empty title, no stored
-    /// position and the default settings: V2's Project and Tickets, then Recent Builds in place of
+    /// position and the default settings: Project and Tickets, then Recent Builds in place of
     /// its Recent Chats, and the Service Graph for a project whose map can be read.
     public static func defaultList(for project: Project) -> [DashboardWidget] {
         let kinds: [DashboardWidgetKind] = [.project, .tickets, .recentBuilds] + (DashboardWidgetKind.hasServiceMap(project) ? [.serviceGraph] : [])
@@ -214,21 +212,21 @@ nonisolated public enum DashboardGrid {
     }
 }
 
-/// What a widget shows (docs/ui/dashboard.md › Widgets). V2's Recent Chats and Cost were about Claude's
+/// What a widget shows (docs/ui/dashboard.md › Widgets). Recent Chats and Cost were about Claude's
 /// chats: Hephaestus V3 keeps them in the project file and never shows them, and lists the project's builds
 /// instead.
 nonisolated public enum DashboardWidgetKind: String, Codable, Sendable, Hashable, CaseIterable, Identifiable {
     case project
     case tickets
     case recentBuilds
-    /// V2's, kept in the list and never shown.
+    /// Kept in the list and never shown.
     case recentChats
-    /// V2's, kept in the list and never shown.
+    /// Kept in the list and never shown.
     case cost
     /// The pods of the project's service in the Dashboard's environment (docs/ui/dashboard.md ›
     /// Instances widget).
     case instances
-    /// The service widgets, V2's graph widgets: the map of the Service Map, the busiest arrows,
+    /// The service widgets: the map of the Service Map, the busiest arrows,
     /// the failed requests and the requests per minute of the Dashboard's time window.
     case serviceGraph
     case busiestCalls
@@ -238,7 +236,7 @@ nonisolated public enum DashboardWidgetKind: String, Codable, Sendable, Hashable
     public var id: Self { self }
 
     /// Whether the kind reads the Service Map, and so is hidden for a project whose map cannot be
-    /// read (V2: while the graph is not enabled).
+    /// read.
     public var isGraph: Bool {
         switch self {
         case .serviceGraph, .busiestCalls, .failedRequests, .requestsPerMinute: true
@@ -248,7 +246,7 @@ nonisolated public enum DashboardWidgetKind: String, Codable, Sendable, Hashable
 
     /// Whether the Dashboard shows widgets of the kind for `project` when the app offers `tools`: the tool
     /// whose data it shows is offered, and a service widget needs a project whose Service Map can be read.
-    /// V2's Recent Chats and Cost never show. A widget that doesn't show takes no place and keeps its stored
+    /// Recent Chats and Cost never show. A widget that doesn't show takes no place and keeps its stored
     /// position (docs/ui/dashboard.md › Placement).
     public func isShown(for project: Project, tools: Set<ToolKind>) -> Bool {
         switch self {

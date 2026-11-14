@@ -1,7 +1,7 @@
 import Foundation
 import Yams
 
-/// Reading and writing YAML files with Yams, in HephaestusV2's layout (docs/data.md › Conventions).
+/// Reading and writing YAML files with Yams, in the files' layout (docs/data.md › Conventions).
 ///
 /// Reading: UTF-8 (a leading byte order mark is skipped, CR LF accepted), exactly one document whose
 /// root is a mapping, no mapping with the same key twice, any YAML style.

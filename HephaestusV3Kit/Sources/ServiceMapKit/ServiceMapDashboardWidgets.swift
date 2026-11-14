@@ -3,10 +3,8 @@ import Charts
 import SwiftUI
 import ToolsFoundation
 
-// The Dashboard's widgets of the Service Map, ported from HephaestusV2 (Sources/HephaestusUI/Dashboard/
-// DashboardGraphWidgets.swift and the Instances widget of DashboardView.swift, V2's docs/dashboard.md ›
-// Instances widget, Graph widgets); this app's spec is docs/ui/dashboard.md. They read the sample map of the Dashboard's environment where V2
-// read the cluster and Jaeger, and count over the Dashboard's time window.
+// The Dashboard's widgets of the Service Map (docs/ui/dashboard.md): they read the map of the Dashboard's
+// environment and count over the Dashboard's time window.
 
 /// What a widget of the Service Map shows under its title row: the pods of the project's service, or
 /// the whole graph, its busiest calls, its failed requests or its requests per minute.
@@ -210,7 +208,7 @@ private struct InstancesContent: View {
         "Failed", "Error", "CrashLoopBackOff", "ImagePullBackOff", "ErrImagePull", "CreateContainerConfigError", "OOMKilled", "Evicted",
     ]
 
-    /// V2's dot: green for a pod running with every container ready, orange while it starts or stops,
+    /// The dot: green for a pod running with every container ready, orange while it starts or stops,
     /// red when it fails, grey otherwise; here AZDesign's success, warning and danger.
     static func color(of pod: Pod) -> Color {
         let status = pod.status
@@ -237,7 +235,7 @@ private struct InstancesContent: View {
 // MARK: Service graph
 
 /// The layouts of the graphs the Dashboards show, by their nodes and arrows: a layout is worked out
-/// once, not each time a widget is drawn, as V2's feed kept the layout of its last read.
+/// once, not each time a widget is drawn.
 enum DashboardGraphLayouts {
     private static var layouts: [[String]: GraphLayout] = [:]
 
@@ -253,7 +251,7 @@ enum DashboardGraphLayouts {
 }
 
 /// The whole graph, laid out as the Service Map lays it out and fitted to the widget at 150% at most;
-/// it cannot be zoomed or panned. Its arrows count the calls of the Dashboard's time window, as V2's
+/// it cannot be zoomed or panned. Its arrows count the calls of the Dashboard's time window, as the
 /// did. A click opens the Service Map.
 private struct ServiceGraphContent: View {
     let project: Project
@@ -393,7 +391,7 @@ private struct FailedRequestsContent: View {
                         openRoute(.tool(.serviceMap, project: project.id, focus: MapSelection.request(request.id).focus))
                     } label: {
                         HStack(spacing: 10) {
-                            // V2 kept 160 points for Jaeger's long ids; the map's ids are short.
+                            // The map's ids are short.
                             Text(verbatim: request.id)
                                 .monospaced()
                                 .fixedSize()

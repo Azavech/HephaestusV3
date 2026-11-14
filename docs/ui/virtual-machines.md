@@ -1,6 +1,6 @@
 # Virtual Machines
 
-The Virtual Machines window manages the virtual machines on this Mac. People use them to test an app in a closed environment. There is one window for the whole Mac. It is not tied to a project, though a machine can name the project it tests. The sidebar lists the machines and the system images that new machines start from. The detail area shows the selected machine's screen or console, as large as the window allows. Beside it, an inspector shows what the machine runs on, its project and its snapshots. Selecting an image shows its page instead: its system, size, status, then its download or install, its setup, or a button to make a machine from it. Like the tool windows, it changes layout as it narrows, from a Mac's to an iPad's to an iPhone's. The machines and images are those of the data folder, V2's brought over: macOS guests of the Virtualization framework, at most two running at once ([Data › Virtual machines](../data.md#virtual-machines)). The screenshots show the sample store, which keeps the design's Linux machine, CPU figure and snapshots.
+The Virtual Machines window manages the virtual machines on this Mac. People use them to test an app in a closed environment. There is one window for the whole Mac. It is not tied to a project, though a machine can name the project it tests. The sidebar lists the machines and the system images that new machines start from. The detail area shows the selected machine's screen or console, as large as the window allows. Beside it, an inspector shows what the machine runs on, its project and its snapshots. Selecting an image shows its page instead: its system, size, status, then its download or install, its setup, or a button to make a machine from it. Like the tool windows, it changes layout as it narrows, from a Mac's to an iPad's to an iPhone's. The machines and images are those of the data folder: macOS guests of the Virtualization framework, at most two running at once ([Data › Virtual machines](../data.md#virtual-machines)). The screenshots show the sample store, which keeps the design's Linux machine, CPU figure and snapshots.
 
 ![The Virtual Machines window with the Orders sandbox Linux machine selected: the list on the left, the console in the middle, the inspector on the right](images/machines-light.png)
 *The Orders sandbox machine, running Ubuntu 26.04: its console fills the middle, and the inspector shows its figures, address, project and two snapshots. 1100 × 760 points, Light Mode.*
@@ -183,14 +183,14 @@ The setup view shows an image's setup machine, booted on the image's own disk ([
 4. A divider, then the status line: `hourglass` with **Waiting for the agent…**, **Restarting in Recovery…**; `checkmark.circle.fill` with **Agent connected · SIP on**, or **Agent connected · SIP off** in the success color.
 5. **Finish Setup** (bordered prominent), enabled only with the agent connected and SIP off: shuts the guest down and makes the image Ready; a failure shows **Finish Setup failed**. **Stop** ends the setup; the image stays waiting for setup.
 
-These texts and the view's parts are V2's (the user's choices there), in V3's layout.
+These texts and the view's parts are the user's choices.
 
 ![The setup view of macOS 27.1: the screen's place on the left, the three steps, Type Password, the agent's status and Finish Setup on the right](images/machines-setup.png)
 *The setup view, the agent connected with SIP off (sample store, so the screen's place reads its placeholder).*
 
 ## Type Password
 
-Types the image's stored password into the guest through the machine's screen, as the user's keyboard does: the keys reach the guest's keyboard focus without the agent (Setup Assistant, the login window, a password dialog). The screen takes the window's keyboard focus, then each character's key is pressed on this Mac's keyboard layout, with Shift, Option or both as the character needs, 10 ms apart; Return isn't pressed. A character the layout can't type fails before any key is pressed: the alert **Type Password failed** with "The keyboard layout of this Mac cannot type “*c*”." (V2's `GuestKeyboard`.)
+Types the image's stored password into the guest through the machine's screen, as the user's keyboard does: the keys reach the guest's keyboard focus without the agent (Setup Assistant, the login window, a password dialog). The screen takes the window's keyboard focus, then each character's key is pressed on this Mac's keyboard layout, with Shift, Option or both as the character needs, 10 ms apart; Return isn't pressed. A character the layout can't type fails before any key is pressed: the alert **Type Password failed** with "The keyboard layout of this Mac cannot type “*c*”." (`GuestKeyboard`.)
 
 ## Sheets
 
@@ -235,7 +235,7 @@ At least 560 × 380 points, titled **Shell of *name***: a **Command** field in t
 A tab of the Settings window (`desktopcomputer`): **New Machines**, three steppers, **Default cores** (2 to this Mac's), **Default memory** (4 GB to this Mac's) and **Default disk** (32 to 2048 GB, by 8), saved in `settings.yml` as they change ([Data › Virtual machines › Defaults](../data.md#defaults)). Footer: "New Machine starts with these values. An image's install and setup run with the cores and memory." A refusal shows under it.
 
 ![Settings ▸ Virtual Machines: default cores, memory and disk](images/settings-machines.png)
-*Settings ▸ Virtual Machines with V2's defaults.* Identifiers: `settings.machines`, `settings.machines.cores`, `.memory`, `.disk`.
+*Settings ▸ Virtual Machines with its default values: 2 cores, 4 GB of memory, a 64 GB disk.* Identifiers: `settings.machines`, `settings.machines.cores`, `.memory`, `.disk`.
 
 ## States
 

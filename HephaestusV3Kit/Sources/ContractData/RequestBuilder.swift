@@ -3,7 +3,7 @@ import Foundation
 /// What a request carries besides the operation: the parameters' values, the body of a media type, the
 /// credentials and the added headers.
 public struct RequestValues: Sendable, Hashable {
-    /// By `<in>:<name>`, as V2 stored them.
+    /// By `<in>:<name>`, as they are stored.
     public var parameters: [String: String]
     public var mediaType: String?
     public var body: String
@@ -33,7 +33,7 @@ public struct RequestValues: Sendable, Hashable {
     public static func key(_ parameter: OpenAPIParameter) -> String { "\(parameter.location.rawValue):\(parameter.name)" }
 }
 
-/// Builds the HTTP request of an operation, by V2's rules (docs/data.md › Contracts › Sending a request).
+/// Builds the HTTP request of an operation (docs/data.md › Contracts › Sending a request).
 public enum RequestBuilder {
     /// Every byte but the RFC 3986 unreserved characters, percent-encoded.
     public static func encode(_ text: String) -> String {
@@ -80,7 +80,7 @@ public enum RequestBuilder {
             }
         }
         if !cookies.isEmpty { headers.append(("Cookie", cookies.joined(separator: "; "))) }
-        // API keys in headers, then basic, then bearer, as V2 ordered them.
+        // API keys in headers, then basic, then bearer.
         for scheme in schemes {
             if case .apiKey(let name, .header) = scheme.kind, let value = values.credentials[scheme.name]?["value"], !value.isEmpty {
                 headers.append((name, value))

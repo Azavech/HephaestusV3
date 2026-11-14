@@ -2,8 +2,8 @@ import FileStorage
 import Foundation
 
 /// The values typed in the Contracts window, per contract file: credentials, added headers, and per operation
-/// the parameters, the media type and the bodies edited (docs/data.md › Contracts › Stored values). V2's
-/// `openapi-requests.json` format, in the data folder, mode 0600.
+/// the parameters, the media type and the bodies edited (docs/data.md › Contracts › Stored values):
+/// `openapi-requests.json`, in the data folder, mode 0600.
 public struct StoredContract: Sendable, Hashable {
     public var projectID: String
     /// The contract's path in its project, such as `openapi/contract.yaml`.
@@ -11,7 +11,7 @@ public struct StoredContract: Sendable, Hashable {
     public var credentials: [String: [String: String]]
     public var headers: [StoredHeader]
     public var operations: [String: StoredOperation]
-    /// V2's device id, kept as read.
+    /// A device id, kept as read.
     public var deviceID: String?
 
     public init(projectID: String, path: String) {
@@ -68,7 +68,7 @@ public enum StoredValuesFile {
         }
     }
 
-    /// Writes the contracts atomically, mode 0600; V2's keys of earlier versions are left out.
+    /// Writes the contracts atomically, mode 0600; keys of earlier versions are left out.
     public static func write(_ contracts: [StoredContract], to url: URL) throws(StorageError) {
         let entries: [[String: Any]] = contracts.map { contract in
             var entry: [String: Any] = [
@@ -94,19 +94,5 @@ public enum StoredValuesFile {
         } catch {
             throw .writeFailed(path: url.path, reason: error.localizedDescription)
         }
-    }
-
-    /// V2's file, `~/Library/Application Support/HephaestusV2/openapi-requests.json`.
-    public static func v2File(home: URL = FileManager.default.homeDirectoryForCurrentUser) -> URL {
-        home.appendingPathComponent("Library/Application Support/HephaestusV2/\(name)")
-    }
-
-    /// Copies V2's values once: when the data folder has no file yet and V2's exists. Returns whether it did.
-    @discardableResult
-    public static func importV2(from v2: URL, to url: URL) -> Bool {
-        guard !FileManager.default.fileExists(atPath: url.path), FileManager.default.fileExists(atPath: v2.path) else { return false }
-        let contracts = read(v2)
-        guard !contracts.isEmpty else { return false }
-        return (try? write(contracts, to: url)) != nil
     }
 }

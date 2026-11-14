@@ -1,7 +1,7 @@
 import Foundation
 import ToolsFoundation
 
-/// A pod of a deployment, as `kubectl get pods -o wide` lists it (V2's PodStatus).
+/// A pod of a deployment, as `kubectl get pods -o wide` lists it.
 struct Pod: Identifiable, Hashable, Sendable {
     var id: String { name }
     let name: String

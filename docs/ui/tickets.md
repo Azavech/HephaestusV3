@@ -5,8 +5,8 @@ for a project with sub projects, by project. The middle column lists the tickets
 through. The detail column shows the selected ticket: its header, description, properties, the items it
 links to in other tools, and its activity with comments, above a comment field. The toolbar changes the
 ticket's status and moves it to its next step, and a sheet writes a new ticket. A project with sub projects
-lists their tickets too, grouped by project. The tickets and bundles are the project's own files, in V2's
-format ([Data › Tickets and bundles](../data.md#tickets-and-bundles)); every change applies V2's rules and is
+lists their tickets too, grouped by project. The tickets and bundles are the project's own files
+([Data › Tickets and bundles](../data.md#tickets-and-bundles)); every change applies their rules and is
 written at once, and a change made outside the app (git, an editor, Claude) shows within 2 seconds. The
 screenshots show the sample tickets of the previews.
 
@@ -131,7 +131,7 @@ The tickets keep the order of the data. No sort is applied, and there is no sear
 - **First line:** the ticket's title (`headline`, `textPrimary`, at most two lines). The last-updated date
   (`caption`, `textSecondary`, day and abbreviated month, such as "11 Nov") is at the trailing edge.
 - **Second line:** the ticket id (`caption`, `textSecondary`, monospaced digits), the status badge, the
-  priority badge when the ticket has a priority (V2's tickets have none until one is set), and **Blocked**
+  priority badge when the ticket has a priority (a ticket has none until one is set), and **Blocked**
   (`hand.raised`, `danger`) while it depends on a ticket that isn't done. Badges are capsules tinted with the
   value's color. See [components.md › Badge](components.md#badge).
 - **Selected row.** The colors give way to the system's selection styles, so the text keeps its contrast.
@@ -289,7 +289,7 @@ copied.
 | Drafted | `sparkles` | "You drafted this ticket", "Claude drafted this ticket" |
 | Created | `plus.circle` | "You created this ticket", "Claude created this ticket" |
 | Status changed | `arrow.right.circle` | "You moved it from Created to In Progress" |
-| Renamed | `character.cursor.ibeam` | "You renamed it from “*old*” to “*new*”"; V2's automatic naming: "It was named “*title*”" |
+| Renamed | `character.cursor.ibeam` | "You renamed it from “*old*” to “*new*”"; an automatic rename (author `automatic`): "It was named “*title*”" |
 | Link added | `link` | "You made it depend on ORD-139", "You related it to ORD-139" |
 | Link removed | `minus.circle` | "You removed its dependency on ORD-139", "You removed its relation to ORD-139" |
 | Description edited | `pencil` | "You edited the description" |
@@ -391,7 +391,7 @@ list, on the `canvas` background.
 **Add Link…** opens a sheet, 420 to 480 pt wide: the heading "Link *ORD-142* to Another Ticket", a segmented
 **Kind** picker (Depends On, Related), and the project's tickets that the ticket isn't linked to, each with its
 id, title and status badge. **Add Link** (Return) is disabled until a ticket is picked; **Cancel** (Escape)
-closes. A link that breaks V2's rules (a dependency cycle, a ticket that already links to this one) shows its
+closes. A link that breaks the link rules (a dependency cycle, a ticket that already links to this one) shows its
 message in an alert and the sheet stays open ([Data › Link rules](../data.md#link-rules)).
 
 ## Bundle sheet
@@ -411,7 +411,7 @@ selected in the sidebar; a bundle of tickets that are all done starts Done.
 ![A description rendered as Markdown: a heading, ids as links, task items, a quote, highlighted Swift and a table](images/tickets-markdown.png)
 *Markdown in a description: ORD-139 and ORD-137 are links, the Swift code is highlighted.*
 
-Descriptions and comments are Markdown, rendered with V2's renderer ([Text](../text.md)): headings
+Descriptions and comments are Markdown, rendered with the app's Markdown renderer ([Text](../text.md)): headings
 (`title2`, `title3`, `headline`, then `subheadline`, semibold), paragraphs (each line break kept),
 block quotes (a 3 pt `divider` bar, `textSecondary`), bullet and numbered lists, task items (`checkmark.square`,
 `square`), code blocks (Fira Code `callout` on `surfaceSunken`, the language's name above, scrolling
@@ -424,13 +424,13 @@ Code). The text can be selected.
 - **Code colors.** Code blocks are highlighted for Go, Swift, Markdown, JSON, YAML and Shell, with AZDesign's
   colors: keywords `accentSecondary`; types, properties and headings `info`; builtins and numbers `accent`;
   functions `success`; strings `warning`; comments `textSecondary` (doc comments italic); attributes and
-  directives `danger`; keywords semibold. (V2's own colors stay in `TokenKind.style`.)
+  directives `danger`; keywords semibold.
 
 ## Confirmations and failures
 
 Deleting tickets, a bundle or a comment, and removing an attachment, ask first in an alert whose destructive
 button is **Delete** (**Remove** for an attachment) beside **Cancel**; the texts are in each section. A change
-that fails shows the alert **The Change Failed** with V2's message, such as "ORD-142 cannot depend on
+that fails shows the alert **The Change Failed** with the reason, such as "ORD-142 cannot depend on
 ORD-139, which depends on ORD-142.", and **OK**.
 
 ## States
@@ -627,12 +627,10 @@ See [Chat](chat.md) for the panel itself.
   Payments: PAY-58, 57, 55; Edge Gateway: GW-21; Tools: TLS-12, 11, 9; AZDesign: AZD-7; Shop: SHOP-14, 12;
   ToolsKit: TKIT-4, 3), three bundles (Checkout reliability and Contract clean-up in Orders, Provider timeouts
   in Payments), dated from the sample clock, 11 November 2026 at 14:00. Their links to services, requests,
-  contracts and builds exist only in the samples until those tools come over.
-- **Not there yet.** No sort, no search, no ticket chats or Implement (V2's, left out with Claude's
-  workflow), no drag and drop of tickets into bundles or within a bundle.
-- **Other clients.** `TicketsReader.read`, which the chat panel calls, and the Dashboard's Tickets widget still
-  read the samples: both windows are hidden until Chat and the Dashboard come over. Claude reads and changes
-  tickets through the MCP server ([MCP](../mcp.md)).
+  contracts and builds exist only in the samples.
+- **Not there yet.** No sort, no search, no drag and drop of tickets into bundles or within a bundle.
+- **Other clients.** `TicketsReader.read`, which the chat panel calls, and the Dashboard's Tickets widget read
+  the app's tickets. Claude reads and changes tickets through the MCP server ([MCP](../mcp.md)).
 
 ## Previews
 

@@ -2,7 +2,7 @@ import Darwin
 import FileStorage
 import Foundation
 
-/// `VirtualMachines/Images/<IMAGE-ID>/image.yml`: one macOS image (docs/data.md › Virtual machines). V2's format.
+/// `VirtualMachines/Images/<IMAGE-ID>/image.yml`: one macOS image (docs/data.md › Virtual machines).
 public struct ImageFile: Codable, Sendable, Hashable, Identifiable {
     public enum State: String, Codable, Sendable, Hashable {
         case downloading, installing, needsSetup, ready, failed
@@ -65,7 +65,7 @@ public struct ImageFile: Codable, Sendable, Hashable, Identifiable {
     }
 }
 
-/// `VirtualMachines/Machines/<VM-ID>/vm.yml`: one virtual machine. V2's format.
+/// `VirtualMachines/Machines/<VM-ID>/vm.yml`: one virtual machine.
 public struct MachineFile: Codable, Sendable, Hashable, Identifiable {
     public var schema: Int
     public var id: String
@@ -79,7 +79,7 @@ public struct MachineFile: Codable, Sendable, Hashable, Identifiable {
     public var memoryGB: Int
     public var diskGB: Int?
     public var growContainer: Bool
-    /// `user`, or V2's `claude` (a machine Claude started).
+    /// `user`; a machine with another value isn't listed.
     public var startedBy: String
     public var projectID: String?
     public var chatID: String?
@@ -199,7 +199,7 @@ public struct MachineLibrary: Sendable {
         read(images) { (try? YAMLFile.read(ImageFile.self, at: MachineFolder($0).imageFile)) }.sorted { $0.created < $1.created }
     }
 
-    /// The machines, those V2's Claude started and left behind excepted.
+    /// The machines whose `startedBy` is `user`.
     public func readMachines() -> [MachineFile] {
         read(machines) { (try? YAMLFile.read(MachineFile.self, at: MachineFolder($0).machineFile)) }
             .filter { $0.startedBy == "user" }.sorted { $0.created < $1.created }
@@ -262,33 +262,5 @@ public struct MachineLibrary: Sendable {
         if clonefile(source.path, target.path, 0) != 0 {
             try FileManager.default.copyItem(at: source, to: target)
         }
-    }
-
-    /// `~/Library/Application Support/HephaestusV2/VirtualMachines/`.
-    public static var v2Folder: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/HephaestusV2/VirtualMachines")
-    }
-
-    /// V2's images and machines, cloned in once, when V3 has no `VirtualMachines/` folder yet. Each folder is copied
-    /// file by file with APFS clones, so the import takes almost no space; machines V2's Claude started are left.
-    /// Returns how many came.
-    @discardableResult
-    public func importV2(from v2: URL) -> Int {
-        guard !FileManager.default.fileExists(atPath: root.path), FileManager.default.fileExists(atPath: v2.path) else { return 0 }
-        var count = 0
-        for kind in ["Images", "Machines"] {
-            let from = v2.appendingPathComponent(kind)
-            for name in (try? FileManager.default.contentsOfDirectory(atPath: from.path)) ?? [] where UUID(uuidString: name)?.uuidString == name {
-                let source = from.appendingPathComponent(name)
-                if kind == "Machines", (try? YAMLFile.read(MachineFile.self, at: MachineFolder(source).machineFile))?.startedBy != "user" { continue }
-                let target = root.appendingPathComponent(kind).appendingPathComponent(name)
-                guard (try? FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)) != nil else { continue }
-                for file in (try? FileManager.default.contentsOfDirectory(atPath: source.path)) ?? [] where !file.hasPrefix(".") {
-                    try? Self.clone(source.appendingPathComponent(file), to: target.appendingPathComponent(file))
-                }
-                count += 1
-            }
-        }
-        return count
     }
 }

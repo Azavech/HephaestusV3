@@ -5,7 +5,7 @@ import Synchronization
 import Testing
 @testable import ProjectData
 
-/// A fixture copied from HephaestusV2's docs/data-model.md.
+/// A fixture of the test bundle.
 func fixture(_ name: String) throws -> Data {
     let url = try #require(Bundle.module.url(forResource: name, withExtension: nil, subdirectory: "Fixtures"))
     return try Data(contentsOf: url)

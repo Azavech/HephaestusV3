@@ -40,8 +40,8 @@ HephaestusV3 (app target)        @main HephaestusV3App: its body is ToolsScenes(
    ├─ MachinesKit                the Virtual Machines window
    │    each kit: ToolsFoundation + AZDesign + AZDesignCode
    └─ ToolsFoundation            shared vocabulary; depends on AZDesign only
-ProjectData                      the data folder, the import from V2, the projects (used by ProjectsKit, ToolsScenes)
-├─ FileStorage                   YAML in V2's layout, atomic writes, the lock, the Trash, file events
+ProjectData                      the data folder, the projects (used by ProjectsKit, ToolsScenes)
+├─ FileStorage                   YAML in the files' layout, atomic writes, the lock, the Trash, file events
 │  └─ Yams                       YAML parsing and emitting (third party, approved by the owner)
 └─ ExternalTools                 child processes, the login shell's environment, git, ssh, kubectl
 MCPKit                           the MCP server: JSON-RPC over HTTP on 127.0.0.1, the tool registry
@@ -61,10 +61,10 @@ The architecture rests on a few rules:
 - **Claude is one more client of the tools.** The chat reads an item only through the tool's own read
   function (`ToolReader`), never by looking into a window.
 - **Models and stores.** Each window keeps its state and logic in an `@Observable` model. A model gets its
-  data from a store protocol. The app and the previews use sample stores; the tests use mocks.
+  data from a store protocol. The app uses live stores and the previews sample stores; the tests use mocks.
 - **Data without UI.** The data targets import no SwiftUI and are not isolated to the main actor. They read
-  and write HephaestusV2's files ([Data](data.md)) and run the command-line tools. Each feature, as it comes
-  over from V2, gets a live store built on them beside its sample store.
+  and write the files of [Data](data.md) and run the command-line tools. Each feature has a live store built
+  on them beside its sample store.
 
 ## Repository layout
 
@@ -86,9 +86,9 @@ HephaestusV3/                    the repository root (GitHub: Azavech, private)
 │  └─ Tests/<Target>Tests/       Swift Testing suites, one folder per tested target; ProjectDataTests/Fixtures/
 ├─ docs/
 │  ├─ architecture.md            this page
-│  ├─ data.md                    the files: formats, rules, the data folder, the import from V2
-│  ├─ decisions.md               the defaults chosen at design time while bringing V2 over
-│  ├─ future-improvements.md     V2's features not brought over yet
+│  ├─ data.md                    the files: formats, rules, the data folder
+│  ├─ decisions.md               the defaults chosen at design time
+│  ├─ future-improvements.md     what comes later
 │  └─ ui/                        the UI specification and its images/
 └─ scripts/
    ├─ sync-strings.sh            fills the String Catalogs and checks the bundles
@@ -212,17 +212,17 @@ Shared values in the manifest:
 
 | Target | Purpose | Dependencies | Made with |
 | --- | --- | --- | --- |
-| `FileStorage` | Files: YAML in V2's layout, atomic writes, own writes, the folder lock, the Trash, file events. | Yams | `.target(name:, dependencies: [yams])` |
+| `FileStorage` | Files: YAML in the files' layout, atomic writes, own writes, the folder lock, the Trash, file events. | Yams | `.target(name:, dependencies: [yams])` |
 | `ExternalTools` | Child processes: process groups and timeouts, the login shell's environment, the tools' lookup, git, ssh, kubectl. | — | `.target(name:)` |
-| `ProjectData` | The data folder, the import from HephaestusV2, the project files and their rules, the settings and secrets files. | FileStorage, ExternalTools | `.target(name:, dependencies:)` |
+| `ProjectData` | The data folder, the project files and their rules, the settings and secrets files. | FileStorage, ExternalTools | `.target(name:, dependencies:)` |
 | `MCPKit` | The MCP server: JSON values, input schemas, tool operations and their registry, JSON-RPC, HTTP on 127.0.0.1, tokens. | — | `.target(name:)` |
 | `TicketData` | The ticket, bundle and attachment files and their rules: the `TicketLibrary` actor and the `TicketSession`. | FileStorage, ProjectData | `.target(name:, dependencies:)` |
 | `ChatData` | The chat files, the Claude CLI and its protocol, the chats' processes: the `ChatSession`. | FileStorage, ExternalTools, ProjectData, MCPKit | `.target(name:, dependencies:)` |
 | `BuildData` | gh's runs, jobs, logs and releases, and release downloads. | ExternalTools | `.target(name:, dependencies:)` |
 | `ContractData` | OpenAPI contracts, `$ref`, samples, requests, the HTTP client, stored values. | FileStorage, Yams | `.target(name:, dependencies:)` |
 | `ClusterData` | kubectl, Argo CD, port forwards, the service graph, Jaeger's traces. | ExternalTools, MCPKit, BuildData | `.target(name:, dependencies:)` |
-| `MachineData` | The virtual machines: V2's image and machine files, ipsw.me, the IPSW download and the install, disk clones and growth, the Virtualization framework's machines, the guest agent's protocol, the machine host. | FileStorage, MCPKit, ProjectData | `.target(name:, dependencies:)` |
-| `TextFormats` | Markdown to a block model and syntax highlighting, from HephaestusV2 without its markers ([Text](text.md)). | swift-markdown | `.target(name:, dependencies:)` |
+| `MachineData` | The virtual machines: the image and machine files, ipsw.me, the IPSW download and the install, disk clones and growth, the Virtualization framework's machines, the guest agent's protocol, the machine host. | FileStorage, MCPKit, ProjectData | `.target(name:, dependencies:)` |
+| `TextFormats` | Markdown to a block model and syntax highlighting ([Text](text.md)). | swift-markdown | `.target(name:, dependencies:)` |
 | `ToolsFoundation` | Shared vocabulary: projects, tools, routes, chat vocabulary, the Dashboard model, `ProjectIcon`. | AZDesign | `.target` |
 | `ProjectsKit` | The project selector: the Projects window, the project switcher, the menu bar panel; New Project, Project Settings, Settings ▸ Projects; the mapping of the app's projects; the project tools of the MCP server. | ToolsFoundation, AZDesign, AZDesignCode, ProjectData, ExternalTools, MCPKit | `toolTarget(_:data:)` |
 | `DashboardsKit` | The Dashboard's grid, edit mode, settings and saving in the project files; the Project widget. | same, plus ProjectData | `toolTarget(data: ["ProjectData"])` |
@@ -246,8 +246,8 @@ messages are technical details in English under a window's localized sentence. S
 
 **Dependency rules**
 
-- A tool target may depend on the data target of its own feature once the feature has come over from V2
-  (ProjectsKit on ProjectData), never on another tool target.
+- A tool target may depend on the data target of its own feature (ProjectsKit on ProjectData), never on
+  another tool target.
 - A tool target never depends on another tool target. When two tools need the same value, it moves to
   ToolsFoundation (for example `TicketStatus`, `TimeWindow`, the Dashboard model). Small helpers may exist
   twice instead, as `statusColor(_:)` does in ContractsKit and ServiceMapKit.
@@ -283,10 +283,10 @@ Commit both `Package.resolved` files with it.
 
 ## The data targets
 
-Targets without UI hold the data code that V3 brings over from HephaestusV2: `FileStorage`, `ExternalTools`,
+Targets without UI hold the data code: `FileStorage`, `ExternalTools`,
 `ProjectData`, `MCPKit`, `TicketData`, `ChatData`, `BuildData`, `ContractData`, `ClusterData` and `TextFormats`. They import no SwiftUI, have no default isolation (a `@MainActor`
 session type says so itself), and keep shared state in `Mutex`es and actors. Each feature wires them into its
-windows as it comes over ([Open issues](#open-issues)).
+windows through its live store ([Open issues](#open-issues) lists what isn't wired yet).
 
 ### FileStorage
 
@@ -340,7 +340,7 @@ Reading and writing files with the rules of [Data](data.md). Source files in `So
   `encodeIfPresent` (left out when absent), `encodeDate` and `encodeOptionalDate` (`ISODate.scalar`: a plain
   scalar tagged `timestamp` with `ISODate.string(from:)`), and `encodeUnknownKeys(_:known:)`, which writes each
   entry not in `known`, in order.
-- **`ISODate`** is V2's: proleptic Gregorian calendar arithmetic in UTC (days from and to the civil date, by
+- **`ISODate`** is proleptic Gregorian calendar arithmetic in UTC (days from and to the civil date, by
   Howard Hinnant's algorithm), no `DateFormatter`. `date(from:)` accepts `YYYY-MM-DDTHH:MM:SS`, an optional
   `.` and digits (dropped), then `Z` or `±HH:MM`, and checks the ranges, the day of the month included.
 - **`AtomicFile.write`** follows [Data › Atomic writes](data.md#atomic-writes) with POSIX calls: `open` with
@@ -375,7 +375,7 @@ Reading and writing files with the rules of [Data](data.md). Source files in `So
 
 ### ExternalTools
 
-Running the command-line tools with the rules of HephaestusV2's child processes. Source files in
+Running the command-line tools, with the rules of child processes below. Source files in
 `Sources/ExternalTools/`:
 
 | File | Contents |
@@ -437,24 +437,23 @@ The files of [Data](data.md). Source files in `Sources/ProjectData/`:
 | File | Contents |
 | --- | --- |
 | `ProjectFile.swift` | `ProjectFile`, `ProjectKind`, `ProjectColor`, `EnvironmentEntry` (`baseURL`), `EnvironmentOverride` (`isEmpty`, `applied(to:)`) |
-| `DashboardWidgetEntry.swift` | `DashboardWidgetEntry` (`Kind`, `Field`, `Status` with `v2Statuses`, `ChatKind`; `countRange`, `titleLimit`, `defaultID(_:)`, `checked(_:keeping:)`, V2's keys per kind and write rules), `DashboardGraphWindow` |
+| `DashboardWidgetEntry.swift` | `DashboardWidgetEntry` (`Kind`, `Field`, `Status` with `defaultStatuses`, `ChatKind`; `countRange`, `titleLimit`, `defaultID(_:)`, `checked(_:keeping:)`, the keys per kind and the write rules), `DashboardGraphWindow` |
 | `RegistryFile.swift` | `RegistryFile` (`loadableEntries`) |
 | `CurrentEnvironmentsFile.swift` | `CurrentEnvironmentsFile` |
 | `ProjectFolder.swift` | `ProjectFolder`: the `.hephaestus/` paths, `isProject`, `ensureGitignore(ownWrites:)`, `gitignoreLine` |
-| `DataFolder.swift` | `DataFolder`: `resolve(environment:container:)`, `appGroup`, `overrideVariable`, `registryFile`, `currentEnvironmentsFile`, `invalidCopy(of:)`, `createIfNeeded()`, `lock()` |
-| `V2Import.swift` | `V2Import`: `runIfNeeded(into:from:ownWrites:)`, `Result`, `defaultV2Folder(homeDirectory:)`, `v2ProjectIdentifier` |
+| `DataFolder.swift` | `DataFolder`: `resolve(environment:applicationSupport:)`, `folderName`, `appGroup`, `appGroupContainer`, `migrateFromAppGroup(container:)`, `overrideVariable`, `registryFile`, `currentEnvironmentsFile`, `invalidCopy(of:)`, `createIfNeeded()`, `lock()` |
 | `ProjectRules.swift` | `ProjectRules`, `ProjectRuleError` |
 | `GitHub.swift` | `GitHubPage`, `GitRemote` (`init?(remoteURL:)`, `isGitHubHost`, `gitHubPage(resolvedHostName:)`) |
 | `ProjectSnapshot.swift` | `ProjectSnapshot` (`revision`, `projects`, `issues`, `project(_:)`, `project(atRoot:)`, `family(of:)`), `LoadedProject` (`root`, `file`, `parentID`, `depth`, `childIDs`, `resolved`, `fileIssue`), `ResolvedSettings`, `ProjectIssue` (`path`, `source`, `reason`) |
 | `ProjectError.swift` | `ProjectError` |
 | `ProjectLibrary.swift` | `ProjectLibrary` (`load()`, `handle(_:)`, `watchedFolders`, `setTools(_:)`, `refreshOrigins()`, `create(_:)`, `open(folder:)`, `update(_:_:)`, `remove(_:)`, `setCurrentEnvironment(_:to:)`, `allocateNumber(for:_:)` with `NumberKind`), `NewProject`, `ProjectChange` |
-| `ProjectSession.swift` | `ProjectSession` (`phase`, `snapshot`, `importResult`, `shell`, `tools`, `isLookingUpTools`, `kubectl`, `projectLibrary`, `start()`, `lookUpTools()`, `stop()`, `observeFileEvents(_:)`, and the changes) |
+| `ProjectSession.swift` | `ProjectSession` (`phase`, `snapshot`, `shell`, `tools`, `isLookingUpTools`, `kubectl`, `projectLibrary`, `start()`, `lookUpTools()`, `stop()`, `observeFileEvents(_:)`, and the changes) |
 
 - **File types.** Each is a `Codable`, `Sendable`, `Hashable` struct whose `init(from:)` reads with a
   `MappingReader` and whose `encode(to:)` writes with a `MappingWriter`, key by key in the order of its table
   in [Data](data.md), then its unknown keys. Single-line strings are trimmed with
   `ProjectRules.trimmedOrNil`.
-- **`ProjectFile`** keeps V2's keys it doesn't use in `keptV2Keys`, read with `raw(_:)` and written with
+- **`ProjectFile`** keeps the known keys it doesn't use in `keptKeys`, read with `raw(_:)` and written with
   `encodeIfPresent` at their places: `webTabs`, `skills`, `chatDefaults` after `subprojects`;
   `dashboardWidgets`, `dashboardGraphWindow`, `deletedChats`, `commentAnswers` after `environmentOverrides`.
   `color`, `icon` and `githubPage` are left out when nil and `graphEnabled` while false.
@@ -473,7 +472,7 @@ The files of [Data](data.md). Source files in `Sources/ProjectData/`:
   `alreadyContainsProject(path:)`, `folderMissing(path:)`, `notInsideParent(parentName:)`,
   `projectNotLoaded(_:)`, `unknownEnvironment(_:)`. The rules are in [Data › Changes](data.md#changes).
 - **`ProjectSession`** is `@MainActor @Observable`: the windows observe `phase` (`starting`, `ready`,
-  `failed(ProjectError)`), `snapshot`, `importResult`, `shell` and `tools`, and call its async throwing
+  `failed(ProjectError)`), `snapshot`, `shell` and `tools`, and call its async throwing
   changes, which forward to the library and keep the snapshot they return (a snapshot is kept only when its
   revision is higher). `start()` runs the order of [Data › Loading](data.md#loading); it consumes the
   `FileEventHub`'s batches in a task, hands each to `handle(_:)`, and updates the watched folders after each
@@ -577,7 +576,7 @@ and Yams. Source files in `Sources/ContractData/`:
 | `OpenAPIContract.swift` | `OpenAPIContract` (`read(_:file:root:)`, `operation(_:)`, `schemes(for:)`), `ContractError`, `OpenAPIOperation` (`key`, `RequestBody`, `MediaType`, `DocumentedResponse`), `OpenAPIParameter`, `SecurityScheme`, `ContractResolver` (the `$ref` rules) |
 | `ContractSamples.swift` | `ContractSamples` (prefilled bodies, samples from schemas, type summaries) |
 | `RequestBuilder.swift` | `RequestValues`, `RequestBuilder` (`encode`, `url`, `headers`, `request`), `ContractResponse` (`text`), `ContractHTTPClient` (strict and lenient ephemeral sessions), `ContractCallError` |
-| `StoredValues.swift` | `StoredContract`, `StoredHeader`, `StoredOperation`, `StoredValuesFile` (`read`, `write`, `v2File`, `importV2`) |
+| `StoredValues.swift` | `StoredContract`, `StoredHeader`, `StoredOperation`, `StoredValuesFile` (`read`, `write`) |
 
 ### BuildData
 
@@ -600,7 +599,7 @@ ExternalTools, ProjectData and MCPKit. Source files in `Sources/ChatData/`:
 
 | File | Contents |
 | --- | --- |
-| `ChatFile.swift` | `ChatFile` (`Kind`, the keys of [Data › Chat file](data.md#chat-file), `kindViolation`), `ChatSettings` (`model`, `effort`, V2's kept keys, `isModel`), `Effort`, `ChatIDs` (`make`, `isChatID`) |
+| `ChatFile.swift` | `ChatFile` (`Kind`, the keys of [Data › Chat file](data.md#chat-file), `kindViolation`), `ChatSettings` (`model`, `effort`, the other settings kept as read, `isModel`), `Effort`, `ChatIDs` (`make`, `isChatID`) |
 | `ChatItem.swift` | `ChatItem` (`user`, `assistant`, `thinking`, `toolUse`, `toolResult`, `permissionRequest`, `system`, `result`; `id`, `created`, `json`, `init?(json:)`), the item structs, `ChatItemReference` (`projectTool`), `ToolUseItem.split(_:)` |
 | `Transcript.swift` | `Transcript` (`Op`, `replay(_:)`, `line(_:_:)`, `append(_:to:endingLine:)`) |
 | `StreamMapper.swift` | `StreamOutput`, `StreamMapper` (`effort`, `stopping`, `map(_:)`, `finish()`, `itemID`, `mcpProblem`, `tokens`, `truncated`) |
@@ -624,7 +623,7 @@ ExternalTools, ProjectData and MCPKit. Source files in `Sources/ChatData/`:
 - **Approvals.** `requestApproval(_:tool:input:)` writes a `permissionRequest` item and suspends on a
   `CheckedContinuation` kept per chat and request; `answer`, `stop`, the exit and `stopAll` resume it. A
   CLI's `can_use_tool` request is kept with its input until `answer` writes the control response.
-- **Testing.** Tests pass a `FakeLauncher` whose connections replay V2's captures (`ChatDataTests/Fixtures`)
+- **Testing.** Tests pass a `FakeLauncher` whose connections replay captures of the CLI (`ChatDataTests/Fixtures`)
   and record the lines written, and a runner that answers `--version`: no test starts Claude.
 
 ### MachineData
@@ -637,9 +636,9 @@ settings). Source files in `Sources/MachineData/`:
 
 | File | Contents |
 | --- | --- |
-| `MachineFiles.swift` | `ImageFile` (`State`), `MachineFile`, `MachineFolder` (the files of a folder, `diskGB`, `bytesOnDisk`), `MachineLibrary` (`images`, `machines`, `readImages`, `readMachines`, `write`, `createMachine`, `clone`, `v2Folder`, `importV2`) |
+| `MachineFiles.swift` | `ImageFile` (`State`), `MachineFile`, `MachineFolder` (the files of a folder, `diskGB`, `bytesOnDisk`), `MachineLibrary` (`images`, `machines`, `readImages`, `readMachines`, `write`, `createMachine`, `clone`) |
 | `MacOSVersions.swift` | `MacOSVersion`, `MacOSVersions` (`fetch`, `parse`, `compare`, `ListError`) |
-| `GuestDisk.swift` | V2's `GuestDisk` (`grow`, `growContainerCommand`), `PartitionTable`, `RecoveryMove`, `CRC32` |
+| `GuestDisk.swift` | `GuestDisk` (`grow`, `growContainerCommand`), `PartitionTable`, `RecoveryMove`, `CRC32` |
 | `MachineVirtualization.swift` | `MachineFailure`, `MachineConfiguration` (`agentPort`, `isSupported`, `platform`, `make`, `createDisk`, `newMACAddress`), `MachineInstaller.install`, `IPSWDownload`, `DHCPLeases` |
 | `GuestAgent.swift` | `GuestAgentFrame`, `GuestAgentError`, `GuestAgentStatus`, `GuestAgentResponse`, `GuestAgentConnection` (`open`, `request`, `refreshStatus`, `shutDownGuest`, `close`) |
 | `GuestMachine.swift` | `GuestMachineEvent`, `GuestMachine`, `MachineBackend`, `SystemMachineBackend`, `MacGuestMachine` (the framework's machine, its socket listener, start and stop in order, pause, resume), `GuestTools` (`bundled(in:)`, `installCommand`, `fill`) |
@@ -837,9 +836,8 @@ See [Components › Chat panel button](ui/components.md#chat-panel-button).
 ### The Dashboard model
 
 The Dashboard's data types live here, not in DashboardsKit, because each tool draws its own widgets from
-them and tools can't import DashboardsKit. The grid and its placement rule are HephaestusV2's code
-unchanged. The rules themselves are specified in [Dashboard › Grid, Placement, Lists without
-positions](ui/dashboard.md#grid).
+them and tools can't import DashboardsKit. The grid and its placement rule are specified in [Dashboard ›
+Grid, Placement, Lists without positions](ui/dashboard.md#grid).
 
 **`DashboardWidget`** (`Sendable, Hashable, Identifiable`): what the Dashboard shows of a widget. DashboardsKit's
 `LiveDashboardStore` maps it to and from the project file's `DashboardWidgetEntry` (ProjectData).
@@ -860,7 +858,7 @@ positions](ui/dashboard.md#grid).
   or nil when any is missing; setting it writes all four.
 - `defaultList(for:)`: Project, Tickets, Recent Builds, plus Service Graph when `hasServiceMap(project)`, with
   the ids `00000000-0000-0000-0000-00000000000<n>`.
-- `DashboardWidgetKind` adds V2's `recentChats` and `cost`, kept and never shown. `isShown(for:tools:)`: Project
+- `DashboardWidgetKind` also has `recentChats` and `cost`, kept and never shown. `isShown(for:tools:)`: Project
   always; Tickets with `.tickets`; Recent Builds with `.builds`; Instances with `.serviceMap`; the four service
   widgets with `.serviceMap` and `hasServiceMap(project)`; Recent Chats and Cost never. `shown(for:tools:)` is
   the set of those kinds; `addable(for:tools:)` the shown kinds, Instances only for a service.
@@ -933,7 +931,7 @@ again after each change), adds an observer of `NSApplication.willTerminateNotifi
 `session.start()`, then loads the machine host (`machineHost.load()`). `AppData` also holds `machineHost =
 MachineHost(dataFolder: DataFolder.resolve())` and `machineStore = LiveMachineStore(host:)`, and gives the host to
 the MCP registry's `vm_` tools. `AppData.availableTools` (every tool) and `AppData.machinesAvailable` (true) say
-which tools and windows have come over from V2
+which tools and windows the app shows, all of them
 ([Navigation › Available tools](ui/navigation.md#available-tools)): the Window menu lists only those, and
 `RouteHost` gives every view `\.availableTools` and `\.projectDirectory`. The tool windows read their project
 from the directory (`directory.project(value.projectID)`, `directory.tree.path(of:)`, the switcher's
@@ -1307,8 +1305,7 @@ switcher's Show All Projects opens `.project(id)`; the launcher's Return opens `
 
 The Dashboard's grid, edit mode, settings and saving in the project files. The widgets' content comes from
 the tools. Spec:
-[Dashboard](ui/dashboard.md). The grid code is HephaestusV2's (`DashboardView.swift`,
-`DashboardGridLayout.swift`), kept as it was except for imports, AZDesign's color, its strings and `nonisolated`.
+[Dashboard](ui/dashboard.md). The grid's code is in `DashboardGridLayout.swift` and `DashboardRootView.swift`.
 
 | File | Contents |
 | --- | --- |
@@ -1345,7 +1342,7 @@ the tools. Spec:
   drops the overlay, and raises the project's generation, so the writes queued before it are skipped. `settle()`
   awaits the queue (tests).
 - Mapping: `widget(_:)` and `entries(_:merging:)`. A widget takes the stored entry of its slot (same id, same
-  rank among equal ids), so V2's Recent Chats settings and unknown keys survive; a new widget takes the
+  rank among equal ids), so Recent Chats' settings and unknown keys survive; a new widget takes the
   file's defaults. Statuses map `draft`↔Draft, `todo`↔Created, `in_progress`↔In Progress, `review`↔In Review,
   `done`↔Done; `week` maps to no `TimeWindow` (nil: the last hour shows).
 - `SampleDashboardStore(_ widgets: [Project.ID: [DashboardWidget]] = [:], failures: [Project.ID: String] = [:])`
@@ -1434,7 +1431,8 @@ refuses ("This store doesn't change tickets."), no URL. `TicketChangeRequest` ha
   (at equal dates the creation, the comments, then the other entries). `perform` calls the session's change
   as the user on this Mac and gives `TicketError.description` as the message. `phase` is `loading` until the
   session has loaded.
-- **`SampleTicketStore`** (`@Observable`) applies each change in memory, without V2's rules, and records it
+- **`SampleTicketStore`** (`@Observable`) applies each change in memory, without the rules of [Data › Ticket
+  rules](data.md#ticket-rules), and records it
   in `changes`, for previews and tests.
 
 **`TicketsModel`**, `init(project:focus:filter: = .all, store:, directory: = .previewSamples)`: reads live
@@ -1456,8 +1454,8 @@ from the store (`tickets`, `bundles`) and the directory (`family`, `indent(of:)`
 **Reader.** `TicketsReader.read(_:store:)` reads the app's `LiveTicketStore` (the samples without one). `detail(of:)`
 has one sentence per status and priority, and one per status without a priority.
 
-**Widget.** `TicketsDashboardWidget` counts with `store.count(…, tree:)` over the environment's directory; it
-reads the samples until the Dashboard comes over.
+**Widget.** `TicketsDashboardWidget` counts with `store.count(…, tree:)` over the environment's directory, in
+the app's `\.ticketStore` (the samples without one).
 
 **Root view.** `NavigationSplitView` with sidebar (190–280), list (300–480) and detail in `.mac` and `.pad`
 (`.doubleColumn` in `.pad`), or a `PhoneStack` in `.phone`. It presents the New Ticket, Add Link and bundle
@@ -1468,8 +1466,8 @@ ToolsScenes' `ToolWindowRoot` builds it with `\.ticketStore` and its directory.
 ### ServiceMapKit
 
 Spec: [Service Map](ui/service-map.md), and the service widgets in [Dashboard](ui/dashboard.md#widgets). The
-graph is HephaestusV2's code (`GraphLayout.swift`, `GraphMapView.swift`, `GraphColorScale.swift`,
-`GraphCanvasView.swift`): keep its algorithm, geometry and X-Ray look.
+graph's code is `GraphLayout.swift`, `GraphMapView.swift`, `GraphColorScale.swift` and
+`GraphCanvasView.swift`: keep its algorithm, geometry and X-Ray look.
 
 | File | Contents |
 | --- | --- |
@@ -1545,7 +1543,7 @@ list), with an always-open `.inspector` (280–440) in `.mac` and `.pad`; in `.p
 `onFocusRequest`. The Service Map has no ⇧⌘N item.
 
 
-**Live data (Phase 8).** `ServiceMapStore.swift` holds `MapStatus`, `MapActionError`, the protocol
+**Live data.** `ServiceMapStore.swift` holds `MapStatus`, `MapActionError`, the protocol
 `ServiceMapStore` (`map(of:environment:)`, `status`, `refresh(_:environment:window:)`, `ownService(of:environment:)`,
 `pods`, `acts`, `restart`, `scale`, `argoCD`, `sync`), `SampleServiceMapStore` and `LiveServiceMapStore` (`@Observable`,
 one for the app: reads with `ServiceMapRead.read`, maps it to `ServiceMap`, keeps the own service's pods, owns the
@@ -1577,8 +1575,8 @@ ContractData, MCPKit and ProjectData.
 `loading`, `loaded`, `failed`), `refresh(_:)`, `send(_:to:of:)`, `lastResponse(of:in:)`, `setEnvironment(_:of:)`,
 `access(of:)`, `setAccess(_:of:)`. `LiveContractStore` (`@Observable`, one for the app) reads
 `openapi/contract.yaml` off the main actor with `OpenAPIContract.read`, maps it to the window's `Contract`,
-reads it again after file events under `openapi/`, keeps the responses of the run and the stored values
-(imported once from V2), and sends with `ContractHTTPClient`. `SampleContractStore` reads the samples and sends
+reads it again after file events under `openapi/`, keeps the responses of the run and the stored values,
+and sends with `ContractHTTPClient`. `SampleContractStore` reads the samples and sends
 nothing.
 
 **`ContractsModel`**, `init(project:focus:store:)`: `contractLoad`, `contract`, `refresh()` (applies a focus that
@@ -1734,7 +1732,7 @@ Spec: [Virtual Machines](ui/virtual-machines.md). Not a tool: one window for the
 | `MachinesRootView.swift` | `MachinesRootView` (sheets, alerts, the deletion dialog), `MachineList`, `MachineRow`, `ImageRow`, `pageName(_:layout:)` |
 | `MachineDetailView.swift` | `MachineDetail`, `MachineInfo`, `SnapshotRow`, `MachineScreen`, `DesktopStandIn`, `ConsoleStandIn` |
 | `ImageDetailView.swift` | `ImageDetail`, `GuestAccountSection`, `ImageSetupView` |
-| `MachineScreenView.swift` | `VirtualMachineScreen` (`VZVirtualMachineView`), V2's `GuestKeyStroke`, `KeyboardLayoutKeys`, `GuestKeyboard` (Type Password), `TypePasswordButton` |
+| `MachineScreenView.swift` | `VirtualMachineScreen` (`VZVirtualMachineView`), `GuestKeyStroke`, `KeyboardLayoutKeys`, `GuestKeyboard` (Type Password), `TypePasswordButton` |
 | `MachineSheets.swift` | `NewMachineSheet`, `EditMachineSheet`, `AddImageSheet`, `ShellSheet` |
 | `MachineSettingsView.swift` | `MachineSettingsView` (Settings ▸ Virtual Machines) |
 | `MachineTools.swift` | `MachineTools.operations(host:)`, the sixteen `vm_` tools ([MCP](mcp.md#tools)) |
@@ -1866,9 +1864,8 @@ identifiers from it (`chat.composer.field`, `chat.composer.send`).
 
 | What | Where | Key | Value |
 | --- | --- | --- | --- |
-| A project's Dashboard | `UserDefaults.standard` | `dashboard.<project id>` | JSON of `DashboardLayout` |
 | Chat panel offered | `UserDefaults.standard` (`@AppStorage`) | `chat.showsPanel` | `Bool`, default true |
-| Ticket changes permission | same | `chat.ticketChanges` | `ChangePermission` raw value, default `askFirst` |
+| Claude's permissions | same | `chat.ticketChanges`, `chat.projectChanges`, `chat.apiCalls`, `chat.clusterChanges`, `chat.machineChanges` | `ChangePermission` raw value, default `askFirst` |
 | Build starts permission | same | `chat.buildStarts` | `ChangePermission` raw value, default `never` |
 | Chat panel shown | Scene storage of each tool window | `chatPanelShown` | `Bool`, default false |
 | A tool window's project and focus | Window restoration | — | `ToolWindowValue` (`Codable`) |
@@ -1877,8 +1874,7 @@ Everything else lasts as long as the app runs: selections, filters, folded paren
 of their projects ([Data › Chats](data.md#chats)). The Projects window's selection starts on `ORD` at each launch.
 
 The files of [Data](data.md) (the project files, `registry.yml`, `current-environments.yml`) are read and
-written by the data targets, which no window uses yet. As each feature comes over from V2, its data moves from
-the table above into those files.
+written by the data targets, which the windows reach through the app's live stores.
 
 ### Sample data
 
@@ -1928,7 +1924,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 564 tests, and 5 in the guest agent's package). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 559 tests, and 5 in the guest agent's package). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
@@ -1937,24 +1933,24 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | FileStorageTests | YAML coding, Dates, Atomic writes, Own writes the folder lock and the Trash, File events | Kept keys written back in order and layout; read rules (UTF-8, root mapping, keys twice, YAML errors); BOM and CR LF; defaults and required keys; schema; dates read and written; quoting and literal blocks; atomic writes (modes, links, failures, leftovers); own writes; the lock; a test Trash; `YAMLFile`; batches by quiet and maximum delay; one real FSEvents stream in a temporary folder; flag kinds. |
 | ExternalToolsTests | Child processes, The login shell's environment, Finding the tools, git ssh and kubectl | Output, status, input, folder, environment, signals, missing executables; the timeout ending a whole process group; `terminateAll`; `env -0` parsing and every capture outcome; `PATH` lookup and the git stub; the commands, arguments, parsing and failures of git, ssh and kubectl. Uses `FakeRunner`. |
 | MCPKitTests | JSON values and schemas, JSON-RPC, HTTP, Server | Number kinds and sorted output; every validation message in order; the classification table; initialize, ping, unknown methods and the version header; tools/list and tools/call results, errors and validation; heads, chunked and sized bodies and their limits; bearer tokens; a real listener on a free port answering with the token and refusing the rest. |
-| ProjectDataTests | Project file, Dashboard widgets, Registry and current environments, Data folder, Import from HephaestusV2, Rules and GitHub, Loading, Outside changes, Creating opening and removing, Inherited settings, Current environment, GitHub page, Session | V2's complete project file written back byte for byte; every V2 example round-tripping with all its keys; defaults; environments, base URLs and overrides; V3's additions; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; the import's list, skips, choices, single run and missing V2; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints; loading depth first with every issue; data folder files set aside; outside changes (changed, invalid, renamed identifier, deleted and returning files, the registry, own writes, relevance); create, open and remove with their refusals and sub projects; update with its write rules; inheritance on, off, nested and across types; the current environment chosen, renamed, removed and forgotten; GitHub pages from origins, aliases, typed pages and parents, `.git/config`; the session's start, lock, changes and a real outside change. Fixtures: V2's examples. Uses `FakeRunner`.; Dashboard widgets: keys of another kind kept, V3's Recent Builds, unknown kinds and statuses refused, each write rule with its message, stored widgets written back as they are, repeated ids. |
+| ProjectDataTests | Project file, Dashboard widgets, Registry and current environments, Data folder, Rules and GitHub, Loading, Outside changes, Creating opening and removing, Inherited settings, Current environment, GitHub page, Session | A complete project file written back byte for byte; every example round-tripping with all its keys; defaults; environments, base URLs and overrides; the Library type and the tint; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints; loading depth first with every issue; data folder files set aside; outside changes (changed, invalid, renamed identifier, deleted and returning files, the registry, own writes, relevance); create, open and remove with their refusals and sub projects; update with its write rules; inheritance on, off, nested and across types; the current environment chosen, renamed, removed and forgotten; GitHub pages from origins, aliases, typed pages and parents, `.git/config`; the session's start, lock, changes and a real outside change. Fixtures: example project files. Uses `FakeRunner`.; Dashboard widgets: keys of another kind kept, Recent Builds, unknown kinds and statuses refused, each write rule with its message, stored widgets written back as they are, repeated ids. |
 | ClusterDataTests | Clusters, Service graph, Traces | kubectl's prefix, status and pods, restart, scale (and its failure message), logs, Argo CD in its namespace and sync, missing fields; the forwarding line; boxes, databases, buckets, arrows and source problems; go.mod and values files; OTLP spans; calls, figures, requests and their logs, the 3 s rule. A fake kubectl; nothing reaches a cluster. |
-| ContractDataTests | Contracts | Operations in V2's order, parameters merged, `$ref` across files and outside the folder, schemes, the prefilled body; unreadable files; URLs, query, header order and replacements, the request; JSON in order, form bodies; stored values read, imported once, mode 0600, earlier keys left out. Temporary folders only; nothing is sent. |
-| BuildDataTests | gh, Builds from gh | Repositories from GitHub pages; gh's environment and V2's failure messages; runs, a run's jobs and steps, logs by step (CR LF included), re-run and cancel after `--`; releases without drafts, the latest marked; a download's pattern, free name and temporary folder. A fake runner answers gh. |
-| ChatDataTests | Chat files, Transcripts, Stream mapping, Chats on the Claude CLI, Launching the CLI | V2's chat file written back byte for byte, V3's `origin`, the kinds' rules; replay (add, update, lines skipped), lines written by V3, the LF after a line cut short; V2's captures of Claude Code 2.1.309 mapped to items with V2's ids, streamed text, the CLI's permission request, compaction lines, results after Stop; the CLI located in order, its version and models; a first message (arguments without prompt, hooks or the CLI's tools, the MCP configuration and its chat token, the attached line), a turn replayed to idle, the app's card and the CLI's request answered, Stop, an exit in error, a missing session started again, model and effort. A `FakeLauncher` replays the captures; nothing starts Claude. |
-| TicketDataTests | Ticket and bundle files, Ticket library | V2's complete ticket and bundle written back byte for byte; defaults, the creation entry and unknown keys; numbers from the counters, skipping existing files; provisional titles and the title, description and status messages; Claude's descriptions taken as written; drafts; link rules 1–7 with their messages and inverse links; history entries in order and changes that write nothing; Claude's status limits; the Complete and Reopened rules, Claude's bundle limits and the Complete rule at load; deletion order and the Trash; comments and their files; attachment copies, names, limits and paths; outside changes, invalid files and removals. Fixtures: V2's examples. Uses a test Trash folder. |
-| TextFormatsTests | Language detection, Token kinds, Word lists, Highlighter fixtures, Tokenizer edge cases, Markdown block model, Links, Heading anchors, Ticket and bundle ids, Linked ids, Soft line breaks | V2's suites without the markers and the HTML output: every tokenizer against its fixtures and the word lists of [Text](text.md); the block model of every Markdown feature; links, images and path resolution read from [Text](text.md); ids. Fixtures: V2's highlighting examples (without the 1 MB ones). |
+| ContractDataTests | Contracts | Operations in the order of `paths` and methods, parameters merged, `$ref` across files and outside the folder, schemes, the prefilled body; unreadable files; URLs, query, header order and replacements, the request; JSON in order, form bodies; stored values read, mode 0600, earlier keys left out. Temporary folders only; nothing is sent. |
+| BuildDataTests | gh, Builds from gh | Repositories from GitHub pages; gh's environment and the failure messages; runs, a run's jobs and steps, logs by step (CR LF included), re-run and cancel after `--`; releases without drafts, the latest marked; a download's pattern, free name and temporary folder. A fake runner answers gh. |
+| ChatDataTests | Chat files, Transcripts, Stream mapping, Chats on the Claude CLI, Launching the CLI | A complete chat file written back byte for byte, the `origin` key, the kinds' rules; replay (add, update, lines skipped), lines written by the app, the LF after a line cut short; captures of Claude Code 2.1.309 mapped to items and their ids, streamed text, the CLI's permission request, compaction lines, results after Stop; the CLI located in order, its version and models; a first message (arguments without prompt, hooks or the CLI's tools, the MCP configuration and its chat token, the attached line), a turn replayed to idle, the app's card and the CLI's request answered, Stop, an exit in error, a missing session started again, model and effort. A `FakeLauncher` replays the captures; nothing starts Claude. |
+| TicketDataTests | Ticket and bundle files, Ticket library | A complete ticket and bundle written back byte for byte; defaults, the creation entry and unknown keys; numbers from the counters, skipping existing files; provisional titles and the title, description and status messages; Claude's descriptions taken as written; drafts; link rules 1–7 with their messages and inverse links; history entries in order and changes that write nothing; Claude's status limits; the Complete and Reopened rules, Claude's bundle limits and the Complete rule at load; deletion order and the Trash; comments and their files; attachment copies, names, limits and paths; outside changes, invalid files and removals. Fixtures: example ticket and bundle files. Uses a test Trash folder. |
+| TextFormatsTests | Language detection, Token kinds, Word lists, Highlighter fixtures, Tokenizer edge cases, Markdown block model, Links, Heading anchors, Ticket and bundle ids, Linked ids, Soft line breaks | Every tokenizer against its fixtures and the word lists of [Text](text.md); the block model of every Markdown feature; links, images and path resolution read from [Text](text.md); ids. Fixtures: highlighting examples. |
 | ToolsScenesTests | MCP documentation | docs/mcp.md's tools, descriptions and input schemas equal the registry's. |
 | ToolsFoundationTests | Routes, Strings, Inherited settings | Each `FocusRequest` is new; `ChatReference.route` and ids per environment; shared titles from the catalog; unique tool shortcuts; inherited environments. |
 | ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker, Projects from the app's data, New Project, Projects window on the app's data, Project Settings, Project tools | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`.; the mapping of kinds, tints and environments; New Project's following fields, rules, type and parent from the folder, sub project folders and default location; the loading, empty and unavailable states; the selection after a removal and at load.; Project Settings' fields, rules and messages, environments added, renamed and removed, pending fields applied together, and inherited environments changed in the sub project's changes.; the five project tools through JSON-RPC on a real session, their refusals and `~/` expansion. |
-| DashboardsKitTests | What the Dashboard shows, Edit mode, Steps of the keyboard and VoiceOver, Settings, The Dashboard on the project files, Widgets of tools not brought over yet | Sample, default and saved lists; hidden service widgets; toolbar environment and time window; a change in every window of a project; list order; titles; Done, remove, add, first save, drags; every step and its limits; title, checkbox and Number rules. The live store on a real session in a temporary folder: the default list whatever the identifier, V2's widgets read and written back in V2's layout with Recent Chats and unknown keys kept, the first change storing the default ids, the time window, a failed change and its message, a change made elsewhere, the mapping. Widgets shown by available tool; hidden widgets keep their places. Uses `MockDashboardLayoutStore`. |
+| DashboardsKitTests | What the Dashboard shows, Edit mode, Steps of the keyboard and VoiceOver, Settings, The Dashboard on the project files, Widgets of unavailable tools | Sample, default and saved lists; hidden service widgets; toolbar environment and time window; a change in every window of a project; list order; titles; Done, remove, add, first save, drags; every step and its limits; title, checkbox and Number rules. The live store on a real session in a temporary folder: the default list whatever the identifier, stored widgets read and written back in their layout with Recent Chats and unknown keys kept, the first change storing the default ids, the time window, a failed change and its message, a change made elsewhere, the mapping. Widgets shown by available tool; hidden widgets keep their places. Uses `MockDashboardLayoutStore`. |
 | TicketsKitTests | The store, The list, Selection and route focus, Comments, New Ticket, The reader, Changes, Tickets from the app's data, Ticket tools | Store queries and counts; grouping, filters, counts, bundles; default selection, focus, repeated routes, hidden and missing tickets, chat subject; comment drafts; the sheet's project, validation, creation and failure; reader sentences and suggestions; next step and status, comments with files, editing, links, deletion, bundles, the store's phases; the live store's mapping of statuses, priorities, links, blocking and activity; the ticket tools on real sessions in temporary folders (creation with a free description, comments with files, absolute paths, filters, Claude's status limits, bundles, deletion). Uses `MockTicketStore` and `SampleTicketStore`. |
 | ServiceMapKitTests | Focus formats, Service Map model, Service Map reader, Service widgets, Formats | Focus parsing; opening environment and view; history, Back, Show All; taps; repeated routes; missing items; chat subject; summary; request order and sorting; graph contents; logs; reader per environment, details and suggestions; widget readings; durations, literals, stable layout. Uses `MockServiceMapStore`. |
 | ContractsKitTests | Opening, Route focus, Filter, Request, Responses, Reader and chat, Sample contracts | Opening selection and environment; repeated routes, filters cleared, drafts kept; sections and matching; examples, URLs, draft keeping, Send; duration formats; reader sentences and suggestions; sample contracts. Uses `MockContractStore`. |
 | BuildsKitTests | Focus, Model, Reader, Samples and logs, Recent Builds widget | Focus parsing; default selection, focus by mode, repeated routes, steps, mode selections, chat subject; reader text and owner repository; default steps, open jobs, log line kinds, sample releases; recent runs within 1–20. Uses `MockBuildStore`. |
 | MachinesKitTests | Machines window: selection and routes, Machines window: layouts, Machines: states and sizes, Machines: actions | Opening and route selection, unknown machines, images; Mac width, layout by width, side columns per layout; actions per state, starting and shutting down; size and download formats; sample ids; start, pause, resume and stop through the store, the limit of 2 and its alert, deletions (an image's machines too), a failure shown once, the guest account, Finish Setup's condition. Uses a sample store (`MockMachineStore`). |
-| MachineDataTests | Virtual machine files, Guest disks, macOS versions, Guest addresses, Guest agent protocol, Machine host | V2's image.yml and vm.yml written byte for byte, earlier keys, lowercase ids, skipped folders and Claude's machines; a machine's clone; the import once; V2's disk growth (the recovery container moved, both tables, the MBR) and other layouts; ipsw.me's list and order; DHCP leases; frames and a connection over a socket pair; the host with a fake backend: an image's download, install and failures, the interrupted image, the setup and Finish Setup's SIP rule, the missing agent, New Machine's checks and the limit of 2, stop through the agent or at once, edits and the grown disk's container, a machine stopping by itself, deletions, the guest account, the defaults. |
-| GuestAgentKitTests (GuestAgent package) | Guest agent | The hello and status, SIP's parsing, exec (outputs, timeout, truncation, params), the file methods, unknown methods and V2's setEnv gone. Over a socket pair, `/bin/sh -c`, never as root. |
+| MachineDataTests | Virtual machine files, Guest disks, macOS versions, Guest addresses, Guest agent protocol, Machine host | image.yml and vm.yml written byte for byte, earlier keys, lowercase ids, skipped folders and machines not started by the user; a machine's clone; disk growth (the recovery container moved, both tables, the MBR) and other layouts; ipsw.me's list and order; DHCP leases; frames and a connection over a socket pair; the host with a fake backend: an image's download, install and failures, the interrupted image, the setup and Finish Setup's SIP rule, the missing agent, New Machine's checks and the limit of 2, stop through the agent or at once, edits and the grown disk's container, a machine stopping by itself, deletions, the guest account, the defaults. |
+| GuestAgentKitTests (GuestAgent package) | Guest agent | The hello and status, SIP's parsing, exec (outputs, timeout, truncation, params), the file methods, unknown methods (`setEnv` among them). Over a socket pair, `/bin/sh -c`, never as root. |
 | ChatKitTests | Chat store, Sample engine, Chat panel, Chat window, Chat wording | Starting and continuing conversations, empty messages, ordering, decisions; mentions and reads; attachments, sending, New Chat, the Chat window route, suggestions; window selection, grouping, new chat, sending; approval sentences, suggestion wording and identifiers, references, unique sample ids; the live store's turns from a transcript (users' items, calls worded by their tools, failed calls, cards and their channels, notices, streamed text); the gate's rules. Uses `MockChatEngine`, and a chat session without projects. |
 
 ToolsScenesTests check that docs/mcp.md lists exactly the registered tools, in order, with their
@@ -1964,18 +1960,12 @@ descriptions and input schemas; scenes, routes, `WindowDirectory` and the menus 
 
 Where the code doesn't yet meet the workspace's rules, or the architecture is knowingly incomplete:
 
-- **Data in `UserDefaults`.** The Dashboard and the chat preferences still live in `UserDefaults.standard`;
-  they move into the files of [Data](data.md) with their features (the Dashboard into `project.yml`).
-- **Most tools are hidden.** The Projects window, Settings ▸ Projects, the menu bar panel and the Tickets
-  window run on the app's data; the other tools still run on sample stores, hidden until their features come over
-  ([Navigation › Available tools](ui/navigation.md#available-tools)).
+- **Chat preferences in `UserDefaults`.** The chat panel switch and Claude's permissions live in
+  `UserDefaults.standard`, not in the data folder's `settings.yml`.
 - **No asset catalog.** The app target has no app icon.
 - **Routes come only from inside the app.** No URL scheme, App Intents, Spotlight, widgets or Handoff lead
   into it yet. When they come, each becomes a `Route` handled by `RouteHost`. Nothing sends `.machine(id)` yet.
-- **Sample stores are hard-wired in the hidden tools.** Their root views' public initializers build sample
-  stores, and the readers read sample stores directly.
-- **Not wired yet**: Contracts' Send, Builds' Refresh, the
-  Service Map's time window and Live. The chat's permissions are stored but no engine reads them. Each
-  window page lists its own.
+- **Sample only**: Linux machines, machine snapshots and the CPU figure of the Virtual Machines window
+  ([Future improvements](future-improvements.md)).
 - **ToolsScenes has one suite**, the MCP documentation's; its scenes, routes, `WindowDirectory` and menus are
   checked by running the app.

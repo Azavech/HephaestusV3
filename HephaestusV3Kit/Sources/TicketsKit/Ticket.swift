@@ -3,7 +3,7 @@ import ToolsFoundation
 
 // `TicketStatus` is in ToolsFoundation: the Dashboard's Tickets widget counts by status too.
 
-/// How urgent a ticket is (a V3 addition to V2's tickets: V2's have none).
+/// How urgent a ticket is.
 enum TicketPriority: String, CaseIterable, Identifiable, Sendable {
     case low
     case medium
@@ -13,7 +13,7 @@ enum TicketPriority: String, CaseIterable, Identifiable, Sendable {
     var id: Self { self }
 }
 
-/// Something a ticket points to: another ticket of its project (V2's links and their inverses), or an
+/// Something a ticket points to: another ticket of its project (links and their inverses), or an
 /// item in another tool. Opening it opens that window, the Tickets window for a ticket.
 struct TicketLink: Identifiable, Hashable, Sendable {
     enum Kind: String, Sendable, CaseIterable {
@@ -73,7 +73,7 @@ struct TicketAttachment: Identifiable, Hashable, Sendable {
 enum TicketAuthor: String, Hashable, Sendable {
     case user
     case claude
-    /// V2's automatic naming.
+    /// The automatic naming.
     case automatic
 }
 
@@ -113,7 +113,7 @@ struct Ticket: Identifiable, Hashable, Sendable {
     var title: String
     var details: String
     var status: TicketStatus
-    /// None for V2's tickets until one is set.
+    /// None until one is set.
     var priority: TicketPriority?
     var labels: [String]
     var reporter: String

@@ -1,14 +1,12 @@
 # Text: Markdown and syntax highlighting
 
 `TextFormats` turns text into what the windows draw: Markdown into a block model, and code into highlight
-tokens. It has no UI and no default isolation. The code and this page come from HephaestusV2
-(`Sources/TextFormats`, `docs/documentation-viewer.md` and `docs/code-editor.md`), without what V3 leaves
-out: the Markdown markers (SF Symbols, colors, sounds, shortcuts, fonts, animations) and the HTML output of
-V2's documentation viewer. The sections below are V2's, kept as written so that the conformance tests read
-their examples and word lists here; where they name V2's documentation viewer or code editor, V3 uses the same
-rules for the descriptions and comments of tickets (and later the chats).
+tokens. It has no UI and no default isolation. It has no Markdown markers (SF Symbols, colors, sounds,
+shortcuts, fonts, animations) and writes no HTML. The conformance tests read the examples and word lists of the
+sections below; where those sections name a documentation viewer or a code editor, the same rules serve the
+descriptions and comments of tickets (and later the chats).
 
-In V3, the Tickets window renders a description or a comment with `MarkdownBlockRenderer.render(_:options:)`,
+The Tickets window renders a description or a comment with `MarkdownBlockRenderer.render(_:options:)`,
 `projectIdentifiers` set to the identifiers of the loaded projects, `projectRootPath` to the ticket's project folder and `softBreaksAsLineBreaks` on, and draws
 the blocks with `MarkdownView` ([UI › Tickets](ui/tickets.md#markdown)). A ticket or bundle id becomes a link
 that opens it in its Tickets window. Code blocks are highlighted with `SyntaxHighlighter`.
@@ -49,7 +47,7 @@ public enum MarkdownBlockRenderer {
 
 | Caller | `baseDirectory` | `projectRootPath` | `stripFrontMatter` | `projectIdentifiers` | `softBreaksAsLineBreaks` |
 | --- | --- | --- | --- | --- | --- |
-| Ticket descriptions and comments ([UI › Tickets](ui/tickets.md#markdown)) | `""` | the project's folder | false | the identifiers of the loaded projects, sub projects included | true: people type lines, as V2's template headings, without blank lines between them |
+| Ticket descriptions and comments ([UI › Tickets](ui/tickets.md#markdown)) | `""` | the project's folder | false | the identifiers of the loaded projects, sub projects included | true: people type lines, headings included, without blank lines between them |
 
 The output depends only on the text and the options: the same input always gives the same blocks.
 
@@ -70,7 +68,7 @@ With `stripFrontMatter`, when the first line of the text is exactly `---` and a 
 | GFM task list items, `[ ]`, `[x]`, `[X]`                                                                                                                                                                                                                                                                               | Rendered as disabled checkboxes; clicking them changes nothing.                                                                                     |
 | GFM extended autolinks: `http://…`, `https://…`, `www.…`, e-mail addresses                                                                                                                                                                                                                                             | URLs become links; e-mail addresses stay text.                                                                                                      |
 | Ticket and bundle ids, such as `HEPH-12` and `HEPH-B2`                                                                                                                                                                                                                                                                 | Links when `projectIdentifiers` holds their identifier ([Ticket and bundle ids](#ticket-and-bundle-ids)); text otherwise.                           |
-| Raw HTML: HTML blocks and inline HTML                                                                                                                                                                                                                                                                                  | Escaped and shown as text ([Sanitization](#sanitization)).                                                                                          |
+| Raw HTML: HTML blocks and inline HTML                                                                                                                                                                                                                                                                                  | Escaped and shown as text .                                                                                          |
 | HTML comments                                                                                                                                                                                                                                                                                                          | Omitted.                                                                                                                                            |
 | YAML front matter                                                                                                                                                                                                                                                                                                      | Omitted with `stripFrontMatter`, otherwise parsed as Markdown.                                                                                      |
 | GFM footnotes, GitHub alerts (`> [!NOTE]`), math, emoji shortcodes, Mermaid diagrams, heading attributes, definition lists                                                                                                                                                                                             | Not supported: the source renders as ordinary Markdown (an alert as a block quote, `$x$` and `:smile:` as text, a `mermaid` block as a code block). |
@@ -124,7 +122,7 @@ The `section` fallback is a design-time choice. Default chosen at design time.
 | `sh`, `bash`, `zsh`, `shell`, `ksh`, `dash` | Shell                 |
 | any other word, or none                     | plain: no token spans |
 
-- The Copy button: the page's script sends `{"action":"copy","text":…}` with the `textContent` of the block's `code` element ([Preview web view](#preview-web-view)), and the button reads `Copied` for 1.5 seconds.
+- The Copy button: the page's script sends `{"action":"copy","text":…}` with the `textContent` of the block's `code` element, and the button reads `Copied` for 1.5 seconds.
 
 The bar, the 200,000-character limit and the language words are design-time choices. Default chosen at design time.
 
@@ -149,7 +147,7 @@ A link destination is the destination after the parser resolved reference links 
 | any other scheme: `mailto`, `tel`, `javascript`, `data`, `vbscript`, `hephaestus-file` and every other | no       | —               |
 | no scheme: a relative or `/`-absolute path, with an optional `?query` and `#fragment`                  | yes      | the destination |
 
-The renderer only filters; what a click does is decided when the link is activated ([Link activation](#link-activation)). Refusing `mailto` keeps the rule "other links do nothing" of every Markdown view. Default chosen at design time.
+The renderer only filters; what a click does is decided when the link is activated . Refusing `mailto` keeps the rule "other links do nothing" of every Markdown view. Default chosen at design time.
 
 The links of ticket and bundle ids are not written by the text: the renderer makes them from the ids it finds ([Ticket and bundle ids](#ticket-and-bundle-ids)). A Markdown link whose destination has the scheme `hephaestus-id` is refused like every other scheme, so text cannot make an id link of its own.
 
@@ -172,7 +170,7 @@ When the options have `projectIdentifiers`, the renderers turn the ticket and bu
 
 - An id has the ticket form `<IDENT>-<n>` or the bundle form `<IDENT>-B<n>` of Tickets › Identifiers: 2 to 8 letters `A`–`Z`, `-`, `B` for a bundle, and a number that starts with a digit other than `0`, all in uppercase. Its `<IDENT>` is in `projectIdentifiers`.
 - It is a whole word: the character before it and the character after it, when there are any, are not letters, digits, `_` or `-`. `HEPH-21.`, `(HEPH-21)` and `HEPH-21,` link `HEPH-21`; `HEPH-21a`, `XHEPH-21`, `HEPH-21-3`, `HEPH-021` and `heph-21` link nothing. `UTF-8`, `SHA-256` and `ABC-3` link only when a project of the device has the identifier `UTF`, `SHA` or `ABC`. Default chosen at design time.
-- Text: ids are found in text outside links, after the [extended URL autolinks](#renderer), so an id inside a link or an autolink keeps that link. Text split by the parser, for example around a backslash escape, is joined first.
+- Text: ids are found in text outside links, after the [extended URL autolinks](#markdown-renderer), so an id inside a link or an autolink keeps that link. Text split by the parser, for example around a backslash escape, is joined first.
 - Code spans: a code span whose content is exactly an id becomes a link around the code span. A code span that holds an id among other text stays code.
 - Ids are left as text in fenced and indented code blocks, HTML blocks, inline HTML, image alt texts and links. Heading anchors are computed from the text as written, so they do not change.
 
@@ -197,7 +195,7 @@ public enum MarkdownItemIDs {
 
 `linkedIDs(inMarkdown:)` renders the text to the block model with the transcript's rules and returns the ids of its `.itemID` inlines. It counts every identifier: an identifier is a run of 2 to 8 letters `A`–`Z` written before a `-`, a `\` or a `&`, so a text without such a run is not parsed. The engine uses it to find the ids that a chat mentions (Mentioned ids).
 
-The class `md-id`, the scheme `hephaestus-id` and the word rule are Default chosen at design time. A click on an id link is handled by the view that shows it ([Link activation](#link-activation)).
+The class `md-id`, the scheme `hephaestus-id` and the word rule are Default chosen at design time. A click on an id link is handled by the view that shows it .
 
 ### Path resolution
 
@@ -339,7 +337,7 @@ extension TokenKind {
 - Tokens are sorted, never empty and never overlap. Text that no token covers is plain text.
 - `tokens(in:language:)` is a pure function: the same text and language always give the same tokens. `.plain` gives no token.
 - The tokenizers scan Unicode scalars from left to right; at each position the first rule of the language's rule table that matches is applied, and a position where no rule matches is plain text of one scalar.
-- `MarkdownView` (TicketsKit) turns a `TokenStyle` into SwiftUI colors and fonts for code blocks; `cssClass` is kept from V2, which also wrote HTML.
+- `MarkdownView` (TicketsKit) turns a `TokenStyle` into SwiftUI colors and fonts for code blocks; `cssClass` is the kind's class in the table of Token kinds and colors; TextFormats writes no HTML.
 
 ### Language detection
 

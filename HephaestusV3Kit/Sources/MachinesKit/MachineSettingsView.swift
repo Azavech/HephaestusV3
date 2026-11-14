@@ -4,7 +4,7 @@ import SwiftUI
 import ToolsFoundation
 
 /// Settings ▸ Virtual Machines: the cores, memory and disk new machines start with, which the install and the
-/// setup of an image use too (V2's `defaultVMCores`, `defaultVMMemoryGB`, `defaultVMDiskGB`).
+/// setup of an image use too (`defaultVMCores`, `defaultVMMemoryGB`, `defaultVMDiskGB`).
 public struct MachineSettingsView: View {
     private let store: any MachineStore
     @State private var cores: Int

@@ -26,7 +26,7 @@ extension ToolKind {
         }
     }
 
-    /// The ⌘-key that opens the tool for the key window's project. The Dashboard is ⌘1, as in V2.
+    /// The ⌘-key that opens the tool for the key window's project. The Dashboard is ⌘1.
     public var shortcut: KeyEquivalent {
         switch self {
         case .dashboard: "1"

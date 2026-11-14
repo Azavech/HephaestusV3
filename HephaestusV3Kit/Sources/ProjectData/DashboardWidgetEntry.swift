@@ -4,10 +4,10 @@ import Foundation
 /// One element of the key `dashboardWidgets` of the project file: a widget of the project's Dashboard, with
 /// its position and size on the grid and its settings (docs/data.md › Dashboard widget).
 ///
-/// V2's format (V2's `DashboardWidget`): the keys `id`, `kind` and `title`, the four position keys while the
+/// The keys `id`, `kind` and `title`, the four position keys while the
 /// widget has a stored position, then the keys of its kind only, in the order of the table. A key of another
-/// kind is an unknown key of the widget and is kept as read. V3 adds the kind `recentBuilds`, with a `count`,
-/// and the status `draft`.
+/// kind is an unknown key of the widget and is kept as read. The kind `recentBuilds` has a `count`; the
+/// statuses include `draft`.
 public struct DashboardWidgetEntry: Codable, Sendable, Hashable {
     public var id: UUID
     public var kind: Kind
@@ -25,16 +25,16 @@ public struct DashboardWidgetEntry: Codable, Sendable, Hashable {
     public var statuses: [Status]
     /// `tickets` and `cost`: whether the counts or the total include the loaded sub projects.
     public var includeSubprojects: Bool
-    /// `recentChats` (V2's): the most chats listed.
+    /// `recentChats`: the most chats listed.
     public var chatCount: Int
-    /// `recentChats` (V2's): the kinds of the chats listed.
+    /// `recentChats`: the kinds of the chats listed.
     public var chatKinds: [ChatKind]
     /// `busiestCalls`, `failedRequests` and `recentBuilds` (V3): the most rows listed.
     public var count: Int
-    /// The keys neither V2 nor V3 knows for the kind, in the order they were read.
+    /// The keys the app doesn't know for the kind, in the order they were read.
     public var unknownKeys: YAMLMapping
 
-    /// What a widget shows: V2's nine kinds, and V3's `recentBuilds`.
+    /// What a widget shows: ten kinds.
     public enum Kind: String, Codable, Sendable, Hashable, CaseIterable {
         case project, tickets, recentChats, cost, instances, serviceGraph, busiestCalls, failedRequests, requestsPerMinute
         /// V3's addition: the project's latest builds.
@@ -55,11 +55,11 @@ public struct DashboardWidgetEntry: Codable, Sendable, Hashable {
         case review
         case done
 
-        /// V2's four, the default of the key.
-        public static let v2Statuses: [Status] = [.todo, .inProgress, .review, .done]
+        /// The four, the default of the key.
+        public static let defaultStatuses: [Status] = [.todo, .inProgress, .review, .done]
     }
 
-    /// A kind of chat a `recentChats` widget lists (V2's).
+    /// A kind of chat a `recentChats` widget lists.
     public enum ChatKind: String, Codable, Sendable, Hashable, CaseIterable {
         case project, ticket, bundle, feedback
     }
@@ -70,7 +70,7 @@ public struct DashboardWidgetEntry: Codable, Sendable, Hashable {
     public static let titleLimit = 100
 
     public init(id: UUID, kind: Kind, title: String = "", column: Int? = nil, row: Int? = nil, width: Int? = nil,
-                height: Int? = nil, fields: [Field] = Field.allCases, statuses: [Status] = Status.v2Statuses,
+                height: Int? = nil, fields: [Field] = Field.allCases, statuses: [Status] = Status.defaultStatuses,
                 includeSubprojects: Bool = true, chatCount: Int = 5, chatKinds: [ChatKind] = ChatKind.allCases, count: Int = 5,
                 unknownKeys: YAMLMapping = [:]) {
         self.id = id
@@ -119,7 +119,7 @@ public struct DashboardWidgetEntry: Codable, Sendable, Hashable {
         height = try c.optional("height")
         let keys = Self.settingKeys(of: kind)
         fields = keys.contains("fields") ? try c.value("fields", default: Field.allCases) : Field.allCases
-        statuses = keys.contains("statuses") ? try c.value("statuses", default: Status.v2Statuses) : Status.v2Statuses
+        statuses = keys.contains("statuses") ? try c.value("statuses", default: Status.defaultStatuses) : Status.defaultStatuses
         includeSubprojects = keys.contains("includeSubprojects") ? try c.value("includeSubprojects", default: true) : true
         chatCount = keys.contains("chatCount") ? try c.value("chatCount", default: 5) : 5
         chatKinds = keys.contains("chatKinds") ? try c.value("chatKinds", default: ChatKind.allCases) : ChatKind.allCases

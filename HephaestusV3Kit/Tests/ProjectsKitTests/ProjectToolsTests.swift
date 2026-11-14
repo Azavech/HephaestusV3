@@ -21,7 +21,6 @@ struct ProjectToolsTests {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let session = ProjectSession(dataFolder: DataFolder(url: root.appendingPathComponent("Data")), runner: SilentRunner(),
-                                     v2Folder: root.appendingPathComponent("none"),
                                      hub: FileEventHub(quietDelay: .milliseconds(20), maximumDelay: .milliseconds(100)))
         await session.start()
         let mcp = MCPProtocol(registry: ToolRegistry(ProjectTools.operations(session: session)), version: "1.0")

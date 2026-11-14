@@ -5,7 +5,7 @@ import ToolsFoundation
 /// The Service Map window for one project: the services of its namespace and how they call each
 /// other, the recent requests under them, and an inspector for a service or a request.
 ///
-/// The graph is V2's, after AWS X-Ray's service map: round nodes placed by their calls, databases and
+/// The graph follows AWS X-Ray's service map: round nodes placed by their calls, databases and
 /// queues on a ring around their service, groups of services apart. A click on a service focuses on it
 /// and its neighbours, a request shows only its path from a Client node, and a right-click, the Back
 /// button or ⌘[ goes back. `ServiceMapModel` holds what the window shows.

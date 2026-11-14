@@ -3,8 +3,7 @@ import AZDesign
 import SwiftUI
 import ToolsFoundation
 
-// Ported from HephaestusV2 (Sources/HephaestusUI/Graph/GraphCanvasView.swift, docs/graph.md › Navigation):
-// zoom, pan, fit, focus and the right-click that goes back. The zoom controls sit on glass here, with a
+// Zoom, pan, fit, focus and the right-click that goes back. The zoom controls sit on glass here, with a
 // Back button whose ⌘[ goes back from the keyboard too.
 
 /// What the graph shows: its nodes and arrows, and what the view is about.

@@ -2,8 +2,8 @@
 
 The guest agent is a small program that runs inside a macOS virtual machine and gives the host what the
 Virtualization framework doesn't: the guest's SIP state, a shell, its files, its screen, input events and the
-Accessibility tree. The host listens for it on the machine's virtio socket device. It is V2's agent and protocol,
-brought over in their own package; V2's images, set up with V2's agent, speak the same protocol.
+Accessibility tree. The host listens for it on the machine's virtio socket device. The agent and its protocol are
+a package of their own.
 
 ## Build
 
@@ -29,9 +29,8 @@ It refuses to run as root (`Run this script as your account, without sudo.`), wi
 while SIP is on (`System Integrity Protection is on. Do step 2 first.`). It asks for the password once, for `sudo`,
 then:
 
-1. **Agent.** Stops a running agent (V3's label `fr.azavech.hephaestusv3.agent`, and V2's
-   `ca.azavech.hephaestusv2.agent`, whose plist it removes), then installs `/usr/local/bin/hephaestus-agent`,
-   owned by root, mode 755.
+1. **Agent.** Stops a running agent (the label `fr.azavech.hephaestusv3.agent`), then installs
+   `/usr/local/bin/hephaestus-agent`, owned by root, mode 755.
 2. **sudo.** `/etc/sudoers.d/hephaestus` with `<account> ALL=(ALL) NOPASSWD: ALL`, mode 440, checked with `visudo
    -c` first.
 3. **Privacy.** Accessibility and Screen Recording for the agent's path, rows of the guest's
@@ -41,8 +40,7 @@ then:
 4. **LaunchAgent.** `~/Library/LaunchAgents/fr.azavech.hephaestusv3.agent.plist`: the agent in the account's
    graphical session (`Aqua`) at every login, restarted when it exits; loaded at once.
 
-It can run again: every step replaces what an earlier run wrote. V2's fifth step, installing the Claude CLI in
-the guest, isn't brought over: V3's Claude works through the MCP server only.
+It can run again: every step replaces what an earlier run wrote.
 
 ## Connection
 
@@ -73,7 +71,7 @@ as JSON.`
 | response | agent | `{"type": "response", "id": <integer>, "result": <object>}` or `{…, "error": <string>}` |
 
 The agent answers a connection's requests one at a time, in order. An unknown method is `Unknown method <name>.`
-The status: `version` (`3.0`; V2's agent says `1.1`), `sip` (`disabled`, `enabled` or `unknown`, from `csrutil
+The status: `version` (`3.0`), `sip` (`disabled`, `enabled` or `unknown`, from `csrutil
 status`), `user`, `osVersion`, `osBuild`, `accessibility`, `screenRecording`.
 
 ## Methods
@@ -111,7 +109,6 @@ or start with `~/`.
   `enabled`, `focused`, `frame`, `children`; at most 5,000 elements, 5 seconds per element.
 - Events and the tree need Accessibility, the screenshot Screen Recording: without them, `The agent has no
   Accessibility permission.`, `The agent has no Screen Recording permission.`
-- V2's `setEnv`, which carried V2's Claude token into the guest, isn't brought over.
 
 ## What uses it
 
@@ -124,4 +121,4 @@ or start with `~/`.
 | The `vm_` tools | Every method but `status` ([MCP › Tools](mcp.md#tools)). |
 
 Defaults chosen at design time: the separate package, the Xcode target and its script phase, the version `3.0`, the
-install script's V3 label and its removal of V2's.
+install script's label `fr.azavech.hephaestusv3.agent`.

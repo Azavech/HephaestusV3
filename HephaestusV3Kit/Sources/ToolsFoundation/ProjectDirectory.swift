@@ -101,7 +101,7 @@ extension EnvironmentValues {
     /// The projects of the app; the samples by default, in previews.
     @Entry public var projectDirectory = ProjectDirectory.previewSamples
 
-    /// The tools the running app offers: those whose feature has come over from HephaestusV2. The others
+    /// The tools the running app offers. The others
     /// are hidden from menus, tiles and lists. Every tool by default, in previews.
     @Entry public var availableTools: Set<ToolKind> = Set(ToolKind.allCases)
 }

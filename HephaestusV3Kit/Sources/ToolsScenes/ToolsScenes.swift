@@ -549,7 +549,7 @@ private struct ToolMenuItems: View {
         }
         .keyboardShortcut("0")
 
-        // Only the tools that have come over from V2.
+        // Only the available tools.
         ForEach(ToolKind.allCases.filter(AppData.availableTools.contains)) { tool in
             Button {
                 // The window already showing the tool for this project, or a new one.
@@ -630,7 +630,7 @@ private struct DashboardWidgetView: View {
         case .instances, .serviceGraph, .busiestCalls, .failedRequests, .requestsPerMinute:
             ServiceMapDashboardWidget(widget: widget, context: context)
         case .recentChats, .cost:
-            // V2's: kept in the list, never shown.
+            // Kept in the list, never shown.
             EmptyView()
         }
     }
@@ -640,7 +640,7 @@ extension ToolKind {
     /// The width the tool's columns need side by side, below which its window takes an iPad's layout.
     var macLayoutWidth: CGFloat {
         switch self {
-        // V2's grid needs 900 points (below that the Dashboard lists its widgets). With the chat panel
+        // The grid needs 900 points (below that the Dashboard lists its widgets). With the chat panel
         // open, the window needs 341 points more for the Mac layout, as every tool does.
         case .dashboard: 900
         case .tickets: 900

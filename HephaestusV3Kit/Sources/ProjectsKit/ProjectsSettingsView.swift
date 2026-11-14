@@ -16,7 +16,7 @@ public struct ProjectsSettingsPane: View {
 
     public var body: some View {
         ProjectsSettingsView(
-            dataFolder: session.dataFolder?.url.path, importedCount: session.importResult?.imported.count,
+            dataFolder: session.dataFolder?.url.path,
             shell: session.shell, tools: session.tools, isLookingUp: session.isLookingUpTools
         ) {
             Task { await session.lookUpTools() }
@@ -27,8 +27,6 @@ public struct ProjectsSettingsPane: View {
 /// The pane's content, from plain values, so previews show every state.
 struct ProjectsSettingsView: View {
     let dataFolder: String?
-    /// The projects brought over from V2 at this launch; nil when the import didn't run.
-    let importedCount: Int?
     let shell: ShellEnvironment.Capture?
     let tools: Tools
     let isLookingUp: Bool
@@ -56,12 +54,6 @@ struct ProjectsSettingsView: View {
                     }
                 }
                 .accessibilityIdentifier("settings.projects.dataFolder")
-                if let importedCount {
-                    LabeledContent(String(localized: "From HephaestusV2", bundle: #bundle)) {
-                        Text("^[\(importedCount) project](inflect: true) brought over at this launch", bundle: #bundle)
-                    }
-                    .accessibilityIdentifier("settings.projects.import")
-                }
             }
             Section {
                 LabeledContent(String(localized: "Login Shell", bundle: #bundle)) {
@@ -148,21 +140,21 @@ private let previewTools = Tools(environment: [:], git: "/opt/homebrew/bin/git",
 
 #Preview("Found", traits: .fixedLayout(width: 520, height: 440)) {
     ProjectsSettingsView(
-        dataFolder: "/Users/example/Library/Group Containers/group.fr.azavech.hephaestusv3", importedCount: 4,
+        dataFolder: "/Users/example/Library/Application Support/HephaestusV3",
         shell: .init(environment: [:], outcome: .captured(count: 42)), tools: previewTools, isLookingUp: false
     ) {}
 }
 
 #Preview("Reading", traits: .fixedLayout(width: 520, height: 440)) {
     ProjectsSettingsView(
-        dataFolder: "/Users/example/Library/Group Containers/group.fr.azavech.hephaestusv3", importedCount: nil,
+        dataFolder: "/Users/example/Library/Application Support/HephaestusV3",
         shell: nil, tools: .notLookedUp, isLookingUp: true
     ) {}
 }
 
 #Preview("Shell Failed, Dark", traits: .fixedLayout(width: 520, height: 440)) {
     ProjectsSettingsView(
-        dataFolder: nil, importedCount: nil, shell: .init(environment: [:], outcome: .timedOut),
+        dataFolder: nil, shell: .init(environment: [:], outcome: .timedOut),
         tools: Tools(environment: [:], ssh: "/usr/bin/ssh"), isLookingUp: false
     ) {}
     .preferredColorScheme(.dark)

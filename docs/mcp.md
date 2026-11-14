@@ -2,8 +2,7 @@
 
 Hephaestus V3 serves its tools to Claude over the Model Context Protocol. Each tool's window and Claude call
 the same operations: an MCP tool is a `ToolOperation` that a kit declares beside its window, and it runs the
-function the window calls ([Architecture › MCPKit](architecture.md#mcpkit)). The server is HephaestusV2's
-(V2's `docs/mcp.md`), with the tools V3 has brought over so far; each feature adds its own as it comes over.
+function the window calls ([Architecture › MCPKit](architecture.md#mcpkit)). Each kit declares its own tools.
 
 ## Overview
 
@@ -249,9 +248,8 @@ Hephaestus V3. After Regenerate or a new port, run “claude mcp remove hephaest
 
 The tool names, descriptions and input schemas are all V3 tells Claude. A description says what the tool does,
 what it returns and which rules the app enforces; it never tells Claude how to work: when to change a status,
-what to ask the user, how to write a ticket. None of V2's prompts come over: not its system prompts and skills,
-not its hook texts, not its tool descriptions, which V3 wrote anew (the owner's rule:
-[Decisions › V2's prompts](decisions.md#v2s-prompts)). Claude follows the same rules as the user, except the
+what to ask the user, how to write a ticket. The app writes no system prompts, skills or hook texts for Claude
+(the owner's rule: [Decisions](decisions.md)). Claude follows the same rules as the user, except the
 changes reserved to the user ([Data › Ticket rules](data.md#ticket-rules)). In the app's chats, Claude also
 reads one line V3 writes with each message, naming the item the message carries ([Data ›
 Messages](data.md#messages)); nothing else.
@@ -299,7 +297,7 @@ unknown project or folder, `notFound`; no data folder, `unavailable`; a file tha
 `internal`. The messages are the English ones of [Data › Validation](data.md#validation) and `ProjectError`.
 
 **Tickets and bundles.** The ticket tools act as Claude (`TicketActor.claude(chat:)`: the chat's id with a chat
-token, `external` with the external token), so V2's rules for Claude hold ([Data › Ticket rules](data.md#ticket-rules)),
+token, `external` with the external token), so the rules for Claude hold ([Data › Ticket rules](data.md#ticket-rules)),
 and every change shows in the open Tickets windows at once. A ticket's JSON: `id`, `title`, `status` (`draft`,
 `todo`, `in_progress`, `review`, `done`), `created`, `updated`, `createdBy`, `description`, `priority` (when
 set), `labels`, `attachments` (`id`, `name`, `path` absolute, `contentType`, `size`), `comments` (`id`, `author`,
@@ -309,14 +307,12 @@ set), `labels`, `attachments` (`id`, `name`, `path` absolute, `contentType`, `si
 files on this Mac: absolute, `~/`, or relative to the project's folder. Errors map to codes this way: a broken
 rule, `invalid`; an unknown project, ticket, bundle, comment or attachment, `notFound`; a change Claude may not
 make, `forbidden`; a file that can't be moved to the Trash, `unavailable`; a file that can't be written,
-`internal`. V2's `implement_ticket` and `implement_bundle` aren't brought over.
+`internal`.
 
 **Virtual machines.** The `vm_` tools are the Virtual Machines window's actions, on the user's machines: a
-machine Claude creates is the user's, kept and listed as any other (V2's machines that Claude started and deleted
-at their stop aren't brought over, nor the setup tools `vm_setup_recovery` and `vm_setup_finish`: the setup is
-the user's, in the window). Errors map from `MachineError`'s kinds, with V2's messages ([Data › Virtual
-machines](data.md#virtual-machines)): `invalid`, `notFound`, `conflict`, `unavailable`, `internal`. The tools that
-act in a guest need the machine running and its guest agent connected ([Guest agent](guest-agent.md)). No result
+machine Claude creates is the user's, kept and listed as any other, and the setup is the user's, in the window.
+Errors map from `MachineError`'s kinds, with the messages of [Data › Virtual machines](data.md#virtual-machines):
+`invalid`, `notFound`, `conflict`, `unavailable`, `internal`. The tools that act in a guest need the machine running and its guest agent connected ([Guest agent](guest-agent.md)). No result
 carries the guest account's password: Type Password in the window types it.
 
 ### list_projects
@@ -539,7 +535,7 @@ Input schema:
 
 ### create_ticket
 
-- **Calls:** `TicketLibrary.create` as Claude: [Data › Ticket changes](data.md#ticket-changes). The description is free Markdown, as the user's; the ticket starts `todo`, `createdBy: claude`. `title`, `priority` and `labels` are V3's: without a title, the provisional title is kept.
+- **Calls:** `TicketLibrary.create` as Claude: [Data › Ticket changes](data.md#ticket-changes). The description is free Markdown, as the user's; the ticket starts `todo`, `createdBy: claude`. `title`, `priority` and `labels` are optional: without a title, the provisional title is kept.
 - **Result:** the new ticket's JSON.
 - **Errors:** an unknown project or linked ticket (`notFound`); an empty description without a title, a title, an attachment or a link that breaks a rule (`invalid`).
 
@@ -1595,7 +1591,7 @@ Input schema:
 
 - **Calls:** `kubectl get deployment/<deployment> -o json`, then the pods of its selector.
 - **Result:** `deployment`, `replicas`, `ready`, `updated`, `available`, `images`, `pods` (`name`, `phase`, `ready`, `restarts`, `started`).
-- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, the messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
 
 Description:
 
@@ -1630,7 +1626,7 @@ Input schema:
 
 - **Calls:** `kubectl logs <pod or deployment/<deployment>> --tail=<n> --timestamps`, `--all-containers` for the Deployment, `--container`, `--since`, `--previous` when given.
 - **Result:** the lines, as text.
-- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, the messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
 
 Description:
 
@@ -1688,7 +1684,7 @@ Input schema:
 
 - **Calls:** `kubectl get events -o json`, those of the Deployment and of the objects named after it.
 - **Result:** an array: `type`, `reason`, `message`, `object`, `count`, `lastSeen`, newest first.
-- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, the messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
 
 Description:
 
@@ -1723,7 +1719,7 @@ Input schema:
 
 - **Calls:** `kubectl rollout restart deployment/<deployment>`.
 - **Result:** kubectl's output, as text.
-- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, the messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
 
 Description:
 
@@ -1758,7 +1754,7 @@ Input schema:
 
 - **Calls:** `kubectl scale deployment/<deployment> --replicas=<n>`.
 - **Result:** kubectl's output, as text.
-- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, the messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
 
 Description:
 
@@ -1800,7 +1796,7 @@ Input schema:
 
 - **Calls:** `kubectl port-forward deployment/<deployment> --address=127.0.0.1 <local>:<remote>`, kept until stopped or the app quits.
 - **Result:** `portForwardID`, `localPort`, `remotePort`.
-- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, the messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
 
 Description:
 
@@ -1878,7 +1874,7 @@ Input schema:
 
 - **Calls:** `kubectl get applications.argoproj.io/<name> -o json`, in the Application's namespace (`argocd` by default).
 - **Result:** `name`, `sync`, `health`, `revision`, `operation`.
-- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, the messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
 
 Description:
 
@@ -1913,7 +1909,7 @@ Input schema:
 
 - **Calls:** `kubectl patch applications.argoproj.io/<name> --type=merge` with an `operation` that syncs, as Argo CD's UI does; refused while an operation runs.
 - **Result:** kubectl's output, as text.
-- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, the messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
 
 Description:
 
@@ -1948,7 +1944,7 @@ Input schema:
 
 - **Calls:** the Service Map's read of the namespace over the last hour ([Data › Clusters › Service map](data.md#service-map)).
 - **Result:** `nodes` (`id`, `kind`, `pods`, `ready`, `health`, `requestsPerSecond`, `p95Ms`, `errorRate`), `calls` (`from`, `to`, `callsPerSecond`, `errorRate`), `requests` (their number).
-- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, the messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
 
 Description:
 
@@ -1983,7 +1979,7 @@ Input schema:
 
 - **Calls:** Jaeger's `GET /api/v3/traces/<id>` through the port forward of the environment's Jaeger.
 - **Result:** `id`, `method`, `route`, `status`, `durationMs`, `start`, `spans` (`service`, `name`, `startMs`, `durationMs`, `failed`), `logs` (`time`, `service`, `level`, `message`).
-- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, V2's messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
+- **Errors:** an unknown project or environment, a field the call needs that the environment hasn't (`Environment “<name>” has no deployment.`, `… has no Argo CD application.`), no kubectl (`invalid`); kubectl failing (`unavailable`, the messages of [Data › Clusters](data.md#clusters)); unexpected output (`internal`).
 
 Description:
 
@@ -2109,7 +2105,7 @@ Input schema:
 
 - **Calls:** `MachineHost.createMachine`, then its start, as New Machine does.
 - **Result:** `id`, `name`.
-- **Errors:** V2's checks, in order: no Apple silicon (`unavailable`), the name (`invalid`, `name: use 1 to 100 characters on one line.`), an unknown image (`notFound`) or one not Ready (`conflict`), a value out of its range (`invalid`, `<param>: use a number from <min> to <max>.`), 2 already running (`conflict`); a start that fails (`unavailable`, the framework's message), the machine then staying, stopped.
+- **Errors:** the checks, in order: no Apple silicon (`unavailable`), the name (`invalid`, `name: use 1 to 100 characters on one line.`), an unknown image (`notFound`) or one not Ready (`conflict`), a value out of its range (`invalid`, `<param>: use a number from <min> to <max>.`), 2 already running (`conflict`); a start that fails (`unavailable`, the framework's message), the machine then staying, stopped.
 
 Description:
 
@@ -2651,7 +2647,7 @@ Input schema:
 - **Calls:** a route: `project` opens the Projects window with the project selected (`.project(id)`),
   `projectSettings` its Project Settings window (`.projectSettings(id)`), `ticket` and `bundle` the Tickets
   window of its project with it selected (`.tool(.tickets, project:, focus: <id>)`); an open window comes
-  forward. Each feature adds its own kinds as it comes over.
+  forward.
 - **Result:** `{}`.
 - **Errors:** an unknown project, ticket or bundle (`notFound`); no window has appeared yet to open routes
   (`unavailable`, `The app has no window to show it in.`).

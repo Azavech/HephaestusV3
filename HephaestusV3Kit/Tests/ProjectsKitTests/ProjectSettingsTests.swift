@@ -48,14 +48,13 @@ struct ProjectSettingsTests {
         let data = DataFolder(url: root.appendingPathComponent("Data", isDirectory: true))
         try data.createIfNeeded()
         try YAMLFile.write(RegistryFile(projects: [root.appendingPathComponent("orders").path]), to: data.registryFile)
-        let session = ProjectSession(dataFolder: data, runner: QuietRunner(), v2Folder: root.appendingPathComponent("none"),
-                                     hub: FileEventHub(quietDelay: .milliseconds(20), maximumDelay: .milliseconds(100)))
+        let session = ProjectSession(dataFolder: data, runner: QuietRunner(), hub: FileEventHub(quietDelay: .milliseconds(20), maximumDelay: .milliseconds(100)))
         await session.start()
         try await body(session, root)
         await session.stop()
     }
 
-    @Test("Each field applies on its own, with V2's rules and messages")
+    @Test("Each field applies on its own, with its rules and messages")
     func generalFields() async throws {
         try await withSession { session, _ in
             let model = ProjectSettingsModel(projectID: "ORD", backend: session)

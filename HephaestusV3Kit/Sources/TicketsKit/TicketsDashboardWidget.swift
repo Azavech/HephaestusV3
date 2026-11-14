@@ -3,7 +3,7 @@ import SwiftUI
 import ToolsFoundation
 
 /// The Dashboard's Tickets widget: one count per status checked in its settings, side by side in
-/// workflow order, each a number in a large font above its label (V2's docs/dashboard.md › Widgets).
+/// workflow order, each a number in a large font above its label (docs/ui/dashboard.md › Widgets).
 /// With `Include sub projects`, the counts cover the project and its sub projects, as its Tickets
 /// window lists them. The counts are the app's tickets, those the Tickets windows show.
 public struct TicketsDashboardWidget: View {

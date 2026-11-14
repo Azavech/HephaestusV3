@@ -53,8 +53,7 @@ and a build's outcome as Passed → `success`, Failed → `danger`, Running → 
 symbol or a word, never as color alone.
 
 **The graph's traffic scale.** Arrows go from `success` through `warning` to `danger` in proportion to the
-busiest arrow shown. Arrows without calls are a grey made from `textSecondary` mixed with `canvas`. This maps
-the previous app's hue scale onto AZDesign (a porting adaptation).
+busiest arrow shown. Arrows without calls are a grey made from `textSecondary` mixed with `canvas`.
 
 ## Typography
 
@@ -75,8 +74,8 @@ System fonts with Dynamic Type, in text styles:
   text style it is given, so it follows Dynamic Type.
 - **Monospaced** (the system's): identifiers, paths, URLs, cluster and namespace names and commit hashes in
   lists and metadata. They are data, not code views.
-- **The graph** sets its own sizes, multiplied by the zoom level, as the previous app's graph does. Its names
-  hide below 30% and its arrow labels show from 50%.
+- **The graph** sets its own sizes, multiplied by the zoom level. Its names hide below 30% and its arrow
+  labels show from 50%.
 
 ## Shapes
 

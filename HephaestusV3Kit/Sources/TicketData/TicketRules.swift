@@ -17,7 +17,7 @@ public enum TicketActor: Sendable, Hashable {
     var chat: String? { if case .claude(let chat) = self { chat } else { nil } }
 }
 
-/// Why a ticket change failed, with V2's messages (docs/data.md › Ticket errors).
+/// Why a ticket change failed, with its messages (docs/data.md › Ticket errors).
 public enum TicketError: Error, Sendable, Hashable, CustomStringConvertible {
     /// A value breaks a rule.
     case invalid(String)
@@ -39,7 +39,7 @@ public enum TicketError: Error, Sendable, Hashable, CustomStringConvertible {
     }
 }
 
-/// V2's ticket rules that need no file: titles, attachment names and limits.
+/// The ticket rules that need no file: titles, attachment names and limits.
 public enum TicketRules {
     /// The largest attachment, and the largest set of attachments of one change: 20 MiB.
     public static let attachmentLimit = 20 * 1024 * 1024

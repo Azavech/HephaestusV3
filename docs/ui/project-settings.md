@@ -2,8 +2,8 @@
 
 The Project Settings window shows and changes one project's settings: its name, type, tint and icon, its
 folder and parent, its GitHub page, and a service's graph and environments. Each field applies on its own, as
-soon as it changes; the window has no Save or Cancel button and never holds unsaved changes. The rules are
-HephaestusV2's ([Data › Changes](../data.md#changes)), and every change writes the project's
+soon as it changes; the window has no Save or Cancel button and never holds unsaved changes. It applies
+the rules of [Data › Changes](../data.md#changes), and every change writes the project's
 `.hephaestus/project.yml`.
 
 ![Project Settings of Orders, a service: General, Location, GitHub, Service and Environments](images/project-settings.png)
@@ -47,7 +47,7 @@ file changed outside the app) shows in every field but the one being edited.
 | **Name** | Text field | `name` | One line, 1–100 characters once trimmed: "Enter a name of 1 to 100 characters." |
 | **Identifier** | Read-only text, monospaced, selectable | `id` | Help: "The identifier is set at creation and cannot be changed." |
 | **Type** | Pop-up: Service, App, Library, Other, each with its symbol | `type` | Changing it keeps the environments in the file; only a service shows them. |
-| **Tint** | Pop-up: Purple, Pink, Cyan, Green, Orange, each with a dot of its color | `color`, written as the tint's name (`accent`, `accentSecondary`, `info`, `success`, `warning`) | A V2 color shows as the nearest tint until a tint is picked. |
+| **Tint** | Pop-up: Purple, Pink, Cyan, Green, Orange, each with a dot of its color | `color`, written as the tint's name (`accent`, `accentSecondary`, `info`, `success`, `warning`) | A `#RRGGBB` color shows as the nearest tint until a tint is picked. |
 | **Icon** | Text field, monospaced, then the symbol it names; the kind's symbol as placeholder | `icon` | An SF Symbol of this Mac: "<name> is not an SF Symbol of this Mac."; empty removes the icon. |
 | **Folder** | The path, monospaced, middle-truncated, selectable, and **Show in Finder** | The project's folder | — |
 | **Parent** | `<name> (<ID>)` | The parent | Sub projects only. |

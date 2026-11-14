@@ -2,7 +2,7 @@ import ExternalTools
 import FileStorage
 import Foundation
 
-/// The projects of this Mac: it loads them from the registry and their folders, applies V2's rules to every
+/// The projects of this Mac: it loads them from the registry and their folders, applies the rules to every
 /// change, and gives a new `ProjectSnapshot` after each one (docs/data.md › Loading, › Changes).
 ///
 /// An actor: every read and write of the files goes through it, one at a time. The windows never call it
@@ -289,7 +289,7 @@ public actor ProjectLibrary {
         case ticket, bundle
     }
 
-    /// Steps 1 to 3 of V2's id allocation (docs/data.md › Id allocation): the counter (1 when below 1), raised
+    /// Steps 1 to 3 of the id allocation (docs/data.md › Id allocation): the counter (1 when below 1), raised
     /// while a file of that number exists, valid or not; the project file is written with the number + 1.
     public func allocateNumber(for id: String, _ kind: NumberKind) throws(ProjectError) -> Int {
         guard let node = loaded[id] else { throw .projectNotLoaded(id) }

@@ -38,7 +38,7 @@ struct MCPDocumentationTests {
         let registry = AppTools.registry(session: session, tickets: TicketSession(projects: session, device: "Test"),
                                          chats: ChatSession(projects: session, tokens: MCPTokens(), device: "Test"),
                                          contracts: LiveContractStore(projects: session), maps: LiveServiceMapStore(projects: session),
-                                         machines: MachineHost(dataFolder: nil, v2Folder: nil)) { _ in true }
+                                         machines: MachineHost(dataFolder: nil)) { _ in true }
         let documented = try documentedTools()
         #expect(documented.map(\.name) == registry.names)
         for (name, description, schema) in documented {

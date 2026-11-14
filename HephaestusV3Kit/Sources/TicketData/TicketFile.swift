@@ -25,7 +25,7 @@ public enum TicketIDs {
     }
 }
 
-/// `status` of a ticket file. V2's four values, and V3's `draft`.
+/// `status` of a ticket file: five values.
 public enum TicketFileStatus: String, Codable, Sendable, Hashable, CaseIterable {
     /// V3 addition: written, not yet ready to work on.
     case draft
@@ -46,7 +46,7 @@ public enum TicketFilePriority: String, Codable, Sendable, Hashable, CaseIterabl
     case low, medium, high, urgent
 }
 
-/// `.hephaestus/ticket/<TICKET-ID>.yml` (docs/data.md › Ticket file): V2's keys in V2's order, then V3's
+/// `.hephaestus/ticket/<TICKET-ID>.yml` (docs/data.md › Ticket file): the keys in a fixed order, then
 /// `priority` and `labels`, each only when set.
 public struct TicketFile: Codable, Sendable, Hashable {
     public var schema: Int
@@ -60,7 +60,7 @@ public struct TicketFile: Codable, Sendable, Hashable {
     public var description: String
     public var attachments: [AttachmentEntry]
     public var comments: [CommentEntry]
-    /// The chats linked to the ticket, as V2 wrote them (uppercase UUIDs); kept for the Chat feature.
+    /// The chats linked to the ticket (uppercase UUIDs); kept for the Chat feature.
     public var chatIDs: [String]
     public var links: [TicketLinkEntry]
     public var history: [HistoryEntry]

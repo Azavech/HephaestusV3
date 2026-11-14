@@ -2,10 +2,8 @@
 // and the resize of a widget, and the content that scrolls inside one (docs/ui/dashboard.md › Grid,
 // Content and Edit mode).
 //
-// HephaestusV2's Sources/HephaestusUI/Dashboard/DashboardGridLayout.swift, kept as it is: only the
-// imports, the handle's colour, AZDesign's, its strings, looked up in this target's String Catalog, and
-// `nonisolated` on the types the layout uses differ, since Hephaestus V3's targets default to the main actor
-// and V2's did not.
+// The handle's colour is AZDesign's, its strings come from this target's String Catalog, and the types the
+// layout uses are `nonisolated`, since the UI targets default to the main actor.
 import AZDesign
 import SwiftUI
 import ToolsFoundation

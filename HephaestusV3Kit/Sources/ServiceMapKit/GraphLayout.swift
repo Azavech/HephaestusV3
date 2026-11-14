@@ -1,8 +1,6 @@
 import Foundation
 
-// Ported from HephaestusV2 (Sources/HephaestusCore/Graph/GraphLayout.swift, docs/graph.md › Layout of
-// the graph). The algorithm and its numbers are V2's; only its input changed, from V2's ServiceGraph to
-// the nodes and arrows of this map.
+// The layout of the graph: its input is the nodes and arrows of this map.
 
 /// Where each box goes, after the service map of AWS X-Ray: round nodes spread over the whole plane. The services linked by
 /// calls form a group, with the boxes of their rings; each group is laid out on its own by a force-directed layout (Fruchterman

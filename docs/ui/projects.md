@@ -6,11 +6,10 @@ overview of a project shows its path, its ticket and build figures, a tile per t
 environments and its recent activity. The same projects are listed in the **project switcher**, the
 popover in every tool window's toolbar, which is described at the end of this page.
 
-The projects are the app's own: the folders that hold a `.hephaestus/project.yml`, as HephaestusV2 left
-them, listed in the app's data ([Data](../data.md)). On the first launch the list comes from HephaestusV2.
-Until a tool comes over from V2, the overview shows no figures or activity of it, and no tile for it
-([Navigation › Available tools](navigation.md#available-tools)); the screenshots of this page show the
-previews' sample projects, with every tool.
+The projects are the app's own: the folders that hold a `.hephaestus/project.yml`, listed in the app's data
+([Data](../data.md)). Their overview shows no figures or activity yet, and no tile for a tool that isn't
+available ([Navigation › Available tools](navigation.md#available-tools)); the screenshots of this page show
+the previews' sample projects, with every tool.
 
 ![The Projects window with Orders selected](images/projects-light.png)
 *The Projects window on Orders, a sub project of Shop: the sidebar tree, the path, the figures, six tool tiles and the environments.*
@@ -162,7 +161,7 @@ The section shows when the project has sub projects. It lists the **direct** sub
 in their own overview.
 
 A sub project's folder lies inside its parent's folder. It has its own identifier and tickets, and sub
-projects may nest. These rules follow HephaestusV2 (the user's choice).
+projects may nest (the user's choice).
 
 Each card is one button showing:
 
@@ -187,7 +186,7 @@ Only services have environments. Each card shows:
 - the URL, monospaced, on one line that truncates in the middle. You can select and copy it.
 
 **Inherited from <parent>.** A sub project can take its parent's settings, its environments among them.
-This is V2's **Use parent settings**, on by default (`usesParentSettings`). When a sub project does, the
+This is the project's **Use parent settings**, on by default (`usesParentSettings`). When a sub project does, the
 section lists its parent's environments, and the title carries the note "Inherited from Shop" (the user's
 choice). The parent may itself use its own parent's settings: the environments, and the name in the note,
 come from the first project up the tree that has settings of its own (`ProjectTree.settingsSource(of:)`).
@@ -229,7 +228,7 @@ in it, instead of a second window opening (the user's choice).
 
 **Add Project ▸ New Project…**, File ▸ New Project… (⇧⌘N) and the **New Project…** button of the empty
 window open the **New Project** sheet; **Add Project ▸ New Sub Project…** opens the same sheet for a sub
-project of the selected project. The rules are V2's ([Data › Changes](../data.md#changes)).
+project of the selected project. The rules are those of [Data › Changes](../data.md#changes).
 
 ![The New Project sheet, filled in for Inventory Service](images/new-project.png)
 *New Project: the identifier and the folder name follow the name; the type follows the folder.*
@@ -290,13 +289,12 @@ The Settings window's **Projects** tab (⌘,) shows where the app keeps its data
 | Row | Shows |
 | --- | --- |
 | **Data Folder** | The data folder's path, monospaced, middle-truncated, selectable, with **Show in Finder**; "No data folder" without one. |
-| **From HephaestusV2** | "<n> projects brought over at this launch", only at the launch that ran the import. |
 | **Login Shell** | "Reading…" with a spinner while the environment is read; "<n> variables read" with a green dot; otherwise an orange dot and why the tools run with the app's own environment: "Took too long…", "Failed with code <n>…", "Gave nothing…", "Couldn’t start zsh…". |
 | **git**, **ssh**, **kubectl**, **gh** | The path found, monospaced, or "Not found". |
 
 The footer says "Found in the PATH of your login shell, as in Terminal." and has **Look Again**, which reads
 the login shell's environment again, looks the tools up and reads the projects' origins; it is disabled while
-it runs. Identifiers: `settings.projects.dataFolder`, `.showDataFolder`, `.import`, `.shell`,
+it runs. Identifiers: `settings.projects.dataFolder`, `.showDataFolder`, `.shell`,
 `.tool.<name>`, `.lookAgain`. Previews: "Found", "Reading", "Shell Failed, Dark".
 
 ## Project switcher
@@ -378,13 +376,13 @@ window opened on an item still shows it.
 | **No activity** | The project and its sub projects have no events. | "Nothing happened in this project yet." in the activity box. |
 | **Loading** | The app reads its data, at launch. | A spinner, "Loading Projects…", on `canvas`; the sidebar is empty. |
 | **Can’t open** | The app has no data folder, or another copy of the app holds it. | `ContentUnavailableView`: `exclamationmark.triangle`, "Can’t Open the Projects", and why: "This copy of Hephaestus V3 has no data folder: it can't find the Application Support folder." or "Another copy of Hephaestus V3 is using its data. Quit it, then open this one again." |
-| **No projects** | The list is empty. | `ContentUnavailableView`: `folder.badge.plus`, "No Projects", "Create a project, or add a folder that holds one, such as a project of HephaestusV2.", with **New Project…** (prominent) and **Add Existing Folder…**. |
+| **No projects** | The list is empty. | `ContentUnavailableView`: `folder.badge.plus`, "No Projects", "Create a project, or add a folder that holds one.", with **New Project…** (prominent) and **Add Existing Folder…**. |
 | **Unavailable** | An entry of the list didn't load. | An **Unavailable** section at the end of the sidebar (not while filtering): each entry's folder name, `questionmark.folder`, and why in a caption ("The folder is missing.", "The folder has no .hephaestus/project.yml.", "Its project.yml can't be read: <detail>", "Its identifier <ID> is already used by “<name>”.", "The list names it with a path that can't be used."); its path as tooltip. The rows can't be selected. They load once their folder is fine. |
 | **File issue** | The project's file became invalid while the app runs. | Under the header, a card: `exclamationmark.triangle.fill` in `warning`, "project.yml can't be read", "The project shows as it was before the file changed. Fix the file, or change a setting to write it again.", and the reason, monospaced. |
-| **A project of the app** | Its tools haven't come over from V2. | No figures, no tool tiles, no activity events; environments without health, with "No API address" when they have no URL. |
+| **A project of the app** | A project of the data folder, not a sample. | No figures and no activity events, which its tools don't report yet; a tile per available tool; environments without health, with "No API address" when they have no URL. |
 
 ![The Projects window without projects](images/projects-empty.png)
-*No Projects: what a first launch shows when HephaestusV2 left no list on this Mac.*
+*No Projects: what a first launch shows.*
 
 ![The Projects window with two entries that didn't load](images/projects-unavailable.png)
 *Two entries that didn't load, under Unavailable.*

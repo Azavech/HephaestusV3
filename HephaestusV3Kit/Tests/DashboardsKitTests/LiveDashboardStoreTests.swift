@@ -31,7 +31,7 @@ private final class DashboardWorld {
         let data = DataFolder(url: root.appendingPathComponent("Data"))
         try data.createIfNeeded()
         try YAMLFile.write(RegistryFile(projects: [repo.path]), to: data.registryFile)
-        session = ProjectSession(dataFolder: data, runner: NoProcesses(), v2Folder: root.appendingPathComponent("NoV2"), processEnvironment: [:])
+        session = ProjectSession(dataFolder: data, runner: NoProcesses(), processEnvironment: [:])
         await session.start()
         store = LiveDashboardStore(session: session)
     }
@@ -46,7 +46,7 @@ private final class DashboardWorld {
     }
 }
 
-/// V2's Recent Chats widget with its settings and a key neither app knows, then a Tickets widget.
+/// A Recent Chats widget with its settings and an unknown key, then a Tickets widget.
 private let v2Widgets = """
     dashboardWidgets:
     - id: 00000000-0000-0000-0000-000000000003
@@ -90,7 +90,7 @@ struct LiveDashboardStoreTests {
         #expect(world.store.window(of: "ORD") == nil)
     }
 
-    @Test("V2's widgets are read with their settings; Recent Chats is kept and never shown; week shows the last hour")
+    @Test("Widgets are read with their settings; Recent Chats is kept and never shown; week shows the last hour")
     func reading() async throws {
         let world = try await DashboardWorld(extra: v2Widgets)
         defer { Task { await world.close() } }
@@ -103,7 +103,7 @@ struct LiveDashboardStoreTests {
         #expect(model.listOrder == [1])
     }
 
-    @Test("A change is written in V2's layout, and what V3 doesn't show survives it")
+    @Test("A change is written in the file's layout, and what isn't shown survives it")
     func writing() async throws {
         let world = try await DashboardWorld(extra: v2Widgets)
         defer { Task { await world.close() } }
@@ -208,12 +208,12 @@ struct LiveDashboardStoreTests {
     }
 }
 
-@Suite("Widgets of tools not brought over yet")
+@Suite("Widgets of unavailable tools")
 @MainActor
 struct DashboardAvailabilityTests {
     private let orders = Project.sample("ORD")!
 
-    @Test("A widget shows once its tool is available; V2's Recent Chats and Cost never show")
+    @Test("A widget shows once its tool is available; Recent Chats and Cost never show")
     func shown() {
         let tickets: Set<ToolKind> = [.dashboard, .tickets]
         #expect(DashboardWidgetKind.shown(for: orders, tools: tickets) == [.project, .tickets])

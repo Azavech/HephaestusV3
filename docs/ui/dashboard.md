@@ -5,8 +5,8 @@ from one tool: what the project is, how many tickets it has in each status, its 
 where it runs, and, for a service whose Service Map can be read, the map of its services, the busiest
 calls, the failed requests and the requests per minute. The widgets sit on an invisible grid of 24 columns
 of square cells, as in Grafana, and float up. In edit mode the user adds, removes, moves, resizes and sets
-up the widgets. Each project keeps its own Dashboard in its project file, as V2 did ([Saving](#saving)), and a
-widget shows once the tool whose data it shows has come over from V2 ([Which widgets show](#which-widgets-show)).
+up the widgets. Each project keeps its own Dashboard in its project file ([Saving](#saving)), and a widget
+shows once the tool whose data it shows is available ([Which widgets show](#which-widgets-show)).
 
 ![The Orders Dashboard in light appearance](images/dashboard-light.png)
 *The Orders Dashboard in light appearance: its sample layout, read from the Staging environment over the
@@ -83,8 +83,6 @@ the width (the user's choice). The grid is never drawn, in or out of edit mode.
 - **Scaling.** Every width shows the same arrangement, larger or smaller. The widget area is as tall as its
   lowest widget.
 
-The grid code, the placement and the edit gestures are the previous app's, kept as they were.
-
 ## Placement
 
 A widget's stored position is its column, row, width and height. The Dashboard places the widgets it shows
@@ -152,7 +150,7 @@ setting when that is not empty, otherwise the kind's title. The symbol shows in 
 | **Tickets** | `checklist` | One count per checked status, side by side in workflow order: the number (title, semibold) above the status's symbol in its color and its name. With **Include sub projects** checked and a project that has sub projects, the counts cover the project and all its descendants, under the caption "Sub projects included". | None | Title, Statuses, Include sub projects |
 | **Recent Builds** | `hammer` | The newest runs of the project's repository, as the Builds window lists them, at most **Number**: the run's status symbol in its color, its title, `#<number> · <workflow>` (one localized string), and its start date and time (for example `11 Nov at 13:54`). "No builds yet." when there is none. | Opens the run in Builds (focus: the run's id). Tooltip "Open the run in Builds". The runs are read with gh when the widget shows, then every 30 s. | Title, Number |
 | **Instances** | `shippingbox` | The pods of the project's service in the Dashboard's environment ([Instances widget](#instances-widget)). | None | Title |
-| **Service Graph** | `point.3.connected.trianglepath.dotted` | The environment's whole service map, laid out and drawn as the Service Map draws it, with the project's own service as its focus. Fitted to the widget at 150% at most; it cannot be zoomed or panned. Its arrows count the calls in the time window: colored by that count, and labeled in compact form (`360K`) from 50% zoom, as the previous app's widget did. | Opens the Service Map. Tooltip "Open the Service Map". The widget reads as one button. | Title |
+| **Service Graph** | `point.3.connected.trianglepath.dotted` | The environment's whole service map, laid out and drawn as the Service Map draws it, with the project's own service as its focus. Fitted to the widget at 150% at most; it cannot be zoomed or panned. Its arrows count the calls in the time window: colored by that count, and labeled in compact form (`360K`) from 50% zoom. | Opens the Service Map. Tooltip "Open the Service Map". The widget reads as one button. | Title |
 | **Busiest Calls** | `arrow.right.arrow.left` | The arrows with at least one call in the time window, most calls first, ties in graph order, at most **Number**: `<from> → <to>` (one localized string), the target's kind in secondary color when it is not a service, and the number of calls in compact form (`756K`) in the arrow's color on the Service Map. "No calls in the window." when there is none. | None | Title, Number |
 | **Failed Requests** | `exclamationmark.triangle` | The requests of the time window answered 400 or above, newest first, at most **Number**: the request id (monospaced), its first service with its method and path, its status (`.warning` for 4xx, `.danger` for 5xx) and its start time with seconds. "No failed requests in the window." when there is none. | Opens the request in the Service Map (focus `request:<id>`). Tooltip "Open the request in the Service Map". | Title, Number |
 | **Requests per Minute** | `chart.xyaxis.line` | The requests of the last minute in a large number with the caption "in the last minute" and, filling the widget under them, a line chart in the accent color, one point per minute of the time window, its vertical axis starting at 0 and no horizontal axis. | None | Title |
@@ -167,9 +165,9 @@ Ticket statuses, in workflow order:
 | In Review | `eye.circle` | `.warning` |
 | Done | `checkmark.circle.fill` | `.success` |
 
-Recent Builds takes the place of the previous app's Recent Chats and Cost widgets (a porting decision, not
-the user's). The Tickets widget counts the app's tickets, those the Tickets windows show, and changes with
-them.
+Recent Builds takes the place of the Recent Chats and Cost widgets, which the Dashboard never shows (default
+chosen at design time). The Tickets widget counts the app's tickets, those the Tickets windows show, and
+changes with them.
 
 ### Which widgets show
 
@@ -179,27 +177,25 @@ tools](navigation.md#available-tools)); until then it is hidden (default chosen 
 | Kind | Shows when |
 | --- | --- |
 | Project | Always. |
-| Tickets | Tickets is available: today. |
-| Recent Builds | Builds is available: since Phase 6. |
-| Instances, Service Graph, Busiest Calls, Failed Requests, Requests per Minute | The Service Map is available (since Phase 8) and the project has a map; they read the project's live map, every 5 s while shown. |
-| Instances | The Service Map is available (Phase 8). |
+| Tickets | Tickets is available. |
+| Recent Builds | Builds is available. |
+| Instances, Service Graph, Busiest Calls, Failed Requests, Requests per Minute | The Service Map is available and the project has a map; they read the project's live map, every 5 s while shown. |
+| Instances | The Service Map is available. |
 | Service Graph, Busiest Calls, Failed Requests, Requests per Minute | The Service Map is available and the project's Service Map can be read: it is a service with environments. |
-| Recent Chats, Cost | Never: V2's widgets, kept in the project file with their settings. |
+| Recent Chats, Cost | Never: they are kept in the project file with their settings. |
 
 A hidden widget takes no place: the widgets under it rise into its space. It keeps its stored position, in
-and out of edit mode, and isn't offered in **Add Widget**; when its tool comes, it takes its place again and
+and out of edit mode, and isn't offered in **Add Widget**; when its tool becomes available, it takes its place again and
 the widgets that had risen move down ([Placement](#placement)).
 
-![The Orders Dashboard with today's tools](images/dashboard-today.png)
-*Orders with only the Dashboard and Tickets available, as in the app today: Project and Tickets show, and
-Requests per Minute, the service widgets, Instances and Recent Builds are hidden, keeping their places.*
+![The Orders Dashboard with only the Dashboard and Tickets available](images/dashboard-today.png)
+*Orders with only the Dashboard and Tickets available: Project and Tickets show, and Requests per Minute, the service widgets, Instances and Recent Builds are hidden, keeping their places.*
 
 ### Default list and sample layouts
 
 A project without a stored list shows the default list: Project, Tickets and Recent Builds, then Service Graph
 for a project whose Service Map can be read; default settings, empty titles, no stored positions, and the ids
-`00000000-0000-0000-0000-00000000000<n>`. Instances is not in it. V2's default list was Project, Tickets,
-Recent Chats and Cost: a project file without `dashboardWidgets` shows V3's.
+`00000000-0000-0000-0000-00000000000<n>`. Instances is not in it.
 
 Sample layouts exist only in the previews and the screenshots, for two sample projects; a project of the app
 never shows one, whatever its identifier:
@@ -240,14 +236,14 @@ deployment of the project's service, and "This project has no environments." whe
 ## Environment and time window
 
 - **Environment.** Read by Instances and the four service widgets. It is the project's current environment,
-  one of its environments as they apply ([Data › Resolution](../data.md#resolution)), as V2's widgets read it;
+  one of its environments as they apply ([Data › Resolution](../data.md#resolution));
   without one, the first that is not healthy, or else the first. Choosing another one in the toolbar makes it
   the project's current environment (`current-environments.yml`), for every window of the project. The
   toolbar shows it while the project has environments and a shown widget reads one.
 - **Time window.** **5 min**, **1 hour** or **24 hours**; **1 hour** by default. The Service Graph, Busiest
   Calls, Failed Requests and Requests per Minute count over it. It is stored in the project file
-  (`dashboardGraphWindow`), so every Dashboard window of the project shows it. V2's **Last 7 days** (`week`)
-  comes with the Service Map: until then a stored `week` is kept and the last hour shows. The toolbar shows the
+  (`dashboardGraphWindow`), so every Dashboard window of the project shows it. A stored `week` (Last 7 days)
+  is kept, and the last hour shows. The toolbar shows the
   time window while a service widget shows.
 
 ## Edit mode
@@ -332,8 +328,7 @@ project with nothing saved saves its whole list with that change.
 A change shows at once and is written to the project file in the background, one change after the other in
 the order they were made. When a write fails, its message shows under the toolbar, in `.danger` with
 `exclamationmark.triangle.fill`, until the next change; the Dashboard shows the stored list again, and the
-changes made after the failed one, which were made on top of it, are dropped (V2: the engine's message in red
-under the bar).
+changes made after the failed one, which were made on top of it, are dropped.
 
 ![A change that failed](images/dashboard-failed.png)
 *Tools in edit mode after a change that couldn't be written: the message stays under the toolbar until the
@@ -395,18 +390,17 @@ menu.*
 
 ## Saving
 
-Each project's Dashboard is in its project file, as V2 kept it: the widget list with positions and settings in
+Each project's Dashboard is in its project file: the widget list with positions and settings in
 `dashboardWidgets`, the time window in `dashboardGraphWindow` ([Data › Dashboard widget](../data.md#dashboard-widget)).
 The environment is the project's current environment, in the data folder's `current-environments.yml`.
 `LiveDashboardStore` (DashboardsKit) reads them from the project session and writes them through
 `ProjectSession.update` and `setCurrentEnvironment`.
 
-- A change shows at once in every Dashboard window of the project, and in V2's Dashboard of a clone of the
-  folder once committed (except V3's additions, which V2 refuses: the Recent Builds kind and the Draft status).
+- A change shows at once in every Dashboard window of the project.
 - A change written by another program, or by git, shows when the project file is read again, within two
   seconds ([Data › Outside changes](../data.md#outside-changes)).
-- Each widget is written with the keys V3 doesn't show as they were: V2's Recent Chats and Cost widgets and
-  their settings, and unknown keys.
+- Each widget is written with the keys the Dashboard doesn't show as they were: the Recent Chats and Cost
+  widgets and their settings, and unknown keys.
 - A project without a stored list shows the default list, its current environment and **1 hour**; nothing is
   written until the first change.
 
@@ -424,8 +418,8 @@ file invalid: the project keeps the version loaded before ([Data › Outside cha
 | Edit mode | After **Edit**. | Remove and settings buttons, resize handles, a context menu on each widget, **Add Widget** and **Done**; content takes no click. |
 | Moving or resizing | During a drag in edit mode. | The widget under the pointer, the placeholder, the others making room; scrolling near the edges. |
 | No widgets | No widget shows: the list is empty, or holds only hidden widgets. | "No Widgets" with `square.grid.2x2` and "Click Edit to add widgets.", "Add a widget from the toolbar." in edit mode, or "Widen the window to edit the Dashboard." in the list. |
-| Widgets hidden | Their tool hasn't come over yet, the project's Service Map cannot be read (service widgets), or they are V2's Recent Chats and Cost ([Which widgets show](#which-widgets-show)). | Hidden in and out of edit mode, taking no place, not offered in **Add Widget**, and kept in the list with their positions. |
-| Default list | No stored list. | Project, Tickets, Recent Builds (and Service Graph), two per row; today Project and Tickets show. |
+| Widgets hidden | Their tool isn't available, the project's Service Map cannot be read (service widgets), or they are Recent Chats and Cost ([Which widgets show](#which-widgets-show)). | Hidden in and out of edit mode, taking no place, not offered in **Add Widget**, and kept in the list with their positions. |
+| Default list | No stored list. | Project, Tickets, Recent Builds (and Service Graph), two per row. |
 | Change failed | Writing a change failed. | The message under the toolbar until the next change; the stored list ([Applying changes](#applying-changes)). |
 | Widget being measured | A widget without position, before its height is known. | The widget is invisible, then appears in place. |
 | Content overflow | Content larger than the space under the title row. | The content scrolls inside the widget. |
@@ -501,13 +495,13 @@ the Orders sample. A list edited by hand can repeat an id: the later widgets wit
 from 2, such as `<id>-2`.
 
 Colors are AZDesign semantic colors only. Statuses pair their color with a symbol or a text. A drag moves the
-widgets live without animation, as the previous app's does; the keyboard's and VoiceOver's steps use
+widgets live without animation; the keyboard's and VoiceOver's steps use
 AZDesign's `layout` motion.
 
 ## Sample data and limits
 
-- In the app, the widgets that show read the app's data: the project, and the tickets. The other widgets come
-  with their tools.
+- In the app, the widgets read the app's data: the project, its tickets, its runs on GitHub and the live
+  Service Map of its environment.
 - In the previews and screenshots everything is sample data: ticket counts from the sample tickets, runs from
   the sample builds, and the map, calls, requests and pods from the Service Map's sample map of each
   environment, counted from the sample clock (11 November 2026, 14:00). Pods follow the map's ready and total
@@ -527,7 +521,7 @@ Previews keep their Dashboards in memory: nothing they change is saved.
 | "Editing, Largest Text" | 1240 × 820 | Orders in edit mode at the largest Dynamic Type size. |
 | "Default List" | 1000 × 640 | Tools with the default list. |
 | "No Widgets" | 1000 × 640 | Orders with an empty list. |
-| "Tools Not Yet Brought Over" | 1000 × 640 | Orders with only Dashboard and Tickets available: Project and Tickets show, the others are hidden. |
+| "Unavailable Tools" | 1000 × 640 | Orders with only Dashboard and Tickets available: Project and Tickets show, the others are hidden. |
 | "Change Failed" | 1000 × 640 | Gateway in edit mode, with a write's failure under the toolbar. |
 | "List, iPad", "List, Largest Text" | 760 × 900 | Orders as a list in an iPad layout, at the default and the largest text size. |
 | "iPhone", "iPhone, Dark" | 420 × 800 | Orders as a list in an iPhone layout. |

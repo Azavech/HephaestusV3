@@ -4,7 +4,7 @@ import MCPKit
 import Testing
 @testable import ChatData
 
-/// The fixtures copied from V2's captures of Claude Code 2.1.309, with paths set to `/tmp/example`.
+/// The fixtures: captures of Claude Code 2.1.309, with paths set to `/tmp/example`.
 enum Fixture {
     static func data(_ name: String) throws -> Data {
         let url = try #require(Bundle.module.url(forResource: name, withExtension: nil, subdirectory: "Fixtures"))
@@ -16,10 +16,10 @@ enum Fixture {
     }
 }
 
-/// docs/data.md › Chat file: V2's metadata files, read and written in V2's layout.
+/// docs/data.md › Chat file: the metadata files, read and written in their layout.
 @Suite("Chat files")
 struct ChatFileTests {
-    /// V2's example of a project chat, from its data model.
+    /// An example of a project chat.
     static let v2Chat = """
         schema: 1
         id: 3F2504E0-4F89-11D3-9A0C-0305E82C3301
@@ -45,7 +45,7 @@ struct ChatFileTests {
 
         """
 
-    @Test("V2's chat file is read, and written back byte for byte, its context usage kept")
+    @Test("A chat file is read, and written back byte for byte, its context usage kept")
     func roundTrip() throws {
         let file = try YAMLCoding.decode(ChatFile.self, from: Data(Self.v2Chat.utf8))
         #expect(file.kind == .project && file.settings.model == "opus" && file.sessionStarted)
@@ -53,7 +53,7 @@ struct ChatFileTests {
         #expect(try YAMLCoding.encode(file) == Self.v2Chat)
     }
 
-    @Test("V3's origin is written after V2's keys, only when set")
+    @Test("The origin is written after the other keys, only when set")
     func origin() throws {
         var file = ChatFile(id: "3F2504E0-4F89-11D3-9A0C-0305E82C3301", title: "Why?", created: ISODate.date(from: "2026-11-14T10:00:00Z")!)
         file.origin = "tickets"
@@ -62,7 +62,7 @@ struct ChatFileTests {
         #expect(try YAMLCoding.decode(ChatFile.self, from: Data(text.utf8)) == file)
     }
 
-    @Test("A file that breaks V2's rules of the kinds is invalid")
+    @Test("A file that breaks the rules of the kinds is invalid")
     func kinds() {
         let ticketChat = Self.v2Chat.replacing("kind: project", with: "kind: ticket")
         #expect(throws: (any Error).self) { try YAMLCoding.decode(ChatFile.self, from: Data(ticketChat.utf8)) }
@@ -74,7 +74,7 @@ struct ChatFileTests {
 /// docs/data.md › Chat transcript file.
 @Suite("Transcripts")
 struct TranscriptTests {
-    /// Part of V2's example transcript: a message with linked items, a session line, thinking, a call, a
+    /// Part of an example transcript: a message with linked items, a session line, thinking, a call, a
     /// permission request then its answer, a question set V3 doesn't read, a result.
     static let v2Lines = """
         {"op":"add","item":{"type":"user","id":"E1D2C3B4-A596-4877-8695-A4B3C2D1E0F9","created":"2026-10-31T13:00:00Z","text":"Plan this sprint.","attachments":[],"sender":"MacBook","linkedItems":[{"kind":"ticket","name":"HEPH-13","text":"ticket HEPH-13","added":false}]}}
@@ -95,7 +95,7 @@ struct TranscriptTests {
         guard case .permissionRequest(let request) = items[3] else { Issue.record("not a request"); return }
         #expect(request.decision == .allow && request.decidedBy == "Studio")
         guard case .user(let user) = items[0] else { Issue.record("not a message"); return }
-        #expect(user.linkedItems.arrayValue?.count == 1, "V2's linked items are kept")
+        #expect(user.linkedItems.arrayValue?.count == 1, "Linked items are kept")
     }
 
     @Test("A line written by V3 reads back as the same item; references are V3's")
@@ -120,7 +120,7 @@ struct TranscriptTests {
     }
 }
 
-/// docs/data.md › Stream mapping, on V2's captures.
+/// docs/data.md › Stream mapping, on the captures.
 @Suite("Stream mapping")
 struct StreamMapperTests {
     private func run(_ name: String) throws -> [StreamOutput] {
@@ -132,7 +132,7 @@ struct StreamMapperTests {
         outputs.compactMap { if case .item(let item) = $0 { item } else if case .result(let result) = $0 { .result(result) } else { nil } }
     }
 
-    @Test("A call, its result and the reply: items with V2's ids; the text streams first")
+    @Test("A call, its result and the reply: items with their ids; the text streams first")
     func bashAllowed() throws {
         let outputs = try run("stream-bash-allowed.jsonl")
         #expect(outputs.first == .cliTurnOpened(first: true, mcpProblem: "missing"), "The capture has no MCP server")

@@ -93,7 +93,6 @@ public final class LiveContractStore: ContractStore {
     public init(projects: ProjectSession) {
         self.projects = projects
         valuesFile = projects.dataFolder?.url.appendingPathComponent(StoredValuesFile.name)
-        if let valuesFile { StoredValuesFile.importV2(from: StoredValuesFile.v2File(), to: valuesFile) }
         stored = valuesFile.map(StoredValuesFile.read) ?? []
         projects.observeFileEvents { [weak self] batch in
             guard let self else { return }

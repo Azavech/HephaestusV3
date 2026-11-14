@@ -2,11 +2,8 @@ import AZDesign
 import SwiftUI
 import ToolsFoundation
 
-// Ported from HephaestusV2 (Sources/HephaestusUI/Graph/GraphMapView.swift, Sources/HephaestusCore/Graph/
-// GraphColorScale.swift, docs/graph.md › Layout of the graph, › Colour of an arrow): round nodes and curved
-// arrows. The geometry is V2's. What changed: the colours are AZDesign's semantic colours, a node's border
-// shows its health as in X-Ray, and an arrow says calls per second (or a call's duration in a request)
-// where V2 counted calls.
+// Round nodes and curved arrows. The colours are AZDesign's semantic colours, a node's border shows its health
+// as in X-Ray, and an arrow says calls per second (or a call's duration in a request).
 
 /// What the graph draws, whatever the view: the nodes and arrows, where they go, and what each arrow says.
 struct GraphMapModel {
@@ -40,7 +37,7 @@ struct GraphMapModel {
 }
 
 /// The colour of an arrow: grey without any call; otherwise from green to red in proportion of its weight to
-/// the heaviest arrow shown, which is red. V2 turned the hue from 120° to 0°; here the scale goes through
+/// the heaviest arrow shown, which is red. The scale goes through
 /// AZDesign's success, warning and danger, so it follows the app's palette and High Contrast.
 enum GraphColorScale {
     static func color(weight: Double, busiest: Double) -> Color {
@@ -192,7 +189,7 @@ enum GraphGeometry {
 /// nodes take no click.
 ///
 /// VoiceOver reads each node (its name, kind, health and focus) and then each arrow (what calls what,
-/// and its label in words), whatever the zoom: the drawing stays V2's, the accessibility sits on top.
+/// and its label in words), whatever the zoom: the accessibility sits on top of the drawing.
 struct GraphMapView: View {
     let model: GraphMapModel
     let scale: CGFloat

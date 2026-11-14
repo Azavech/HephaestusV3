@@ -5,7 +5,7 @@ import Testing
 
 @Suite("Project file")
 struct ProjectFileTests {
-    @Test("A file V2 wrote is written back byte for byte, the keys V3 doesn't use included")
+    @Test("A complete file is written back byte for byte, the keys the app doesn't use included")
     func completeFileRoundTrip() throws {
         let data = try fixture("project-complete.yml")
         let project = try YAMLCoding.decode(ProjectFile.self, from: data)
@@ -13,7 +13,7 @@ struct ProjectFileTests {
         #expect(project.type == .swiftApplication)
         #expect(project.color == "#34C759")
         #expect(project.subprojects == ["backend", "apps/ios"])
-        #expect(project.keptV2Keys.keys == ["webTabs", "skills", "chatDefaults", "deletedChats", "commentAnswers"])
+        #expect(project.keptKeys.keys == ["webTabs", "skills", "chatDefaults", "deletedChats", "commentAnswers"])
         let widgets = try #require(project.dashboardWidgets)
         #expect(widgets.map(\.kind) == [.project, .tickets, .recentChats, .cost])
         #expect(widgets[0].fields == [.name, .identifier, .folder])
@@ -38,7 +38,7 @@ struct ProjectFileTests {
         }
     }
 
-    @Test("A minimal file takes the defaults, and V3 adds none of V2's other keys")
+    @Test("A minimal file takes the defaults, and none of the other keys is added")
     func minimalFile() throws {
         let project = try YAMLCoding.decode(ProjectFile.self, from: fixture("project-minimal.yml"))
         #expect(project == ProjectFile(id: "WEB", name: "Website", created: ISODate.date(from: "2026-10-31T09:30:00Z")!))
@@ -72,7 +72,7 @@ struct ProjectFileTests {
         #expect(staging.jaeger == "tracing/jaeger")
         #expect(staging.argoCDApplication == "argocd/orders-staging")
         #expect(staging.kubeconfig == "~/.kube/staging.yaml")
-        #expect(project.keptV2Keys.isEmpty)
+        #expect(project.keptKeys.isEmpty)
         #expect(project.dashboardWidgets?.map(\.kind) == [.serviceGraph, .failedRequests])
         #expect(project.dashboardWidgets?[1].count == 10)
         #expect(project.dashboardGraphWindow == .day)
@@ -102,7 +102,7 @@ struct ProjectFileTests {
         #expect(try YAMLCoding.encode(project).contains("type: library\ncolor: accentSecondary\n"))
     }
 
-    @Test("Values are read with V2's rules: color in uppercase, trimmed icon and keys, a GitHub page without its /")
+    @Test("Values are read with the rules: color in uppercase, trimmed icon and keys, a GitHub page without its /")
     func readNormalization() throws {
         let text = """
         id: ORD
@@ -156,7 +156,7 @@ struct DataFilesTests {
     func registry() throws {
         let data = try fixture("registry.yml")
         let registry = try YAMLCoding.decode(RegistryFile.self, from: data)
-        #expect(registry.projects == ["/Users/example/Developer/HephaestusV2", "/Users/example/Developer/Website"])
+        #expect(registry.projects == ["/Users/example/Developer/Tools", "/Users/example/Developer/Website"])
         #expect(try YAMLCoding.encodeData(registry) == data)
         let mixed = RegistryFile(projects: ["/a", "relative", "/b/", "/c/../d", "/e"])
         #expect(mixed.loadableEntries == ["/a", "/e"])

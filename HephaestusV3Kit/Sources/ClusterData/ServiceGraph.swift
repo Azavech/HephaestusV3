@@ -3,7 +3,7 @@ import Foundation
 import MCPKit
 
 /// The boxes and arrows of a namespace, from its Deployments and their sources on GitHub (docs/data.md ›
-/// Clusters › Service graph), V2's rules.
+/// Clusters › Service graph).
 public struct ServiceGraph: Sendable, Hashable {
     public enum Kind: String, Sendable, Hashable {
         case service, database, bucket
@@ -54,7 +54,7 @@ public struct ServiceGraph: Sendable, Hashable {
         return modules
     }
 
-    /// The scalars of a YAML file by dotted path, comments dropped, quotes removed (V2's values file reading).
+    /// The scalars of a YAML file by dotted path, comments dropped, quotes removed (the values file's reading).
     public static func values(_ yaml: String) -> [String: String] {
         var values: [String: String] = [:]
         var stack: [(indent: Int, key: String)] = []

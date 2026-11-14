@@ -20,7 +20,7 @@ let created = ISODate.date(from: "2026-11-09T14:03:00Z")!
 
 @Suite("Virtual machine files")
 struct MachineFileTests {
-    @Test("image.yml is written as V2 wrote it, nulls included, mode 0600")
+    @Test("image.yml is written in its layout, nulls included, mode 0600")
     func imageFile() async throws {
         try await withTemporaryFolder { folder in
             let library = MachineLibrary(dataFolder: folder)
@@ -43,7 +43,7 @@ struct MachineFileTests {
         }
     }
 
-    @Test("An image.yml of an earlier V2 keeps cores and memoryGB as unknown keys")
+    @Test("An earlier image.yml keeps cores and memoryGB as unknown keys")
     func oldImage() throws {
         let image = try YAMLFile.decode(ImageFile.self, from: Data("""
             schema: 1
@@ -61,7 +61,7 @@ struct MachineFileTests {
         #expect(Set(image.unknownKeys.keys) == ["cores", "memoryGB"])
     }
 
-    @Test("vm.yml round-trips V2's layout; V2's lowercase id is read in uppercase, unknown keys kept, state never stored")
+    @Test("vm.yml round-trips its layout; a lowercase id is read in uppercase, unknown keys kept, state never stored")
     func machineFile() throws {
         let text = """
             schema: 1
@@ -103,7 +103,7 @@ struct MachineFileTests {
         #expect(!written.contains("state") && !written.contains("startedAt") && !written.contains("macAddress"))
     }
 
-    @Test("Folders not named by a UUID, or without a valid file, are skipped; V2's Claude machines are not listed")
+    @Test("Folders not named by a UUID, or without a valid file, are skipped; machines not started by the user are not listed")
     func reading() async throws {
         try await withTemporaryFolder { folder in
             let library = MachineLibrary(dataFolder: folder)
@@ -136,29 +136,6 @@ struct MachineFileTests {
             // A disk without a partition table is only extended: the guest's container doesn't grow.
             #expect(!machine.growContainer)
             #expect(library.readMachines().map(\.id) == [machine.id])
-        }
-    }
-
-    @Test("V2's images and machines are cloned in once, without V2's Claude machines")
-    func importV2() async throws {
-        try await withTemporaryFolder { folder in
-            let v2 = MachineLibrary(dataFolder: folder.appendingPathComponent("V2"))
-            let image = ImageFile(id: imageID, version: "27.2", build: "27C61", state: .ready, created: created)
-            try v2.write(image)
-            try Data("disk".utf8).write(to: v2.folder(image: imageID).disk)
-            try v2.write(MachineFile(id: machineID, name: "Mine", image: image, cores: 2, memoryGB: 4, diskGB: nil, created: created))
-            var claude = MachineFile(id: UUID().uuidString, name: "Claude's", image: image, cores: 2, memoryGB: 4, diskGB: nil, created: created)
-            claude.startedBy = "claude"
-            try v2.write(claude)
-
-            let v3 = MachineLibrary(dataFolder: folder.appendingPathComponent("V3"))
-            #expect(v3.importV2(from: v2.root) == 2)
-            #expect(v3.readImages().map(\.id) == [imageID])
-            #expect(v3.readMachines().map(\.name) == ["Mine"])
-            #expect(try Data(contentsOf: v3.folder(image: imageID).disk) == Data("disk".utf8))
-            // Never again, even when V3 has deleted everything.
-            try FileManager.default.removeItem(at: v3.images)
-            #expect(v3.importV2(from: v2.root) == 0)
         }
     }
 }
@@ -459,7 +436,7 @@ struct MachineHostTests {
             guestTools = GuestTools(agent: agent, installScript: script)
         }
         let host = MachineHost(dataFolder: DataFolder(url: folder.appendingPathComponent("data")), backend: backend, guestTools: guestTools,
-                               v2Folder: nil, now: { created })
+                               now: { created })
         host.addressPoll = (.milliseconds(1), 1)
         host.leases = { _ in "192.168.64.7" }
         host.load()
@@ -536,7 +513,7 @@ struct MachineHostTests {
         }
     }
 
-    @Test("Without the agent's files in the bundle, Set Up fails with V2's message")
+    @Test("Without the agent's files in the bundle, Set Up fails with its message")
     func setupWithoutAgent() async throws {
         try await withTemporaryFolder { folder in
             let host = try Self.host(folder, tools: false)

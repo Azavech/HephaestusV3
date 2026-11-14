@@ -47,7 +47,7 @@ struct ClusterTests {
         #expect(status.replicas == 3 && status.ready == 2 && status.pods.first?.restarts == 2 && status.pods.first?.ready == true)
     }
 
-    @Test("Restart, scale and logs; Argo CD in the Application's namespace; V2's failure messages")
+    @Test("Restart, scale and logs; Argo CD in the Application's namespace; the failure messages")
     func changes() async throws {
         let runner = FakeKubectl { arguments in
             if arguments.contains("applications.argoproj.io/orders") { return ok(#"{"status":{"sync":{"status":"OutOfSync","revision":"abc"},"health":{"status":"Healthy"}}}"#) }

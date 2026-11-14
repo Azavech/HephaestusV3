@@ -80,7 +80,7 @@ private let schemas = """
 
 @Suite("Contracts")
 struct ContractTests {
-    @Test("Operations in V2's order, parameters merged, refs resolved across files, schemes V3 sends")
+    @Test("Operations in order, parameters merged, refs resolved across files, the schemes sent")
     func read() throws {
         let folder = try ContractFolder(petStore, files: ["openapi/schemas.yaml": schemas])
         defer { folder.remove() }
@@ -120,7 +120,7 @@ struct ContractTests {
         #expect(throws: ContractError.unreadable("The root is not a mapping.")) { try list.read() }
     }
 
-    @Test("Requests: path parameters encoded, query and API keys, headers in V2's order, added headers replace")
+    @Test("Requests: path parameters encoded, query and API keys, headers in order, added headers replace")
     func request() throws {
         let folder = try ContractFolder(petStore, files: ["openapi/schemas.yaml": schemas])
         defer { folder.remove() }
@@ -149,26 +149,26 @@ struct ContractTests {
         #expect(ContractSamples.text(.string("plain"), mediaType: "text/plain") == "plain")
     }
 
-    @Test("Stored values: V2's file read and written back; imported once from V2")
+    @Test("Stored values: the file read and written back, mode 0600, earlier keys left out")
     func stored() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("StoredValues-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: folder) }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let v2 = folder.appendingPathComponent("v2.json")
+        let mine = folder.appendingPathComponent(StoredValuesFile.name)
         try Data("""
             {"contracts":[{"deviceID":"6F1C","projectID":"DEMO","path":"openapi/contract.yaml","environment":"old",
               "credentials":{"bearerAuth":{"token":"example-token"}},"headers":[{"name":"X-Tenant","value":"demo"}],
               "operations":{"GET /pets/{petId}":{"parameters":{"path:petId":"42"},"bodies":{}}}}]}
-            """.utf8).write(to: v2)
-        let mine = folder.appendingPathComponent(StoredValuesFile.name)
-        #expect(StoredValuesFile.importV2(from: v2, to: mine))
-        #expect(!StoredValuesFile.importV2(from: v2, to: mine), "Only once")
+            """.utf8).write(to: mine)
         let contracts = StoredValuesFile.read(mine)
         #expect(contracts.count == 1 && contracts[0].credentials["bearerAuth"]?["token"] == "example-token")
         #expect(contracts[0].headers == [StoredHeader(name: "X-Tenant", value: "demo")] && contracts[0].deviceID == "6F1C")
         #expect(contracts[0].operations["GET /pets/{petId}"]?.parameters == ["path:petId": "42"])
-        let mode = try FileManager.default.attributesOfItem(atPath: mine.path)[.posixPermissions] as? Int
+        let written = folder.appendingPathComponent("written.json")
+        try StoredValuesFile.write(contracts, to: written)
+        let mode = try FileManager.default.attributesOfItem(atPath: written.path)[.posixPermissions] as? Int
         #expect(mode == 0o600)
-        #expect(!(try String(contentsOf: mine, encoding: .utf8)).contains("environment"), "V2's earlier keys are left out")
+        #expect(!(try String(contentsOf: written, encoding: .utf8)).contains("environment"), "Earlier keys are left out")
+        #expect(StoredValuesFile.read(written) == contracts)
     }
 }

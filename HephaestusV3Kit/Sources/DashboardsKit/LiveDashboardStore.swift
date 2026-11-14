@@ -150,7 +150,7 @@ public final class LiveDashboardStore: DashboardStore {
     }
 
     /// The list the Dashboard shows as entries of the file: each widget takes the stored entry of its slot,
-    /// with the keys the Dashboard doesn't show (V2's Recent Chats settings, unknown keys) as stored; a new
+    /// with the keys the Dashboard doesn't show (Recent Chats settings, unknown keys) as stored; a new
     /// widget takes the defaults of the file.
     nonisolated static func entries(_ widgets: [DashboardWidget], merging stored: [DashboardWidgetEntry]) -> [DashboardWidgetEntry] {
         var storedSlots: [UUID: [DashboardWidgetEntry]] = [:]
@@ -227,7 +227,7 @@ public final class LiveDashboardStore: DashboardStore {
         }
     }
 
-    /// V2's `week` has no window in V3 yet: it stays stored, and the last hour shows.
+    /// `week` has no window yet: it stays stored, and the last hour shows.
     nonisolated static func window(_ window: DashboardGraphWindow) -> TimeWindow? {
         switch window {
         case .fiveMinutes: .fiveMinutes

@@ -10,7 +10,7 @@ func fixture(_ name: String) throws -> Data {
 
 @Suite("Ticket and bundle files")
 struct TicketFileTests {
-    @Test("V2's complete ticket and bundle are written back byte for byte")
+    @Test("A complete ticket and bundle are written back byte for byte")
     func roundTrips() throws {
         for name in ["HEPH-12", "HEPH-B2"] {
             let data = try fixture(name)

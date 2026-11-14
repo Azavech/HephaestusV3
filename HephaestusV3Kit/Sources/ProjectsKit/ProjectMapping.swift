@@ -5,7 +5,7 @@ import ToolsFoundation
 /// How the projects of the app's data become the `Project` values every window shows
 /// (docs/architecture.md › ProjectsKit).
 extension Project.Kind {
-    /// V2's types: `goService` is a Service, `swiftApplication` an App, `library` a Library, `none` Other.
+    /// The types: `goService` is a Service, `swiftApplication` an App, `library` a Library, `none` Other.
     public init(_ kind: ProjectKind) {
         switch kind {
         case .goService: self = .service
@@ -27,7 +27,7 @@ extension Project.Kind {
 }
 
 extension ProjectTint {
-    /// The tint of a stored color: a tint's name gives that tint; V2's `#RRGGBB` gives the tint of the
+    /// The tint of a stored color: a tint's name gives that tint; a `#RRGGBB` gives the tint of the
     /// nearest hue (a gray gives Accent); no color gives Accent.
     public init(stored color: String?) {
         guard let color else {
@@ -162,7 +162,7 @@ public enum ProjectMessages {
         }
     }
 
-    /// What a value that breaks a write rule says, as V2's sheets and settings said it.
+    /// What a value that breaks a write rule says.
     public static func ruleMessage(_ rule: ProjectRuleError) -> String {
         switch rule {
         case .identifierFormat:

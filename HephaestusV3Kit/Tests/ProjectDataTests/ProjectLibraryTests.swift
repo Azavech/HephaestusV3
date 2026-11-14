@@ -290,7 +290,7 @@ struct ProjectChangesTests {
         }
     }
 
-    @Test("Update changes only the values it sets, with V2's write rules, and keeps unknown keys")
+    @Test("Update changes only the values it sets, with the write rules, and keeps unknown keys")
     func update() async throws {
         try await withTemporaryFolderAsync { world in
             let orders = try world.project("orders", id: "ORD", extra: "commands:\n- make\n")

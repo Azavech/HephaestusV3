@@ -145,7 +145,7 @@ struct TicketLibraryTests {
 
     // MARK: Links
 
-    @Test("Link rules 1 to 7, in order, with V2's messages")
+    @Test("Link rules 1 to 7, in order, with their messages")
     func linkRules() async throws {
         let world = try await World()
         let one = try await world.create("One")
@@ -167,7 +167,7 @@ struct TicketLibraryTests {
         #expect(await world.ticket(two)?.file.links == [.init(kind: .dependsOn, ticketID: one)])
     }
 
-    @Test("A change adds its history entries in V2's order; the same values write nothing")
+    @Test("A change adds its history entries in order; the same values write nothing")
     func updateHistory() async throws {
         let world = try await World()
         let one = try await world.create("One")

@@ -14,9 +14,6 @@ agent_source="$share/hephaestus-agent"
 agent=/usr/local/bin/hephaestus-agent
 label=fr.azavech.hephaestusv3.agent
 plist="$HOME/Library/LaunchAgents/$label.plist"
-# HephaestusV2's agent, replaced by this one.
-old_label=ca.azavech.hephaestusv2.agent
-old_plist="$HOME/Library/LaunchAgents/$old_label.plist"
 sudoers=/etc/sudoers.d/hephaestus
 privacy_database="/Library/Application Support/com.apple.TCC/TCC.db"
 capture_container="$HOME/Library/Group Containers/group.com.apple.replayd"
@@ -55,10 +52,8 @@ uid=$(id -u)
 echo "Installing the Hephaestus agent for $user. sudo asks for your password."
 sudo -v
 
-# 1. Agent: /usr/local/bin/hephaestus-agent, owned by root. A running agent, V2's included, stops first.
+# 1. Agent: /usr/local/bin/hephaestus-agent, owned by root. A running agent stops first.
 /bin/launchctl bootout "gui/$uid/$label" 2> /dev/null || true
-/bin/launchctl bootout "gui/$uid/$old_label" 2> /dev/null || true
-rm -f "$old_plist"
 sudo /bin/mkdir -p /usr/local/bin
 sudo /usr/bin/install -o root -g wheel -m 755 "$agent_source" "$agent"
 

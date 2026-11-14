@@ -4,7 +4,7 @@ import ProjectData
 import ToolsFoundation
 
 /// New Project and New Sub Project: the fields, the values that follow the name and the folder until the
-/// user picks their own, and V2's rules (docs/ui/projects.md › New Project).
+/// user picks their own, and the rules (docs/ui/projects.md › New Project).
 @Observable
 final class NewProjectModel {
     enum FolderMode: Hashable {

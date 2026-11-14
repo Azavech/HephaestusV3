@@ -1,18 +1,16 @@
 # Data
 
-Hephaestus V3 keeps its data in plain files, in HephaestusV2's format: each project's `.hephaestus/` folder,
-committed with the project, and the app's data folder, which belongs to this Mac. V3 replaces V2 and reads
-the same project folders, so this page is V2's format (V2's `docs/data-model.md`) as V3 reads and writes it,
-plus V3's additions, each marked **V3 addition**. A file V3 writes with an addition may be refused by V2.
+Hephaestus V3 keeps its data in plain files: each project's `.hephaestus/` folder, committed with the
+project, and the app's data folder, which belongs to this Mac.
 
 This page is the contract for the files, precise enough to rebuild their code from: where each file lives,
-its keys in order, its types, defaults and rules, how files are read and written, and how V3 meets HephaestusV2's
-data on its first launch. The code is in the data targets of `HephaestusV3Kit` ([Architecture › The data
-targets](architecture.md#the-data-targets)): `FileStorage` reads and writes, `ProjectData` knows the files.
+its keys in order, its types, defaults and rules, and how files are read and written. The code is in the data
+targets of `HephaestusV3Kit` ([Architecture › The data targets](architecture.md#the-data-targets)):
+`FileStorage` reads and writes, `ProjectData` knows the files.
 
-V3 brings V2's features over one at a time ([Future improvements](future-improvements.md) lists those that
-come later). A file arrives on this page with the feature that reads it; until then V3 never opens it, and
-a project's other files stay as V2 left them.
+A file arrives on this page with the feature that reads it ([Future improvements](future-improvements.md)
+lists the features that come later); until then V3 never opens it, and a project's other files stay as they
+are.
 
 ## Files at a glance
 
@@ -64,8 +62,8 @@ folder](#data-folder)).
   not indented: its `- ` items start at the key's column. A string with a line break uses a literal block
   (`|`, or `|-` when it doesn't end with a line break). A string YAML would read as another type, such as
   `true`, `null`, `12`, `1.5`, `2026-10-31` or `NO`, is quoted with single quotes, and so is a string that
-  can't be plain, such as one starting with `#`. These rules make V3's output of a file V2 wrote byte for
-  byte the file V2 wrote.
+  can't be plain, such as one starting with `#`. With these rules, a file in this layout is written back byte
+  for byte.
 - **Reading.** Any YAML style is accepted, flow or block, quoted or plain. A key of type `String` accepts any
   scalar, so an unquoted `NO` reads as the string `NO`. Booleans are `true` and `false`, and YAML 1.1's
   `yes`, `no`, `on` and `off`. A mapping with a key twice makes the file invalid (`the key "<key>" appears
@@ -139,32 +137,6 @@ The files that belong to this Mac rather than to a project.
 | `Runtime/guest/` | The guest agent and its install script, shared with a setup machine ([Virtual machines › Setup](#setup)). |
 | `Logs/claude-<CHAT-ID>.log` | A chat's CLI log: a line per launch, then the CLI's standard error; emptied at a launch once over 10 MB. |
 
-## Import from HephaestusV2
-
-V3 replaces V2 and works on the same project folders. On its first launch it brings over what V2 kept on
-this Mac and nothing else: the list of top-level projects and the environment chosen for each service. The
-stored contract values and the virtual machines come over the same way, each by its own rule ([Contracts › Stored
-values](#stored-values), [Virtual machines › Import](#import)).
-
-- **When**: when the data folder has no `registry.yml`. The import then writes one, even when there is
-  nothing to import, so that it runs once: a list the user empties later never brings V2's projects back.
-  Deleting `registry.yml` by hand runs it again.
-- **From**: V2's data folder, `~/Library/Application Support/HephaestusV2/`. A missing or invalid V2
-  `registry.yml` imports no project.
-- **The list**: V2's `projects` in their order, without:
-  - entries that aren't absolute paths, and entries already taken;
-  - V2's own project, the folder whose `.hephaestus/project.yml` has the identifier `HEPH` (the
-    HephaestusV2 repository, which V3 doesn't carry: default chosen at design time). A folder whose project
-    file can't be read is kept: it shows as unavailable.
-- **The choices**: V2's `current-environments.yml`, without `HEPH`'s entry, written when it holds one or more
-  choices.
-- **Order of the writes**: `current-environments.yml`, then `registry.yml`, the sign that the import ran.
-- V2's files are only read. Sub projects need no import: their parents' project files list them.
-- `V2Import.runIfNeeded(into:from:ownWrites:)` returns what it did (`imported`, `skippedV2Project`,
-  `skippedInvalid`, `foundV2List`, `currentEnvironments`), or nil when it had already run.
-
-Defaults chosen at design time: the import's trigger, its content, and the skipping of `HEPH`.
-
 ## Project folder
 
 ```
@@ -175,7 +147,7 @@ Defaults chosen at design time: the import's trigger, its content, and the skipp
     ticket/<TICKET-ID>.yml            TicketFile
     bundle/<BUNDLE-ID>.yml            BundleFile
     attachments/<TICKET-ID>/          the files of a ticket and its comments
-    chats/                            chats (not read yet; git-ignored)
+    chats/                            chats: their files and transcripts (git-ignored)
 ```
 
 - A folder is a project when it holds `.hephaestus/project.yml`. The project file doesn't store the folder's
@@ -189,8 +161,8 @@ Defaults chosen at design time: the import's trigger, its content, and the skipp
 ## Project file
 
 `.hephaestus/project.yml`: the project's identity, type, color, icon, counters, documentation folder, GitHub
-page, sub projects and environments. Swift type `ProjectFile`. The table is V2's, in its order; the keys
-marked **kept** are V2's keys that V3 doesn't use yet ([Unknown keys](#unknown-keys)): `webTabs`, `skills`,
+page, sub projects and environments. Swift type `ProjectFile`. The keys marked **kept** are keys V3 doesn't
+use, kept as read at their place in the table's order ([Unknown keys](#unknown-keys)): `webTabs`, `skills`,
 `chatDefaults`, `deletedChats`, `commentAnswers`.
 
 | Swift name | Key | Type | Required | Default | Rules |
@@ -200,7 +172,7 @@ marked **kept** are V2's keys that V3 doesn't use yet ([Unknown keys](#unknown-k
 | name | `name` | `String` | yes | — | One line, 1–100 characters. Names need not be unique. |
 | created | `created` | `Date` | yes | — | When the project was created. Never changed. |
 | type | `type` | `ProjectKind` | no | `none` | [Project kind](#project-kind). |
-| color | `color` | `String?` | no | `null` | `#` and six hex digits, uppercased when read, or **V3 addition** the name of a tint ([Project color](#project-color)). Any other value makes the file invalid (`color: "<text>" is not a color of the form #RRGGBB, nor a tint`). Left out of the file when there is none. |
+| color | `color` | `String?` | no | `null` | `#` and six hex digits, uppercased when read, or the name of a tint ([Project color](#project-color)). Any other value makes the file invalid (`color: "<text>" is not a color of the form #RRGGBB, nor a tint`). Left out of the file when there is none. |
 | icon | `icon` | `String?` | no | `null` | An SF Symbol name, such as `hammer`. Read trimmed, an empty value being none. Left out of the file when there is none. |
 | nextTicketNumber | `nextTicketNumber` | `Int` | no | `1` | The first number tried for the next ticket. |
 | nextBundleNumber | `nextBundleNumber` | `Int` | no | `1` | The first number tried for the next bundle. |
@@ -208,36 +180,36 @@ marked **kept** are V2's keys that V3 doesn't use yet ([Unknown keys](#unknown-k
 | githubPage | `githubPage` | `String?` | no | `null` | The page typed in the GitHub page field, `https://github.com/<owner>/<name>`: read trimmed and without a trailing `/`; any other value makes the file invalid ([GitHub page](#github-page)). Left out of the file when there is none. |
 | useParentSettings | `useParentSettings` | `Bool` | no | `true` | Whether a sub project uses its parent's settings: the parent's GitHub page and, for a service, its environments. No effect for a top-level project. |
 | subprojects | `subprojects` | `[String]` | no | `[]` | Relative paths of the direct sub projects, in the order they were added, each once. Each names a folder inside this project's folder that holds `.hephaestus/project.yml`. An entry whose folder or file is missing or invalid is kept. |
-| — | `webTabs` | kept | no | absent | V2's web tabs. |
-| — | `skills` | kept | no | absent | V2's enabled skills. |
-| — | `chatDefaults` | kept | no | absent | V2's settings of new chats. |
+| — | `webTabs` | kept | no | absent | Web tabs; not used. |
+| — | `skills` | kept | no | absent | Enabled skills; not used. |
+| — | `chatDefaults` | kept | no | absent | Settings of new chats; not used. |
 | graphEnabled | `graphEnabled` | `Bool` | no | `false` | Whether the service's graph is enabled. Left out of the file while `false`. |
 | environments | `environments` | `[EnvironmentEntry]` | no | `[]` | The environments of a service, in the order they were added; names unique, letter case included ([Project environment](#project-environment)). Kept when the type changes. |
 | environmentOverrides | `environmentOverrides` | `[String: EnvironmentOverride]` | no | `{}` | A sub project's changes to the environments it inherits, by environment name, written in Unicode code point order ([Environment override](#environment-override)). A change for a name no inherited environment has is kept and ignored. |
 | dashboardWidgets | `dashboardWidgets` | `[DashboardWidgetEntry]?` | no | `null` | The widgets of the project's [Dashboard](ui/dashboard.md), in their order ([Dashboard widget](#dashboard-widget)). `null` shows the default list and `[]` no widget. Left out of the file while the project has no stored list. |
 | dashboardGraphWindow | `dashboardGraphWindow` | `DashboardGraphWindow?` | no | `null` | The time window of the Dashboard's service widgets: `fiveMinutes`, `hour`, `day` or `week`; `null` is `hour`. Any other value makes the file invalid. Left out of the file while `null`. V3 has no `week` window yet: a stored `week` is kept, and the Dashboard shows the last hour. |
-| — | `deletedChats` | kept | no | absent | V2's costs of deleted chats. |
-| — | `commentAnswers` | kept | no | absent | V2's costs of comment answers. |
-| keptV2Keys | — | `YAMLMapping` | — | empty | The kept keys present in the file, as read. |
+| — | `deletedChats` | kept | no | absent | Costs of deleted chats; not used. |
+| — | `commentAnswers` | kept | no | absent | Costs of comment answers; not used. |
+| keptKeys | — | `YAMLMapping` | — | empty | The kept keys present in the file, as read. |
 | unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
 
-A `commands` key, which old V2 versions wrote, is an unknown key.
+A `commands` key is an unknown key, not a kept one.
 
 ### Project kind
 
 Swift type `ProjectKind`, key `type`: a string enumeration. Any other value makes the file invalid.
 
-| Value | V2's name | V3's name |
-| --- | --- | --- |
-| `none` | None | Other |
-| `goService` | Go service | Service |
-| `swiftApplication` | Swift application | App |
-| `library` | — | Library. **V3 addition.** |
+| Value | Name |
+| --- | --- |
+| `none` | Other |
+| `goService` | Service |
+| `swiftApplication` | App |
+| `library` | Library |
 
 ### Project color
 
-V2 stores a color as `#RRGGBB`. V3's projects take one of AZDesign's semantic colors, a tint
-(ToolsFoundation's `ProjectTint`), and V3 stores the tint's name. **V3 addition.** The names are
+A project's color is one of AZDesign's semantic colors, a tint (ToolsFoundation's `ProjectTint`), stored by
+its name, or a `#RRGGBB` value. The names are
 `ProjectColor.tintNames`: `accent`, `accentSecondary`, `info`, `success`, `warning`, compared letter case
 included. `ProjectColor.normalized(_:)` returns a tint name as is, `#RRGGBB` uppercased, and nil for anything
 else. Defaults chosen at design time.
@@ -260,24 +232,24 @@ the `hostname` line of `ssh -G <alias>`, is `github.com`.
 ### Dashboard widget
 
 Swift type `DashboardWidgetEntry`, one element of `dashboardWidgets`: a widget of the project's Dashboard with
-its position and size on the Dashboard's grid and its settings ([UI › Dashboard](ui/dashboard.md)). V2's format;
-the Dashboard changes the list through [Update](#changes) and `ProjectChange.dashboardWidgets`.
+its position and size on the Dashboard's grid and its settings ([UI › Dashboard](ui/dashboard.md)). The
+Dashboard changes the list through [Update](#changes) and `ProjectChange.dashboardWidgets`.
 
 | Swift name | Key | Type | Required | Default | Rules |
 | --- | --- | --- | --- | --- | --- |
 | id | `id` | `UUID` | yes | — | Unique within the list. |
-| kind | `kind` | `Kind` | yes | — | `project`, `tickets`, `recentChats`, `cost`, `instances`, `serviceGraph`, `busiestCalls`, `failedRequests`, `requestsPerMinute`, or **V3 addition** `recentBuilds`. Any other value makes the file invalid. |
+| kind | `kind` | `Kind` | yes | — | `project`, `tickets`, `recentChats`, `cost`, `instances`, `serviceGraph`, `busiestCalls`, `failedRequests`, `requestsPerMinute` or `recentBuilds`. Any other value makes the file invalid. |
 | title | `title` | `String` | no | `""` | The Title setting: one line, at most 100 characters, trimmed; empty means the title of the kind. |
 | column | `column` | `Int?` | no | `null` | The first column the widget covers, 0–23. |
 | row | `row` | `Int?` | no | `null` | The first row it covers, from 0. |
 | width | `width` | `Int?` | no | `null` | The columns it covers, 1–24; `column` + `width` is at most 24. |
 | height | `height` | `Int?` | no | `null` | The rows it covers, from 1. |
 | fields | `fields` | `[Field]` | no | all four | `project`: the fields shown, among `name`, `identifier`, `type` and `folder`. At least one, each once. |
-| statuses | `statuses` | `[Status]` | no | V2's four | `tickets`: the counts shown, among `todo`, `in_progress`, `review`, `done` and **V3 addition** `draft`. At least one, each once. The default is V2's four; V3 writes the list a widget it adds starts with: all five. |
+| statuses | `statuses` | `[Status]` | no | the first four | `tickets`: the counts shown, among `todo`, `in_progress`, `review`, `done` and `draft`. At least one, each once. The default is the first four; a widget V3 adds starts with all five, written in the file. |
 | includeSubprojects | `includeSubprojects` | `Bool` | no | `true` | `tickets` and `cost`: whether the counts or the total cover the loaded sub projects. |
-| chatCount | `chatCount` | `Int` | no | `5` | `recentChats` (V2's): the most chats listed, 1–20. |
-| chatKinds | `chatKinds` | `[ChatKind]` | no | all four | `recentChats` (V2's): `project`, `ticket`, `bundle`, `feedback`. At least one, each once. |
-| count | `count` | `Int` | no | `5` | `busiestCalls`, `failedRequests` and **V3 addition** `recentBuilds`: the most rows listed, 1–20. |
+| chatCount | `chatCount` | `Int` | no | `5` | `recentChats`: the most chats listed, 1–20. |
+| chatKinds | `chatKinds` | `[ChatKind]` | no | all four | `recentChats`: `project`, `ticket`, `bundle`, `feedback`. At least one, each once. |
+| count | `count` | `Int` | no | `5` | `busiestCalls`, `failedRequests` and `recentBuilds`: the most rows listed, 1–20. |
 | unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
 
 - A widget has the keys `id`, `kind` and `title`, then the four position keys while it has a stored position,
@@ -289,8 +261,8 @@ the Dashboard changes the list through [Update](#changes) and `ProjectChange.das
 - The position keys are written together, by the Dashboard, when the user moves, resizes, adds or removes a
   widget. A file edited by hand that holds only some of them, or values outside the rules, still loads: the
   Dashboard brings them inside the grid and counts a widget with only some of them as one without position.
-- **Write rules**, checked on each widget the list adds or changes, in order (V2's
-  `DashboardWidget.normalized`); a widget equal to a stored one is written back as it is, as many times as the
+- **Write rules**, checked on each widget the list adds or changes, in order
+  (`DashboardWidgetEntry.checked`); a widget equal to a stored one is written back as it is, as many times as the
   stored list holds it, and a further copy is a widget the list adds:
   - title: `dashboardWidgets[<n>]: use a title of at most 100 characters on one line.`;
   - only some position keys: `dashboardWidgets[<n>]: give the column, row, width and height together.`;
@@ -301,8 +273,8 @@ the Dashboard changes the list through [Update](#changes) and `ProjectChange.das
   - `chatCount` outside 1–20: `dashboardWidgets[<n>]: use a number of chats from 1 to 20.`;
   - then an id another widget of the list has: `Widget <ID> is listed more than once.`
 - The ids of the default list are `00000000-0000-0000-0000-00000000000<n>` for its n-th widget
-  (`DashboardWidgetEntry.defaultID`); V3's default list differs from V2's ([UI › Dashboard › Default list](ui/dashboard.md#default-list)).
-- `recentChats` and `cost` are V2's: V3 keeps them, with their settings, and never shows them.
+  (`DashboardWidgetEntry.defaultID`); the list is in [UI › Dashboard › Default list](ui/dashboard.md#default-list-and-sample-layouts).
+- V3 keeps `recentChats` and `cost` widgets, with their settings, and never shows them.
 
 ### Project environment
 
@@ -320,7 +292,7 @@ Kubernetes resources it runs on.
 | jaeger | `jaeger` | `String?` | no | `null` | The Kubernetes Service of the environment's Jaeger, `<namespace>/<name>`: one `/`, parts not empty, no white space. |
 | argoCDApplication | `argoCDApplication` | `String?` | no | `null` | The Argo CD Application: `<name>`, in the namespace `argocd`, or `<namespace>/<name>`; one `/` at most, parts not empty, no white space. |
 | kubeconfig | `kubeconfig` | `String?` | no | `null` | The kubeconfig file: an absolute path or one starting with `~/`; `null` uses kubectl's default (`KUBECONFIG` of the login shell, else `~/.kube/config`). |
-| unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). V2's old `context` key is one: kubectl always uses the kubeconfig file's current context. |
+| unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). A `context` key is one: kubectl always uses the kubeconfig file's current context. |
 
 - `url` and the five Kubernetes keys are single lines, read and written trimmed, an empty value being `null`.
 - The **base URL** is `url` with its port replaced by `port` when set, without a trailing `/`; none without
@@ -348,13 +320,13 @@ values the change sets; `isEmpty` is true when it sets none.
 
 ### Examples
 
-The test fixtures `HephaestusV3Kit/Tests/ProjectDataTests/Fixtures/project-*.yml` are V2's four examples,
-copied from V2's `docs/data-model.md`. The complete one, as V2 wrote it, which V3 writes back byte for byte:
+The test fixtures `HephaestusV3Kit/Tests/ProjectDataTests/Fixtures/project-*.yml` are four examples. The
+complete one (`project-complete.yml`), which V3 writes back byte for byte:
 
 ```yaml
 schema: 1
 id: HEPH
-name: Hephaestus V2
+name: Hephaestus Tools
 created: 2026-10-31T12:00:00Z
 type: swiftApplication
 color: '#34C759'
@@ -465,7 +437,7 @@ environmentOverrides:
 ```yaml
 schema: 1
 projects:
-- /Users/example/Developer/HephaestusV2
+- /Users/example/Developer/Tools
 - /Users/example/Developer/Website
 ```
 
@@ -493,11 +465,10 @@ projects:
 When the app starts (`ProjectSession.start`, [Architecture › ProjectData](architecture.md#projectdata)):
 
 1. The data folder is created when missing, and its lock taken.
-2. The import from V2 runs, once ([Import from HephaestusV2](#import-from-hephaestusv2)).
-3. `registry.yml` is read; a missing one is created empty, an invalid one set aside as `registry.yml.invalid`
+2. `registry.yml` is read; a missing one is created empty, an invalid one set aside as `registry.yml.invalid`
    and recreated empty. `current-environments.yml` is read; a missing one gives no choice, an invalid one is
    set aside and gives no choice.
-4. The projects load: the registry's entries in order, each followed by its sub projects, depth first, in
+3. The projects load: the registry's entries in order, each followed by its sub projects, depth first, in
    `subprojects` order. Temporary files a crash left in a `.hephaestus/` folder are deleted. An entry is
    skipped, and reported with its reason (`ProjectIssue`), when:
 
@@ -511,8 +482,8 @@ When the app starts (`ProjectSession.start`, [Architecture › ProjectData](arch
 
    The entry stays where it is: the project loads as soon as its folder and file are fine. A folder reached
    twice (through a symbolic link) loads once.
-5. The files are watched ([Outside changes](#outside-changes)).
-6. Then, without holding the windows: the login shell's environment is captured, the tools are looked up,
+4. The files are watched ([Outside changes](#outside-changes)).
+5. Then, without holding the windows: the login shell's environment is captured, the tools are looked up,
    and the `origin` of each loaded folder is read ([GitHub page](#github-page)).
 
 Invalid project files are never renamed or rewritten at load: they belong to the project's repository.
@@ -572,27 +543,26 @@ project. `TicketData` reads and writes them ([Architecture › TicketData](archi
 | `schema` | `Int` | no | `1` | [Keys and values](#keys-and-values). |
 | `id` | ticket id | yes | — | Equals the file name without `.yml`; its identifier part is the project's `id`. A file whose `id` differs is invalid. |
 | `title` | `String` | yes | — | One line, 1–200 characters once trimmed. |
-| `status` | `TicketFileStatus` | no | `todo` | `draft` (**V3 addition**), `todo`, `in_progress`, `review`, `done` ([Ticket rules](#ticket-rules)). |
+| `status` | `TicketFileStatus` | no | `todo` | `draft`, `todo`, `in_progress`, `review`, `done` ([Ticket rules](#ticket-rules)). |
 | `created` | date | yes | — | Never changed. |
 | `updated` | date | no | `created` | Set to now by every write of the file by V3. |
 | `createdBy` | `user` or `claude` | no | `user` | Who created the ticket. |
 | `description` | `String` | no | `""` | Markdown, line breaks LF. |
 | `attachments` | `[AttachmentEntry]` | no | `[]` | The ticket's own files, in the order added ([Attachments](#attachments)). |
 | `comments` | `[CommentEntry]` | no | `[]` | Oldest first; ids unique within the ticket. |
-| `chats` | `[String]` | no | `[]` | The chats linked to the ticket, uppercase UUIDs; kept as read until Chat comes over. |
+| `chats` | `[String]` | no | `[]` | The chats linked to the ticket, uppercase UUIDs; kept as read. |
 | `links` | `[TicketLinkEntry]` | no | `[]` | The links this ticket declares, in the order given ([Link rules](#link-rules)). |
 | `history` | `[HistoryEntry]` | no | one creation entry | Oldest first, only appended to. A file without history reads with one `created` entry made from `created` and `createdBy`, `to: todo`, without device or chat. |
-| `priority` | `low`, `medium`, `high`, `urgent` | no | none | **V3 addition**, written after `history` only when set. |
-| `labels` | `[String]` | no | `[]` | **V3 addition**, written after `history` (and `priority`) only when not empty; trimmed, empty ones dropped, each once. |
+| `priority` | `low`, `medium`, `high`, `urgent` | no | none | Written after `history` only when set. |
+| `labels` | `[String]` | no | `[]` | Written after `history` (and `priority`) only when not empty; trimmed, empty ones dropped, each once. |
 
-V2's runtime-only keys `inverseLinks` (on a ticket) and `answer` (on a comment) are ignored when read and never
+The runtime-only keys `inverseLinks` (on a ticket) and `answer` (on a comment) are ignored when read and never
 written. Every other unknown key is kept ([Unknown keys](#unknown-keys)).
 
 **Comment** (`CommentEntry`): `id` (UUID, required), `author` (`user` or `claude`, required), `created` (date,
 required), `updated` (date or `null`, when the text was last edited), `text` (Markdown, default `""`),
-`attachments` (`[AttachmentEntry]`), `model` and `effort` (strings or `null`: set by V2 for comments Claude
-added from a chat; kept as read). A comment has text that isn't empty once trimmed, at least one attachment,
-or both.
+`attachments` (`[AttachmentEntry]`), `model` and `effort` (strings or `null`, kept as read). A comment has text
+that isn't empty once trimmed, at least one attachment, or both.
 
 **Ticket link** (`TicketLinkEntry`): `kind` (`dependsOn` or `related`) and `ticket` (a ticket id of the same
 project). The other ticket shows the inverse, computed at each snapshot and never written:
@@ -607,7 +577,7 @@ declaring ticket).
 | `date` | When the change was made. |
 | `from` | The previous status (`status`) or title (`title`); required for those two, `null` for the others. |
 | `to` | The new status (`created`: the status it was created with), the new title, or the link as `<kind> <ticket id>`; not written for `description`. |
-| `author` | `user`, `claude` or `automatic` (V2's Haiku naming; V3 writes `user` and `claude` only). |
+| `author` | `user`, `claude` or `automatic`; V3 writes `user` and `claude` only. |
 | `device` | For `user`: the Mac's computer name at the time (`TicketSession.computerName()`). |
 | `chat` | For `claude`: the chat's id, or `external` for a terminal session. |
 
@@ -655,13 +625,13 @@ title equal to the stored one changes nothing. A ticket created without a title 
 title: the description's first line that isn't empty and isn't a heading (a line starting with `#`), trimmed,
 cut to 60 characters and trimmed again; `Untitled Ticket` without one.
 Without a title the description must not be empty (`The description must not be empty.`). A bundle created
-without a title takes its tickets' titles joined with `, `, cut to 60 characters and trimmed. (V2 then had
-Haiku name them; V3 keeps the provisional title, which the user or Claude may change.)
+without a title takes its tickets' titles joined with `, `, cut to 60 characters and trimmed. The
+provisional title stays until the user or Claude changes it.
 
-**Descriptions.** Free Markdown, from the user and from Claude alike. V2 made Claude's descriptions follow a
-six-heading template; V3 drops it with the rest of V2's prompts ([Decisions › V2's prompts](decisions.md#v2s-prompts)).
+**Descriptions.** Free Markdown, from the user and from Claude alike, with no template ([Decisions › What
+Claude reads](decisions.md#what-claude-reads)).
 
-**Status.** Statuses in order: Draft (**V3 addition**), To Do, In Progress, In Review, Done. A ticket starts
+**Status.** Statuses in order: Draft, To Do, In Progress, In Review, Done. A ticket starts
 To Do, or as a draft when the user creates it so; Claude's start To Do. The user may set any status at any
 time. Claude may set To Do, In Progress, In Review and Done, but never changes a done ticket (`<ID> is done;
 only the user can change its status.`), never changes a draft (`<ID> is a draft; only the user can change its
@@ -741,12 +711,11 @@ the Trash fails with `<path> cannot be moved to the Trash: <reason>.`; the write
 ## Chats
 
 A chat is one Claude Code session, run by the Claude CLI in the project's folder ([UI › Chat](ui/chat.md)). Its
-files are V2's: the metadata file and the transcript, in the project's `.hephaestus/chats/`, which
+files are the metadata file and the transcript, in the project's `.hephaestus/chats/`, which
 `.hephaestus/.gitignore` keeps out of git (the first chat of a project adds the line `chats/` when it is
-missing). V3 reads V2's chats of every kind and writes its own in the same format, with two V3 additions: the
-`origin` of a chat and the `references` of a message. `<CHAT-ID>` is an uppercase UUID, also the CLI's session
-id. Names in `chats/` that aren't `<CHAT-ID>.yml` or `<CHAT-ID>.jsonl` are ignored: V2's per-chat folders
-(attachments, agents) stay as they are.
+missing). V3 reads chats of every kind ([Chat kinds](#chat-kinds)). `<CHAT-ID>` is an uppercase UUID, also the
+CLI's session id. Names in `chats/` that aren't `<CHAT-ID>.yml` or `<CHAT-ID>.jsonl` are ignored: per-chat
+folders (attachments, agents) stay as they are.
 
 ### Chat file
 
@@ -760,18 +729,18 @@ id. Names in `chats/` that aren't `<CHAT-ID>.yml` or `<CHAT-ID>.jsonl` are ignor
 | kind | `kind` | `ChatFile.Kind` | yes | — | `project`, `ticket`, `bundle`, `feedback`, `ci` or `setup` ([Chat kinds](#chat-kinds)). V3 makes `project` chats only. |
 | ticketID | `ticket` | `String?` | no | `null` | Always written, `null` when absent. |
 | bundleID | `bundle` | `String?` | no | `null` | Always written, `null` when absent. |
-| orchestratorChatID | `orchestrator` | `String?` | no | absent | V2's orchestrated chats. Written only when set. |
-| imageID | `image` | `String?` | no | absent | V2's Auto Setup chats. Written only when set. |
+| orchestratorChatID | `orchestrator` | `String?` | no | absent | A `ticket` or `ci` chat's orchestrator, kept as read ([Chat kinds](#chat-kinds)). Written only when set. |
+| imageID | `image` | `String?` | no | absent | A `setup` chat's image, kept as read ([Chat kinds](#chat-kinds)). Written only when set. |
 | created | `created` | `Date` | yes | — | Never changed. |
 | updated | `updated` | `Date` | no | `created` | Set by a message sent, a turn's end, a rename, a settings change. The Chat window lists chats by it, the latest first. |
 | settings | `settings` | `ChatSettings` | no | defaults | [Chat settings](#chat-settings). |
 | sessionStarted | `sessionStarted` | `Bool` | no | `false` | True once the CLI has started the session (its first `system/init`): later launches resume it. |
-| closed | `closed` | `Bool` | no | `false` | V2's closed chats. A message sent sets it back to `false`. |
-| questionsBlocked | `questionsBlocked` | `Bool` | no | `false` | V2's implement chats. Written only when `true`. |
-| origin | `origin` | `String?` | no | absent | **V3 addition.** The tool whose chat panel started the chat, a `ToolKind` value such as `tickets`; absent for a chat of the Chat window and for V2's chats. Written only when set. |
-| unknownKeys | — | `YAMLMapping` | — | empty | Kept and written after the known keys, V2's `contextUsage` among them ([Unknown keys](#unknown-keys)). V2's runtime keys (`projectID`, `state`, `backgroundWork`, `compactingSince`, `costUSD`, `mentionedIDs`) are ignored when read and never written. |
+| closed | `closed` | `Bool` | no | `false` | Whether the chat is closed. A message sent sets it back to `false`. |
+| questionsBlocked | `questionsBlocked` | `Bool` | no | `false` | `ticket` chats only, kept as read ([Chat kinds](#chat-kinds)). Written only when `true`. |
+| origin | `origin` | `String?` | no | absent | The tool whose chat panel started the chat, a `ToolKind` value such as `tickets`; absent for a chat of the Chat window. Written only when set. |
+| unknownKeys | — | `YAMLMapping` | — | empty | Kept and written after the known keys, `contextUsage` among them ([Unknown keys](#unknown-keys)). The runtime keys `projectID`, `state`, `backgroundWork`, `compactingSince`, `costUSD` and `mentionedIDs` are ignored when read and never written. |
 
-A V2 chat file is written back byte for byte. Example, a chat V3 started from the Tickets window's panel:
+A chat file is written back byte for byte. Example, a chat started from the Tickets window's panel:
 
 ```yaml
 schema: 1
@@ -795,7 +764,7 @@ origin: tickets
 
 ### Chat kinds
 
-V2's rules; a file that breaks them is invalid and isn't listed:
+A file that breaks these rules is invalid and isn't listed:
 
 | Kind | `ticket` | `bundle` | Other |
 | --- | --- | --- | --- |
@@ -812,7 +781,7 @@ Only `ticket` and `ci` chats have an `orchestrator`, only `setup` chats an `imag
 ### Chat settings
 
 Swift type `ChatSettings`, keys in this order: `model` (`String`, default `default`: a CLI model value, not
-empty, no white space), `effort` (`low`, `medium`, `high`, `xhigh` or `max`, default `high`), then V2's
+empty, no white space), `effort` (`low`, `medium`, `high`, `xhigh` or `max`, default `high`), then
 `permissionMode` (default `manual`), `ultracode` (default `false`) and `contextWindow` (default `auto`), kept as
 read and not used by V3, then unknown keys. A new chat takes the model and effort of [Settings
 file](#settings-file) › `chatModel` and `chatEffort`.
@@ -841,17 +810,17 @@ with `null` written for an absent optional:
 
 | `type` | Keys | Id |
 | --- | --- | --- |
-| `user` | `text` (the message as written, without what V3 adds for Claude), `attachments` (V2's files, kept), `sender` (the Mac's name), `linkedItems` (V2's, kept), `references` (**V3 addition**: `[{tool, project, focus, title, environment}]`, the item the message's chip carried; `tool` is a `ToolKind` value or `project`) | a new uppercase UUID, also the message's `uuid` for the CLI |
+| `user` | `text` (the message as written, without what V3 adds for Claude), `attachments` (kept as read), `sender` (the Mac's name), `linkedItems` (kept as read), `references` (`[{tool, project, focus, title, environment}]`, the item the message's chip carried; `tool` is a `ToolKind` value or `project`) | a new uppercase UUID, also the message's `uuid` for the CLI |
 | `assistant` | `text`, `messageID`, `parentToolUseID`, `model` (the CLI's model id), `effort` | `<message id>#<block index>` |
 | `thinking` | `text`, `parentToolUseID` (kept; not shown) | `<message id>#<block index>` |
 | `toolUse` | `toolUseID`, `name` (without `mcp__<server>__`), `server` (`hephaestus` for the app's tools, `null` for the CLI's), `input`, `parentToolUseID` | `<message id>#<block index>` |
-| `toolResult` | `toolUseID`, `text`, `isError`, `images` (V2's, kept) | `<tool use id>#result` |
+| `toolResult` | `toolUseID`, `text`, `isError`, `images` (kept as read) | `<tool use id>#result` |
 | `permissionRequest` | `requestID`, `toolName` (the CLI's name, `mcp__hephaestus__add_comment`), `input`, `reason`, `decision` (`allow`, `allowAlways`, `deny`; `null` while it waits), `decidedBy` (the Mac whose user answered; `null` while it waits and when the app cancelled it) | `perm-<request id>` |
-| `system` | `text` (in English, as V2 wrote them), `level` (`info`, `warning`, `error`) | a new uppercase UUID |
+| `system` | `text` (in English), `level` (`info`, `warning`, `error`) | a new uppercase UUID |
 | `result` | `durationMs`, `costUSD` (kept; not shown), `isError`, `summary` | a new uppercase UUID |
 
-V2's other items, `questions`, `symbol`, `color`, `sound`, `shortcut`, `font`, `animation` and `images`, belong
-to features V3 doesn't bring over: they are skipped when a transcript is read, and stay in the file. A string
+The items `questions`, `symbol`, `color`, `sound`, `shortcut`, `font`, `animation` and `images` are skipped
+when a transcript is read, and stay in the file. A string
 longer than 100,000 characters in a call's input or a result's text is cut, followed by `… [truncated <n>
 characters]`.
 
@@ -871,8 +840,8 @@ The `system` lines V3 writes:
 
 ### Stream mapping
 
-`StreamMapper` turns each line the CLI writes (stream-json, checked against V2's captures of Claude Code
-2.1.309, copied into `ChatDataTests/Fixtures`) into items and events. A line that isn't a JSON object is
+`StreamMapper` turns each line the CLI writes (stream-json, checked against captures of Claude Code
+2.1.309 in `ChatDataTests/Fixtures`) into items and events. A line that isn't a JSON object is
 skipped.
 
 | Line | Result |
@@ -914,7 +883,7 @@ the model probe reads the CLI's models: `<path> -p --input-format stream-json --
 `Runtime/claude-cwd/`, writes `initialize`, takes `response.models` from its answer (30 s at most), closes stdin,
 then SIGTERM and SIGKILL 2 s later. No message is sent: the probe makes no model request. Each model entry gives
 `value`, `displayName` (default `value`), `description`, `supportedEffortLevels`, `resolvedModel`; an entry without
-`value` is skipped. Until an answer, the list is V2's fallback: Default, Opus, Fable, Sonnet, Haiku. Every chat
+`value` is skipped. Until an answer, the list is the fallback: Default, Opus, Fable, Sonnet, Haiku. Every chat
 process's `initialize` answer replaces the list too. A model id's name is the `displayName` of the first model
 other than `default` that resolves to it, else of the model whose value it is, else the id.
 
@@ -939,7 +908,7 @@ The arguments, one element each, no shell:
 - `--allowedTools` lists every tool of the app's server: the CLI runs them without asking, and the app's server
   asks the user before a change, as Settings ▸ Chat says ([MCP › Permissions](mcp.md#permissions)).
 - No system prompt, no hook, no skill, no plugin: V3 sends Claude nothing written for it besides its tools'
-  descriptions and the line of a message's item ([Decisions › V2's prompts](decisions.md#v2s-prompts)).
+  descriptions and the line of a message's item ([Decisions › What Claude reads](decisions.md#what-claude-reads)).
 - The MCP configuration, mode 0600: `{"mcpServers":{"hephaestus":{"type":"http","url":"http://127.0.0.1:<port>/mcp","headers":{"Authorization":"Bearer <token>"}}}}`, the token a new chat token
   ([MCP › Authentication](mcp.md#authentication)), revoked with the file when the process ends.
 
@@ -1007,8 +976,8 @@ changed outside the app shows when its chat is read again.
 
 ## Builds
 
-Builds reads the workflow runs and releases of a project's GitHub repository with the GitHub CLI, `gh`, as V2
-did (V2's `docs/builds.md`), and keeps nothing: no file holds a run or a release ([UI › Builds](ui/builds.md)).
+Builds reads the workflow runs and releases of a project's GitHub repository with the GitHub CLI, `gh`, and keeps
+nothing: no file holds a run or a release ([UI › Builds](ui/builds.md)).
 The repository is the project's GitHub page as it resolves, `https://github.com/<owner>/<name>` (a sub project
 on its parent's settings has its parent's); a project without one has no runs: `Project <ID> has no GitHub
 page.`
@@ -1088,7 +1057,7 @@ then SIGKILL). The Argo CD commands use the Application's namespace: `<namespace
 | Argo CD sync | `patch applications.argoproj.io/<name> --type=merge --patch={"operation":{"initiatedBy":{"username":"Hephaestus"},"sync":{"syncStrategy":{"hook":{}}}}}`, refused while an operation runs |
 | Port forward | `port-forward <target> --address=127.0.0.1 <local>:<remote>`, waiting at most 30 s for `Forwarding from 127.0.0.1:<port> -> <remote>` |
 
-Failures, V2's: `<command> exited with code <n>: <standard error>` (or `.` without it), `<command> did not finish
+Failures: `<command> exited with code <n>: <standard error>` (or `.` without it), `<command> did not finish
 within 60 seconds.`, `Unexpected output from <command>.`, `kubectl was not found in the PATH of the login shell.`,
 `Environment “<name>” has no deployment.`, `Environment “<name>” has no Argo CD application.` `<command>` is kubectl
 and its arguments, an argument with other characters than letters, digits and `-_./:=,@+%` in single quotes.
@@ -1099,7 +1068,7 @@ stops them or the app quits.
 
 ### Service map
 
-V2's rules, which came from the owner:
+The owner's rules:
 
 - **Services**: each Deployment whose first container image of the form `ghcr.io/<owner>/<repository>:sha-<commit>`
   (7 to 40 hexadecimal digits) names a repository other than `yc-shared`. Its health: Down when no pod is ready,
@@ -1140,10 +1109,10 @@ Of the spans that started in the time window:
 
 ## Contracts
 
-A project's contract is its `openapi/contract.yaml`, V2's API Explorer file: an OpenAPI 3.0 or 3.1 document,
-YAML or JSON, which V3 reads and never writes ([UI › Contracts](ui/contracts.md)). A project whose folder holds
-the file, when the projects are read, offers Contracts; the window reads the file when it shows, and again
-after a file event under `openapi/`.
+A project's contract is its `openapi/contract.yaml`: an OpenAPI 3.0 or 3.1 document, YAML or JSON, which V3
+reads and never writes ([UI › Contracts](ui/contracts.md)). A project whose folder holds the file, when the
+projects are read, offers Contracts; the window reads the file when it shows, and again after a file event
+under `openapi/`.
 
 ### Reading
 
@@ -1155,7 +1124,7 @@ after a file event under `openapi/`.
   `trace`; a path item reached through `$ref` is resolved first. An operation's parameter replaces the path
   item's with the same `name` and `in`. Its key is `<METHOD> <path>`; the window names it by `operationId`, or
   by its key without one. Its tag is its first, else `default`.
-- **`$ref`** (V2's rules): split at the first `#`; the fragment is a JSON pointer (`~1` is `/`, `~0` is `~`,
+- **`$ref`**: split at the first `#`; the fragment is a JSON pointer (`~1` is `/`, `~0` is `~`,
   percent-decoded); an empty file part is the same file; another is relative to the file holding the ref,
   `.` and `..` removed. A ref can't be resolved when its file part has a scheme, starts with `/`, leaves the
   project's folder, can't be read or parsed, or its pointer names nothing. Refs are followed at most 32 in a row.
@@ -1195,20 +1164,18 @@ text; `Binary body (<size>)` otherwise). A request without answer gives the erro
 
 ### Stored values
 
-`<data folder>/openapi-requests.json`, mode 0600, V2's format: `{"contracts": [{"projectID", "path",
-"credentials", "headers", "operations", "deviceID"}]}`. V3 keeps per contract (`path` is
-`openapi/contract.yaml`) the credentials of each scheme (`value` for an API key, `username` and `password`,
-`token`) and the added headers, set in the window's **Credentials and Headers** sheet; it keeps V2's
-`operations` and `deviceID` as read, and leaves out V2's earlier keys (`environment`, `server`…). At its first
-start V3 copies V2's `~/Library/Application Support/HephaestusV2/openapi-requests.json` when its own file is
-missing. A missing or invalid file is empty. Claude's `api_call` uses the stored credentials and headers and
+`<data folder>/openapi-requests.json`, mode 0600: `{"contracts": [{"projectID", "path", "credentials",
+"headers", "operations", "deviceID"}]}`. V3 keeps per contract (`path` is `openapi/contract.yaml`) the
+credentials of each scheme (`value` for an API key, `username` and `password`, `token`) and the added headers,
+set in the window's **Credentials and Headers** sheet; it keeps `operations` and `deviceID` as read, and leaves
+out any other key (`environment`, `server`…). A missing or invalid file is empty. Claude's `api_call` uses the stored credentials and headers and
 never sees them.
 
 ## Virtual machines
 
-macOS virtual machines on this Mac, V2's files and rules, run by the Virtualization framework inside the app's
-process (`MachineData`: `MachineHost`, `MachineLibrary`). Apple silicon only: elsewhere every start, install and
-setup fails with `Virtual machines need a Mac with Apple silicon.` The app carries the entitlement
+macOS virtual machines on this Mac, run by the Virtualization framework inside the app's process
+(`MachineData`: `MachineHost`, `MachineLibrary`). Apple silicon only: elsewhere every start, install and setup
+fails with `Virtual machines need a Mac with Apple silicon.` The app carries the entitlement
 `com.apple.security.virtualization` ([Architecture › Entitlements](architecture.md#entitlements)).
 
 ### Storage
@@ -1216,7 +1183,7 @@ setup fails with `Virtual machines need a Mac with Apple silicon.` The app carri
 ```
 <data folder>/VirtualMachines/
   Images/<IMAGE-ID>/        an image: an uppercase UUID
-    image.yml               its metadata file, mode 0600 (V3: the file holds the guest account's password)
+    image.yml               its metadata file, mode 0600 (it holds the guest account's password)
     Restore.ipsw            the IPSW, while it downloads and installs
     HardwareModel           the hardware model it was installed for
     MachineIdentifier       its machine identifier
@@ -1230,9 +1197,8 @@ setup fails with `Virtual machines need a Mac with Apple silicon.` The app carri
 ```
 
 - A folder whose name isn't an uppercase UUID, or whose metadata file is missing, invalid or names another id, is
-  skipped. A file's `id` and `imageID` are read in uppercase (V2 wrote some in lowercase).
-- A machine whose `startedBy` isn't `user` (V2's machines that Claude started, left when V2 quit without stopping
-  them) is skipped, and not imported.
+  skipped. A file's `id` and `imageID` are read in uppercase.
+- A machine whose `startedBy` isn't `user` is skipped.
 - Deleting an image or a machine deletes its folder, not to the Trash: a disk there would keep its space.
 - An image's size in the window is the space its files take (`MachineFolder.bytesOnDisk`, allocated sizes): for
   the sparse disk, what was written. A disk's size is `Disk.img`'s length in GB rounded up (`MachineFolder.diskGB`).
@@ -1240,7 +1206,7 @@ setup fails with `Virtual machines need a Mac with Apple silicon.` The app carri
 
 ### Image file
 
-`VirtualMachines/Images/<IMAGE-ID>/image.yml`, `ImageFile`, V2's format. V3 writes it with mode 0600.
+`VirtualMachines/Images/<IMAGE-ID>/image.yml`, `ImageFile`, written with mode 0600.
 
 | Swift name | Key | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -1249,10 +1215,10 @@ setup fails with `Virtual machines need a Mac with Apple silicon.` The app carri
 | version, build | `version`, `build` | `String` | yes | ipsw.me's, such as `27.2.1`, `26B131`. |
 | state | `state` | `String` | yes | `downloading`, `installing`, `needsSetup`, `ready`, `failed`. |
 | failure | `failure` | `String?` | written as `null` | The failure's message, one line. |
-| userName, password | `userName`, `password` | `String?` | written as `null` | The guest account, in clear (V2's choice: the password of a test computer). |
+| userName, password | `userName`, `password` | `String?` | written as `null` | The guest account, in clear: the password of a test computer. |
 | created | `created` | date | yes | |
 
-V2's earlier `cores` and `memoryGB` stay as unknown keys; `diskGB`, `progress` and `diskBytes` are dropped.
+`cores` and `memoryGB` stay as unknown keys; `diskGB`, `progress` and `diskBytes` are dropped.
 
 ```yaml
 schema: 1
@@ -1268,7 +1234,7 @@ created: 2026-11-09T14:03:00Z
 
 ### Machine file
 
-`VirtualMachines/Machines/<VM-ID>/vm.yml`, `MachineFile`, V2's format plus one key.
+`VirtualMachines/Machines/<VM-ID>/vm.yml`, `MachineFile`.
 
 | Swift name | Key | Type | Required | Rules |
 | --- | --- | --- | --- | --- |
@@ -1276,15 +1242,15 @@ created: 2026-11-09T14:03:00Z
 | id, name | `id`, `name` | `String` | yes | The name is one line of 1 to 100 characters, trimmed. |
 | imageID, version, build | `imageID`, `version`, `build` | `String` | yes | The image it was made from, as it was then. |
 | cores, memoryGB | `cores`, `memoryGB` | `Int` | yes | |
-| diskGB | `diskGB` | `Int?` | written as `null` | Absent for V2's earlier machines: their `Disk.img`'s size. |
+| diskGB | `diskGB` | `Int?` | written as `null` | When absent, the size of `Disk.img`. |
 | growContainer | `growContainer` | `Bool` | no, `false` | True while the guest's container has to grow over a grown disk. |
-| startedBy | `startedBy` | `String` | no, `user` | V3 lists only `user`. |
+| startedBy | `startedBy` | `String` | no, `user` | A machine with another value is skipped ([Storage](#storage)). |
 | projectID, chatID | `projectID`, `chatID` | `String?` | written as `null` | Kept as read; the inspector's Project row shows `projectID`'s project. |
 | created | `created` | date | yes | |
-| macAddress | `macAddress` | `String?` | **V3 addition**, written only when set | The network device's MAC address, `xx:xx:xx:xx:xx:xx`, made at the machine's creation or first start in V3, so its guest's address can be found. |
+| macAddress | `macAddress` | `String?` | no, written only when set | The network device's MAC address, `xx:xx:xx:xx:xx:xx`, made at the machine's creation, or at its first start when it has none, so its guest's address can be found. |
 
-`state` and `startedAt` are never stored: after a launch every machine is stopped. V2 files round-trip byte for
-byte while V3 hasn't given the machine a MAC address.
+`state` and `startedAt` are never stored: after a launch every machine is stopped. A file without `macAddress`
+round-trips byte for byte until the machine is given a MAC address.
 
 ### macOS versions
 
@@ -1330,7 +1296,7 @@ and boots the image's own disk with the default cores and memory and the shared 
   becomes `ready`.
 - **Stop**: through the agent within 30 seconds, else at once; the image stays in `needsSetup`.
 
-V2's Auto Setup chat and its default image aren't brought over: no tool starts a setup.
+No tool starts a setup.
 
 ### Machine lifecycle
 
@@ -1347,11 +1313,11 @@ V2's Auto Setup chat and its default image aren't brought over: no tool starts a
   is kept for the window, which shows it once (`MachineHost.failures`).
 - Quitting the app stops every machine and setup at once.
 - **Address**: every 3 seconds, up to 60 times, while it runs, the host looks up the machine's MAC address in
-  `/var/db/dhcpd_leases`, the last lease of it, the octets compared without their leading zeros (V3 addition).
+  `/var/db/dhcpd_leases`, the last lease of it, the octets compared without their leading zeros.
 
 ### Growing a disk
 
-V2's `GuestDisk.grow`: the file is extended (sparse); when it holds a GUID partition table whose last partition
+`GuestDisk.grow`: the file is extended (sparse); when it holds a GUID partition table whose last partition
 is `RecoveryOSContainer`, that partition moves to the new end (its end aligned on 4096 bytes, copied from its end
 to its start, blocks of zeros past the old end left unwritten), both copies of the table and the protective MBR
 are rewritten, the old backup is cleared. Another layout is only extended. At the next start with the agent
@@ -1381,25 +1347,16 @@ line.`). A call that changes nothing writes nothing.
 
 ### Defaults
 
-`settings.yml`'s `defaultVMCores` (2), `defaultVMMemoryGB` (4) and `defaultVMDiskGB` (64), V2's keys
+`settings.yml`'s `defaultVMCores` (2), `defaultVMMemoryGB` (4) and `defaultVMDiskGB` (64)
 ([Settings file](#settings-file)): what New Machine starts with, and the cores and memory of an install and a
 setup. A value outside this Mac's range is brought into it where used.
 
-### Import
-
-`MachineLibrary.importV2`, at the first load, when the data folder has no `VirtualMachines/` yet: each folder of
-V2's `~/Library/Application Support/HephaestusV2/VirtualMachines/Images/` and `Machines/` named by a UUID is
-copied file by file with APFS clones (`clonefile`, a copy where cloning isn't possible), so the import takes
-almost no space; V2's Claude machines are left. It never runs again. V2's images keep V2's agent, which speaks the
-same protocol ([Guest agent](guest-agent.md)).
-
-Defaults chosen at design time: the image file's mode, the MAC address and the address lookup, the import by
-clone and its trigger, the Claude machines left out.
+Defaults chosen at design time: the image file's mode, the MAC address and the address lookup, the machines
+whose `startedBy` isn't `user` skipped.
 
 ## Settings file
 
-`<data folder>/settings.yml`: the app's settings. V3's own file: V2's `settings.yml` isn't imported. Swift
-type `SettingsFile`. A missing file gives the defaults; an invalid one is set aside as `settings.yml.invalid`
+`<data folder>/settings.yml`: the app's settings. Swift type `SettingsFile`. A missing file gives the defaults; an invalid one is set aside as `settings.yml.invalid`
 and gives the defaults (`DataFolder.readSettings()`).
 
 | Swift name | Key | Type | Required | Default | Rules |
@@ -1409,9 +1366,9 @@ and gives the defaults (`DataFolder.readSettings()`).
 | claudePath | `claudePath` | `String?` | no | absent | The Claude CLI the chats run: an absolute path or one from `~/`; absent finds it ([Chat processes › The CLI](#the-cli)). Written only when set. |
 | chatModel | `chatModel` | `String?` | no | absent | The model of new chats, a CLI model value such as `opus`; absent for `default`. Written only when set. |
 | chatEffort | `chatEffort` | `String?` | no | absent | The effort of new chats (`low`, `medium`, `xhigh`, `max`); absent for `high`. Written only when set. |
-| defaultVMCores | `defaultVMCores` | `Int?` | no | absent (2) | New machines' cores, 2 to this Mac's ([Virtual machines › Defaults](#defaults)). V2's key. Written only when not the default. |
-| defaultVMMemoryGB | `defaultVMMemoryGB` | `Int?` | no | absent (4) | New machines' memory in GB, 4 to this Mac's. V2's key. |
-| defaultVMDiskGB | `defaultVMDiskGB` | `Int?` | no | absent (64) | New machines' disk in GB, 32 to 2048. V2's key. |
+| defaultVMCores | `defaultVMCores` | `Int?` | no | absent (2) | New machines' cores, 2 to this Mac's ([Virtual machines › Defaults](#defaults)). Written only when not the default. |
+| defaultVMMemoryGB | `defaultVMMemoryGB` | `Int?` | no | absent (4) | New machines' memory in GB, 4 to this Mac's. |
+| defaultVMDiskGB | `defaultVMDiskGB` | `Int?` | no | absent (64) | New machines' disk in GB, 32 to 2048. |
 | unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
 
 ```yaml
@@ -1422,8 +1379,8 @@ mcpPort: 47830
 ## Secrets file
 
 `<data folder>/secrets.json`, mode 0600: one JSON object, written with two-space indentation, keys sorted,
-slashes not escaped, and a final line break. Not in the Keychain, as V2 did, so that a rebuilt app doesn't ask
-for access.
+slashes not escaped, and a final line break. Not in the Keychain, so that a rebuilt app doesn't ask for
+access.
 
 | Key | Value |
 | --- | --- |
@@ -1436,13 +1393,13 @@ for access.
 
 ## Unknown keys
 
-V3 keeps every key it doesn't use, so that a file written by V2, by a later version or by hand keeps them
-when V3 writes it.
+V3 keeps every key it doesn't use, so that a file written by another version or by hand keeps them when V3
+writes it.
 
-- **Kept keys** are V2's keys that V3 doesn't use yet (the **kept** rows of a table). Each is kept exactly as
-  read, at its place in the table's order. V3 never adds one that a file doesn't have.
+- **Kept keys** are the keys of a table that V3 doesn't use (its **kept** rows). Each is kept exactly as read,
+  at its place in the table's order. V3 never adds one that a file doesn't have.
 - **Unknown keys** are the keys no table names. They are written after the known and kept keys, in the order
-  they were read. (V2 sorted them by key; a file V2 wrote has them sorted already.)
+  they were read.
 - Both are kept as `RawYAML`: each scalar with its text, its resolved tag and its quoting, each sequence and
   mapping with its order and style, so that writing them back gives the same text. An alias the parser
   couldn't resolve becomes `null`. Not kept: comments, anchors, tags written in the file, and the layout of
@@ -1512,7 +1469,7 @@ When a step fails, the temporary file is deleted and the write fails with `<path
   write. Tests use a folder that stands for the Trash.
 - A change that touches several files writes a file before the files that refer to it, and removes a
   reference before the file it refers to: a crash between two steps leaves at most an unreferenced file,
-  never a reference to a missing one. Each feature's section gives its order; the import's is above.
+  never a reference to a missing one. Each feature's section gives its order.
 
 ## Outside changes
 
@@ -1546,10 +1503,10 @@ each change as if it had made it.
 
 ## Conformance tests
 
-`ProjectDataTests` decode the fixtures, V2's examples, with the Swift types: the complete project file is
+`ProjectDataTests` decode the fixtures ([Examples](#examples)) with the Swift types: the complete project file is
 written back byte for byte; every example round-trips to an equal value, and every key of the example is in
 the output. `FileStorageTests` check the coding rules on their own documents: kept keys in order and layout,
-read rules, defaults, schema, dates and quoting. `TicketDataTests` write V2's complete ticket (`HEPH-12`) and
+read rules, defaults, schema, dates and quoting. `TicketDataTests` write the complete example ticket (`HEPH-12`) and
 bundle (`HEPH-B2`) back byte for byte, read the minimal ticket with its defaults and creation entry, keep the
 unknown keys of `HEPH-14`, and check every rule of [Tickets and bundles](#tickets-and-bundles) in temporary
 folders.

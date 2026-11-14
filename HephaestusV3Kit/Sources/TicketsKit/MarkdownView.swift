@@ -218,7 +218,7 @@ enum MarkdownInlines {
     }
 
     /// The token kinds in AZDesign's semantic colors, after Dracula's code colors (docs/ui/tickets.md ›
-    /// Markdown); V2's own hex values stay in `TokenKind.style` for reference.
+    /// Markdown); the original hex values stay in `TokenKind.style` for reference.
     static func color(of kind: TokenKind) -> Color {
         switch kind {
         case .keyword, .interpolation: .accentSecondary

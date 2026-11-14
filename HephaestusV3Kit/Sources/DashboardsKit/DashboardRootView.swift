@@ -3,11 +3,9 @@ import AZDesign
 import SwiftUI
 import ToolsFoundation
 
-// HephaestusV2's Dashboard section (V2's Sources/HephaestusUI/Dashboard/DashboardView.swift and V2's
-// docs/dashboard.md), as a tool window; this app's page is docs/ui/dashboard.md. Its grid, its
-// placement, the move and the resize of a widget with the others making room live, the scrolling near
-// the edges, the smallest size and the content that scrolls inside a widget are V2's code. What
-// changed: the list is kept by a `DashboardLayoutStore` instead of the engine, so a change applies at
+// The Dashboard as a tool window (docs/ui/dashboard.md): its grid, its placement, the move and the resize of
+// a widget with the others making room live, the scrolling near the edges, the smallest size and the content
+// that scrolls inside a widget. The list is kept by a `DashboardLayoutStore`, so a change applies at
 // once; edit mode and the changes live in `DashboardModel`; the bar is the window's toolbar; each tool
 // draws its own widgets, through `widgetContent`; and the keyboard and VoiceOver move and resize a
 // widget one cell at a time.
@@ -115,7 +113,7 @@ public struct DashboardRootView<WidgetContent: View>: View {
         }
     }
 
-    /// Why the last change failed, under the toolbar until the next change (V2: in red under the bar).
+    /// Why the last change failed, under the toolbar until the next change.
     private func failureBanner(_ message: String) -> some View {
         Label {
             Text(verbatim: message)
@@ -142,7 +140,7 @@ public struct DashboardRootView<WidgetContent: View>: View {
         }
     }
 
-    /// Below 900 points, where V2's 24 columns would cramp the widgets, and at an iPhone's width, the
+    /// Below 900 points, where the 24 columns would cramp the widgets, and at an iPhone's width, the
     /// Dashboard lists its widgets one a row (the user's choice).
     private var showsList: Bool {
         layout == .phone || viewWidth < DashboardSpace.listWidth
@@ -183,7 +181,7 @@ public struct DashboardRootView<WidgetContent: View>: View {
         }
     }
 
-    /// The Mac's and an iPad's: V2's grid.
+    /// The Mac's and an iPad's: the grid.
     private var gridArea: some View {
         GeometryReader { area in
             // The widget area is as wide with its scroll bar as without it: the cells follow its
@@ -224,8 +222,8 @@ public struct DashboardRootView<WidgetContent: View>: View {
 
     // MARK: Toolbar
 
-    /// V2's bar: the time window of the service widgets, `Add Widget` in edit mode, and `Edit` or
-    /// `Done`. The environment, which V2 chose in its sidebar, is here too.
+    /// The bar: the time window of the service widgets, `Add Widget` in edit mode, and `Edit` or
+    /// `Done`, and the environment.
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         if layout == .phone {
             // An iPhone's: the environment and the time window in one menu.
@@ -525,7 +523,7 @@ private struct DashboardListRow {
 
 /// A widget's content in the one-per-row list, laid out at the card's width. Only content that can't
 /// be that narrow, such as the Tickets counts, which never truncate, scrolls sideways inside the card,
-/// as V2's grid decides it (docs/ui/dashboard.md › Content): text that can truncate doesn't scroll.
+/// as the grid decides it (docs/ui/dashboard.md › Content): text that can truncate doesn't scroll.
 private struct ListCardContent<Content: View>: View {
     /// The room the card gives its content.
     let available: CGFloat
@@ -1089,7 +1087,7 @@ private func previewSettings(_ kind: DashboardWidgetKind) -> some View {
     previewDashboard(Project.samples[0], saved: [])
 }
 
-#Preview("Tools Not Yet Brought Over", traits: .appChrome, .fixedLayout(width: 1000, height: 640)) {
+#Preview("Unavailable Tools", traits: .appChrome, .fixedLayout(width: 1000, height: 640)) {
     previewDashboard(Project.samples[0], tools: [.dashboard, .tickets])
 }
 

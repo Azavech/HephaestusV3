@@ -53,7 +53,7 @@ struct GitHubCLITests {
         #expect(GitHubRepository(page: "https://github.com/azavech") == nil)
     }
 
-    @Test("gh never asks and writes no colors; the failures have V2's messages")
+    @Test("gh never asks and writes no colors; the failures have their messages")
     func failures() async throws {
         let cli = GitHubCLI(gh: "/opt/homebrew/bin/gh", environment: ["PATH": "/bin", "GH_DEBUG": "1", "CLICOLOR_FORCE": "1", "HEPHAESTUS_X": "1"],
                             runner: FakeGH { _ in ProcessResult(termination: .exited(4)) })
@@ -78,7 +78,7 @@ struct GitHubBuildsTests {
         GitHubBuilds(cli: GitHubCLI(gh: "/gh", environment: [:], runner: runner), repository: GitHubRepository(owner: "azavech", name: "orders"))
     }
 
-    @Test("Runs: V2's call with the run number; unset dates and empty conclusions are none")
+    @Test("Runs: the call with the run number; unset dates and empty conclusions are none")
     func runs() async throws {
         let runner = FakeGH { _ in ok(runJSON) }
         let runs = try await builds(runner).runs()

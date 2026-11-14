@@ -6,7 +6,7 @@ import ToolsFoundation
 
 /// The Projects window, the project selector: pick a project, see where it stands, open its tools.
 ///
-/// It replaces V2's breadcrumb and Dashboard. It is a picker, not a hub: tools never live in it.
+/// It is a picker, not a hub: tools never live in it.
 public struct ProjectsRootView: View {
     @Binding var selection: Project.ID?
     var onNewProject: () -> Void
@@ -227,7 +227,7 @@ public struct ProjectsRootView: View {
                 ContentUnavailableView {
                     Label(String(localized: "No Projects", bundle: #bundle), systemImage: "folder.badge.plus")
                 } description: {
-                    Text("Create a project, or add a folder that holds one, such as a project of HephaestusV2.", bundle: #bundle)
+                    Text("Create a project, or add a folder that holds one.", bundle: #bundle)
                 } actions: {
                     Button(String(localized: "New Project…", bundle: #bundle), action: newProjectAction)
                         .buttonStyle(.borderedProminent)

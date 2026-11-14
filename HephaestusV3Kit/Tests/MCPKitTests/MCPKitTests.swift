@@ -25,7 +25,7 @@ struct SchemaTests {
         #expect(value.removingNullMembers["d"] == nil)
     }
 
-    @Test("Violations in V2's order and words")
+    @Test("Violations in order, with their words")
     func violations() {
         let schema = registry["echo"]!.inputSchema
         #expect(schema.violation(of: ["text": "a", "zeta": 1, "beta": 2]) == "beta: unknown argument.")
@@ -57,7 +57,7 @@ struct ProtocolTests {
         return (value["error"]?["code"], value["error"]?["message"]?.stringValue)
     }
 
-    @Test("Messages are classified as V2 classified them")
+    @Test("Messages are classified by their kind")
     func classification() async {
         #expect(await error("") == (-32700, "Parse error"))
         #expect(await error("[]") == (-32600, "Invalid Request: batches are not supported"))
