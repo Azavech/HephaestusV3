@@ -18,7 +18,7 @@ meet the workspace's rules (`~/Developer/Apple/CLAUDE.md`), [Open issues](#open-
 3. [The Xcode project](#the-xcode-project)
 4. [The package](#the-package)
 5. [The data targets](#the-data-targets): [FileStorage](#filestorage), [ExternalTools](#externaltools),
-   [ProjectData](#projectdata), [MCPKit](#mcpkit)
+   [ProjectData](#projectdata), [MCPKit](#mcpkit), [TicketData](#ticketdata)
 6. [ToolsFoundation](#toolsfoundation)
 7. [ToolsScenes](#toolsscenes)
 8. [The tool kits](#the-tool-kits): [ProjectsKit](#projectskit), [DashboardsKit](#dashboardskit),
@@ -195,6 +195,7 @@ Shared values in the manifest:
 | `ExternalTools` | Child processes: process groups and timeouts, the login shell's environment, the tools' lookup, git, ssh, kubectl. | — | `.target(name:)` |
 | `ProjectData` | The data folder, the import from HephaestusV2, the project files and their rules, the settings and secrets files. | FileStorage, ExternalTools | `.target(name:, dependencies:)` |
 | `MCPKit` | The MCP server: JSON values, input schemas, tool operations and their registry, JSON-RPC, HTTP on 127.0.0.1, tokens. | — | `.target(name:)` |
+| `TicketData` | The ticket, bundle and attachment files and their rules: the `TicketLibrary` actor and the `TicketSession`. | FileStorage, ProjectData | `.target(name:, dependencies:)` |
 | `ToolsFoundation` | Shared vocabulary: projects, tools, routes, chat vocabulary, the Dashboard model, `ProjectIcon`. | AZDesign | `.target` |
 | `ProjectsKit` | The project selector: the Projects window, the project switcher, the menu bar panel; New Project, Project Settings, Settings ▸ Projects; the mapping of the app's projects; the project tools of the MCP server. | ToolsFoundation, AZDesign, AZDesignCode, ProjectData, ExternalTools, MCPKit | `toolTarget(_:data:)` |
 | `DashboardsKit` | The Dashboard's grid, edit mode, settings and saving; the Project widget. | same | `toolTarget` |
@@ -254,9 +255,10 @@ Commit both `Package.resolved` files with it.
 
 ## The data targets
 
-Three targets without UI hold the data code that V3 brings over from HephaestusV2. They import no SwiftUI,
-have no default isolation, and keep shared state in `Mutex`es and actors. Today they are built and tested but
-no window uses them yet: each feature wires them in as it comes over ([Open issues](#open-issues)).
+Targets without UI hold the data code that V3 brings over from HephaestusV2: `FileStorage`, `ExternalTools`,
+`ProjectData`, `MCPKit` and `TicketData`. They import no SwiftUI, have no default isolation (a `@MainActor`
+session type says so itself), and keep shared state in `Mutex`es and actors. Each feature wires them into its
+windows as it comes over ([Open issues](#open-issues)).
 
 ### FileStorage
 
@@ -416,8 +418,8 @@ The files of [Data](data.md). Source files in `Sources/ProjectData/`:
 | `GitHub.swift` | `GitHubPage`, `GitRemote` (`init?(remoteURL:)`, `isGitHubHost`, `gitHubPage(resolvedHostName:)`) |
 | `ProjectSnapshot.swift` | `ProjectSnapshot` (`revision`, `projects`, `issues`, `project(_:)`, `project(atRoot:)`, `family(of:)`), `LoadedProject` (`root`, `file`, `parentID`, `depth`, `childIDs`, `resolved`, `fileIssue`), `ResolvedSettings`, `ProjectIssue` (`path`, `source`, `reason`) |
 | `ProjectError.swift` | `ProjectError` |
-| `ProjectLibrary.swift` | `ProjectLibrary` (`load()`, `handle(_:)`, `watchedFolders`, `setTools(_:)`, `refreshOrigins()`, `create(_:)`, `open(folder:)`, `update(_:_:)`, `remove(_:)`, `setCurrentEnvironment(_:to:)`), `NewProject`, `ProjectChange` |
-| `ProjectSession.swift` | `ProjectSession` (`phase`, `snapshot`, `importResult`, `shell`, `tools`, `isLookingUpTools`, `kubectl`, `start()`, `lookUpTools()`, `stop()`, and the changes) |
+| `ProjectLibrary.swift` | `ProjectLibrary` (`load()`, `handle(_:)`, `watchedFolders`, `setTools(_:)`, `refreshOrigins()`, `create(_:)`, `open(folder:)`, `update(_:_:)`, `remove(_:)`, `setCurrentEnvironment(_:to:)`, `allocateNumber(for:_:)` with `NumberKind`), `NewProject`, `ProjectChange` |
+| `ProjectSession.swift` | `ProjectSession` (`phase`, `snapshot`, `importResult`, `shell`, `tools`, `isLookingUpTools`, `kubectl`, `projectLibrary`, `start()`, `lookUpTools()`, `stop()`, `observeFileEvents(_:)`, and the changes) |
 
 - **File types.** Each is a `Codable`, `Sendable`, `Hashable` struct whose `init(from:)` reads with a
   `MappingReader` and whose `encode(to:)` writes with a `MappingWriter`, key by key in the order of its table
@@ -450,6 +452,10 @@ The files of [Data](data.md). Source files in `Sources/ProjectData/`:
   origins. `stop()` stops the streams, ends the running tools and releases the lock. `kubectl` is the
   tools' kubectl for the settings' suggestions. Tests give it a temporary data folder, a fake runner and a
   hub with short delays.
+- **Shared with other features.** `allocateNumber(for:_:)` takes a ticket or bundle number from a project's
+  counter ([Data › Ticket rules](data.md#ticket-rules)) and writes the project file; `observeFileEvents(_:)`
+  adds a `@MainActor` function called with every batch, after the projects reloaded, so that each feature
+  reads its own files again without a second stream.
 
 ### MCPKit
 
@@ -482,6 +488,35 @@ The MCP server of [MCP](mcp.md). No UI, no default isolation. Source files in `S
   `regenerateToken()` and `addCommand`. `open_in_app` calls `AppData.openRoute`, the route action of the
   first window that appeared. **Settings ▸ MCP** is `MCPSettingsPane(appData:)` over `MCPSettingsView`, a
   view on plain values with its previews ("Listening", "Failed, Dark", "Port From Environment").
+
+### TicketData
+
+The ticket and bundle files of [Data › Tickets and bundles](data.md#tickets-and-bundles). No UI, no default
+isolation. Source files in `Sources/TicketData/`:
+
+| File | Contents |
+| --- | --- |
+| `TicketFile.swift` | `TicketIDs` (`parseTicket`, `parseBundle`, `ticket(project:number:)`, `bundle(project:number:)`), `TicketFileStatus`, `Author`, `TicketPriority`, `TicketFile`, `AttachmentEntry`, `CommentEntry`, `TicketLinkEntry`, `HistoryEntry` (`Kind`, `HistoryAuthor`), `BundleFile` (`Status`) |
+| `TicketRules.swift` | `TicketActor` (`user(device:)`, `claude(chat:)`, `isClaude`), `TicketError` (`invalid`, `notFound`, `forbidden`, `storage(StorageError)`, `project(ProjectError)`; `description` is the message), `TicketRules` (`title`, `provisionalTitle(from:)`, `provisionalBundleTitle(from:)`, `normalized`, `labels`, `template`, `templateHeadings`, `checkTemplate`, `attachmentName(_:id:)`, `contentType(of:)`, `attachmentLimit`, `imageTypes`) |
+| `TicketLibrary.swift` | `LoadedTicket` (`file`, `projectID`, `inverseLinks`), `TicketSnapshot` (`revision`, `tickets`, `bundles`, `invalidFiles`, `ticket(_:)`, `bundle(_:)`), `TicketLibrary` (`sync(with:)`, `handle(_:)`, `snapshot`, `create`, `update`, `setStatus`, `delete`, `addComment`, `updateComment`, `deleteComment`, `addAttachments`, `removeAttachment`, `attachmentURL`, `createBundle`, `updateBundle`, `setBundleStatus`, `deleteBundle`), `NewTicket`, `TicketChange` |
+| `TicketSession.swift` | `TicketSession` (`snapshot`, `isLoaded`, `library`, `device`, `computerName()`, `start()`, `refresh()`, and the changes, made as `.user(device:)`) |
+
+- **`TicketLibrary`** is an actor holding, per loaded project, its folder, its ticket files and its bundle
+  files by id, and the invalid files with their reasons. `sync(with:)` follows a `ProjectSnapshot`: it loads
+  the projects it doesn't hold (and those whose folder changed), drops the others, and applies the Complete
+  rule to each project it loads. `handle(_:)` reads again the files a batch names under `.hephaestus/ticket/`
+  and `.hephaestus/bundle/` (both as given and with symbolic links resolved), or the whole project after
+  dropped events, then applies the automatic bundle rules. Each change checks everything before its first
+  write, takes numbers through `ProjectLibrary.allocateNumber`, writes in the order of [Data › Ticket
+  changes](data.md#ticket-changes) with the shared `OwnWrites`, and moves files with its `Trash` (tests pass
+  `Trash.folder(_:)`). `publish()` sorts tickets and bundles by number, computes every ticket's inverse
+  links, and gives a new revision only when the snapshot differs.
+- **`TicketSession`** is `@MainActor @Observable`. `start()` runs once the `ProjectSession` is ready: it
+  creates the library on the session's `projectLibrary`, syncs, registers with `observeFileEvents` (sync
+  then `handle` for each batch), and follows `ProjectSession.snapshot` with `Observations` to sync after
+  in-app project changes. Its changes forward to the library as the user on this Mac (`device` is
+  `SCDynamicStoreCopyComputerName`) and keep the snapshot they return when its revision is higher. The MCP
+  tools use `library` directly with the actor `.claude(chat:)`, then call `refresh()`.
 
 ## ToolsFoundation
 
@@ -1711,7 +1746,7 @@ previews; it can't sign this app, so signed builds use `xcodebuild`.
 At launch the app opens the Projects window and shows its menu bar item. Tool windows open from the Projects
 window, the Window menu, the menu bar panel or links; macOS restores those open at the last quit.
 
-**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 368 tests). Tests
+**What the tests cover** (Swift Testing, `@Suite` and `@Test` with descriptive names; 384 tests). Tests
 use temporary folders only (`FileManager.default.temporaryDirectory`, a new UUID-named folder per test,
 deleted afterwards): never the user's projects, data folder, Trash or shell, and no live Claude calls.
 
@@ -1721,6 +1756,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ExternalToolsTests | Child processes, The login shell's environment, Finding the tools, git ssh and kubectl | Output, status, input, folder, environment, signals, missing executables; the timeout ending a whole process group; `terminateAll`; `env -0` parsing and every capture outcome; `PATH` lookup and the git stub; the commands, arguments, parsing and failures of git, ssh and kubectl. Uses `FakeRunner`. |
 | MCPKitTests | JSON values and schemas, JSON-RPC, HTTP, Server | Number kinds and sorted output; every validation message in order; the classification table; initialize, ping, unknown methods and the version header; tools/list and tools/call results, errors and validation; heads, chunked and sized bodies and their limits; bearer tokens; a real listener on a free port answering with the token and refusing the rest. |
 | ProjectDataTests | Project file, Registry and current environments, Data folder, Import from HephaestusV2, Rules and GitHub, Loading, Outside changes, Creating opening and removing, Inherited settings, Current environment, GitHub page, Session | V2's complete project file written back byte for byte; every V2 example round-tripping with all its keys; defaults; environments, base URLs and overrides; V3's additions; read normalization and invalid files; the registry and current environments; the data folder's location, mode and lock; `.gitignore`; the import's list, skips, choices, single run and missing V2; identifiers, paths, URLs and Kubernetes values; GitHub pages and remotes; tints; loading depth first with every issue; data folder files set aside; outside changes (changed, invalid, renamed identifier, deleted and returning files, the registry, own writes, relevance); create, open and remove with their refusals and sub projects; update with its write rules; inheritance on, off, nested and across types; the current environment chosen, renamed, removed and forgotten; GitHub pages from origins, aliases, typed pages and parents, `.git/config`; the session's start, lock, changes and a real outside change. Fixtures: V2's examples. Uses `FakeRunner`. |
+| TicketDataTests | Ticket and bundle files, Ticket library | V2's complete ticket and bundle written back byte for byte; defaults, the creation entry and unknown keys; numbers from the counters, skipping existing files; provisional titles and the title, description and status messages; the template check for Claude; drafts; link rules 1–7 with their messages and inverse links; history entries in order and changes that write nothing; Claude's status limits; the Complete and Reopened rules, Claude's bundle limits and the Complete rule at load; deletion order and the Trash; comments and their files; attachment copies, names, limits and paths; outside changes, invalid files and removals. Fixtures: V2's examples. Uses a test Trash folder. |
 | ToolsScenesTests | MCP documentation | docs/mcp.md's tools, descriptions and input schemas equal the registry's. |
 | ToolsFoundationTests | Routes, Strings, Inherited settings | Each `FocusRequest` is new; `ChatReference.route` and ids per environment; shared titles from the catalog; unique tool shortcuts; inherited environments. |
 | ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker, Projects from the app's data, New Project, Projects window on the app's data, Project Settings, Project tools | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`.; the mapping of kinds, tints and environments; New Project's following fields, rules, type and parent from the folder, sub project folders and default location; the loading, empty and unavailable states; the selection after a removal and at load.; Project Settings' fields, rules and messages, environments added, renamed and removed, pending fields applied together, and inherited environments changed in the sub project's changes.; the five project tools through JSON-RPC on a real session, their refusals and `~/` expansion. |

@@ -50,6 +50,8 @@ let package = Package(
         .target(name: "ProjectData", dependencies: ["FileStorage", "ExternalTools"]),
         // The MCP server: JSON-RPC over HTTP on 127.0.0.1, serving the tools' operations to Claude.
         .target(name: "MCPKit"),
+        // Tickets and bundles: their files, rules and changes.
+        .target(name: "TicketData", dependencies: ["FileStorage", "ProjectData"]),
 
         // Shared vocabulary: projects, tools, routes and the few components every tool uses.
         .target(name: "ToolsFoundation", dependencies: [design], resources: strings, swiftSettings: isolation),
@@ -84,6 +86,7 @@ let package = Package(
         testTarget("ExternalTools", settings: []),
         testTarget("ProjectData", resources: [.copy("Fixtures")], settings: []),
         testTarget("MCPKit", settings: []),
+        testTarget("TicketData", resources: [.copy("Fixtures")], settings: []),
         testTarget("ToolsFoundation"),
         testTarget("ProjectsKit"),
         testTarget("DashboardsKit"),

@@ -1,0 +1,11 @@
+schema: 1
+id: HEPH-B2
+title: Polish before v0.5.0
+status: in_progress
+created: 2026-10-31T16:00:00Z
+updated: 2026-10-31T16:05:00Z
+tickets:
+- HEPH-12
+- HEPH-13
+chats:
+- 1D2C3B4A-5968-4776-A5B4-C3D2E1F0A9B8

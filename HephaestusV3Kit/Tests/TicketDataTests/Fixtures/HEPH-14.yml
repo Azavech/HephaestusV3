@@ -1,0 +1,15 @@
+schema: 1
+id: HEPH-14
+title: Remember the console height per window
+status: todo
+created: 2026-10-31T17:00:00Z
+updated: 2026-10-31T17:00:00Z
+createdBy: user
+description: The console drawer opens at its default height in every new window.
+estimate: 3
+labels:
+- ui
+- console
+attachments: []
+comments: []
+chats: []

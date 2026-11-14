@@ -36,6 +36,16 @@ public final class ProjectSession {
     @ObservationIgnored private let processEnvironment: [String: String]
     @ObservationIgnored private let hub: FileEventHub
     @ObservationIgnored private var library: ProjectLibrary?
+    /// The library, once started: other features' libraries ask it for ticket and bundle numbers.
+    public var projectLibrary: ProjectLibrary? { library }
+    /// Called with every batch of file events, after the projects reloaded: other features reload their
+    /// own files.
+    @ObservationIgnored private var batchObservers: [@MainActor ([FileEvent]) async -> Void] = []
+
+    /// Adds a function called with every batch of file events of the watched folders.
+    public func observeFileEvents(_ observer: @escaping @MainActor ([FileEvent]) async -> Void) {
+        batchObservers.append(observer)
+    }
     @ObservationIgnored private var lock: FolderLock?
     @ObservationIgnored private var watching: Task<Void, Never>?
 
@@ -178,6 +188,9 @@ public final class ProjectSession {
                 guard let library = self?.library else { return }
                 let snapshot = await library.handle(batch)
                 await self?.applyAndRewatch(snapshot)
+                for observer in self?.batchObservers ?? [] {
+                    await observer(batch)
+                }
             }
         }
     }

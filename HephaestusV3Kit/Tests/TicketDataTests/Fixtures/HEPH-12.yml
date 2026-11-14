@@ -1,0 +1,118 @@
+schema: 1
+id: HEPH-12
+title: Locked web tabs close with Command-W
+status: in_progress
+created: 2026-10-31T12:00:00Z
+updated: 2026-10-31T12:30:00Z
+createdBy: claude
+description: |
+  Problem
+  A locked web tab can be closed with Command-W.
+
+  Current Behavior
+  1. Lock a web tab.
+  2. Press Command-W.
+  3. The locked tab closes.
+
+  Expected
+  Command-W on a locked tab beeps and shows the tooltip "This tab is locked"; the tab stays open.
+
+  Change
+  Make Command-W use the tab strip's close action, which checks the lock, with a test that Command-W leaves a locked tab open.
+
+  Testing
+  - Claude: on an isolated instance, press Command-W on a locked tab and check that the tab stays open.
+  - User: press Command-W on a locked tab and see the beep and the tooltip.
+
+  Docs
+  - [web-tabs.md › Locking](docs/web-tabs.md#locking)
+  - [ui.md › Closing tabs and windows](docs/ui.md#closing-tabs-and-windows)
+attachments:
+- id: 5F2B6A1C-3D4E-4F50-8A6B-7C8D9E0F1A2B
+  name: screenshot.png
+  path: attachments/HEPH-12/5F2B6A1C-3D4E-4F50-8A6B-7C8D9E0F1A2B-screenshot.png
+  contentType: image/png
+  size: 183204
+comments:
+- id: 0A1B2C3D-4E5F-4061-8273-94A5B6C7D8E9
+  author: user
+  created: 2026-10-31T12:10:00Z
+  updated: null
+  text: Happens only when the address bar has focus.
+  attachments: []
+  model: null
+  effort: null
+- id: 6E7F8091-A2B3-44C5-96D7-E8F90A1B2C3D
+  author: claude
+  created: 2026-10-31T12:30:00Z
+  updated: null
+  text: |-
+    Implemented in `4f2c9e1`: fix: keep locked web tabs open on Command-W (HEPH-12)
+
+    Docs
+    - [web-tabs.md › Locking](docs/web-tabs.md#locking): Command-W never closes a locked tab, whatever has focus.
+
+    Code
+    - Sources/HephaestusUI/Web/: the Close Tab command goes through the tab strip's close action.
+
+    Checks
+    - make test: passed
+
+    Notes
+    - None
+  attachments:
+  - id: 9B8A7C6D-5E4F-4A3B-B2C1-D0E9F8A7B6C5
+    name: test-output.txt
+    path: attachments/HEPH-12/9B8A7C6D-5E4F-4A3B-B2C1-D0E9F8A7B6C5-test-output.txt
+    contentType: text/plain
+    size: 2048
+  model: claude-opus-5-5
+  effort: xhigh
+chats:
+- B5A4C3D2-E1F0-4A9B-8C7D-6E5F4A3B2C1D
+- C0FFEE00-1234-4ABC-9DEF-0123456789AB
+links:
+- kind: related
+  ticket: HEPH-13
+history:
+- kind: created
+  date: 2026-10-31T12:00:00Z
+  from: null
+  to: todo
+  author: claude
+  device: null
+  chat: B5A4C3D2-E1F0-4A9B-8C7D-6E5F4A3B2C1D
+- kind: title
+  date: 2026-10-31T12:00:03Z
+  from: A locked web tab can be closed with Command-W.
+  to: Command-W closes locked web tabs
+  author: automatic
+  device: null
+  chat: null
+- kind: title
+  date: 2026-10-31T12:05:00Z
+  from: Command-W closes locked web tabs
+  to: Locked web tabs close with Command-W
+  author: user
+  device: Studio
+  chat: null
+- kind: linkAdded
+  date: 2026-10-31T12:06:00Z
+  from: null
+  to: related HEPH-13
+  author: user
+  device: Studio
+  chat: null
+- kind: status
+  date: 2026-10-31T12:15:00Z
+  from: todo
+  to: in_progress
+  author: claude
+  device: null
+  chat: C0FFEE00-1234-4ABC-9DEF-0123456789AB
+- kind: description
+  date: 2026-10-31T12:21:30Z
+  from: null
+  author: claude
+  device: null
+  chat: answer

@@ -24,7 +24,9 @@ a project's other files stay as V2 left them.
 | Current environments file | `<data folder>/current-environments.yml` | `CurrentEnvironmentsFile` | Foundation |
 | Settings file | `<data folder>/settings.yml` | `SettingsFile` | MCP server |
 | Secrets file | `<data folder>/secrets.json` | — (JSON object) | MCP server |
-| Tickets, bundles, attachments | `<project>/.hephaestus/ticket/`, `bundle/`, `attachments/` | — | Tickets (not yet read) |
+| Ticket file | `<project>/.hephaestus/ticket/<TICKET-ID>.yml` | `TicketFile` | Tickets |
+| Bundle file | `<project>/.hephaestus/bundle/<BUNDLE-ID>.yml` | `BundleFile` | Tickets |
+| Attachments | `<project>/.hephaestus/attachments/<TICKET-ID>/<id>-<name>` | — (any file) | Tickets |
 | Chats | `<project>/.hephaestus/chats/` | — | Chat (not yet read) |
 
 `<data folder>` is the App Group container, or the folder `HEPHAESTUS_DATA_DIR` names ([Data
@@ -87,6 +89,9 @@ folder](#data-folder)).
 | Id | Format | Example | Chosen by |
 | --- | --- | --- | --- |
 | Project identifier | `^[A-Z]{2,8}$` | `ORD` | the user, when creating the project |
+| Ticket id | `^[A-Z]{2,8}-[1-9][0-9]*$` | `ORD-142` | V3, from the project's `nextTicketNumber` ([Ticket rules](#ticket-rules)) |
+| Bundle id | `^[A-Z]{2,8}-B[1-9][0-9]*$` | `ORD-B3` | V3, from the project's `nextBundleNumber` |
+| Attachment and comment id | uppercase UUID | `5F2B6A1C-3D4E-4F50-8A6B-7C8D9E0F1A2B` | V3, at random |
 
 The identifier is unique among the projects of this Mac, sub projects included. It prefixes the project's
 tickets (`ORD-142`). A name suggests one: its first four ASCII letters, accents removed, uppercased; nothing
@@ -144,7 +149,9 @@ Defaults chosen at design time: the import's trigger, its content, and the skipp
   .hephaestus/
     project.yml                       ProjectFile
     .gitignore                        the line "chats/"
-    ticket/  bundle/  attachments/    tickets (not read yet)
+    ticket/<TICKET-ID>.yml            TicketFile
+    bundle/<BUNDLE-ID>.yml            BundleFile
+    attachments/<TICKET-ID>/          the files of a ticket and its comments
     chats/                            chats (not read yet; git-ignored)
 ```
 
@@ -479,6 +486,192 @@ What a project's settings are once inheritance applies (`ResolvedSettings`):
 - **Graph.** Never for a project that isn't a service; the parent's, as the parent resolves it, while a sub
   project uses its parent's settings; otherwise its own `graphEnabled`.
 
+## Tickets and bundles
+
+A project's tickets and bundles live in its `.hephaestus/` folder, one YAML file each, committed with the
+project. `TicketData` reads and writes them ([Architecture › TicketData](architecture.md#ticketdata)): the
+`TicketLibrary` actor applies every rule below, for the windows and for Claude alike.
+
+### Ticket file
+
+`.hephaestus/ticket/<TICKET-ID>.yml`, Swift type `TicketFile`. Keys in this order:
+
+| Key | Type | Required | Default | Rules |
+| --- | --- | --- | --- | --- |
+| `schema` | `Int` | no | `1` | [Keys and values](#keys-and-values). |
+| `id` | ticket id | yes | — | Equals the file name without `.yml`; its identifier part is the project's `id`. A file whose `id` differs is invalid. |
+| `title` | `String` | yes | — | One line, 1–200 characters once trimmed. |
+| `status` | `TicketFileStatus` | no | `todo` | `draft` (**V3 addition**), `todo`, `in_progress`, `review`, `done` ([Ticket rules](#ticket-rules)). |
+| `created` | date | yes | — | Never changed. |
+| `updated` | date | no | `created` | Set to now by every write of the file by V3. |
+| `createdBy` | `user` or `claude` | no | `user` | Who created the ticket. |
+| `description` | `String` | no | `""` | Markdown, line breaks LF. |
+| `attachments` | `[AttachmentEntry]` | no | `[]` | The ticket's own files, in the order added ([Attachments](#attachments)). |
+| `comments` | `[CommentEntry]` | no | `[]` | Oldest first; ids unique within the ticket. |
+| `chats` | `[String]` | no | `[]` | The chats linked to the ticket, uppercase UUIDs; kept as read until Chat comes over. |
+| `links` | `[TicketLinkEntry]` | no | `[]` | The links this ticket declares, in the order given ([Link rules](#link-rules)). |
+| `history` | `[HistoryEntry]` | no | one creation entry | Oldest first, only appended to. A file without history reads with one `created` entry made from `created` and `createdBy`, `to: todo`, without device or chat. |
+| `priority` | `low`, `medium`, `high`, `urgent` | no | none | **V3 addition**, written after `history` only when set. |
+| `labels` | `[String]` | no | `[]` | **V3 addition**, written after `history` (and `priority`) only when not empty; trimmed, empty ones dropped, each once. |
+
+V2's runtime-only keys `inverseLinks` (on a ticket) and `answer` (on a comment) are ignored when read and never
+written. Every other unknown key is kept ([Unknown keys](#unknown-keys)).
+
+**Comment** (`CommentEntry`): `id` (UUID, required), `author` (`user` or `claude`, required), `created` (date,
+required), `updated` (date or `null`, when the text was last edited), `text` (Markdown, default `""`),
+`attachments` (`[AttachmentEntry]`), `model` and `effort` (strings or `null`: set by V2 for comments Claude
+added from a chat; kept as read). A comment has text that isn't empty once trimmed, at least one attachment,
+or both.
+
+**Ticket link** (`TicketLinkEntry`): `kind` (`dependsOn` or `related`) and `ticket` (a ticket id of the same
+project). The other ticket shows the inverse, computed at each snapshot and never written:
+`blocks` for `dependsOn`, `related` for `related` (`LoadedTicket.inverseLinks`, in ascending number of the
+declaring ticket).
+
+**History entry** (`HistoryEntry`):
+
+| Key | Rules |
+| --- | --- |
+| `kind` | `created`, `status`, `title`, `linkAdded`, `linkRemoved`, `description`. |
+| `date` | When the change was made. |
+| `from` | The previous status (`status`) or title (`title`); required for those two, `null` for the others. |
+| `to` | The new status (`created`: the status it was created with), the new title, or the link as `<kind> <ticket id>`; not written for `description`. |
+| `author` | `user`, `claude` or `automatic` (V2's Haiku naming; V3 writes `user` and `claude` only). |
+| `device` | For `user`: the Mac's computer name at the time (`TicketSession.computerName()`). |
+| `chat` | For `claude`: the chat's id, or `external` for a terminal session. |
+
+A file breaking these rules (a `status` entry without two statuses, a link entry not shaped `<kind> <id>`) is
+invalid.
+
+### Bundle file
+
+`.hephaestus/bundle/<BUNDLE-ID>.yml`, Swift type `BundleFile`: `schema`, `id` (bundle id, equal to the file
+name), `title` (one line, 1–200 characters), `status` (`todo`, `in_progress` or `done`; default `todo`),
+`created`, `updated` (default `created`), `tickets` (ticket ids of the project, in implementation order, each
+once; default `[]`), `chats` (kept as read; default `[]`), then unknown keys. A ticket may belong to several
+bundles.
+
+### Attachments
+
+- Ticket and comment files are stored at `.hephaestus/attachments/<TICKET-ID>/<attachment id>-<name>`;
+  `path` is relative to `.hephaestus/`. `AttachmentEntry`: `id` (uppercase UUID), `name`, `path`,
+  `contentType` (default `application/octet-stream`), `size` (bytes, default `0`).
+- Adding a file copies it under a new id; the original stays. It must be a readable regular file of at most
+  20 MiB (`<name> is larger than 20 MB.`), and the files of one change at most 20 MiB together (`The
+  attachments of one request exceed 20 MB.`); otherwise `<path> is not a readable file.`
+- `name` is the file's name with `/`, `:` and control characters (U+0000–U+001F, U+007F) replaced by `_`, `file`
+  when empty, and the part before the extension shortened by whole characters until `<id>-<name>` fits in 213
+  UTF-8 bytes, so that the atomic write's temporary name stays within 255 (`TicketRules.attachmentName`).
+- `contentType` is the MIME type of the name's extension (`UTType(filenameExtension:)?.preferredMIMEType`),
+  else `application/octet-stream`. Images, shown as thumbnails: `image/png`, `jpeg`, `gif`, `heic`, `heif`,
+  `tiff`, `bmp`, `webp`.
+- A file is written once and never changed. Removing a ticket attachment, or deleting a comment, moves its
+  files to the Trash; deleting a ticket moves its whole `attachments/<TICKET-ID>/` folder. A comment's file goes
+  only with its comment.
+- V3 opens an attachment only when its `path` is `attachments/<TICKET-ID>/<one component>` and its real path,
+  symbolic links resolved, lies inside the project's `.hephaestus/` (`The path is outside the attachments
+  folder.`, else `Attachment file <path> not found.`): a ticket file can't point outside the project.
+
+### Ticket rules
+
+**Ids.** A ticket's number comes from the project file's `nextTicketNumber`, a bundle's from
+`nextBundleNumber` (`ProjectLibrary.allocateNumber`): the counter's value, at least 1, raised past any
+`ticket/<ID>-<n>.yml` (or `bundle/<ID>-B<n>.yml`) that already exists, then the counter is written as the
+next number, before the ticket or bundle file. A number is never reused, even when the creation fails after.
+
+**Titles.** Trimmed, 1–200 characters on one line, else `Title must be 1 to 200 characters on one line.` A
+title equal to the stored one changes nothing. A ticket created without a title takes its provisional
+title: the description's first line that isn't empty and isn't a heading (a line starting with `#`, or a
+template heading line), trimmed, cut to 60 characters and trimmed again; `Untitled Ticket` without one.
+Without a title the description must not be empty (`The description must not be empty.`). A bundle created
+without a title takes its tickets' titles joined with `, `, cut to 60 characters and trimmed. (V2 then had
+Haiku name them; V3 keeps the provisional title, which the user or Claude may change.)
+
+**Description template.** A description Claude writes, at creation or in a change, must hold the headings
+Problem, Current Behavior, Expected, Change, Testing, Docs, in this order, each alone on its line: a line is
+the heading H when it matches `^\s*#*\s*H\s*:?\s*$`, any letter case; the lines are scanned once and each
+heading line of the next expected heading counts. Otherwise: `Description does not follow the ticket template:
+heading "<H>" is missing or out of order. Use the headings Problem, Current Behavior, Expected, Change, Testing,
+Docs in this order, each alone on its line.` The user's descriptions aren't checked; the New Ticket sheet
+starts with the template (`TicketRules.template`).
+
+**Status.** Statuses in order: Draft (**V3 addition**), To Do, In Progress, In Review, Done. A ticket starts
+To Do, or as a draft when the user creates it so; Claude's start To Do. The user may set any status at any
+time. Claude may set To Do, In Progress, In Review and Done, but never changes a done ticket (`<ID> is done;
+only the user can change its status.`), never changes a draft (`<ID> is a draft; only the user can change its
+status.`) and never makes one (`Only the user can make <ID> a draft.`). Setting the current status again
+writes nothing and adds no entry.
+
+**Bundle status.** The user may set any status. Claude may set To Do and In Progress, never Done (`Only the
+user can set <ID> to done.`), and never changes a done bundle (`<ID> is done; only the user can change its
+status.`). Two automatic rules keep a bundle in step with its tickets, whoever makes the change:
+
+- *Complete*: a bundle listing at least one ticket, all done, becomes `done`. A listed id without a ticket,
+  or whose file never loaded, isn't done.
+- *Reopened*: a `done` bundle listing a ticket that isn't done becomes `in_progress`.
+- A bundle without tickets keeps its status.
+
+They apply when a listed ticket changes status (in V3 or outside), and when the bundle's set of tickets
+changes (a creation, a change of its list other than a reorder, a deletion of a listed ticket, its file added
+or changed outside); at each load of a project, the Complete rule alone applies to every bundle.
+
+### Link rules
+
+A change gives the whole list of the links a ticket declares. Each link the ticket doesn't already declare
+with the same kind is checked, in the list's order, with these rules in order; the first broken one fails the
+change. A link it already declares is kept as it is, even when its ticket is missing.
+
+1. The id has the ticket format: `"<value>" is not a valid ticket id.`
+2. It belongs to the same project: `<other ID> does not belong to project <IDENT>.`
+3. It isn't the ticket itself: `<ID> cannot be linked to itself.`
+4. The list names it once: `<other ID> is listed more than once.`
+5. The ticket exists: `Ticket <other ID> not found.`
+6. One link per pair: the other ticket declares no link to this one: `<ID> is already linked to <other ID>.`
+7. A Depends on link makes no cycle: `<ID> cannot depend on <other ID>, which depends on <ID>.`
+
+Ids are accepted in any letter case and stored in uppercase. At creation the ticket has no id yet, so rules
+3, 6 and 7 can't fail.
+
+### Ticket changes
+
+Each change is made by an actor (`TicketActor`): the user on this Mac (`.user(device:)`) or Claude
+(`.claude(chat:)`). Every change runs on the `TicketLibrary` actor, one at a time, writes with [Atomic
+writes](#atomic-writes) and returns a new snapshot.
+
+| Change | Rules | Order of the writes |
+| --- | --- | --- |
+| **Create a ticket** (`NewTicket`) | The project is loaded (`Project <ID> not found.`). Title, description (template for Claude), status (`todo` or `draft`: `A new ticket is To Do or a draft.`), files and links are checked before a number is taken. `created` and `updated` now, `createdBy` the actor, the history one `created` entry. | 1. project file (counter) 2. attachment files 3. ticket file; when 2 or 3 fails, the copied files are removed |
+| **Change a ticket** (`TicketChange`) | Title, description (template for Claude), priority, labels, the whole list of links. History entries in this order: rename, description edit, one `linkRemoved` per link no longer declared (in the old order), one `linkAdded` per new link (in the given order); a link whose kind changes is removed, then added. Priority and labels add no entry. A change that changes nothing writes nothing. | ticket file |
+| **Set a ticket's status** | [Ticket rules › Status](#ticket-rules); one `status` entry. | 1. ticket file 2. each bundle file the automatic rules change, in bundle number order |
+| **Delete tickets** | Their ids leave every bundle (the automatic rules apply in the same write), and every link to them leaves the other tickets of the project, with no history entry. | 1. each bundle file listing them 2. each ticket file linking to them 3. the ticket files and their `attachments/<ID>/` folders, moved to the Trash |
+| **Add a comment** | Text or files; the comment's author is the actor. | 1. attachment files 2. ticket file |
+| **Edit a comment** | Its text, with the same rule; sets the comment's `updated`. Its files can't change. Anyone may edit any comment. | ticket file |
+| **Delete a comment** | `Comment <id> not found.` for an unknown one. | 1. ticket file 2. its files, moved to the Trash |
+| **Add attachments** | To the ticket's own files. | 1. attachment files 2. ticket file |
+| **Remove an attachment** | A ticket attachment only (`Attachment <id> not found.`). | 1. ticket file 2. the file, moved to the Trash |
+| **Create a bundle** | At least one ticket (`A bundle needs at least one ticket.`), each of the project (`<ID> does not belong to project <IDENT>.`), existing (`Ticket <ID> not found.`), once (`<ID> is listed more than once.`). Starts `done` when they all are. | 1. project file (counter) 2. bundle file |
+| **Change a bundle** | Title; the whole list of tickets, which may be empty, where an id the bundle already lists may name a missing ticket. | bundle file |
+| **Set a bundle's status** | [Ticket rules › Bundle status](#ticket-rules). | bundle file |
+| **Delete a bundle** | Its tickets stay. | the bundle file, moved to the Trash |
+
+A ticket or bundle id that isn't well formed fails with `"<value>" is not a valid ticket id.` (or `bundle
+id`); an unknown one with `Ticket <ID> not found.` (or `Bundle <ID> not found.`). A file that can't be moved to
+the Trash fails with `<path> cannot be moved to the Trash: <reason>.`; the writes made before stay.
+
+### Ticket loading and outside changes
+
+- `TicketSession.start`, once the projects are ready, loads the tickets and bundles of every loaded project;
+  a project loaded later (created, added, its folder back) loads then, and a removed one is dropped. Each load
+  deletes the temporary files a crash left in `ticket/` and `bundle/`, then applies the Complete rule.
+- A file that can't be read, or whose `id` differs from its name, is listed in the snapshot's `invalidFiles`
+  with its reason; a ticket or bundle loaded before keeps its last valid version, which the next change V3
+  makes writes over it.
+- After each batch of file events ([Outside changes](#outside-changes)), each ticket and bundle file the batch
+  names is read again (the whole project when events were dropped): a missing file is a deletion, a file
+  equal to the one in memory changes nothing. Then the automatic rules apply to each bundle that lists a ticket
+  whose status changed (or that appeared or went), and to each bundle whose set of tickets changed, in bundle
+  number order. A status changed outside V3 adds no history entry.
+
 ## Settings file
 
 `<data folder>/settings.yml`: the app's settings. V3's own file: V2's `settings.yml` isn't imported. Swift
@@ -626,4 +819,7 @@ each change as if it had made it.
 `ProjectDataTests` decode the fixtures, V2's examples, with the Swift types: the complete project file is
 written back byte for byte; every example round-trips to an equal value, and every key of the example is in
 the output. `FileStorageTests` check the coding rules on their own documents: kept keys in order and layout,
-read rules, defaults, schema, dates and quoting.
+read rules, defaults, schema, dates and quoting. `TicketDataTests` write V2's complete ticket (`HEPH-12`) and
+bundle (`HEPH-B2`) back byte for byte, read the minimal ticket with its defaults and creation entry, keep the
+unknown keys of `HEPH-14`, and check every rule of [Tickets and bundles](#tickets-and-bundles) in temporary
+folders.
