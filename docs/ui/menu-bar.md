@@ -78,7 +78,9 @@ A click on a row opens the project's window (see [What opening does](#what-openi
 - VoiceOver reads the highlighted row as selected, and moving the VoiceOver cursor onto a row highlights
   it, so Return and ⌘1–⌘6 act on the row VoiceOver is on.
 
-**Tool buttons.** The highlighted row shows one button per tool of its project, at its trailing edge:
+**Tool buttons.** The highlighted row shows one button per available tool of its project
+([Navigation › Available tools](navigation.md#available-tools)), at its trailing edge; until a tool comes
+over from HephaestusV2, its button and its ⌘ shortcut don't show:
 
 - They come in menu order: Dashboard, Tickets, Service Map, Contracts, Builds, Chat. A service without a
   contract has no Contracts button, and an app or a library has only Dashboard, Tickets, Builds and Chat.
@@ -159,8 +161,8 @@ size, along with its icon and tool button frames. It isn't a tool window and doe
 
 ## Sample data and limits
 
-- The panel lists the seven sample projects (`Project.samples`), described in
-  [Projects › Sample data and limits](projects.md#sample-data-and-limits).
+- The panel lists the app's projects ([Projects](projects.md)); its previews and screenshots list the seven
+  sample projects (`Project.samples`), described in [Projects › Sample data and limits](projects.md#sample-data-and-limits).
 - Every control is wired: each opens a route.
 
 ## Previews

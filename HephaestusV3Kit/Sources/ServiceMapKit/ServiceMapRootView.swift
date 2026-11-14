@@ -229,20 +229,20 @@ private struct NamespaceSummary: View {
         if let environment {
             // On one line always: a narrow map drops the counts, then the cluster.
             ViewThatFits(in: .horizontal) {
-                line(environment, place: "\(environment.cluster) / \(environment.namespace)", counts: true)
-                line(environment, place: "\(environment.cluster) / \(environment.namespace)", counts: false)
-                line(environment, place: environment.namespace, counts: false)
+                line(environment, place: environment.place, counts: true)
+                line(environment, place: environment.place, counts: false)
+                line(environment, place: environment.namespace ?? environment.place, counts: false)
             }
             .accessibilityElement(children: .combine)
             // The dot's color says the environment's health on screen; VoiceOver says it in words.
-            .accessibilityValue(environment.health.title)
+            .accessibilityValue(environment.healthTitle)
             .accessibilityIdentifier("serviceMap.summary")
         }
     }
 
     private func line(_ environment: DeploymentEnvironment, place: String, counts: Bool) -> some View {
         HStack(spacing: 10) {
-            StatusDot(environment.health.color)
+            StatusDot(environment.healthColor)
             Text(verbatim: place)
                 .monospaced()
                 .foregroundStyle(.textPrimary)
@@ -257,7 +257,7 @@ private struct NamespaceSummary: View {
         .padding(.vertical, 6)
         .fixedSize()
         .glassEffect()
-        .help(Text("\(environment.cluster) / \(environment.namespace), \(environment.health.title)", bundle: #bundle, comment: "The tooltip of the namespace summary: cluster, namespace and the environment's health"))
+        .help(Text("\(environment.place) (\(environment.healthTitle))", bundle: #bundle, comment: "The tooltip of the namespace summary: cluster and namespace, then the environment's health"))
     }
 
     private var countsText: Text {

@@ -1,20 +1,43 @@
 import Foundation
 import ToolsFoundation
 
-/// Where the projects come from. The app and the previews use `SampleProjectStore`.
+/// Where the projects come from: the app's data (`DirectoryProjectStore`), or the samples of the previews
+/// (`SampleProjectStore`).
 protocol ProjectStore {
     /// Every project, top-level and sub projects, in their order.
     var projects: [Project] { get }
+    /// Whether the projects are loaded, or why they can't be.
+    var state: ProjectDirectory.State { get }
+    /// The entries of the list that didn't load.
+    var unavailable: [ProjectDirectory.Unavailable] { get }
     /// What happened lately in one project's own tools, newest first.
     func activity(of projectID: Project.ID) -> [ActivityItem]
+}
+
+/// The app's projects, as the directory holds them. Their tools report no events yet.
+struct DirectoryProjectStore: ProjectStore {
+    let directory: ProjectDirectory
+
+    var projects: [Project] { directory.projects }
+    var state: ProjectDirectory.State { directory.state }
+    var unavailable: [ProjectDirectory.Unavailable] { directory.unavailable }
+
+    func activity(of projectID: Project.ID) -> [ActivityItem] {
+        []
+    }
 }
 
 /// The sample projects (`Project.samples`) and their sample events.
 struct SampleProjectStore: ProjectStore {
     let projects: [Project]
+    let state: ProjectDirectory.State
+    let unavailable: [ProjectDirectory.Unavailable]
 
-    init(projects: [Project] = Project.samples) {
+    init(projects: [Project] = Project.samples, state: ProjectDirectory.State = .ready,
+         unavailable: [ProjectDirectory.Unavailable] = []) {
         self.projects = projects
+        self.state = state
+        self.unavailable = unavailable
     }
 
     func activity(of projectID: Project.ID) -> [ActivityItem] {

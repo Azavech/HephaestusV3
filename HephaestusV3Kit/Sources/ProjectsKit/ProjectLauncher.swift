@@ -45,6 +45,8 @@ struct ProjectLauncherPanel: View {
 
     @Environment(\.openRoute) private var openRoute
     @Environment(\.dismiss) private var dismiss
+    /// Only the tools that have come over from V2 show.
+    @Environment(\.availableTools) private var availableTools
     /// The row the VoiceOver cursor is on, which the highlight follows.
     @AccessibilityFocusState private var voiceOverRow: Project.ID?
 
@@ -166,7 +168,7 @@ struct ProjectLauncherPanel: View {
             // only the highlighted row's buttons.
             .accessibilityAddTraits(isHighlighted ? .isSelected : [])
             .accessibilityActions {
-                ForEach(project.tools) { tool in
+                ForEach(project.tools.filter(availableTools.contains)) { tool in
                     Button(String(localized: "Open \(tool.title)", bundle: #bundle, comment: "Opens a tool's window, such as Open Tickets")) {
                         open(tool, of: project)
                     }
@@ -176,7 +178,7 @@ struct ProjectLauncherPanel: View {
             .accessibilityIdentifier("launcher.row.\(project.id)")
             // The tools of the row under the pointer or the arrow keys, as ⌘1–⌘6 open them.
             if isHighlighted {
-                ForEach(project.tools) { tool in
+                ForEach(project.tools.filter(availableTools.contains)) { tool in
                     Button {
                         open(tool, of: project)
                     } label: {
@@ -226,7 +228,7 @@ struct ProjectLauncherPanel: View {
     /// ⌘1–⌘6 open a tool of the highlighted project, as the Window menu does for the key window's.
     private var shortcuts: some View {
         ZStack {
-            ForEach(ToolKind.allCases) { tool in
+            ForEach(ToolKind.allCases.filter(availableTools.contains)) { tool in
                 Button(tool.title) {
                     if let project = model.highlightedProject {
                         open(tool, of: project)

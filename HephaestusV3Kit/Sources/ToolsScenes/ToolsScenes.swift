@@ -4,6 +4,7 @@ import ChatKit
 import ContractsKit
 import DashboardsKit
 import MachinesKit
+import ProjectData
 import ProjectsKit
 import ServiceMapKit
 import SwiftUI
@@ -33,7 +34,9 @@ enum SceneID {
 ///
 /// This is the only target that knows every tool. Tools ask for a `Route`; `RouteHost` opens it.
 public struct ToolsScenes: Scene {
-    @State private var selectedProjectID: Project.ID? = Project.samples.first?.id
+    /// The project data and the directory every window reads.
+    @State private var appData = AppData()
+    @State private var selectedProjectID: Project.ID?
     /// The machine the Virtual Machines window opens on.
     @State private var machineFocus: String?
     /// A route's ask to select a machine in the open Virtual Machines window.
@@ -44,8 +47,8 @@ public struct ToolsScenes: Scene {
     public var body: some Scene {
         Window(Text("Projects", bundle: #bundle), id: SceneID.projects) {
             routeHost {
-                ProjectsRootView(projects: Project.samples, selection: $selectedProjectID)
-                    .focusedSceneValue(\.activeProject, selectedProjectID.flatMap(Project.sample))
+                ProjectsRootView(directory: appData.directory, session: appData.session, selection: $selectedProjectID)
+                    .focusedSceneValue(\.activeProject, appData.directory.project(selectedProjectID))
                     .registersWindow(.projects, projectID: selectedProjectID)
             }
         }
@@ -63,6 +66,7 @@ public struct ToolsScenes: Scene {
         toolScene(.builds, size: CGSize(width: 1180, height: 720))
         toolScene(.chat, size: CGSize(width: 1180, height: 780))
 
+        // Hidden until the Virtual Machines feature comes over from V2 (`AppData.machinesAvailable`).
         Window(Text("Virtual Machines", bundle: #bundle), id: SceneID.machines) {
             routeHost {
                 MachinesRootView(focus: machineFocus)
@@ -76,17 +80,23 @@ public struct ToolsScenes: Scene {
         // Type a few letters, then Return: the project's window comes forward.
         MenuBarExtra(String(localized: "Open Project", bundle: #bundle), systemImage: "wrench.and.screwdriver") {
             routeHost {
-                ProjectLauncher(projects: Project.samples)
+                ProjectLauncher(projects: appData.directory.projects)
             }
         }
         .menuBarExtraStyle(.window)
 
         Settings {
             TabView {
-                ChatSettingsView()
+                ProjectsSettingsPane(session: appData.session)
                     .tabItem {
-                        Label(ToolKind.chat.title, systemImage: ToolKind.chat.symbol)
+                        Label(String(localized: "Projects", bundle: #bundle), systemImage: "folder")
                     }
+                if AppData.availableTools.contains(.chat) {
+                    ChatSettingsView()
+                        .tabItem {
+                            Label(ToolKind.chat.title, systemImage: ToolKind.chat.symbol)
+                        }
+                }
             }
             .frame(width: 520, height: 440)
             .tint(.accent)
@@ -105,8 +115,8 @@ public struct ToolsScenes: Scene {
 
     private func routeHost(@ViewBuilder content: () -> some View) -> some View {
         RouteHost(
-            selectedProjectID: $selectedProjectID, machineFocus: $machineFocus, machineFocusRequest: $machineFocusRequest,
-            content: content
+            appData: appData, selectedProjectID: $selectedProjectID, machineFocus: $machineFocus,
+            machineFocusRequest: $machineFocusRequest, content: content
         )
     }
 }
@@ -126,6 +136,7 @@ private let appToolReader = ToolReader { reference in
 
 /// Gives a window's views the action that opens routes, and the app's tint.
 private struct RouteHost<Content: View>: View {
+    let appData: AppData
     @Binding var selectedProjectID: Project.ID?
     @Binding var machineFocus: String?
     @Binding var machineFocusRequest: FocusRequest?
@@ -134,9 +145,10 @@ private struct RouteHost<Content: View>: View {
     @Environment(\.openWindow) private var openWindow
 
     init(
-        selectedProjectID: Binding<Project.ID?>, machineFocus: Binding<String?>, machineFocusRequest: Binding<FocusRequest?>,
-        @ViewBuilder content: () -> Content
+        appData: AppData, selectedProjectID: Binding<Project.ID?>, machineFocus: Binding<String?>,
+        machineFocusRequest: Binding<FocusRequest?>, @ViewBuilder content: () -> Content
     ) {
+        self.appData = appData
         _selectedProjectID = selectedProjectID
         _machineFocus = machineFocus
         _machineFocusRequest = machineFocusRequest
@@ -167,6 +179,9 @@ private struct RouteHost<Content: View>: View {
                         openWindow(id: tool.windowID, value: ToolWindowValue(projectID: projectID, focus: focus))
                         WindowDirectory.activate()
                     }
+                case .projectSettings(let id):
+                    // Project Settings opens in the Projects window until its own window comes.
+                    showProjects(id)
                 case .machine(let id):
                     // A new window opens on the machine; an open one is asked to select it.
                     $machineFocus.wrappedValue = id
@@ -181,6 +196,11 @@ private struct RouteHost<Content: View>: View {
                 }
             })
             .environment(\.toolReader, appToolReader)
+            .environment(\.projectDirectory, appData.directory)
+            .environment(\.availableTools, AppData.availableTools)
+            .task {
+                await appData.start()
+            }
             .tint(.accent)
     }
 }
@@ -190,6 +210,7 @@ private struct RouteHost<Content: View>: View {
 private struct ToolWindowRoot: View {
     let tool: ToolKind
     @Binding var value: ToolWindowValue?
+    @Environment(\.projectDirectory) private var directory
 
     /// Whether this window shows the chat panel; each window keeps its own, across launches.
     @SceneStorage("chatPanelShown") private var chatPanelShown = false
@@ -230,7 +251,7 @@ private struct ToolWindowRoot: View {
     }
 
     @ViewBuilder private var window: some View {
-        if let value, let project = Project.sample(value.projectID) {
+        if let value, let project = directory.project(value.projectID) {
             // One panel in every layout, so its conversation survives a resize: beside the tool on a
             // Mac (the tool makes room for it), over the tool on an iPad, the whole window on an iPhone.
             ZStack(alignment: .trailing) {
@@ -272,12 +293,12 @@ private struct ToolWindowRoot: View {
             // The tool puts the panel's button last in its toolbar, at the right end.
             .environment(\.chatPanel, offersChatPanel ? chatPanelControl : nil)
                 .navigationTitle(Text(tool.title))
-                .navigationSubtitle(Text(verbatim: Project.tree.path(of: project.id)))
+                .navigationSubtitle(Text(verbatim: directory.tree.path(of: project.id)))
                 // A narrow toolbar has no room for the title: the switcher names the project.
                 .toolbar(removing: adaptiveWindow.size.width < Self.titleWidth ? .title : nil)
                 .toolbar {
                     ToolbarItem(placement: .navigation) {
-                        ProjectSwitcher(projects: Project.samples, selection: projectBinding, tool: tool)
+                        ProjectSwitcher(projects: directory.projects, selection: projectBinding, tool: tool)
                     }
                 }
                 .focusedSceneValue(\.activeProject, project)
@@ -349,7 +370,21 @@ private struct NewItemCommands: Commands {
         CommandGroup(replacing: .newItem) {
             NewWindowMenuItem()
             NewItemMenuItem()
+            AddFolderMenuItem()
         }
+    }
+}
+
+/// Add Existing Folder…, ⌘O: adds a folder that holds a project, from the Projects window.
+private struct AddFolderMenuItem: View {
+    @FocusedValue(\.addFolder) private var addFolder
+
+    var body: some View {
+        Button(String(localized: "Add Existing Folder…", bundle: #bundle, comment: "File menu item, ⌘O")) {
+            addFolder?()
+        }
+        .keyboardShortcut("o")
+        .disabled(addFolder == nil)
     }
 }
 
@@ -430,7 +465,8 @@ private struct ToolMenuItems: View {
         }
         .keyboardShortcut("0")
 
-        ForEach(ToolKind.allCases) { tool in
+        // Only the tools that have come over from V2.
+        ForEach(ToolKind.allCases.filter(AppData.availableTools.contains)) { tool in
             Button {
                 // The window already showing the tool for this project, or a new one.
                 if let project, !WindowDirectory.shared.bringForward(role: .tool(tool), projectID: project.id) {
@@ -443,12 +479,14 @@ private struct ToolMenuItems: View {
             .disabled(!(project?.tools.contains(tool) ?? false))
         }
 
-        Button(String(localized: "Virtual Machines", bundle: #bundle)) {
-            if !WindowDirectory.shared.bringForward(role: .machines, projectID: nil) {
-                openWindow(id: SceneID.machines)
+        if AppData.machinesAvailable {
+            Button(String(localized: "Virtual Machines", bundle: #bundle)) {
+                if !WindowDirectory.shared.bringForward(role: .machines, projectID: nil) {
+                    openWindow(id: SceneID.machines)
+                }
             }
+            .keyboardShortcut("7")
         }
-        .keyboardShortcut("7")
 
         Divider()
     }

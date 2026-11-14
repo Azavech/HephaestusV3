@@ -46,6 +46,8 @@ nonisolated public enum Route: Hashable, Sendable {
     case tool(ToolKind, project: Project.ID, focus: String? = nil)
     /// The Virtual Machines window, with this machine selected.
     case machine(String? = nil)
+    /// A project's Project Settings window.
+    case projectSettings(Project.ID)
 }
 
 /// Opens a route. Read it from the environment: `@Environment(\.openRoute) private var openRoute`.

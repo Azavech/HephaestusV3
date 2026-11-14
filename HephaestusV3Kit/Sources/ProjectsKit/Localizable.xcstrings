@@ -12,6 +12,16 @@
         }
       }
     },
+    "%@ is already used by “%@”." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ is already used by “%2$@”."
+          }
+        }
+      }
+    },
     "%@, %@: %@, %@, %@" : {
       "comment" : "An activity event, for VoiceOver: project, tool: what happened, its subject, its date",
       "localizations" : {
@@ -44,13 +54,25 @@
         }
       }
     },
+    "A file can't be used: %@" : {
+      "comment" : "A storage error; the detail is technical, in English"
+    },
     "Activity" : {
 
     },
     "Add Existing Folder…" : {
 
     },
+    "Add It Instead" : {
+
+    },
     "Add Project" : {
+
+    },
+    "An environment named “%@” already exists." : {
+
+    },
+    "Another copy of Hephaestus V3 is using its data. Quit it, then open this one again." : {
 
     },
     "Ask Claude, which reads through these tools" : {
@@ -59,16 +81,115 @@
     "Bring its window forward" : {
 
     },
+    "Cancel" : {
+
+    },
+    "Can’t Add the Folder" : {
+
+    },
+    "Can’t Open the Projects" : {
+
+    },
+    "Can’t Remove “%@”" : {
+
+    },
+    "Choose a folder inside “%@”." : {
+
+    },
+    "Choose a folder." : {
+
+    },
+    "Choose a tint." : {
+
+    },
+    "Choose…" : {
+
+    },
+    "Command-Line Tools" : {
+
+    },
+    "Couldn’t start zsh; the tools run with the app’s own environment." : {
+
+    },
+    "Create" : {
+
+    },
+    "Create Project Here…" : {
+
+    },
+    "Create a project, or add a folder that holds one, such as a project of HephaestusV2." : {
+
+    },
     "Current" : {
       "comment" : "The project the window shows, in the project switcher"
     },
+    "Data" : {
+
+    },
+    "Data Folder" : {
+
+    },
     "Drafts" : {
+
+    },
+    "Enter a GitHub page, for example https://github.com/owner/name." : {
+
+    },
+    "Enter a Service as <namespace>/<name>, for example jaeger/jaeger." : {
+
+    },
+    "Enter a folder name without “/” that does not start with “.”." : {
+
+    },
+    "Enter a folder path inside the project, for example docs." : {
+
+    },
+    "Enter a name of 1 to 100 characters." : {
+
+    },
+    "Enter a port from 1 to 65535." : {
+
+    },
+    "Enter an absolute path or a path starting with ~/." : {
+
+    },
+    "Enter an application as <name> or <namespace>/<name>." : {
+
+    },
+    "Enter an http or https URL." : {
+
+    },
+    "Enter an identifier." : {
 
     },
     "Environments" : {
 
     },
+    "Existing Folder" : {
+
+    },
+    "Failed with code %lld; the tools run with the app’s own environment." : {
+
+    },
     "Filter Projects" : {
+
+    },
+    "Folder" : {
+
+    },
+    "Folder Name" : {
+
+    },
+    "Found in the PATH of your login shell, as in Terminal." : {
+
+    },
+    "From HephaestusV2" : {
+
+    },
+    "Gave nothing; the tools run with the app’s own environment." : {
+
+    },
+    "Identifier" : {
 
     },
     "In review" : {
@@ -77,10 +198,51 @@
     "Inherited from %@" : {
       "comment" : "The project whose environments a sub project uses"
     },
+    "Its %lld sub projects are removed with it." : {
+
+    },
+    "Its identifier %@ is already used by “%@”." : {
+      "comment" : "Why a project of the list didn't load",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Its identifier %1$@ is already used by “%2$@”."
+          }
+        }
+      }
+    },
+    "Its project.yml can't be read: %@" : {
+      "comment" : "Why a project of the list didn't load; the detail is technical, in English"
+    },
+    "Its sub project is removed with it." : {
+
+    },
     "Last build" : {
 
     },
     "Last run on %@" : {
+
+    },
+    "Loading Projects…" : {
+
+    },
+    "Location" : {
+
+    },
+    "Login Shell" : {
+
+    },
+    "Look Again" : {
+
+    },
+    "More" : {
+      "comment" : "The selected project's actions"
+    },
+    "Name" : {
+
+    },
+    "New Folder" : {
 
     },
     "New Project…" : {
@@ -92,19 +254,40 @@
     "No %@" : {
       "comment" : "A project without the window's tool, such as No Contracts"
     },
+    "No API address" : {
+      "comment" : "An environment without a URL"
+    },
     "No Matching Projects" : {
 
     },
     "No Project Selected" : {
 
     },
+    "No Project in “%@”" : {
+
+    },
+    "No Projects" : {
+
+    },
     "No contract yet" : {
 
+    },
+    "No data folder" : {
+      "comment" : "Settings ▸ Projects without a data folder"
     },
     "No project’s name or identifier contains “%@”." : {
 
     },
+    "None" : {
+      "comment" : "No parent project"
+    },
+    "Not found" : {
+      "comment" : "A command-line tool the app didn't find"
+    },
     "Nothing happened in this project yet." : {
+
+    },
+    "OK" : {
 
     },
     "Open" : {
@@ -122,13 +305,37 @@
     "Open tickets, sub projects included" : {
 
     },
+    "Parent Project" : {
+
+    },
     "Pick a project to see where it stands and open its tools." : {
+
+    },
+    "Project Actions" : {
+
+    },
+    "Project Folder" : {
 
     },
     "Projects" : {
 
     },
+    "Reading…" : {
+      "comment" : "The login shell's environment is being read"
+    },
+    "Remove" : {
+
+    },
+    "Remove Project…" : {
+
+    },
+    "Remove “%@” from Hephaestus V3?" : {
+
+    },
     "Show All Projects" : {
+
+    },
+    "Show in Finder" : {
 
     },
     "Sub Projects" : {
@@ -140,13 +347,61 @@
     "Switch Project" : {
 
     },
+    "The folder already holds a project. Add it with Add Existing Folder instead." : {
+
+    },
+    "The folder and its files stay on disk: %@." : {
+
+    },
+    "The folder doesn’t exist." : {
+
+    },
+    "The folder has no .hephaestus/project.yml." : {
+      "comment" : "Why a project of the list didn't load"
+    },
+    "The folder is missing." : {
+      "comment" : "Why a project of the list didn't load"
+    },
+    "The list names it with a path that can't be used." : {
+      "comment" : "Why a project of the list didn't load"
+    },
+    "The project has no environment named “%@”." : {
+
+    },
+    "The project is no longer in the list." : {
+
+    },
+    "The project shows as it was before the file changed. Fix the file, or change a setting to write it again." : {
+
+    },
+    "This copy of Hephaestus V3 has no data folder: it was built without its App Group." : {
+
+    },
+    "This folder is inside “%@”: the new project becomes its sub project." : {
+
+    },
     "Tickets and builds in widgets you arrange" : {
 
     },
     "Tickets, builds and services in widgets you arrange" : {
 
     },
+    "Took too long; the tools run with the app’s own environment." : {
+
+    },
     "Tools" : {
+
+    },
+    "Type" : {
+
+    },
+    "Unavailable" : {
+      "comment" : "A sidebar section of projects that didn't load"
+    },
+    "Use 2 to 8 letters (A–Z)." : {
+
+    },
+    "Use one line." : {
 
     },
     "Version %@, ^[%lld operation](inflect: true)" : {
@@ -159,7 +414,13 @@
         }
       }
     },
+    "Workflow runs and releases on GitHub" : {
+
+    },
     "^[%lld open ticket](inflect: true)" : {
+
+    },
+    "^[%lld project](inflect: true) brought over at this launch" : {
 
     },
     "^[%lld service](inflect: true) in ^[%lld environment](inflect: true)" : {
@@ -174,6 +435,12 @@
     },
     "^[%lld sub project](inflect: true)" : {
 
+    },
+    "^[%lld variable](inflect: true) read" : {
+
+    },
+    "project.yml can't be read" : {
+      "comment" : "A banner over a project whose file became invalid"
     },
     "↩ Open  ⌘1–⌘6 Tools" : {
       "comment" : "The menu bar panel's reminder of its keys"

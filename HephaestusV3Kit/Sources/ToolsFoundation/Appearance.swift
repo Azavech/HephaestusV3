@@ -67,6 +67,7 @@ extension Project.Kind {
         case .service: String(localized: "Service", bundle: #bundle)
         case .app: String(localized: "App", bundle: #bundle)
         case .library: String(localized: "Library", bundle: #bundle)
+        case .other: String(localized: "Other", bundle: #bundle, comment: "A project that is neither a service, an app nor a library")
         }
     }
 
@@ -75,6 +76,7 @@ extension Project.Kind {
         case .service: String(localized: "Services", bundle: #bundle)
         case .app: String(localized: "Apps", bundle: #bundle)
         case .library: String(localized: "Libraries", bundle: #bundle)
+        case .other: String(localized: "Other Projects", bundle: #bundle, comment: "A section of projects that are neither services, apps nor libraries")
         }
     }
 
@@ -83,6 +85,7 @@ extension Project.Kind {
         case .service: "server.rack"
         case .app: "macwindow"
         case .library: "books.vertical"
+        case .other: "folder"
         }
     }
 }
@@ -122,6 +125,22 @@ extension DeploymentEnvironment.Health {
         case .degraded: .warning
         case .down: .danger
         }
+    }
+}
+
+extension DeploymentEnvironment {
+    /// The health's name, or Unknown until the Service Map reads it.
+    public var healthTitle: String {
+        health?.title ?? String(localized: "Unknown", bundle: #bundle, comment: "An environment's health before anything reads it")
+    }
+
+    public var healthSymbol: String { health?.symbol ?? "questionmark.circle" }
+
+    public var healthColor: Color { health?.color ?? .textSecondary }
+
+    /// `<cluster> / <namespace>`, or the one that is known; empty when neither is.
+    public var place: String {
+        [cluster, namespace].compactMap { $0 }.joined(separator: " / ")
     }
 }
 

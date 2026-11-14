@@ -117,6 +117,6 @@ nonisolated struct RequestDraft: Hashable, Sendable {
         let query = operation.parameters
             .filter { $0.location == .query && !self[$0].isEmpty }
             .map { "\($0.name)=\(self[$0])" }
-        return environment.url + (query.isEmpty ? path : path + "?" + query.joined(separator: "&"))
+        return (environment.url ?? "") + (query.isEmpty ? path : path + "?" + query.joined(separator: "&"))
     }
 }

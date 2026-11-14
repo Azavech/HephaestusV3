@@ -23,13 +23,13 @@
         }
       }
     },
-    "%@ / %@, %@" : {
-      "comment" : "The tooltip of the namespace summary: cluster, namespace and the environment's health",
+    "%@ (%@)" : {
+      "comment" : "The tooltip of the namespace summary: cluster and namespace, then the environment's health",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$@ / %2$@, %3$@"
+            "value" : "%1$@ (%2$@)"
           }
         }
       }

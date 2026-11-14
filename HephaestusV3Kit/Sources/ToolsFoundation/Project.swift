@@ -13,6 +13,8 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
         case service
         case app
         case library
+        /// Neither: V2's `None` type.
+        case other
 
         public var id: Self { self }
     }
@@ -26,14 +28,25 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
     public let symbol: String
     public let path: String
     public let repository: String
-    /// Where a service runs. Empty for apps and libraries.
+    /// Where a service runs. Empty for apps and libraries. For a project of the app's data, the
+    /// environments as they apply, inherited ones included (`environmentsAreResolved`); for a sample, its
+    /// own, which `ProjectTree.environments(of:)` resolves.
     public let environments: [DeploymentEnvironment]
-    public let activity: ProjectActivity
+    /// What its tools report; nil until the tools that report it come over from V2.
+    public let activity: ProjectActivity?
     /// The project whose folder holds this one's; nil for a top-level project.
     public let parentID: Project.ID?
     /// For a sub project: whether it takes its parent's settings, its environments among them (V2's
     /// `Use parent settings`, on by default).
     public let usesParentSettings: Bool
+    /// Whether `environments` are already resolved, inheritance applied: true for the app's data.
+    public let environmentsAreResolved: Bool
+    /// The project's GitHub page, `https://github.com/<owner>/<name>`, once resolved.
+    public let githubPage: String?
+    /// The environment the user works in.
+    public let currentEnvironment: String?
+    /// Why the project's file on disk is invalid now, while the version loaded before shows.
+    public let fileIssue: String?
 
     public init(
         id: String,
@@ -44,9 +57,13 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
         path: String,
         repository: String,
         environments: [DeploymentEnvironment] = [],
-        activity: ProjectActivity,
+        activity: ProjectActivity?,
         parentID: Project.ID? = nil,
-        usesParentSettings: Bool = true
+        usesParentSettings: Bool = true,
+        environmentsAreResolved: Bool = false,
+        githubPage: String? = nil,
+        currentEnvironment: String? = nil,
+        fileIssue: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -59,6 +76,10 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
         self.activity = activity
         self.parentID = parentID
         self.usesParentSettings = usesParentSettings
+        self.environmentsAreResolved = environmentsAreResolved
+        self.githubPage = githubPage
+        self.currentEnvironment = currentEnvironment
+        self.fileIssue = fileIssue
     }
 
     /// The tools that apply to this project, in menu order: the Dashboard first, as in V2, and Chat
@@ -66,10 +87,10 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
     public var tools: [ToolKind] {
         switch kind {
         case .service:
-            activity.contractVersion == nil
+            activity?.contractVersion == nil
                 ? [.dashboard, .tickets, .serviceMap, .builds, .chat]
                 : [.dashboard, .tickets, .serviceMap, .contracts, .builds, .chat]
-        case .app, .library: [.dashboard, .tickets, .builds, .chat]
+        case .app, .library, .other: [.dashboard, .tickets, .builds, .chat]
         }
     }
 }
@@ -83,7 +104,7 @@ nonisolated public enum ProjectTint: String, CaseIterable, Sendable {
     case warning
 }
 
-/// A place where a service runs: a cluster context and a namespace.
+/// A place where a service runs: its API's address and the Kubernetes resources it runs on.
 nonisolated public struct DeploymentEnvironment: Identifiable, Hashable, Sendable {
     public enum Health: Sendable {
         case healthy
@@ -93,17 +114,38 @@ nonisolated public struct DeploymentEnvironment: Identifiable, Hashable, Sendabl
 
     public var id: String { name }
     public let name: String
-    public let cluster: String
-    public let namespace: String
-    public let url: String
-    public let health: Health
+    /// The cluster's name, when known; samples name one.
+    public let cluster: String?
+    /// The Kubernetes namespace; nil uses the kubeconfig file's current context's.
+    public let namespace: String?
+    /// The base URL of the environment's API: its URL with its port; nil without a URL.
+    public let url: String?
+    /// How it runs, once the Service Map reads it; nil until then.
+    public let health: Health?
+    public let deployment: String?
+    /// The Kubernetes Service of its Jaeger, `<namespace>/<name>`.
+    public let jaeger: String?
+    public let argoCDApplication: String?
+    /// The kubeconfig file, an absolute path or one starting with `~/`.
+    public let kubeconfig: String?
+    public let allowsInvalidCertificates: Bool
+    /// The project it is inherited from, for a sub project that uses its parent's settings.
+    public let inheritedFrom: String?
 
-    public init(name: String, cluster: String, namespace: String, url: String, health: Health) {
+    public init(name: String, cluster: String?, namespace: String?, url: String?, health: Health?,
+                deployment: String? = nil, jaeger: String? = nil, argoCDApplication: String? = nil, kubeconfig: String? = nil,
+                allowsInvalidCertificates: Bool = false, inheritedFrom: String? = nil) {
         self.name = name
         self.cluster = cluster
         self.namespace = namespace
         self.url = url
         self.health = health
+        self.deployment = deployment
+        self.jaeger = jaeger
+        self.argoCDApplication = argoCDApplication
+        self.kubeconfig = kubeconfig
+        self.allowsInvalidCertificates = allowsInvalidCertificates
+        self.inheritedFrom = inheritedFrom
     }
 }
 
@@ -214,13 +256,15 @@ nonisolated public struct ProjectTree: Sendable {
     /// The environments a project's tools read: those of the project it takes its settings from, its
     /// own when it has its own settings (the user's choice: the overview and every tool agree).
     public func environments(of id: Project.ID) -> [DeploymentEnvironment] {
-        settingsSource(of: id)?.environments ?? project(id)?.environments ?? []
+        if let project = project(id), project.environmentsAreResolved { return project.environments }
+        return settingsSource(of: id)?.environments ?? project(id)?.environments ?? []
     }
 
     /// The ticket figures of a project with all its descendants.
     public func ticketTotals(of id: Project.ID) -> (open: Int, inReview: Int, drafts: Int) {
         family(of: id).reduce((0, 0, 0)) { total, project in
-            (total.0 + project.activity.openTickets, total.1 + project.activity.ticketsInReview, total.2 + project.activity.draftTickets)
+            (total.0 + (project.activity?.openTickets ?? 0), total.1 + (project.activity?.ticketsInReview ?? 0),
+             total.2 + (project.activity?.draftTickets ?? 0))
         }
     }
 

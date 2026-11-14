@@ -14,28 +14,39 @@ struct ProjectOverview: View {
     @State private var width: CGFloat = 0
 
     @Environment(\.openRoute) private var openRoute
+    @Environment(\.availableTools) private var availableTools
 
     private let spacing: CGFloat = 14
 
     var body: some View {
         let subprojects = model.children(of: project.id)
         let environments = model.environments(of: project.id)
+        let tools = project.tools.filter(availableTools.contains)
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 ViewThatFits(in: .horizontal) {
                     HStack(alignment: .center, spacing: 28) {
                         header
                         Spacer(minLength: 28)
-                        figures(hasSubprojects: !subprojects.isEmpty)
+                        if let activity = project.activity {
+                            figures(activity, hasSubprojects: !subprojects.isEmpty)
+                        }
                     }
                     VStack(alignment: .leading, spacing: 22) {
                         header
-                        figures(hasSubprojects: !subprojects.isEmpty)
+                        if let activity = project.activity {
+                            figures(activity, hasSubprojects: !subprojects.isEmpty)
+                        }
                     }
                 }
-                section(String(localized: "Tools", bundle: #bundle), id: "tools") {
-                    LazyVGrid(columns: columns(for: project.tools.count, minimum: 220), spacing: spacing) {
-                        ForEach(project.tools) { tool in
+                if let fileIssue = project.fileIssue {
+                    FileIssueBanner(reason: fileIssue)
+                }
+                // The tools whose feature has come over from V2; the others are hidden.
+                if !tools.isEmpty {
+                    section(String(localized: "Tools", bundle: #bundle), id: "tools") {
+                    LazyVGrid(columns: columns(for: tools.count, minimum: 220), spacing: spacing) {
+                        ForEach(tools) { tool in
                             ToolTile(
                                 tool: tool, project: project, ticketTotals: model.ticketTotals(of: project.id),
                                 environmentCount: environments.environments.count
@@ -43,6 +54,7 @@ struct ProjectOverview: View {
                                 openRoute(.tool(tool, project: project.id))
                             }
                         }
+                    }
                     }
                 }
                 if !subprojects.isEmpty {
@@ -152,7 +164,7 @@ struct ProjectOverview: View {
 
     /// The ticket figures count the sub projects' tickets too, as the project's Tickets window lists
     /// them. They sit in one row when it fits, then two by two, then one under the other.
-    private func figures(hasSubprojects: Bool) -> some View {
+    private func figures(_ activity: ProjectActivity, hasSubprojects: Bool) -> some View {
         let totals = model.ticketTotals(of: project.id)
         let open = Figure(
             Text(totals.open, format: .number),
@@ -163,7 +175,7 @@ struct ProjectOverview: View {
             .accessibilityIdentifier("projects.figure.inReview")
         let drafts = Figure(Text(totals.drafts, format: .number), caption: Text("Drafts", bundle: #bundle))
             .accessibilityIdentifier("projects.figure.drafts")
-        let lastBuild = LastBuildFigure(outcome: project.activity.lastBuild)
+        let lastBuild = LastBuildFigure(outcome: activity.lastBuild)
             .accessibilityIdentifier("projects.figure.lastBuild")
         return ViewThatFits(in: .horizontal) {
             HStack(alignment: .top, spacing: 36) {
@@ -275,7 +287,6 @@ private struct ToolTile: View {
     }
 
     @ViewBuilder private var status: some View {
-        let activity = project.activity
         switch tool {
         case .dashboard:
             if DashboardWidgetKind.hasServiceMap(project) {
@@ -287,9 +298,9 @@ private struct ToolTile: View {
             // As the Tickets window lists them: with the sub projects' tickets.
             Text("\(ticketTotals.open) open, \(ticketTotals.inReview) in review, ^[\(ticketTotals.drafts) draft](inflect: true)", bundle: #bundle)
         case .serviceMap:
-            Text("^[\(activity.serviceCount) service](inflect: true) in ^[\(environmentCount) environment](inflect: true)", bundle: #bundle)
+            Text("^[\(project.activity?.serviceCount ?? 0) service](inflect: true) in ^[\(environmentCount) environment](inflect: true)", bundle: #bundle)
         case .contracts:
-            if let version = activity.contractVersion {
+            if let activity = project.activity, let version = activity.contractVersion {
                 Text("Version \(version), ^[\(activity.operationCount) operation](inflect: true)", bundle: #bundle)
             } else {
                 Text("No contract yet", bundle: #bundle)
@@ -297,7 +308,11 @@ private struct ToolTile: View {
         case .chat:
             Text("Ask Claude, which reads through these tools", bundle: #bundle)
         case .builds:
-            Text("Last run on \(activity.lastBuildAt, format: .dateTime.day().month(.abbreviated).hour().minute())", bundle: #bundle)
+            if let activity = project.activity {
+                Text("Last run on \(activity.lastBuildAt, format: .dateTime.day().month(.abbreviated).hour().minute())", bundle: #bundle)
+            } else {
+                Text("Workflow runs and releases on GitHub", bundle: #bundle)
+            }
         }
     }
 }
@@ -310,25 +325,38 @@ private struct EnvironmentCard: View {
         GroupBox {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 10) {
-                    StatusDot(environment.health.color)
+                    // Health shows once the Service Map reads it.
+                    if let health = environment.health {
+                        StatusDot(health.color)
+                    }
                     Text(verbatim: environment.name)
                         .font(.headline)
                         .foregroundStyle(.textPrimary)
                     Spacer(minLength: 12)
-                    Label(environment.health.title, systemImage: environment.health.symbol)
-                        .labelStyle(.badge(environment.health.color))
+                    if let health = environment.health {
+                        Label(health.title, systemImage: health.symbol)
+                            .labelStyle(.badge(health.color))
+                    }
                 }
-                Text(verbatim: "\(environment.cluster) / \(environment.namespace)")
-                    .font(.caption)
-                    .monospaced()
-                    .foregroundStyle(.textSecondary)
-                Text(verbatim: environment.url)
-                    .font(.callout)
-                    .monospaced()
-                    .foregroundStyle(.textPrimary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .textSelection(.enabled)
+                if !environment.place.isEmpty {
+                    Text(verbatim: environment.place)
+                        .font(.caption)
+                        .monospaced()
+                        .foregroundStyle(.textSecondary)
+                }
+                if let url = environment.url {
+                    Text(verbatim: url)
+                        .font(.callout)
+                        .monospaced()
+                        .foregroundStyle(.textPrimary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                } else {
+                    Text("No API address", bundle: #bundle, comment: "An environment without a URL")
+                        .font(.callout)
+                        .foregroundStyle(.textSecondary)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(6)
@@ -474,12 +502,14 @@ private struct SubprojectCard: View {
                         }
                         .font(.caption)
                         .foregroundStyle(.textSecondary)
-                        HStack(spacing: 8) {
-                            Text("^[\(openTickets) open ticket](inflect: true)", bundle: #bundle)
-                                .font(.callout)
-                                .foregroundStyle(.textSecondary)
-                            Label(project.activity.lastBuild.title, systemImage: project.activity.lastBuild.symbol)
-                                .labelStyle(.badge(project.activity.lastBuild.color))
+                        if let activity = project.activity {
+                            HStack(spacing: 8) {
+                                Text("^[\(openTickets) open ticket](inflect: true)", bundle: #bundle)
+                                    .font(.callout)
+                                    .foregroundStyle(.textSecondary)
+                                Label(activity.lastBuild.title, systemImage: activity.lastBuild.symbol)
+                                    .labelStyle(.badge(activity.lastBuild.color))
+                            }
                         }
                     }
                     Spacer(minLength: 0)
@@ -496,5 +526,36 @@ private struct SubprojectCard: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("projects.subproject.\(project.id)")
+    }
+}
+
+/// The project's file on disk is invalid now: the version loaded before shows, until the file is fixed or
+/// the next change writes it again.
+private struct FileIssueBanner: View {
+    let reason: String
+
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("project.yml can't be read", bundle: #bundle, comment: "A banner over a project whose file became invalid")
+                    .font(.headline)
+                    .foregroundStyle(.textPrimary)
+                Text("The project shows as it was before the file changed. Fix the file, or change a setting to write it again.", bundle: #bundle)
+                    .foregroundStyle(.textSecondary)
+                Text(verbatim: reason)
+                    .font(.callout)
+                    .monospaced()
+                    .foregroundStyle(.textSecondary)
+                    .textSelection(.enabled)
+            }
+        } icon: {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.warning)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.surface, in: .card)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("projects.fileIssue")
     }
 }

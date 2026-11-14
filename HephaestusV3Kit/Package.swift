@@ -11,9 +11,10 @@ let code: Target.Dependency = .product(name: "AZDesignCode", package: "AZDesign"
 /// up in its own bundle: `Text("…", bundle: #bundle)`, `String(localized: "…", bundle: #bundle)`.
 let strings: [Resource] = [.process("Localizable.xcstrings")]
 
-/// A tool's target: ToolsFoundation, AZDesign and its code font, its own strings.
-func toolTarget(_ name: String) -> Target {
-    .target(name: name, dependencies: ["ToolsFoundation", design, code], resources: strings, swiftSettings: isolation)
+/// A tool's target: ToolsFoundation, AZDesign and its code font, its own strings, and the data target of its
+/// own feature, once that feature has come over from V2.
+func toolTarget(_ name: String, data: [Target.Dependency] = []) -> Target {
+    .target(name: name, dependencies: ["ToolsFoundation", design, code] + data, resources: strings, swiftSettings: isolation)
 }
 
 /// A target's unit tests, in Swift Testing. The data targets' tests keep their targets' default isolation
@@ -52,7 +53,7 @@ let package = Package(
         .target(name: "ToolsFoundation", dependencies: [design], resources: strings, swiftSettings: isolation),
 
         // The project selector: the Projects window, the switcher of every tool window, the menu bar panel.
-        toolTarget("ProjectsKit"),
+        toolTarget("ProjectsKit", data: ["ProjectData", "ExternalTools"]),
 
         // The tools. The Dashboard draws the grid and its edit mode; each tool provides the widgets of
         // its own data, and ToolsScenes hands them to it.
@@ -69,7 +70,7 @@ let package = Package(
         .target(
             name: "ToolsScenes",
             dependencies: [
-                "ToolsFoundation", "ProjectsKit",
+                "ToolsFoundation", "ProjectData", "ProjectsKit",
                 "DashboardsKit", "TicketsKit", "ServiceMapKit", "ContractsKit", "BuildsKit", "MachinesKit", "ChatKit",
                 design,
             ],

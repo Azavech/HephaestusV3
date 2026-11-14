@@ -6,6 +6,12 @@ overview of a project shows its path, its ticket and build figures, a tile per t
 environments and its recent activity. The same projects are listed in the **project switcher**, the
 popover in every tool window's toolbar, which is described at the end of this page.
 
+The projects are the app's own: the folders that hold a `.hephaestus/project.yml`, as HephaestusV2 left
+them, listed in the app's data ([Data](../data.md)). On the first launch the list comes from HephaestusV2.
+Until a tool comes over from V2, the overview shows no figures or activity of it, and no tile for it
+([Navigation › Available tools](navigation.md#available-tools)); the screenshots of this page show the
+previews' sample projects, with every tool.
+
 ![The Projects window with Orders selected](images/projects-light.png)
 *The Projects window on Orders, a sub project of Shop: the sidebar tree, the path, the figures, six tool tiles and the environments.*
 
@@ -13,7 +19,7 @@ popover in every tool window's toolbar, which is described at the end of this pa
 
 | Way | What happens |
 | --- | --- |
-| **Launch** | The window opens at launch with Orders (`ORD`), the first sample project, selected. Default size 1040 × 680 pt. |
+| **Launch** | The window opens at launch. Once the projects are loaded, the first one is selected. Default size 1040 × 680 pt. |
 | **Window › Projects** (⌘0) | Brings the open Projects window forward, un-minimized, or opens it. The selection doesn't change. |
 | **Show All Projects** in the project switcher | Opens the Projects window with the tool window's project selected. |
 | **Show All Projects** in the menu bar panel | Opens the Projects window with the highlighted project selected. See [Menu bar](menu-bar.md). |
@@ -32,7 +38,7 @@ Neither route carries a focus. Opening or bringing the window forward also activ
 
 | Region | Contents |
 | --- | --- |
-| **Toolbar** | The system's sidebar button, the title **Projects** with the selected project's name as subtitle, and the **Add Project** menu. |
+| **Toolbar** | The system's sidebar button, the title **Projects** with the selected project's name as subtitle, the **Add Project** menu and the **More** menu. |
 | **Sidebar** | The **Filter Projects** field, then the projects by kind (Services, Apps, Libraries), each top-level project with its sub projects under a disclosure triangle. |
 | **Overview** | The selected project: header and figures, **Tools**, **Sub Projects**, **Environments** and **Activity**, top to bottom. |
 
@@ -49,7 +55,8 @@ fills the rest and scrolls vertically on the `canvas` color. It has 28 pt of pad
 | --- | --- | --- | --- | --- | --- |
 | Sidebar button | The split view's own button | System | None | Shows or hides the sidebar. Folded at first in the iPad layout. | Mac, iPad |
 | **Projects** | Window title and subtitle | None | None | The subtitle is the selected project's name. | Mac, iPad, iPhone |
-| **Add Project** | Pull-down menu, help "Add Project" | `plus` | ⇧⌘N for **New Project…** (File ▸ New Project…) | **New Project…**: Not wired yet. **New Sub Project…**: Not wired yet; an action of its own, which gets the selected project as the parent; disabled when no project is selected. **Add Existing Folder…**: Not wired yet. | Mac, iPad, iPhone |
+| **Add Project** | Pull-down menu, help "Add Project" | `plus` | ⇧⌘N for **New Project…** (File ▸ New Project…), ⌘O for **Add Existing Folder…** (File ▸ Add Existing Folder…) | **New Project…** and **New Sub Project…** open the [New Project](#new-project) sheet; New Sub Project… is disabled when no project is selected. **Add Existing Folder…**: see [Add Existing Folder](#add-existing-folder). | Mac, iPad, iPhone |
+| **More** | Pull-down menu, help "Project Actions" | `ellipsis.circle` | None | The selected project's actions: **Show in Finder** (reveals its folder), then **Remove Project…** ([Remove Project](#remove-project)). Disabled when no project is selected. | Mac, iPad, iPhone |
 | **Filter Projects** | Search field at the top of the sidebar; in the toolbar of the projects' page on iPhone | System | None | Filters the projects (see below). | Mac, iPad (sidebar), iPhone |
 
 The Projects window has no chat panel and no chat panel button. While it is the key window, **View › Show
@@ -218,6 +225,80 @@ or `request:req-8f3a` for the Service Map, `cancelOrder` for an operation. Event
 tool without a selection. An open window of that tool and project comes forward, with the focus selected
 in it, instead of a second window opening (the user's choice).
 
+## New Project
+
+**Add Project ▸ New Project…**, File ▸ New Project… (⇧⌘N) and the **New Project…** button of the empty
+window open the **New Project** sheet; **Add Project ▸ New Sub Project…** opens the same sheet for a sub
+project of the selected project. The rules are V2's ([Data › Changes](../data.md#changes)).
+
+![The New Project sheet, filled in for Inventory Service](images/new-project.png)
+*New Project: the identifier and the folder name follow the name; the type follows the folder.*
+
+| Row | Control | Starts as | Rule and message |
+| --- | --- | --- | --- |
+| **Parent Project** (New Sub Project, first row) | Pop-up of the selected project's top-level project and its descendants, indented by depth | The selected project | — |
+| **Name** | Text field | Empty; the folder's name after Create Project Here… | One line, 1–100 characters once trimmed: "Enter a name of 1 to 100 characters." |
+| **Identifier** | Text field, monospaced, shown in uppercase | The name's first four ASCII letters, accents removed, until the user edits it | Empty: "Enter an identifier."; else 2–8 letters A–Z: "Use 2 to 8 letters (A–Z)."; else used by no project: "<ID> is already used by “<name>”." |
+| **Type** | Pop-up: Service, App, Library, Other | Service when the project's folder holds `go.mod`, else Other, until the user picks one | — |
+| **Parent Project** (New Project) | Pop-up: None, a divider, every project indented by depth | The innermost project whose folder holds the project's folder, else None, until the user picks one | Picking a project moves the location to its folder. |
+| **Folder** | Segmented control: **New Folder**, **Existing Folder** | New Folder; Existing Folder after Create Project Here… | — |
+| **Location** (New Folder) | The path, monospaced, and **Choose…** (a folder panel) | The folder holding the selected project's top-level folder; without a selection, `~/Developer` when it exists, else the home folder | — |
+| **Folder Name** (New Folder) | Text field | The name, `/` and `:` made `-`, trimmed, without leading dots, until the user edits it | 1–255 UTF-8 bytes, no `/`, not starting with `.`: "Enter a folder name without “/” that does not start with “.”." |
+| **Folder** (Existing Folder) | The path and **Choose…** | None, or the folder of Create Project Here… | "Choose a folder." while none |
+| **Project Folder** | The resulting path, monospaced, secondary | — | With a parent: the folder must be inside the parent's: "Choose a folder inside “<parent>”." |
+
+- When the user picked **None** for a folder inside a project, a note says: "This folder is inside
+  “<name>”: the new project becomes its sub project."
+- **Create** (default button) is enabled when every row keeps its rule. It creates the folder when needed,
+  writes `.hephaestus/project.yml` and `.hephaestus/.gitignore`, adds the project to its parent or to the
+  list, closes the sheet and selects the new project. A failure shows in red at the bottom of the sheet;
+  when the folder already holds a project, **Add It Instead** adds that project. **Cancel** (Escape) closes
+  the sheet.
+- The sheet is at least 480 × 440 pt (520 wide by default), a grouped form over a bar with the message and
+  the buttons.
+
+![The New Sub Project sheet for Checkout under Shop, in the dark appearance](images/new-subproject.png)
+*New Sub Project: the parent comes first; the location starts in its folder.*
+
+## Add Existing Folder
+
+**Add Project ▸ Add Existing Folder…**, File ▸ Add Existing Folder… (⌘O) and the empty window's button open
+a folder panel. The chosen folder's project joins the list, inside the innermost project whose folder holds
+it, or at the top level; its sub projects come with it; then it is selected. A folder already in the list
+selects its project.
+
+| Failure | Alert |
+| --- | --- |
+| The folder has no `.hephaestus/project.yml` | "No Project in “<folder>”", "The folder has no .hephaestus/project.yml.", with **Create Project Here…** (the New Project sheet on that folder, Existing Folder mode) and **OK**. |
+| Anything else (an invalid file, an identifier in use) | "Can’t Add the Folder", with the reason, and **OK**. |
+
+## Remove Project
+
+**More ▸ Remove Project…** asks "Remove “<name>” from Hephaestus V3?" with "The folder and its files stay on
+disk: <path>.", then "Its sub project is removed with it." or "Its <n> sub projects are removed with it."
+when it has some. **Remove** (destructive) takes the project and its sub projects out of the list; no file
+changes. **Cancel** closes the alert. The selection moves to the nearest ancestor still listed, else to the
+first project. A failure shows "Can’t Remove “<name>”" with the reason.
+
+## Settings ▸ Projects
+
+The Settings window's **Projects** tab (⌘,) shows where the app keeps its data and the tools it found.
+
+![Settings ▸ Projects: the data folder, the login shell and the command-line tools](images/settings-projects.png)
+*Settings ▸ Projects.*
+
+| Row | Shows |
+| --- | --- |
+| **Data Folder** | The data folder's path, monospaced, middle-truncated, selectable, with **Show in Finder**; "No data folder" without one. |
+| **From HephaestusV2** | "<n> projects brought over at this launch", only at the launch that ran the import. |
+| **Login Shell** | "Reading…" with a spinner while the environment is read; "<n> variables read" with a green dot; otherwise an orange dot and why the tools run with the app's own environment: "Took too long…", "Failed with code <n>…", "Gave nothing…", "Couldn’t start zsh…". |
+| **git**, **ssh**, **kubectl**, **gh** | The path found, monospaced, or "Not found". |
+
+The footer says "Found in the PATH of your login shell, as in Terminal." and has **Look Again**, which reads
+the login shell's environment again, looks the tools up and reads the projects' origins; it is disabled while
+it runs. Identifiers: `settings.projects.dataFolder`, `.showDataFolder`, `.import`, `.shell`,
+`.tool.<name>`, `.lookAgain`. Previews: "Found", "Reading", "Shell Failed, Dark".
+
 ## Project switcher
 
 ![The project switcher's popover](images/switcher.png)
@@ -295,6 +376,21 @@ window opened on an item still shows it.
 | **App or library** | The project is not a service. | Four tools; the Dashboard tile names tickets and builds only; no **Environments** section. |
 | **Service without a contract** | No contract version. | No Contracts tile (Shop). |
 | **No activity** | The project and its sub projects have no events. | "Nothing happened in this project yet." in the activity box. |
+| **Loading** | The app reads its data, at launch. | A spinner, "Loading Projects…", on `canvas`; the sidebar is empty. |
+| **Can’t open** | The app has no data folder, or another copy of the app holds it. | `ContentUnavailableView`: `exclamationmark.triangle`, "Can’t Open the Projects", and why: "This copy of Hephaestus V3 has no data folder: it was built without its App Group." or "Another copy of Hephaestus V3 is using its data. Quit it, then open this one again." |
+| **No projects** | The list is empty. | `ContentUnavailableView`: `folder.badge.plus`, "No Projects", "Create a project, or add a folder that holds one, such as a project of HephaestusV2.", with **New Project…** (prominent) and **Add Existing Folder…**. |
+| **Unavailable** | An entry of the list didn't load. | An **Unavailable** section at the end of the sidebar (not while filtering): each entry's folder name, `questionmark.folder`, and why in a caption ("The folder is missing.", "The folder has no .hephaestus/project.yml.", "Its project.yml can't be read: <detail>", "Its identifier <ID> is already used by “<name>”.", "The list names it with a path that can't be used."); its path as tooltip. The rows can't be selected. They load once their folder is fine. |
+| **File issue** | The project's file became invalid while the app runs. | Under the header, a card: `exclamationmark.triangle.fill` in `warning`, "project.yml can't be read", "The project shows as it was before the file changed. Fix the file, or change a setting to write it again.", and the reason, monospaced. |
+| **A project of the app** | Its tools haven't come over from V2. | No figures, no tool tiles, no activity events; environments without health, with "No API address" when they have no URL. |
+
+![The Projects window without projects](images/projects-empty.png)
+*No Projects: what a first launch shows when HephaestusV2 left no list on this Mac.*
+
+![The Projects window with two entries that didn't load](images/projects-unavailable.png)
+*Two entries that didn't load, under Unavailable.*
+
+![The Projects window when another copy of the app holds its data](images/projects-failed.png)
+*Can’t Open the Projects.*
 
 ![The Projects window on Tools, an app project](images/projects-app.png)
 *Tools, an app project: four tools in two columns, no environments, and ToolsKit as its sub project.*
@@ -345,6 +441,11 @@ grows (the user's choice):
 | --- | --- | --- |
 | **Add Project** menu | `projects.add` | Label and help "Add Project". |
 | Its items | `projects.add.newProject`, `projects.add.newSubProject`, `projects.add.existingFolder` | |
+| **More** menu | `projects.more` | Label "More", help "Project Actions". Items `projects.more.showInFinder`, `projects.more.remove`. |
+| Loading, can't open, no projects | `projects.loading`, `projects.failed`, `projects.empty` | The empty state's buttons: `projects.empty.newProject`, `projects.empty.addFolder`. |
+| Unavailable entry | `projects.unavailable.<folder name>` | One element: the name and the reason. |
+| File issue card | `projects.fileIssue` | One element. |
+| New Project sheet | `newProject` | Rows `newProject.name`, `.identifier`, `.type`, `.parent`, `.folderMode`, `.folderName`, `.choose`, `.projectFolder`; `.create`, `.error`, `.addInstead`. |
 | **Filter Projects** field | None | The prompt "Filter Projects". It is the system's search field (`.searchable`), which takes no identifier; UI tests find it as the window's only search field (the user's choice: the system field stays). |
 | Sidebar row | `projects.row.<id>` | Name, identifier and badge. The icon is hidden. |
 | "No Matching Projects" | `projects.noMatches` | Title and sentence. |
@@ -371,7 +472,9 @@ tool symbols.
 
 ## Sample data and limits
 
-- **Projects.** The seven projects are sample values (`Project.samples`):
+- **The app's projects** come from its data ([Data](../data.md)). The previews and these screenshots use
+  the sample projects, which keep their figures, tools and activity.
+- **Sample projects.** The seven sample projects (`Project.samples`):
   - Shop (`SHOP`, service), with Orders (`ORD`), Payments (`PAY`) and Edge Gateway (`GW`);
   - Tools (`TLS`, app), with ToolsKit (`TKIT`, library);
   - AZDesign (`AZD`, library).
@@ -381,20 +484,20 @@ tool symbols.
   that each tool will report its own events through a shared protocol.
 - **Unused environments:** Orders, Payments and Edge Gateway have environments of their own in the sample
   data, but they use Shop's settings, so the overview and every tool list Shop's.
-- **Not wired yet:** **New Project…**, **New Sub Project…** and **Add Existing Folder…**. Each has its own
-  action; New Sub Project…'s gets the parent's identifier.
-- **Not saved:** the selection starts on Orders at each launch, and the sidebar's folding lasts while the
-  window is open.
+- **Not saved:** the selection starts on the first project at each launch, and the sidebar's folding lasts
+  while the window is open.
 - **Data only:** no control sets a sub project's **Use parent settings**; it comes from the data.
 
 ## Previews
 
 - `ProjectsRootView` (1000 × 660 pt unless noted): "Loaded", "Loaded, Dark", "Parent Project" (Shop),
   "App Project", "Filtered" ("kit"), "No Matches", "No Selection", "Narrow" (640 pt, the overview at its
-  minimum width), "Largest Text" (Shop).
+  minimum width), "Largest Text" (Shop), "Loading", "Can't Open", "No Projects", "Unavailable".
+- `NewProjectSheet` (520 pt wide): "Empty", "Filled", "Sub Project, Dark".
 - `ProjectSwitcherList`: "Switcher List" (a Contracts window), "Switcher List, Dark", "Switcher Filtered",
   "Switcher No Matches", "Switcher List, Largest Text".
 
 ## Open issues
 
-None.
+- A project's settings can't be changed in the app yet: Project Settings comes with the rest of the Projects
+  feature.

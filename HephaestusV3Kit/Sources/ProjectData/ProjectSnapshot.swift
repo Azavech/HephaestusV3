@@ -18,6 +18,17 @@ public struct LoadedProject: Sendable, Hashable, Identifiable {
     public var fileIssue: String?
 
     public var id: String { file.id }
+
+    public init(root: String, file: ProjectFile, parentID: String?, depth: Int, childIDs: [String], resolved: ResolvedSettings,
+                fileIssue: String?) {
+        self.root = root
+        self.file = file
+        self.parentID = parentID
+        self.depth = depth
+        self.childIDs = childIDs
+        self.resolved = resolved
+        self.fileIssue = fileIssue
+    }
 }
 
 /// What a project's settings are once inheritance applies (docs/data.md › Resolution).

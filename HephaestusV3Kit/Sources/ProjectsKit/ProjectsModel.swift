@@ -6,8 +6,12 @@ import ToolsFoundation
 /// lists.
 @Observable
 final class ProjectsModel {
-    /// The projects as a tree, from the store.
-    let tree: ProjectTree
+    /// The projects as a tree, from the store: the app's follow its data as it changes.
+    var tree: ProjectTree { ProjectTree(store.projects) }
+    /// Whether the projects are loaded, or why they can't be.
+    var state: ProjectDirectory.State { store.state }
+    /// The entries of the list that didn't load.
+    var unavailable: [ProjectDirectory.Unavailable] { store.unavailable }
     /// The project whose overview shows.
     private(set) var selection: Project.ID?
     /// The sidebar's filter: a project's name or identifier.
@@ -22,7 +26,6 @@ final class ProjectsModel {
 
     init(store: any ProjectStore, selection: Project.ID? = nil, query: String = "") {
         self.store = store
-        self.tree = ProjectTree(store.projects)
         self.selection = selection
         self.query = query
         reveal(selection)
@@ -78,7 +81,24 @@ final class ProjectsModel {
         if id != selection {
             selection = id
         }
+        selectionAncestors = id.map { tree.ancestors(of: $0).map(\.id) } ?? []
         reveal(id)
+    }
+
+    /// The ancestors of the selection when it was made, outermost first, for `keepSelection()`.
+    private var selectionAncestors: [Project.ID] = []
+
+    /// After the projects changed: a selection that left the list moves to its nearest ancestor still
+    /// listed, else to the first project; without a selection, the first project is selected.
+    func keepSelection() {
+        if let selection, tree.project(selection) != nil { return }
+        let ancestor = selectionAncestors.last { tree.project($0) != nil }
+        select(ancestor ?? tree.children(of: nil).first?.id)
+    }
+
+    /// Whether the app has nothing to list: no project, and no entry that didn't load.
+    var isEmpty: Bool {
+        state == .ready && tree.projects.isEmpty && unavailable.isEmpty
     }
 
     /// A route's focus: a project's identifier. An identifier that names no project changes nothing.
@@ -116,6 +136,10 @@ final class ProjectsModel {
     /// that uses its parent's settings lists its parent's, up the tree, and says where they come from.
     func environments(of id: Project.ID) -> ProjectEnvironments {
         guard let project = tree.project(id) else { return ProjectEnvironments(environments: [], inheritedFrom: nil) }
+        if project.environmentsAreResolved {
+            let parent = project.environments.compactMap(\.inheritedFrom).first.flatMap(tree.project)
+            return ProjectEnvironments(environments: project.environments, inheritedFrom: parent)
+        }
         let source = tree.settingsSource(of: id) ?? project
         return ProjectEnvironments(environments: source.environments, inheritedFrom: source.id == project.id ? nil : source)
     }

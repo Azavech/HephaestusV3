@@ -82,6 +82,12 @@
     "Name" : {
 
     },
+    "Other" : {
+      "comment" : "A project that is neither a service, an app nor a library"
+    },
+    "Other Projects" : {
+      "comment" : "A section of projects that are neither services, apps nor libraries"
+    },
     "Passed" : {
 
     },
@@ -117,6 +123,9 @@
     },
     "Type" : {
 
+    },
+    "Unknown" : {
+      "comment" : "An environment's health before anything reads it"
     }
   },
   "version" : "1.0"

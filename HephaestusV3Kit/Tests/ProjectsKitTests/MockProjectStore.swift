@@ -14,6 +14,8 @@ import ToolsFoundation
 struct MockProjectStore: ProjectStore {
     let projects: [Project]
     var events: [Project.ID: [ActivityItem]] = [:]
+    var state: ProjectDirectory.State = .ready
+    var unavailable: [ProjectDirectory.Unavailable] = []
 
     init(events: [Project.ID: [ActivityItem]] = [:]) {
         projects = [

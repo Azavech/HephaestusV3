@@ -15,12 +15,29 @@ and the menus and shortcuts that reach them.
 | **Builds** | One per project | ⌘5, a tile, the menu bar panel, a link | 1180 × 720 pt | [Builds](builds.md) |
 | **Chat** | One per project | ⌘6, a tile, the menu bar panel, the chat panel | 1180 × 780 pt | [Chat](chat.md) |
 | **Virtual Machines** | One window | ⌘7 (Window menu) | 1100 × 760 pt | [Virtual Machines](virtual-machines.md) |
-| **Settings** | One window | ⌘, | 520 × 440 pt | [Chat › Settings](chat.md) |
+| **Settings** | One window | ⌘, | 520 × 440 pt | [Projects › Settings ▸ Projects](projects.md#settings--projects), [Chat › Settings](chat.md) |
 | **Menu bar panel** | Menu bar item | The `wrench.and.screwdriver` icon | 360 × 460 pt | [Menu bar](menu-bar.md) |
 
 - Tool windows don't open at launch. macOS restores those that were open when the app quit.
 - Every window but Settings gets no narrower than 390 pt and no lower than 420 pt, and adapts its layout to
   its size ([Layout system](foundations.md#layout-system)).
+
+## Available tools
+
+V3 brings HephaestusV2's features over one at a time. A tool whose feature hasn't come over yet is hidden in
+the running app, so that no window shows sample data next to the real projects: its window doesn't open, and
+its tile, its Window menu item, its New *Tool* Window item, its menu bar buttons and ⌘ shortcuts, and its
+Settings tab don't show. `AppData.availableTools` lists the tools that have come over; ToolsScenes gives it to
+every window as the `availableTools` environment value, and the menus read it directly.
+`AppData.machinesAvailable` does the same for the Virtual Machines window.
+
+| Feature | Tools and windows | Available |
+| --- | --- | --- |
+| Projects | The Projects window, Settings ▸ Projects, the menu bar panel | Yes |
+| Dashboard, Tickets, Service Map, Contracts, Builds, Chat | Their tool windows, Settings ▸ Chat | Not yet |
+| Virtual Machines | Its window | Not yet |
+
+Previews and the screenshots of the spec show every tool: the environment value's default is all of them.
 
 ## Tools per project
 
@@ -32,7 +49,7 @@ window's tool.
 | --- | --- |
 | Service with a contract | Dashboard, Tickets, Service Map, Contracts, Builds, Chat |
 | Service without a contract | Dashboard, Tickets, Service Map, Builds, Chat |
-| App, Library | Dashboard, Tickets, Builds, Chat |
+| App, Library, Other | Dashboard, Tickets, Builds, Chat |
 
 ## Anatomy of a tool window
 
@@ -60,6 +77,7 @@ tiles, the menu bar panel and the chat's **Open** buttons all use routes.
 | `.projectWindow(id)` | The frontmost window already showing the project, or the Projects window with it selected when none does. Used by the menu bar panel. |
 | `.tool(tool, project:, focus:)` | The tool's window for the project. The focus is selected in it. |
 | `.machine(id)` | The Virtual Machines window, with the machine selected. |
+| `.projectSettings(id)` | The project's settings. Until Project Settings has its window, it opens the Projects window with the project selected. |
 
 **Focus formats**, the item a tool selects when a route opens it:
 
@@ -104,9 +122,10 @@ replace the items SwiftUI adds for each kind of window, which would open a tool 
 | New *Tool* Window, such as **New Tickets Window** | ⌘N | A tool window | Opens another window of the key window's tool, on its project and on no particular item: the tool starts on its default selection, such as the first ticket or the newest run. Disabled, as **New Window**, in the Projects and Virtual Machines windows. |
 | **New Ticket…** | ⇧⌘N | Tickets | Opens the New Ticket sheet. |
 | **New Chat** | ⇧⌘N | The Chat window | Starts a new chat. |
-| **New Project…** | ⇧⌘N | The Projects window | Not wired yet. |
+| **New Project…** | ⇧⌘N | The Projects window | Opens the [New Project](projects.md#new-project) sheet. |
 | **New Machine…** | ⇧⌘N | Virtual Machines | Not wired yet. |
 | **New Item** | ⇧⌘N | Any other window | Disabled: the window creates nothing. |
+| **Add Existing Folder…** | ⌘O | The Projects window | Opens a folder panel ([Add Existing Folder](projects.md#add-existing-folder)). Disabled in other windows. |
 
 **Window menu**, above the list of open windows:
 
@@ -121,6 +140,7 @@ replace the items SwiftUI adds for each kind of window, which would open a tool 
 | Chat | ⌘6 | Same |
 | Virtual Machines | ⌘7 | Always |
 
+Only the available tools and windows are listed ([Available tools](#available-tools)): today, Projects alone.
 The tool items act on the **key window's project**: the selection in the Projects window, or a tool
 window's project.
 
