@@ -125,6 +125,8 @@ GitHub section is in `+`.*
   the current environment. Before it switches, the fields that hold a value not applied yet apply to the
   environment they showed. Disabled without environments; then the footer says "No environment yet. Add one
   with +." and the rows under the pop-up are hidden.
+- **`+` and `−`** are one `ControlGroup` after the pop-up, icons only, at its natural size: one control of
+  one height, as macOS draws an add and remove pair.
 - **`+`** (help "Add Environment") adds an environment of the project's own named "New Environment", or the
   first free "New Environment 2", "New Environment 3"…, and selects it.
 - **`−`** (help "Remove Environment") removes the selected environment at once; disabled for an inherited one.

@@ -317,23 +317,26 @@ private struct ProjectSettingsForm: View {
                 }
                 .disabled(model.environments.isEmpty)
                 .accessibilityIdentifier("projectSettings.environment")
-                Button {
-                    Task { await model.addEnvironment() }
-                } label: {
-                    Label(String(localized: "Add Environment", bundle: #bundle), systemImage: "plus")
-                        .labelStyle(.iconOnly)
+                // One control for the pair, as macOS draws + and −: both the same height, whatever their symbols.
+                ControlGroup {
+                    Button {
+                        Task { await model.addEnvironment() }
+                    } label: {
+                        Label(String(localized: "Add Environment", bundle: #bundle), systemImage: "plus")
+                    }
+                    .help(String(localized: "Add Environment", bundle: #bundle))
+                    .accessibilityIdentifier("projectSettings.environment.add")
+                    Button {
+                        Task { await model.removeEnvironment() }
+                    } label: {
+                        Label(String(localized: "Remove Environment", bundle: #bundle), systemImage: "minus")
+                    }
+                    .disabled(selected == nil || inherited)
+                    .help(String(localized: "Remove Environment", bundle: #bundle))
+                    .accessibilityIdentifier("projectSettings.environment.remove")
                 }
-                .help(String(localized: "Add Environment", bundle: #bundle))
-                .accessibilityIdentifier("projectSettings.environment.add")
-                Button {
-                    Task { await model.removeEnvironment() }
-                } label: {
-                    Label(String(localized: "Remove Environment", bundle: #bundle), systemImage: "minus")
-                        .labelStyle(.iconOnly)
-                }
-                .disabled(selected == nil || inherited)
-                .help(String(localized: "Remove Environment", bundle: #bundle))
-                .accessibilityIdentifier("projectSettings.environment.remove")
+                .labelStyle(.iconOnly)
+                .fixedSize()
             }
             if inherited, let parentName = model.parent?.file.name {
                 Text("Inherited from “\(parentName)”: fields left empty keep its values, shown in grey.", bundle: #bundle)
