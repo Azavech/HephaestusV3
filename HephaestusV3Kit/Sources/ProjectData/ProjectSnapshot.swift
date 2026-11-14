@@ -33,20 +33,22 @@ public struct LoadedProject: Sendable, Hashable, Identifiable {
 
 /// What a project's settings are once inheritance applies (docs/data.md › Resolution).
 public struct ResolvedSettings: Sendable, Hashable {
-    /// The environments as they apply: the inherited ones with the project's changes, then its own whose
-    /// names they don't have. Empty for a project that isn't a service.
+    /// The environments as they apply, whatever the project's type: the inherited ones with the project's
+    /// changes, then its own whose names they don't have.
     public var environments: [EnvironmentEntry] = []
     /// The environments inherited from the parent, as the parent resolves them, without the changes.
     public var inheritedEnvironments: [EnvironmentEntry] = []
     /// The environment the user works in: the chosen one while it applies, else the first.
     public var currentEnvironment: String?
-    /// The GitHub page: the parent's while the project uses its parent's settings, else the typed page,
-    /// else the origin's.
+    /// The GitHub page: the typed page, else `defaultGithubPage`.
     public var githubPage: String?
-    /// The page of the project's own `origin` remote, the GitHub page field's placeholder.
-    public var originGithubPage: String?
-    /// Whether the service's graph is enabled, the parent's while the project uses its parent's settings.
+    /// The page an empty GitHub page field gives, shown greyed in the field: the nearest ancestor's typed
+    /// page, else the origin's page of the project or of its nearest ancestor that has one.
+    public var defaultGithubPage: String?
+    /// Whether the graph is enabled: the project's value, else `inheritedGraphEnabled`.
     public var graphEnabled = false
+    /// The parent's graph as it applies; false for a top-level project.
+    public var inheritedGraphEnabled = false
 
     public init() {}
 }

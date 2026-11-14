@@ -94,7 +94,7 @@ struct ProjectsModelTests {
         #expect(model.selection == "BK")
     }
 
-    @Test("A sub project that uses its parent's settings lists its parent's environments")
+    @Test("A sub project lists its parent's environments, then its own whose names they don't have")
     func inheritedEnvironments() {
         let model = ProjectsModel(store: MockProjectStore())
         let own = model.environments(of: "A")
@@ -102,16 +102,18 @@ struct ProjectsModelTests {
         #expect(own.inheritedFrom == nil)
 
         let inherited = model.environments(of: "A1")
-        #expect(inherited.environments.map(\.name) == ["Staging", "Production"])
+        #expect(inherited.environments.map(\.name) == ["Staging", "Production", "Own"])
+        #expect(inherited.environments.map(\.inheritedFrom) == ["A", "A", nil])
         #expect(inherited.inheritedFrom?.id == "A")
 
-        // Up the tree: A1L uses A1's settings, which are A's.
-        #expect(model.environments(of: "A1L").inheritedFrom?.id == "A")
-        #expect(model.environments(of: "A1L").environments.map(\.name) == ["Staging", "Production"])
+        // Up the tree: A1L inherits A1's, which come from A and A1.
+        #expect(model.environments(of: "A1L").inheritedFrom?.id == "A1")
+        #expect(model.environments(of: "A1L").environments.map(\.name) == ["Staging", "Production", "Own"])
 
+        // An own environment named like an inherited one isn't used.
         let separate = model.environments(of: "A2")
-        #expect(separate.environments.map(\.name) == ["Separate"])
-        #expect(separate.inheritedFrom == nil)
+        #expect(separate.environments.map(\.name) == ["Staging", "Production", "Separate"])
+        #expect(separate.environments[0].namespace == "a")
 
         #expect(model.environments(of: "BK").environments.isEmpty)
     }
@@ -121,7 +123,7 @@ struct ProjectsModelTests {
         let model = ProjectsModel(store: SampleProjectStore())
         let environments = model.environments(of: "ORD")
         #expect(environments.inheritedFrom?.id == "SHOP")
-        #expect(environments.environments == Project.sample("SHOP")?.environments)
+        #expect(environments.environments.map(\.url) == Project.sample("SHOP")?.environments.map(\.url))
     }
 
     @Test("Figures and activity include the sub projects")

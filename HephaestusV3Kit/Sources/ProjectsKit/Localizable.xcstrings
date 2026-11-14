@@ -78,6 +78,12 @@
     "Add Project" : {
 
     },
+    "Add Settings" : {
+
+    },
+    "Add settings this project doesn’t show yet" : {
+
+    },
     "Added the project %@" : {
 
     },
@@ -246,6 +252,9 @@
     "GitHub Page" : {
 
     },
+    "Graph" : {
+
+    },
     "Icon" : {
 
     },
@@ -258,13 +267,10 @@
     "Inherited from %@" : {
       "comment" : "The project whose environments a sub project uses"
     },
-    "Inherited from %@: only its address, deployment, Jaeger and certificates change here." : {
+    "Inherited from “%@”: fields left empty keep its values, shown in grey." : {
 
     },
     "Its %lld sub projects are removed with it." : {
-
-    },
-    "Its GitHub page and, for a service, its environments and graph come from “%@”." : {
 
     },
     "Its identifier %@ is already used by “%@”." : {
@@ -374,6 +380,12 @@
     "OK" : {
 
     },
+    "Off" : {
+
+    },
+    "On" : {
+
+    },
     "Open" : {
       "comment" : "Opens a tool's window from its tile"
     },
@@ -440,7 +452,16 @@
     "Removed %@ from Hephaestus" : {
 
     },
+    "Same as “%@”: Off" : {
+
+    },
+    "Same as “%@”: On" : {
+
+    },
     "Service" : {
+
+    },
+    "Settings left empty take the values of “%@”, shown in grey." : {
 
     },
     "Show All Projects" : {
@@ -528,9 +549,6 @@
 
     },
     "Use one line." : {
-
-    },
-    "Use parent settings" : {
 
     },
     "Version %@, ^[%lld operation](inflect: true)" : {

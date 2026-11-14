@@ -181,13 +181,13 @@ use, kept as read at their place in the table's order ([Unknown keys](#unknown-k
 | nextBundleNumber | `nextBundleNumber` | `Int` | no | `1` | The first number tried for the next bundle. |
 | docsPath | `docsPath` | `String` | no | `docs` | Relative path of the documentation folder, which may be missing. |
 | githubPage | `githubPage` | `String?` | no | `null` | The page typed in the GitHub page field, `https://github.com/<owner>/<name>`: read trimmed and without a trailing `/`; any other value makes the file invalid ([GitHub page](#github-page)). Left out of the file when there is none. |
-| useParentSettings | `useParentSettings` | `Bool` | no | `true` | Whether a sub project uses its parent's settings: the parent's GitHub page and, for a service, its environments. No effect for a top-level project. |
+| — | `useParentSettings` | kept | no | absent | V2's switch for a sub project to use its parent's settings. No effect in V3, where a sub project takes every value it leaves empty from its parent ([Resolution](#resolution)); kept as read, never added. |
 | subprojects | `subprojects` | `[String]` | no | `[]` | Relative paths of the direct sub projects, in the order they were added, each once. Each names a folder inside this project's folder that holds `.hephaestus/project.yml`. An entry whose folder or file is missing or invalid is kept. |
 | — | `webTabs` | kept | no | absent | Web tabs; not used. |
 | — | `skills` | kept | no | absent | Enabled skills; not used. |
 | — | `chatDefaults` | kept | no | absent | Settings of new chats; not used. |
-| graphEnabled | `graphEnabled` | `Bool` | no | `false` | Whether the service's graph is enabled. Left out of the file while `false`. |
-| environments | `environments` | `[EnvironmentEntry]` | no | `[]` | The environments of a service, in the order they were added; names unique, letter case included ([Project environment](#project-environment)). Kept when the type changes. |
+| graphEnabled | `graphEnabled` | `Bool?` | no | `null` | Whether the graph is enabled; `null` takes the parent's value, `false` for a top-level project ([Resolution](#resolution)). V3 writes `false` too, while set; left out of the file while `null`. |
+| environments | `environments` | `[EnvironmentEntry]` | no | `[]` | The project's own environments, whatever its type, in the order they were added; names unique, letter case included ([Project environment](#project-environment)). |
 | environmentOverrides | `environmentOverrides` | `[String: EnvironmentOverride]` | no | `{}` | A sub project's changes to the environments it inherits, by environment name, written in Unicode code point order ([Environment override](#environment-override)). A change for a name no inherited environment has is kept and ignored. |
 | dashboardWidgets | `dashboardWidgets` | `[DashboardWidgetEntry]?` | no | `null` | The widgets of the project's [Dashboard](ui/dashboard.md), in their order ([Dashboard widget](#dashboard-widget)). `null` shows the default list and `[]` no widget. Left out of the file while the project has no stored list. |
 | dashboardGraphWindow | `dashboardGraphWindow` | `DashboardGraphWindow?` | no | `null` | The time window of the Dashboard's service widgets: `fiveMinutes`, `hour`, `day` or `week`; `null` is `hour`. Any other value makes the file invalid. Left out of the file while `null`. V3 has no `week` window yet: a stored `week` is kept, and the Dashboard shows the last hour. |
@@ -305,19 +305,23 @@ Kubernetes resources it runs on.
 
 Swift type `EnvironmentOverride`, one value of `environmentOverrides`, under the name of the environment it
 changes. A key with a value replaces the parent's; `null` keeps the parent's, so a change can't remove a
-parent's value.
+parent's value. Every field of the environment but its name can change: V3 adds `namespace` and
+`kubeconfig` to V2's six keys.
 
 | Swift name | Key | Type | Default | Rules |
 | --- | --- | --- | --- | --- |
 | url | `url` | `String?` | `null` | As `EnvironmentEntry.url`. |
 | port | `port` | `Int?` | `null` | 1–65535. |
 | allowInvalidCertificates | `allowInvalidCertificates` | `Bool?` | `null` | Stored only while it differs from the parent's. |
+| namespace | `namespace` | `String?` | `null` | V3's addition. One line. Left out of the file while `null`. |
 | deployment | `deployment` | `String?` | `null` | |
 | jaeger | `jaeger` | `String?` | `null` | `<namespace>/<name>`. |
 | argoCDApplication | `argoCDApplication` | `String?` | `null` | `<name>` or `<namespace>/<name>`. |
+| kubeconfig | `kubeconfig` | `String?` | `null` | V3's addition. As `EnvironmentEntry.kubeconfig`. Left out of the file while `null`. |
 | unknownKeys | — | `YAMLMapping` | empty | [Unknown keys](#unknown-keys). |
 
-The four string keys are read and written trimmed, an empty value being `null`. Names are compared with the
+V2's six keys are written in this order, `null` included; V3's two only when set. The string keys are read
+and written trimmed, an empty value being `null`. Names are compared with the
 inherited environments' exactly, letter case included. `applied(to:)` gives the parent's environment with the
 values the change sets; `isEmpty` is true when it sets none.
 
@@ -383,14 +387,14 @@ type: none
 nextTicketNumber: 1
 nextBundleNumber: 1
 docsPath: docs
-useParentSettings: true
 subprojects: []
 environments: []
 environmentOverrides: {}
 ```
 
-A Go service with two environments (`project-service.yml`), and a sub project of it that uses its parent's
-settings, changes the inherited `local` and `staging`, and adds `replay` (`project-subproject.yml`):
+A Go service with two environments (`project-service.yml`), and a sub project of it that changes the
+inherited `local` and `staging` and adds `replay` (`project-subproject.yml`); its `useParentSettings`, V2's, is
+kept and has no effect:
 
 ```yaml
 schema: 1
@@ -500,36 +504,37 @@ Every change goes through `ProjectLibrary`, one at a time, and gives a new snaps
 | --- | --- | --- |
 | **Create** (`NewProject`) | Name: one line, 1–100 characters, trimmed. Identifier: uppercased, 2–8 letters A–Z, used by no loaded project. With a parent: the folder is strictly inside the parent's folder (`Choose a folder inside “<parent name>”.`), checked before anything is written. The folder is created when missing and `createsFolder` is set; otherwise it must exist. A folder that already holds a project is refused: open it instead. The new file has `created` = now, the name, the identifier and the type; every other key takes its default. | 1. the project file and `.gitignore` 2. the parent's `subprojects` (the given parent, else the innermost loaded project whose folder holds it), or the registry |
 | **Open** (a folder) | A folder already loaded gives its project. Otherwise it must hold a valid project file whose identifier no loaded project uses. Registry entries that its file lists as its descendants, at any depth, leave the registry: they load under it. | 1. `.gitignore` 2. the innermost loaded project's `subprojects`, or the registry |
-| **Update** (`ProjectChange`) | Only the values the change sets: name; type; color (a tint, or `#RRGGBB` uppercased, or none); icon (trimmed, none when empty); docs folder (a relative path, not `.hephaestus` or inside it); GitHub page (validated, none when empty); Use parent settings; graph; the whole list of the project's own environments; all its changes to inherited environments; the whole list of Dashboard widgets ([Dashboard widget](#dashboard-widget) › Write rules); the Dashboard's time window. An environment or a change equal to a stored one is written back as it is, even when a hand edit made it break a rule (each stored environment keeps at most one equal environment: a copy is checked); any other is checked ([Validation](#validation)), its names trimmed, a change that sets nothing dropped. An own environment can't take a name another environment has, inherited ones included. | the project file, then `current-environments.yml` when a choice follows a rename or is forgotten |
+| **Update** (`ProjectChange`) | Only the values the change sets: name; type; color (a tint, or `#RRGGBB` uppercased, or none); icon (trimmed, none when empty); docs folder (a relative path, not `.hephaestus` or inside it); GitHub page (validated, none when empty); graph (on, off or none, which takes the parent's); the whole list of the project's own environments; all its changes to inherited environments; the whole list of Dashboard widgets ([Dashboard widget](#dashboard-widget) › Write rules); the Dashboard's time window. An environment or a change equal to a stored one is written back as it is, even when a hand edit made it break a rule (each stored environment keeps at most one equal environment: a copy is checked); any other is checked ([Validation](#validation)), its names trimmed, a change that sets nothing dropped. An own environment can't take a name another environment has, inherited ones included. | the project file, then `current-environments.yml` when a choice follows a rename or is forgotten |
 | **Remove** | The project and its loaded sub projects leave the app: its entry leaves the parent's `subprojects` or the registry, and their chosen environments are forgotten. No file of theirs changes. | 1. the parent's project file, or the registry 2. `current-environments.yml` |
 | **Choose the current environment** | One of the project's environments as they apply. | `current-environments.yml` |
 
 ## Resolution
 
-What a project's settings are once inheritance applies (`ResolvedSettings`):
+What a project's settings are once inheritance applies (`ResolvedSettings`). A sub project takes every value
+it leaves empty from its parent, field by field, whatever the two projects' types; a value it sets replaces
+the parent's. V2's `useParentSettings` switch has no effect. The type only decides which tools a project has
+([Architecture › Project](architecture.md#toolsfoundation)).
 
-- **Environments.** A project that isn't a service (`goService`) has none. A sub project that uses its
-  parent's settings first has its parent's environments, as the parent resolves them (so also those the
-  parent inherits), each with the sub project's change of its name applied: the URL, port, certificate
-  setting, deployment, Jaeger and Argo CD application it sets replace the parent's; the name, namespace and
-  kubeconfig file stay the parent's. Then come its own environments, in order, except those whose name an
-  inherited environment has: they stay in the file, left out. A change for a name no inherited environment
-  has is kept and ignored. A top-level project, and a sub project that doesn't use its parent's settings,
-  has only its own. `inheritedEnvironments` are the parent's, without the changes.
+- **Environments.** A sub project first has its parent's environments, as the parent resolves them (so also
+  those the parent inherits), each with the sub project's change of its name applied: every value the change
+  sets replaces the parent's; the name stays the parent's. Then come its own environments, in order, except
+  those whose name an inherited environment has: they stay in the file, left out. A change for a name no
+  inherited environment has is kept and ignored. A top-level project has only its own.
+  `inheritedEnvironments` are the parent's, without the changes.
 - **Current environment.** The environment chosen in `current-environments.yml` while the project has it;
   otherwise the first; none without environments. After a change, a chosen environment that the change
   renamed (an environment of the list whose name changed at the same place, the list keeping its length)
   stays chosen under its new name, in the project and in the sub projects that inherit it; one a project no
   longer has is forgotten, so that a later environment of that name doesn't become current again. A rename
   made in `project.yml` outside the app counts as a removal.
-- **GitHub page.** A sub project that uses its parent's settings has its parent's page, which may come from
-  the parent's parent. Otherwise the typed `githubPage`; otherwise the page of the project's `origin` remote
-  ([GitHub page](#github-page)), read with `git config --get remote.origin.url` in its folder, and for an SSH
-  host alias with `ssh -G <alias>`. Until the origins are read, and without git, there is no origin page;
-  without ssh, an alias stays unresolved. `originGithubPage` is the project's own origin page, the field's
-  placeholder.
-- **Graph.** Never for a project that isn't a service; the parent's, as the parent resolves it, while a sub
-  project uses its parent's settings; otherwise its own `graphEnabled`.
+- **GitHub page.** The typed `githubPage`; otherwise `defaultGithubPage`, the page an empty field gives and
+  its greyed placeholder: the typed page of the nearest ancestor that has one; otherwise the page of the
+  `origin` remote ([GitHub page](#github-page)) of the project, else of its nearest ancestor that has one.
+  The origin is read with `git config --get remote.origin.url` in the project's folder, and for an SSH host
+  alias with `ssh -G <alias>`. Until the origins are read, and without git, there is no origin page; without
+  ssh, an alias stays unresolved.
+- **Graph.** The project's `graphEnabled`; otherwise its parent's, as the parent resolves it
+  (`inheritedGraphEnabled`, false for a top-level project).
 
 ## Tickets and bundles
 

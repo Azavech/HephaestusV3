@@ -13,7 +13,7 @@ struct ProjectFileTests {
         #expect(project.type == .swiftApplication)
         #expect(project.color == "#34C759")
         #expect(project.subprojects == ["backend", "apps/ios"])
-        #expect(project.keptKeys.keys == ["webTabs", "skills", "chatDefaults", "deletedChats", "commentAnswers"])
+        #expect(project.keptKeys.keys == ["useParentSettings", "webTabs", "skills", "chatDefaults", "deletedChats", "commentAnswers"])
         let widgets = try #require(project.dashboardWidgets)
         #expect(widgets.map(\.kind) == [.project, .tickets, .recentChats, .cost])
         #expect(widgets[0].fields == [.name, .identifier, .folder])
@@ -51,7 +51,6 @@ struct ProjectFileTests {
         nextTicketNumber: 1
         nextBundleNumber: 1
         docsPath: docs
-        useParentSettings: true
         subprojects: []
         environments: []
         environmentOverrides: {}
@@ -63,7 +62,7 @@ struct ProjectFileTests {
     func serviceEnvironments() throws {
         let project = try YAMLCoding.decode(ProjectFile.self, from: fixture("project-service.yml"))
         #expect(project.type == .goService)
-        #expect(project.graphEnabled)
+        #expect(project.graphEnabled == true)
         #expect(project.environments.map(\.name) == ["local", "staging"])
         #expect(project.environments.map(\.baseURL) == ["http://127.0.0.1:8080", "https://staging.example.com"])
         let staging = project.environments[1]

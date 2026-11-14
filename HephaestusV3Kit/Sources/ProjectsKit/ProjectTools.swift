@@ -34,7 +34,7 @@ public enum ProjectTools {
     static func get(_ session: ProjectSession) -> ToolOperation {
         ToolOperation(
             name: "get_project",
-            description: "Returns one project: its settings (name, type, color, icon, docs folder, GitHub page, use parent settings, graph enabled), folder, parent and sub projects, and its environments. environments holds those that apply: for a sub project on its parent's settings, the parent's with this project's changes, then its own. inheritedEnvironments holds the parent's as they are, and currentEnvironment the one selected in the app.",
+            description: "Returns one project: its settings (name, type, color, icon, docs folder, GitHub page, graph enabled), folder, parent and sub projects, and its environments. A sub project takes each setting it leaves empty from its parent: githubPage and graphEnabled are the values that apply. environments holds those that apply: the parent's with this project's changes, then its own. inheritedEnvironments holds the parent's as they are, and currentEnvironment the one selected in the app.",
             inputSchema: .object(properties: [("projectID", projectID)], required: ["projectID"]), permission: .read,
             describe: ProjectTools.describe("get_project")
         ) { @MainActor arguments throws(ToolError) in
@@ -226,7 +226,6 @@ struct ProjectDetailJSON: Encodable {
     let subprojects: [String]
     let docsPath: String
     let githubPage: String?
-    let useParentSettings: Bool
     let graphEnabled: Bool
     let environments: [Environment]
     let inheritedEnvironments: [Environment]
@@ -245,7 +244,6 @@ struct ProjectDetailJSON: Encodable {
         subprojects = project.childIDs
         docsPath = file.docsPath
         githubPage = project.resolved.githubPage
-        useParentSettings = file.useParentSettings
         graphEnabled = project.resolved.graphEnabled
         environments = project.resolved.environments.map(Environment.init)
         inheritedEnvironments = project.resolved.inheritedEnvironments.map(Environment.init)

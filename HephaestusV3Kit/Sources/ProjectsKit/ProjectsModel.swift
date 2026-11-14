@@ -132,16 +132,12 @@ final class ProjectsModel {
         store.ticketTotals(of: id)
     }
 
-    /// The environments the overview lists: those of the project whose settings apply. A sub project
-    /// that uses its parent's settings lists its parent's, up the tree, and says where they come from.
+    /// The environments the overview lists, as they apply. A sub project that inherits some from its parent
+    /// says where they come from.
     func environments(of id: Project.ID) -> ProjectEnvironments {
-        guard let project = tree.project(id) else { return ProjectEnvironments(environments: [], inheritedFrom: nil) }
-        if project.environmentsAreResolved {
-            let parent = project.environments.compactMap(\.inheritedFrom).first.flatMap(tree.project)
-            return ProjectEnvironments(environments: project.environments, inheritedFrom: parent)
-        }
-        let source = tree.settingsSource(of: id) ?? project
-        return ProjectEnvironments(environments: source.environments, inheritedFrom: source.id == project.id ? nil : source)
+        let environments = tree.environments(of: id)
+        let parent = environments.compactMap(\.inheritedFrom).first.flatMap(tree.project)
+        return ProjectEnvironments(environments: environments, inheritedFrom: parent)
     }
 
     /// What happened in the project and its sub projects, newest first, at most `activityLimit` events.
@@ -157,7 +153,7 @@ final class ProjectsModel {
 /// The environments a project's overview lists, and the project they come from when it inherits them.
 nonisolated struct ProjectEnvironments: Hashable, Sendable {
     let environments: [DeploymentEnvironment]
-    /// The project whose settings the project uses, when it isn't the project itself.
+    /// The parent some of the environments come from; nil when none does.
     let inheritedFrom: Project?
 }
 

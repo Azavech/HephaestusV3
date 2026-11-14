@@ -377,7 +377,7 @@ struct InheritedSettingsTests {
         return (parent, child)
     }
 
-    @Test("With Use parent settings on, the parent's environments come first with the changes, then the sub project's own")
+    @Test("A sub project takes its parent's environments first, with its changes, then its own")
     func inherits() async throws {
         try await withTemporaryFolderAsync { world in
             _ = try family(world, subprojectExtra: """
@@ -405,15 +405,19 @@ struct InheritedSettingsTests {
             #expect(worker.inheritedEnvironments.map(\.name) == ["local", "staging"])
             #expect(worker.inheritedEnvironments[0].port == 8080)
             #expect(worker.githubPage == "https://github.com/example/orders")
+            #expect(worker.defaultGithubPage == "https://github.com/example/orders")
             #expect(worker.graphEnabled)
+            #expect(worker.inheritedGraphEnabled)
         }
     }
 
-    @Test("With Use parent settings off, only the sub project's own settings apply; its changes are kept")
-    func off() async throws {
+    @Test("Each value a sub project sets replaces its parent's; V2's useParentSettings has no effect and is kept")
+    func ownValues() async throws {
         try await withTemporaryFolderAsync { world in
             let (_, child) = try family(world, subprojectExtra: """
+            githubPage: https://github.com/example/worker
             useParentSettings: false
+            graphEnabled: false
             environments:
             - name: replay
             environmentOverrides:
@@ -421,16 +425,43 @@ struct InheritedSettingsTests {
                 port: 8081
 
             """)
-            let worker = await world.library().load().project("WRK")!
-            #expect(worker.resolved.environments.map(\.name) == ["replay"])
-            #expect(worker.resolved.inheritedEnvironments.isEmpty)
-            #expect(worker.resolved.githubPage == nil)
+            let library = await world.library()
+            let worker = await library.load().project("WRK")!
+            #expect(worker.resolved.environments.map(\.name) == ["local", "staging", "replay"])
+            #expect(worker.resolved.environments[0].port == 8081)
+            #expect(worker.resolved.githubPage == "https://github.com/example/worker")
+            #expect(worker.resolved.defaultGithubPage == "https://github.com/example/orders")
             #expect(!worker.resolved.graphEnabled)
-            #expect(try world.readProject(child).environmentOverrides.keys.sorted() == ["local"])
+            #expect(worker.resolved.inheritedGraphEnabled)
+
+            let snapshot = try await library.update("WRK", ProjectChange(githubPage: .some(nil), graphEnabled: .some(nil)))
+            #expect(snapshot.project("WRK")?.resolved.githubPage == "https://github.com/example/orders")
+            #expect(snapshot.project("WRK")?.resolved.graphEnabled == true)
+            let text = try String(contentsOfFile: child + "/.hephaestus/project.yml", encoding: .utf8)
+            #expect(text.contains("useParentSettings: false\n"))
+            #expect(!text.contains("graphEnabled"))
         }
     }
 
-    @Test("Nested sub projects inherit what their parent inherits; another type gives no environments")
+    @Test("A sub project's changes reach every field of an inherited environment but its name")
+    func overrideEveryField() async throws {
+        try await withTemporaryFolderAsync { world in
+            _ = try family(world, subprojectExtra: "")
+            let library = await world.library()
+            _ = await library.load()
+            let change = EnvironmentOverride(namespace: " workers ", kubeconfig: "~/.kube/worker.yaml")
+            let snapshot = try await library.update("WRK", ProjectChange(environmentOverrides: ["staging": change]))
+            let staging = try #require(snapshot.project("WRK")?.resolved.environments.last)
+            #expect(staging.namespace == "workers")
+            #expect(staging.kubeconfig == "~/.kube/worker.yaml")
+            #expect(staging.url == "https://staging.example.com")
+            await #expect(throws: ProjectError.rule(.kubeconfig(field: "environmentOverrides[staging].kubeconfig"))) {
+                try await library.update("WRK", ProjectChange(environmentOverrides: ["staging": EnvironmentOverride(kubeconfig: "kube")]))
+            }
+        }
+    }
+
+    @Test("Nested sub projects inherit what their parent inherits, whatever their type")
     func nestedAndTypes() async throws {
         try await withTemporaryFolderAsync { world in
             _ = try family(world, subprojectExtra: "subprojects:\n- jobs\nenvironmentOverrides:\n  local:\n    port: 8081\n")
@@ -439,8 +470,10 @@ struct InheritedSettingsTests {
             #expect(snapshot.project("JOB")?.resolved.environments.first?.baseURL == "http://10.0.0.1:8081")
             try world.project("orders/worker", id: "WRK", extra: "subprojects:\n- jobs\n")
             let other = await world.library().load()
-            #expect(other.project("WRK")?.resolved.environments.isEmpty == true)
-            #expect(other.project("JOB")?.resolved.environments.isEmpty == true)
+            #expect(other.project("WRK")?.file.type == ProjectKind.none)
+            #expect(other.project("WRK")?.resolved.environments.map(\.name) == ["local", "staging"])
+            #expect(other.project("JOB")?.resolved.environments.first?.baseURL == "http://10.0.0.1:8080")
+            #expect(other.project("JOB")?.resolved.graphEnabled == true)
         }
     }
 
@@ -534,7 +567,7 @@ struct GitHubPageResolutionTests {
             #expect(snapshot.project("LAB")?.resolved.githubPage == nil)
             snapshot = try await library.update("ORD", ProjectChange(githubPage: .some("https://github.com/example/typed")))
             #expect(snapshot.project("ORD")?.resolved.githubPage == "https://github.com/example/typed")
-            #expect(snapshot.project("ORD")?.resolved.originGithubPage == "https://github.com/example/orders")
+            #expect(snapshot.project("ORD")?.resolved.defaultGithubPage == "https://github.com/example/orders")
 
             let withoutSSH = await World(world.root).library(runner, tools: Tools(environment: [:], git: "/usr/bin/git"))
             _ = await withoutSSH.load()
@@ -542,7 +575,7 @@ struct GitHubPageResolutionTests {
         }
     }
 
-    @Test("A sub project takes its parent's page while it uses its parent's settings; a changed .git/config is read again")
+    @Test("An empty page takes the nearest typed page above, else the nearest origin's; a changed .git/config is read again")
     func inheritanceAndGitConfig() async throws {
         try await withTemporaryFolderAsync { world in
             let orders = try world.project("orders", id: "ORD", extra: "subprojects:\n- worker\n")
@@ -552,13 +585,19 @@ struct GitHubPageResolutionTests {
             let library = await world.library(runner, tools: Tools(environment: [:], git: "/usr/bin/git"))
             _ = await library.load()
             var snapshot = try #require(await library.refreshOrigins())
-            #expect(snapshot.project("WRK")?.resolved.githubPage == "https://github.com/example/orders")
-            snapshot = try await library.update("WRK", ProjectChange(useParentSettings: false))
             #expect(snapshot.project("WRK")?.resolved.githubPage == "https://github.com/example/worker")
+            #expect(snapshot.project("WRK")?.resolved.defaultGithubPage == "https://github.com/example/orders")
+            snapshot = try await library.update("WRK", ProjectChange(githubPage: .some(nil)))
+            #expect(snapshot.project("WRK")?.resolved.githubPage == "https://github.com/example/orders")
+            runner.setOrigin("https://github.com/example/worker-origin", for: worker)
+            snapshot = try #require(await library.handle([FileEvent(path: worker + "/.git/config", kind: .modified)]))
+            #expect(snapshot.project("WRK")?.resolved.githubPage == "https://github.com/example/worker-origin")
+            snapshot = try await library.update("ORD", ProjectChange(githubPage: .some("https://github.com/example/typed")))
+            #expect(snapshot.project("WRK")?.resolved.githubPage == "https://github.com/example/typed")
             runner.setOrigin("https://github.com/example/renamed", for: orders)
             snapshot = try #require(await library.handle([FileEvent(path: orders + "/.git/config", kind: .modified)]))
-            #expect(snapshot.project("ORD")?.resolved.githubPage == "https://github.com/example/renamed")
-            _ = worker
+            #expect(snapshot.project("ORD")?.resolved.githubPage == "https://github.com/example/typed")
+            #expect(snapshot.project("ORD")?.resolved.defaultGithubPage == "https://github.com/example/renamed")
         }
     }
 }

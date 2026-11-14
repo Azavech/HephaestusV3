@@ -16,8 +16,8 @@ private final class QuietRunner: ProcessRunning {
 @MainActor
 @Suite("Project Settings")
 struct ProjectSettingsTests {
-    /// A started session on a temporary data folder, with Orders (a service with `local` and `staging`) and
-    /// its sub project Worker.
+    /// A started session on a temporary data folder, with Orders (a service with `local` and `staging`), its
+    /// sub project Worker, and Scripts, a project of type Other with nothing set.
     private func withSession(_ body: (ProjectSession, URL) async throws -> Void) async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("ProjectsKitTests-\(UUID().uuidString)", isDirectory: true)
             .resolvingSymlinksInPath()
@@ -45,9 +45,11 @@ struct ProjectSettingsTests {
 
         """)
         try write("orders/worker", "id: WRK\nname: Worker\ncreated: 2026-10-31T09:30:00Z\ntype: goService\n")
+        try write("scripts", "id: SCR\nname: Scripts\ncreated: 2026-10-31T09:30:00Z\n")
         let data = DataFolder(url: root.appendingPathComponent("Data", isDirectory: true))
         try data.createIfNeeded()
-        try YAMLFile.write(RegistryFile(projects: [root.appendingPathComponent("orders").path]), to: data.registryFile)
+        try YAMLFile.write(RegistryFile(projects: [root.appendingPathComponent("orders").path, root.appendingPathComponent("scripts").path]),
+                           to: data.registryFile)
         let session = ProjectSession(dataFolder: data, runner: QuietRunner(), hub: FileEventHub(quietDelay: .milliseconds(20), maximumDelay: .milliseconds(100)))
         await session.start()
         try await body(session, root)
@@ -119,7 +121,6 @@ struct ProjectSettingsTests {
     func inherited() async throws {
         try await withSession { session, _ in
             let model = ProjectSettingsModel(projectID: "WRK", backend: session)
-            #expect(model.usesParentSettings)
             await model.select("staging")
             #expect(model.isInherited)
             #expect(model.parentEnvironment?.deployment == "orders")
@@ -135,8 +136,62 @@ struct ProjectSettingsTests {
             model.deployment = ""
             await model.applyEnvironmentField(.deployment)
             #expect(session.snapshot.project("WRK")?.file.environmentOverrides["staging"] == nil)
+            // The namespace and kubeconfig file change too.
+            model.namespace = "workers"
+            model.kubeconfig = "~/.kube/worker.yaml"
+            await model.applyPendingEnvironmentFields()
+            #expect(session.snapshot.project("WRK")?.file.environmentOverrides["staging"]
+                == EnvironmentOverride(namespace: "workers", kubeconfig: "~/.kube/worker.yaml"))
+            #expect(model.selected?.namespace == "workers")
+            model.namespace = ""
+            model.kubeconfig = ""
+            await model.applyPendingEnvironmentFields()
+            #expect(session.snapshot.project("WRK")?.file.environmentOverrides["staging"] == nil)
             await model.removeEnvironment()
             #expect(session.snapshot.project("ORD")?.file.environments.count == 2)
         }
     }
+
+    @Test("A project of type Other shows only what applies to it; + adds the other sections")
+    func optionalSections() async throws {
+        try await withSession { session, _ in
+            let model = ProjectSettingsModel(projectID: "SCR", backend: session)
+            #expect(model.addableSections == [.github, .service, .environments])
+            #expect(!model.shows(.environments))
+            model.add(.environments)
+            #expect(model.shows(.environments))
+            #expect(model.addableSections == [.github, .service])
+            await model.addEnvironment()
+            #expect(session.snapshot.project("SCR")?.file.environments.map(\.name) == ["New Environment"])
+            // Reopened, the window shows the section because it has a value.
+            let reopened = ProjectSettingsModel(projectID: "SCR", backend: session)
+            #expect(reopened.addableSections == [.github, .service])
+            await reopened.applyGraph(true)
+            #expect(reopened.addableSections == [.github])
+            await reopened.applyGraph(nil)
+            #expect(session.snapshot.project("SCR")?.file.graphEnabled == nil)
+
+            let service = ProjectSettingsModel(projectID: "ORD", backend: session)
+            #expect(service.addableSections == [.github])
+        }
+    }
+
+    @Test("A sub project's graph is its parent's until it sets its own")
+    func inheritedGraph() async throws {
+        try await withSession { session, _ in
+            let worker = ProjectSettingsModel(projectID: "WRK", backend: session)
+            #expect(worker.graphSetting == nil)
+            #expect(!worker.inheritedGraphEnabled)
+            await ProjectSettingsModel(projectID: "ORD", backend: session).applyGraph(true)
+            #expect(worker.graphEnabled)
+            #expect(worker.inheritedGraphEnabled)
+            await worker.applyGraph(false)
+            #expect(session.snapshot.project("WRK")?.file.graphEnabled == false)
+            #expect(!worker.graphEnabled)
+            await worker.applyGraph(nil)
+            #expect(session.snapshot.project("WRK")?.file.graphEnabled == nil)
+            #expect(worker.graphEnabled)
+        }
+    }
+
 }

@@ -28,17 +28,14 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
     public let symbol: String
     public let path: String
     public let repository: String
-    /// Where a service runs. Empty for apps and libraries. For a project of the app's data, the
-    /// environments as they apply, inherited ones included (`environmentsAreResolved`); for a sample, its
-    /// own, which `ProjectTree.environments(of:)` resolves.
+    /// Where the project runs. For a project of the app's data, the environments as they apply, inherited
+    /// ones included (`environmentsAreResolved`); for a sample, its own, which `ProjectTree.environments(of:)`
+    /// resolves.
     public let environments: [DeploymentEnvironment]
     /// What its tools report; nil until a tool reports it.
     public let activity: ProjectActivity?
     /// The project whose folder holds this one's; nil for a top-level project.
     public let parentID: Project.ID?
-    /// For a sub project: whether it takes its parent's settings, its environments among them (
-    /// `Use parent settings`, on by default).
-    public let usesParentSettings: Bool
     /// Whether `environments` are already resolved, inheritance applied: true for the app's data.
     public let environmentsAreResolved: Bool
     /// The project's GitHub page, `https://github.com/<owner>/<name>`, once resolved.
@@ -62,7 +59,6 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
         environments: [DeploymentEnvironment] = [],
         activity: ProjectActivity?,
         parentID: Project.ID? = nil,
-        usesParentSettings: Bool = true,
         environmentsAreResolved: Bool = false,
         githubPage: String? = nil,
         currentEnvironment: String? = nil,
@@ -79,7 +75,6 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
         self.environments = environments
         self.activity = activity
         self.parentID = parentID
-        self.usesParentSettings = usesParentSettings
         self.environmentsAreResolved = environmentsAreResolved
         self.githubPage = githubPage
         self.currentEnvironment = currentEnvironment
@@ -134,7 +129,7 @@ nonisolated public struct DeploymentEnvironment: Identifiable, Hashable, Sendabl
     /// The kubeconfig file, an absolute path or one starting with `~/`.
     public let kubeconfig: String?
     public let allowsInvalidCertificates: Bool
-    /// The project it is inherited from, for a sub project that uses its parent's settings.
+    /// The parent it is inherited from, for an environment of a sub project that comes from its parent.
     public let inheritedFrom: String?
 
     public init(name: String, cluster: String?, namespace: String?, url: String?, health: Health?,
@@ -151,6 +146,13 @@ nonisolated public struct DeploymentEnvironment: Identifiable, Hashable, Sendabl
         self.kubeconfig = kubeconfig
         self.allowsInvalidCertificates = allowsInvalidCertificates
         self.inheritedFrom = inheritedFrom
+    }
+
+    /// The same environment, inherited from `parent`.
+    public func inherited(from parent: String) -> DeploymentEnvironment {
+        DeploymentEnvironment(name: name, cluster: cluster, namespace: namespace, url: url, health: health, deployment: deployment,
+                              jaeger: jaeger, argoCDApplication: argoCDApplication, kubeconfig: kubeconfig,
+                              allowsInvalidCertificates: allowsInvalidCertificates, inheritedFrom: parent)
     }
 }
 
@@ -248,21 +250,16 @@ nonisolated public struct ProjectTree: Sendable {
         }
     }
 
-    /// The project whose settings apply to `id`: itself, or for a sub project using its parent's
-    /// settings, its parent's source, up the tree.
-    public func settingsSource(of id: Project.ID) -> Project? {
-        guard let project = project(id) else { return nil }
-        if project.parentID != nil, project.usesParentSettings, let parent = self.project(project.parentID) {
-            return settingsSource(of: parent.id)
-        }
-        return project
-    }
-
-    /// The environments a project's tools read: those of the project it takes its settings from, its
-    /// own when it has its own settings (the user's choice: the overview and every tool agree).
+    /// The environments a project's tools read, as they apply (the overview and every tool agree). A
+    /// project of the app's data has them resolved; a sample takes its parent's, as they apply, marked as
+    /// inherited, then its own whose names they don't have.
     public func environments(of id: Project.ID) -> [DeploymentEnvironment] {
-        if let project = project(id), project.environmentsAreResolved { return project.environments }
-        return settingsSource(of: id)?.environments ?? project(id)?.environments ?? []
+        guard let project = project(id) else { return [] }
+        if project.environmentsAreResolved { return project.environments }
+        guard let parentID = project.parentID, self.project(parentID) != nil else { return project.environments }
+        let inherited = environments(of: parentID).map { $0.inherited(from: parentID) }
+        let names = Set(inherited.map(\.name))
+        return inherited + project.environments.filter { !names.contains($0.name) }
     }
 
     /// The ticket figures of a project with all its descendants.

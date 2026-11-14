@@ -22,7 +22,7 @@ struct MockProjectStore: ProjectStore {
             Self.project("A", "Alpha", .service, contract: "1.0.0", environments: ["Staging", "Production"]),
             Self.project("A1", "Alpha One", .service, contract: "2.0.0", environments: ["Own"], parent: "A"),
             Self.project("A1L", "Alpha One Lib", .library, parent: "A1"),
-            Self.project("A2", "Alpha Two", .service, environments: ["Separate"], parent: "A", usesParentSettings: false),
+            Self.project("A2", "Alpha Two", .service, environments: ["Separate", "Staging"], parent: "A"),
             Self.project("B", "Béta", .app),
             Self.project("BK", "Béta Kit", .library, parent: "B"),
             Self.project("C", "Core", .library),
@@ -36,7 +36,7 @@ struct MockProjectStore: ProjectStore {
 
     static func project(
         _ id: String, _ name: String, _ kind: Project.Kind, contract: String? = nil, environments: [String] = [],
-        parent: Project.ID? = nil, usesParentSettings: Bool = true
+        parent: Project.ID? = nil
     ) -> Project {
         Project(
             id: id, name: name, kind: kind, tint: .accent, symbol: "folder", path: "~/\(id)", repository: id.lowercased(),
@@ -47,7 +47,7 @@ struct MockProjectStore: ProjectStore {
                 openTickets: 1, ticketsInReview: 1, draftTickets: 1, lastBuild: .passed, lastBuildAt: SampleClock.date(),
                 contractVersion: contract
             ),
-            parentID: parent, usesParentSettings: usesParentSettings
+            parentID: parent
         )
     }
 

@@ -25,14 +25,11 @@ public struct ProjectFile: Codable, Sendable, Hashable {
     public var docsPath: String
     /// The page typed in the GitHub page field, `https://github.com/<owner>/<name>`.
     public var githubPage: String?
-    /// Whether a sub project uses its parent's settings: its GitHub page and, for a service, its
-    /// environments. No effect for a top-level project.
-    public var useParentSettings: Bool
     /// The relative paths of the direct sub projects, in the order they were added.
     public var subprojects: [String]
-    /// Whether the service's graph is enabled.
-    public var graphEnabled: Bool
-    /// The environments of a service, in the order they were added.
+    /// Whether the graph is enabled; nil takes the parent's value, false for a top-level project.
+    public var graphEnabled: Bool?
+    /// The project's own environments, in the order they were added.
     public var environments: [EnvironmentEntry]
     /// The changes of a sub project to the environments it inherits, by environment name.
     public var environmentOverrides: [String: EnvironmentOverride]
@@ -47,8 +44,8 @@ public struct ProjectFile: Codable, Sendable, Hashable {
 
     public init(schema: Int = 1, id: String, name: String, created: Date, type: ProjectKind = .none, color: String? = nil,
                 icon: String? = nil, nextTicketNumber: Int = 1, nextBundleNumber: Int = 1, docsPath: String = "docs",
-                githubPage: String? = nil, useParentSettings: Bool = true, subprojects: [String] = [],
-                graphEnabled: Bool = false, environments: [EnvironmentEntry] = [],
+                githubPage: String? = nil, subprojects: [String] = [],
+                graphEnabled: Bool? = nil, environments: [EnvironmentEntry] = [],
                 environmentOverrides: [String: EnvironmentOverride] = [:], dashboardWidgets: [DashboardWidgetEntry]? = nil,
                 dashboardGraphWindow: DashboardGraphWindow? = nil, keptKeys: YAMLMapping = [:],
                 unknownKeys: YAMLMapping = [:]) {
@@ -63,7 +60,6 @@ public struct ProjectFile: Codable, Sendable, Hashable {
         self.nextBundleNumber = nextBundleNumber
         self.docsPath = docsPath
         self.githubPage = githubPage
-        self.useParentSettings = useParentSettings
         self.subprojects = subprojects
         self.graphEnabled = graphEnabled
         self.environments = environments
@@ -80,8 +76,9 @@ public struct ProjectFile: Codable, Sendable, Hashable {
         "githubPage", "useParentSettings", "subprojects", "webTabs", "skills", "chatDefaults", "graphEnabled",
         "environments", "environmentOverrides", "dashboardWidgets", "dashboardGraphWindow", "deletedChats", "commentAnswers",
     ]
-    /// The keys kept as read.
-    static let keptKeys: Set<String> = ["webTabs", "skills", "chatDefaults", "deletedChats", "commentAnswers"]
+    /// The keys kept as read. `useParentSettings`, V2's switch, no longer has an effect: every field of a sub
+    /// project that is empty takes the parent's value.
+    static let keptKeys: Set<String> = ["useParentSettings", "webTabs", "skills", "chatDefaults", "deletedChats", "commentAnswers"]
     static let knownKeys = Set(keyOrder)
 
     public init(from decoder: any Decoder) throws {
@@ -108,9 +105,8 @@ public struct ProjectFile: Codable, Sendable, Hashable {
             }
             return page
         }
-        useParentSettings = try c.value("useParentSettings", default: true)
         subprojects = try c.value("subprojects", default: [])
-        graphEnabled = try c.value("graphEnabled", default: false)
+        graphEnabled = try c.optional("graphEnabled")
         environments = try c.value("environments", default: [])
         environmentOverrides = try c.value("environmentOverrides", default: [:])
         dashboardWidgets = try c.optional("dashboardWidgets")
@@ -136,14 +132,12 @@ public struct ProjectFile: Codable, Sendable, Hashable {
         try c.encode(nextBundleNumber, "nextBundleNumber")
         try c.encode(docsPath, "docsPath")
         try c.encodeIfPresent(githubPage, "githubPage")
-        try c.encode(useParentSettings, "useParentSettings")
+        try c.encodeIfPresent(keptKeys["useParentSettings"], "useParentSettings")
         try c.encode(subprojects, "subprojects")
         for key in ["webTabs", "skills", "chatDefaults"] {
             try c.encodeIfPresent(keptKeys[key], key)
         }
-        if graphEnabled {
-            try c.encode(graphEnabled, "graphEnabled")
-        }
+        try c.encodeIfPresent(graphEnabled, "graphEnabled")
         try c.encode(environments, "environments")
         try c.encode(EnvironmentOverride.SortedMap(environmentOverrides), "environmentOverrides")
         try c.encodeIfPresent(dashboardWidgets, "dashboardWidgets")
@@ -272,55 +266,67 @@ public struct EnvironmentEntry: Codable, Sendable, Hashable {
 
 /// One value of the key `environmentOverrides`, under the name of the environment it changes: what a
 /// sub project changes in an environment it inherits. A value replaces the parent's; nil keeps it
-/// (docs/data.md › Environment override).
+/// (docs/data.md › Environment override). `namespace` and `kubeconfig` are V3's additions.
 public struct EnvironmentOverride: Codable, Sendable, Hashable {
     public var url: String?
     public var port: Int?
     public var allowInvalidCertificates: Bool?
+    public var namespace: String?
     public var deployment: String?
     public var jaeger: String?
     public var argoCDApplication: String?
+    public var kubeconfig: String?
     public var unknownKeys: YAMLMapping
 
-    public init(url: String? = nil, port: Int? = nil, allowInvalidCertificates: Bool? = nil, deployment: String? = nil,
-                jaeger: String? = nil, argoCDApplication: String? = nil, unknownKeys: YAMLMapping = [:]) {
+    public init(url: String? = nil, port: Int? = nil, allowInvalidCertificates: Bool? = nil, namespace: String? = nil,
+                deployment: String? = nil, jaeger: String? = nil, argoCDApplication: String? = nil, kubeconfig: String? = nil,
+                unknownKeys: YAMLMapping = [:]) {
         self.url = url
         self.port = port
         self.allowInvalidCertificates = allowInvalidCertificates
+        self.namespace = namespace
         self.deployment = deployment
         self.jaeger = jaeger
         self.argoCDApplication = argoCDApplication
+        self.kubeconfig = kubeconfig
         self.unknownKeys = unknownKeys
     }
 
-    static let knownKeys: Set<String> = ["url", "port", "allowInvalidCertificates", "deployment", "jaeger", "argoCDApplication"]
+    static let knownKeys: Set<String> = ["url", "port", "allowInvalidCertificates", "namespace", "deployment", "jaeger",
+                                         "argoCDApplication", "kubeconfig"]
 
-    /// The four string keys are read trimmed, an empty value being null.
+    /// The string keys are read trimmed, an empty value being null.
     public init(from decoder: any Decoder) throws {
         let c = try MappingReader(decoder)
         url = ProjectRules.trimmedOrNil(try c.optional("url", String.self))
         port = try c.optional("port")
         allowInvalidCertificates = try c.optional("allowInvalidCertificates")
+        namespace = ProjectRules.trimmedOrNil(try c.optional("namespace", String.self))
         deployment = ProjectRules.trimmedOrNil(try c.optional("deployment", String.self))
         jaeger = ProjectRules.trimmedOrNil(try c.optional("jaeger", String.self))
         argoCDApplication = ProjectRules.trimmedOrNil(try c.optional("argoCDApplication", String.self))
+        kubeconfig = ProjectRules.trimmedOrNil(try c.optional("kubeconfig", String.self))
         unknownKeys = try c.unknownKeys(known: Self.knownKeys)
     }
 
+    /// V2's six keys are written as V2 writes them, null included; V3's two only when set.
     public func encode(to encoder: any Encoder) throws {
         var c = MappingWriter(encoder)
         try c.encodeOptional(url, "url")
         try c.encodeOptional(port, "port")
         try c.encodeOptional(allowInvalidCertificates, "allowInvalidCertificates")
+        try c.encodeIfPresent(namespace, "namespace")
         try c.encodeOptional(deployment, "deployment")
         try c.encodeOptional(jaeger, "jaeger")
         try c.encodeOptional(argoCDApplication, "argoCDApplication")
+        try c.encodeIfPresent(kubeconfig, "kubeconfig")
         try c.encodeUnknownKeys(unknownKeys, known: Self.knownKeys)
     }
 
     /// True when the change replaces none of the parent's values.
     public var isEmpty: Bool {
-        url == nil && port == nil && allowInvalidCertificates == nil && deployment == nil && jaeger == nil && argoCDApplication == nil
+        url == nil && port == nil && allowInvalidCertificates == nil && namespace == nil && deployment == nil && jaeger == nil
+            && argoCDApplication == nil && kubeconfig == nil
     }
 
     /// The parent's environment with the values this change sets; its name and other fields stay.
@@ -329,9 +335,11 @@ public struct EnvironmentOverride: Codable, Sendable, Hashable {
         if let url { result.url = url }
         if let port { result.port = port }
         if let allowInvalidCertificates { result.allowInvalidCertificates = allowInvalidCertificates }
+        if let namespace { result.namespace = namespace }
         if let deployment { result.deployment = deployment }
         if let jaeger { result.jaeger = jaeger }
         if let argoCDApplication { result.argoCDApplication = argoCDApplication }
+        if let kubeconfig { result.kubeconfig = kubeconfig }
         return result
     }
 

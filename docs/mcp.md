@@ -288,8 +288,7 @@ a project: Claude may read and change every project of this Mac, as the user can
 
 A project's JSON (`get_project`, `create_project`, `update_project`): `id`, `name`, `type` (`none`,
 `goService`, `swiftApplication`, `library`), `color`, `icon`, `folder`, `parentID`, `subprojects` (the loaded
-sub projects' identifiers), `docsPath`, `githubPage` (as it resolves), `useParentSettings`, `graphEnabled` (as
-it resolves), `environments` (as they apply), `inheritedEnvironments`, `currentEnvironment`, `fileIssue`. Each
+sub projects' identifiers), `docsPath`, `githubPage` (as it resolves), `graphEnabled` (as it resolves), `environments` (as they apply), `inheritedEnvironments`, `currentEnvironment`, `fileIssue`. Each
 environment: `name`, `url`, `port`, `baseURL`, `allowInvalidCertificates`, `namespace`, `deployment`, `jaeger`,
 `argoCDApplication`, `kubeconfig`. Absent values are left out. Errors map to codes this way: an identifier in
 use or a folder that holds a project, `conflict`; a broken rule or a folder outside the parent, `invalid`; an
@@ -346,7 +345,7 @@ Input schema:
 Description:
 
 ```text
-Returns one project: its settings (name, type, color, icon, docs folder, GitHub page, use parent settings, graph enabled), folder, parent and sub projects, and its environments. environments holds those that apply: for a sub project on its parent's settings, the parent's with this project's changes, then its own. inheritedEnvironments holds the parent's as they are, and currentEnvironment the one selected in the app.
+Returns one project: its settings (name, type, color, icon, docs folder, GitHub page, graph enabled), folder, parent and sub projects, and its environments. A sub project takes each setting it leaves empty from its parent: githubPage and graphEnabled are the values that apply. environments holds those that apply: the parent's with this project's changes, then its own. inheritedEnvironments holds the parent's as they are, and currentEnvironment the one selected in the app.
 ```
 
 Input schema:
@@ -402,8 +401,8 @@ Input schema:
 ### update_project
 
 - **Calls:** `ProjectSession.update` with the values given: `name`, `type`, `color` (an empty one removes it),
-  `icon` (an empty one removes it) and `docsPath`. Claude never changes a project's GitHub page, Use parent
-  settings, graph or environments: only the user does, in [Project Settings](ui/project-settings.md).
+  `icon` (an empty one removes it) and `docsPath`. Claude never changes a project's GitHub page, graph or
+  environments: only the user does, in [Project Settings](ui/project-settings.md).
 - An `icon` that isn't an SF Symbol of this Mac fails first: `<name> is not an SF Symbol of this Mac.`
   (`invalid`).
 - **Result:** the project's JSON.

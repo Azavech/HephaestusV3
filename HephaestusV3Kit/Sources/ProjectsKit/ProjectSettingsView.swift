@@ -6,8 +6,9 @@ import SwiftUI
 import ToolsFoundation
 import UniformTypeIdentifiers
 
-/// The Project Settings window of one project (⇧⌘,): its name, type, tint and icon, its folder and parent,
-/// its GitHub page, and a service's environments (docs/ui/project-settings.md).
+/// The Project Settings window of one project (⇧⌘,): its name, type, tint and icon, its folder and parent, and
+/// the sections that apply to it, its GitHub page, graph and environments, the others added with `+`
+/// (docs/ui/project-settings.md).
 public struct ProjectSettingsWindow: View {
     @State private var model: ProjectSettingsModel
 
@@ -51,25 +52,42 @@ private struct ProjectSettingsForm: View {
         Form {
             general
             location
-            Section(String(localized: "GitHub", bundle: #bundle)) {
-                field(String(localized: "GitHub Page", bundle: #bundle), text: $model.githubPage, field: .githubPage,
-                      prompt: model.usesParentSettings ? "" : (project.resolved.originGithubPage ?? "https://github.com/owner/name"),
-                      monospaced: true, disabled: model.usesParentSettings, shown: model.usesParentSettings ? project.resolved.githubPage : nil) {
-                    await model.applyGitHubPage()
+            if model.shows(.github) {
+                Section(String(localized: "GitHub", bundle: #bundle)) {
+                    field(String(localized: "GitHub Page", bundle: #bundle), text: $model.githubPage, field: .githubPage,
+                          prompt: project.resolved.defaultGithubPage ?? "https://github.com/owner/name", monospaced: true) {
+                        await model.applyGitHubPage()
+                    }
                 }
             }
-            if project.file.type == .goService {
-                Section(String(localized: "Service", bundle: #bundle)) {
-                    Toggle(String(localized: "Enable graph", bundle: #bundle),
-                           isOn: Binding { model.graphEnabled } set: { on in Task { await model.applyGraph(on) } })
-                        .disabled(model.usesParentSettings)
-                        .accessibilityIdentifier("projectSettings.graph")
-                    message(.graph)
-                }
+            if model.shows(.service) {
+                service
+            }
+            if model.shows(.environments) {
                 environments
             }
         }
         .formStyle(.grouped)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    ForEach(model.addableSections) { section in
+                        Button {
+                            model.add(section)
+                        } label: {
+                            Label(section.title, systemImage: section.symbol)
+                        }
+                        .accessibilityIdentifier("projectSettings.addSection.\(section.rawValue)")
+                    }
+                } label: {
+                    Label(String(localized: "Add Settings", bundle: #bundle), systemImage: "plus")
+                }
+                .menuIndicator(.hidden)
+                .disabled(model.addableSections.isEmpty)
+                .help(String(localized: "Add settings this project doesn’t show yet", bundle: #bundle))
+                .accessibilityIdentifier("projectSettings.addSection")
+            }
+        }
         // Changes made elsewhere show, except in the field being edited.
         .onChange(of: project) {
             model.reload(except: focus)
@@ -154,16 +172,38 @@ private struct ProjectSettingsForm: View {
                     Text(verbatim: "\(parent.file.name) (\(parent.id))")
                 }
                 .accessibilityIdentifier("projectSettings.parent")
-                Toggle(String(localized: "Use parent settings", bundle: #bundle),
-                       isOn: Binding { project.file.useParentSettings } set: { on in Task { await model.applyUseParentSettings(on) } })
-                    .accessibilityIdentifier("projectSettings.useParentSettings")
-                Text("Its GitHub page and, for a service, its environments and graph come from “\(parent.file.name)”.", bundle: #bundle)
+                Text("Settings left empty take the values of “\(parent.file.name)”, shown in grey.", bundle: #bundle)
                     .font(.callout)
                     .foregroundStyle(.textSecondary)
+                    .accessibilityIdentifier("projectSettings.parent.note")
             }
             field(String(localized: "Docs Folder", bundle: #bundle), text: $model.docsPath, field: .docsPath, prompt: "docs", monospaced: true) {
                 await model.applyDocsPath()
             }
+        }
+    }
+
+    /// The graph: a toggle for a top-level project; for a sub project, also the parent's value.
+    private var service: some View {
+        Section(String(localized: "Service", bundle: #bundle)) {
+            if let parent = model.parent {
+                Picker(String(localized: "Graph", bundle: #bundle),
+                       selection: Binding { model.graphSetting } set: { value in Task { await model.applyGraph(value) } }) {
+                    Text(model.inheritedGraphEnabled
+                         ? String(localized: "Same as “\(parent.file.name)”: On", bundle: #bundle)
+                         : String(localized: "Same as “\(parent.file.name)”: Off", bundle: #bundle))
+                        .tag(Bool?.none)
+                    Divider()
+                    Text("On", bundle: #bundle).tag(Bool?.some(true))
+                    Text("Off", bundle: #bundle).tag(Bool?.some(false))
+                }
+                .accessibilityIdentifier("projectSettings.graph")
+            } else {
+                Toggle(String(localized: "Enable graph", bundle: #bundle),
+                       isOn: Binding { model.graphEnabled } set: { on in Task { await model.applyGraph(on ? true : nil) } })
+                    .accessibilityIdentifier("projectSettings.graph")
+            }
+            message(.graph)
         }
     }
 
@@ -201,7 +241,7 @@ private struct ProjectSettingsForm: View {
                 .accessibilityIdentifier("projectSettings.environment.remove")
             }
             if inherited, let parentName = model.parent?.file.name {
-                Text("Inherited from \(parentName): only its address, deployment, Jaeger and certificates change here.", bundle: #bundle)
+                Text("Inherited from “\(parentName)”: fields left empty keep its values, shown in grey.", bundle: #bundle)
                     .font(.callout)
                     .foregroundStyle(.textSecondary)
                     .accessibilityIdentifier("projectSettings.environment.inherited")
@@ -214,24 +254,22 @@ private struct ProjectSettingsForm: View {
                 LabeledContent(String(localized: "Kubeconfig File", bundle: #bundle)) {
                     HStack(spacing: 8) {
                         TextField(String(localized: "Kubeconfig File", bundle: #bundle), text: $model.kubeconfig,
-                                  prompt: Text(verbatim: "~/.kube/config"))
+                                  prompt: Text(verbatim: inherited ? (parent?.kubeconfig ?? "") : "~/.kube/config"))
                             .labelsHidden()
                             .monospaced()
                             .focused($focus, equals: .kubeconfig)
                             .onSubmit { Task { await model.applyEnvironmentField(.kubeconfig) } }
-                            .disabled(inherited)
                             .accessibilityIdentifier("projectSettings.kubeconfig")
                         Button(String(localized: "Browse…", bundle: #bundle)) {
                             browsingKubeconfig = true
                         }
-                        .disabled(inherited)
                         connectionDot
                     }
                 }
                 message(.kubeconfig)
                 connectionMessage
                 suggestionField(String(localized: "Namespace", bundle: #bundle), text: $model.namespace, field: .namespace,
-                                suggestions: model.namespaces, disabled: inherited)
+                                suggestions: model.namespaces, prompt: inherited ? parent?.namespace : nil)
                 suggestionField(String(localized: "Deployment", bundle: #bundle), text: $model.deployment, field: .deployment,
                                 suggestions: model.deployments, prompt: inherited ? parent?.deployment : nil)
                 field(String(localized: "Jaeger", bundle: #bundle), text: $model.jaeger, field: .jaeger,
@@ -309,13 +347,12 @@ private struct ProjectSettingsForm: View {
 
     /// A text field applying on Return or when it loses the focus, with its message under it.
     private func field(_ title: String, text: Binding<String>, field: ProjectSettingsModel.Field, prompt: String? = nil,
-                       monospaced: Bool = false, disabled: Bool = false, shown: String?? = nil, symbol: String? = nil,
+                       monospaced: Bool = false, disabled: Bool = false, symbol: String? = nil,
                        apply: @escaping () async -> Void) -> some View {
         Group {
             LabeledContent(title) {
                 HStack(spacing: 8) {
-                    TextField(title, text: disabled && shown != nil ? .constant((shown ?? nil) ?? "") : text,
-                              prompt: prompt.map { Text(verbatim: $0) })
+                    TextField(title, text: text, prompt: prompt.map { Text(verbatim: $0) })
                         .labelsHidden()
                         .multilineTextAlignment(.trailing)
                         .font(monospaced ? .body.monospaced() : .body)
@@ -337,7 +374,7 @@ private struct ProjectSettingsForm: View {
 
     /// A text field with a menu of suggestions from the cluster; any name can be typed.
     private func suggestionField(_ title: String, text: Binding<String>, field: ProjectSettingsModel.Field, suggestions: [String],
-                                 prompt: String? = nil, disabled: Bool = false) -> some View {
+                                 prompt: String? = nil) -> some View {
         Group {
             LabeledContent(title) {
                 HStack(spacing: 6) {
@@ -346,7 +383,6 @@ private struct ProjectSettingsForm: View {
                         .monospaced()
                         .focused($focus, equals: field)
                         .onSubmit { Task { await model.applyEnvironmentField(field) } }
-                        .disabled(disabled)
                     Menu {
                         ForEach(suggestions, id: \.self) { name in
                             Button(name) {
@@ -360,7 +396,7 @@ private struct ProjectSettingsForm: View {
                     }
                     .menuIndicator(.hidden)
                     .fixedSize()
-                    .disabled(disabled || suggestions.isEmpty)
+                    .disabled(suggestions.isEmpty)
                 }
             }
             .accessibilityIdentifier("projectSettings.\(identifier(field))")
@@ -396,7 +432,6 @@ private struct ProjectSettingsForm: View {
         case .icon: "icon"
         case .docsPath: "docsPath"
         case .githubPage: "githubPage"
-        case .useParentSettings: "useParentSettings"
         case .graph: "graph"
         case .environments: "environments"
         case .environmentName: "environmentName"
@@ -419,8 +454,8 @@ private struct ProjectSettingsForm: View {
 
 // MARK: - Previews
 
-/// A fixed snapshot for the previews: Orders, a service with two environments, and Worker, its sub project
-/// that inherits them. Changes do nothing.
+/// A fixed snapshot for the previews: Orders, a service with two environments; Worker, its sub project that
+/// inherits them; Notes, an app; and Scripts, a project of type Other with nothing set. Changes do nothing.
 @MainActor
 final class PreviewSettingsBackend: ProjectSettingsBackend {
     let snapshot: ProjectSnapshot
@@ -439,7 +474,7 @@ final class PreviewSettingsBackend: ProjectSettingsBackend {
         orders.environments = [local, staging]
         orders.currentEnvironment = "staging"
         orders.githubPage = "https://github.com/example/orders"
-        orders.originGithubPage = "https://github.com/example/orders"
+        orders.defaultGithubPage = orders.githubPage
         orders.graphEnabled = true
         var worker = ResolvedSettings()
         var workerStaging = staging
@@ -448,10 +483,12 @@ final class PreviewSettingsBackend: ProjectSettingsBackend {
         worker.inheritedEnvironments = [local, staging]
         worker.currentEnvironment = "staging"
         worker.githubPage = orders.githubPage
+        worker.defaultGithubPage = orders.githubPage
         worker.graphEnabled = true
+        worker.inheritedGraphEnabled = true
         var app = ResolvedSettings()
-        app.originGithubPage = "https://github.com/example/notes"
-        app.githubPage = app.originGithubPage
+        app.defaultGithubPage = "https://github.com/example/notes"
+        app.githubPage = app.defaultGithubPage
         snapshot = ProjectSnapshot(revision: 1, projects: [
             LoadedProject(root: "/Users/example/Developer/orders",
                           file: ProjectFile(id: "ORD", name: "Orders", created: created, type: .goService, color: "accent",
@@ -464,6 +501,9 @@ final class PreviewSettingsBackend: ProjectSettingsBackend {
             LoadedProject(root: "/Users/example/Developer/notes",
                           file: ProjectFile(id: "NOTE", name: "Notes", created: created, type: .swiftApplication, color: "success"),
                           parentID: nil, depth: 0, childIDs: [], resolved: app, fileIssue: nil),
+            LoadedProject(root: "/Users/example/Developer/scripts",
+                          file: ProjectFile(id: "SCR", name: "Scripts", created: created, color: "warning"),
+                          parentID: nil, depth: 0, childIDs: [], resolved: ResolvedSettings(), fileIssue: nil),
         ])
     }
 
@@ -500,6 +540,10 @@ func previewSettings(_ id: Project.ID) -> ProjectSettingsWindow {
 
 #Preview("App", traits: .appChrome, .fixedLayout(width: 600, height: 560)) {
     previewSettings("NOTE")
+}
+
+#Preview("Other, Nothing Set", traits: .appChrome, .fixedLayout(width: 600, height: 480)) {
+    previewSettings("SCR")
 }
 
 #Preview("Not Found", traits: .appChrome, .fixedLayout(width: 600, height: 420)) {

@@ -228,10 +228,9 @@ public actor ProjectLibrary {
             if let page = change.githubPage {
                 file.githubPage = try ProjectRules.trimmedOrNil(page).map { text throws(ProjectRuleError) in try GitHubPage.validated(text) }
             }
-            if let useParentSettings = change.useParentSettings { file.useParentSettings = useParentSettings }
             if let graphEnabled = change.graphEnabled { file.graphEnabled = graphEnabled }
             if let environments = change.environments {
-                let inheritedNames = Set(resolved(id, file: file).inheritedEnvironments.map(\.name))
+                let inheritedNames = Set(parentEnvironments(of: id).map(\.name))
                 file.environments = try Self.checked(environments, keeping: node.file.environments, inheritedNames: inheritedNames)
             }
             if let overrides = change.environmentOverrides {
@@ -411,20 +410,21 @@ public actor ProjectLibrary {
 
     // MARK: Resolution
 
-    private func resolved(_ id: String, file override: ProjectFile? = nil) -> ResolvedSettings {
+    private func resolved(_ id: String) -> ResolvedSettings {
         var settings = ResolvedSettings()
         guard let node = loaded[id] else { return settings }
-        let (environments, inherited) = environments(of: id, file: override)
+        let environments = environments(of: id)
         settings.environments = environments
-        settings.inheritedEnvironments = inherited
+        settings.inheritedEnvironments = parentEnvironments(of: id)
         if let chosen = choices.projects[id], environments.contains(where: { $0.name == chosen }) {
             settings.currentEnvironment = chosen
         } else {
             settings.currentEnvironment = environments.first?.name
         }
-        settings.originGithubPage = originPage(of: node.root)
-        settings.githubPage = githubPage(of: id)
-        settings.graphEnabled = graphEnabled(of: id)
+        settings.defaultGithubPage = defaultGithubPage(of: id)
+        settings.githubPage = node.file.githubPage ?? settings.defaultGithubPage
+        settings.inheritedGraphEnabled = node.parentID.map { graphEnabled(of: $0) } ?? false
+        settings.graphEnabled = node.file.graphEnabled ?? settings.inheritedGraphEnabled
         return settings
     }
 
@@ -432,36 +432,40 @@ public actor ProjectLibrary {
         Dictionary(uniqueKeysWithValues: order.map { ($0, resolved($0)) })
     }
 
-    /// The environments as they apply, and those inherited: none for a project that isn't a service; for a
-    /// sub project that uses its parent's settings, the parent's (as the parent resolves them) with its
-    /// changes, then its own whose names they don't have.
-    private func environments(of id: String, file override: ProjectFile? = nil,
-                              visited: Set<String> = []) -> (environments: [EnvironmentEntry], inherited: [EnvironmentEntry]) {
-        guard let node = loaded[id], !visited.contains(id) else { return ([], []) }
-        let file = override ?? node.file
-        guard file.type == .goService else { return ([], []) }
-        var inherited: [EnvironmentEntry] = []
-        if file.useParentSettings, let parentID = node.parentID, loaded[parentID] != nil {
-            inherited = environments(of: parentID, visited: visited.union([id])).environments
-        }
+    /// The environments as they apply, whatever the project's type: the parent's (as the parent resolves
+    /// them) with the project's changes, then the project's own whose names the parent's don't have.
+    private func environments(of id: String, visited: Set<String> = []) -> [EnvironmentEntry] {
+        guard let node = loaded[id], !visited.contains(id) else { return [] }
+        let file = node.file
+        let inherited = parentEnvironments(of: id, visited: visited)
         let names = Set(inherited.map(\.name))
-        let environments = inherited.map { file.environmentOverrides[$0.name]?.applied(to: $0) ?? $0 }
+        return inherited.map { file.environmentOverrides[$0.name]?.applied(to: $0) ?? $0 }
             + file.environments.filter { !names.contains($0.name) }
-        return (environments, inherited)
     }
 
-    /// The parent's page while the project uses its parent's settings, else its typed page, else its
-    /// origin's.
-    private func githubPage(of id: String) -> String? {
-        var current = id
-        var visited: Set<String> = []
-        while let node = loaded[current], visited.insert(current).inserted {
-            guard node.file.useParentSettings, let parentID = node.parentID, loaded[parentID] != nil else {
-                return node.file.githubPage ?? originPage(of: node.root)
-            }
-            current = parentID
+    /// The parent's environments as the parent resolves them; none for a top-level project.
+    private func parentEnvironments(of id: String, visited: Set<String> = []) -> [EnvironmentEntry] {
+        guard let parentID = loaded[id]?.parentID, loaded[parentID] != nil else { return [] }
+        return environments(of: parentID, visited: visited.union([id]))
+    }
+
+    /// The page an empty GitHub page field gives: the typed page of the nearest ancestor that has one, else
+    /// the origin's page of the project or of its nearest ancestor that has one.
+    private func defaultGithubPage(of id: String) -> String? {
+        let lineage = lineage(of: id)
+        return lineage.dropFirst().lazy.compactMap { self.loaded[$0]?.file.githubPage }.first
+            ?? lineage.lazy.compactMap { self.loaded[$0].flatMap { self.originPage(of: $0.root) } }.first
+    }
+
+    /// The project, then its parent, up to its top-level project.
+    private func lineage(of id: String) -> [String] {
+        var ids: [String] = []
+        var current: String? = id
+        while let next = current, loaded[next] != nil, !ids.contains(next) {
+            ids.append(next)
+            current = loaded[next]?.parentID
         }
-        return nil
+        return ids
     }
 
     private func originPage(of root: String) -> String? {
@@ -470,18 +474,9 @@ public actor ProjectLibrary {
         return remote.gitHubPage(resolvedHostName: hostName)
     }
 
-    /// Never for a project that isn't a service; the parent's while the project uses its parent's settings.
+    /// The project's own value, else its nearest ancestor's, else false.
     private func graphEnabled(of id: String) -> Bool {
-        var current = id
-        var visited: Set<String> = []
-        while let node = loaded[current], visited.insert(current).inserted {
-            guard node.file.type == .goService else { return false }
-            guard node.file.useParentSettings, let parentID = node.parentID, loaded[parentID] != nil else {
-                return node.file.graphEnabled
-            }
-            current = parentID
-        }
-        return false
+        lineage(of: id).lazy.compactMap { self.loaded[$0]?.file.graphEnabled }.first ?? false
     }
 
     // MARK: Current environments
@@ -576,9 +571,11 @@ public actor ProjectLibrary {
             var copy = change
             copy.url = try ProjectRules.environmentURL(change.url, field: field + ".url")
             if let port = change.port { copy.port = try ProjectRules.port(port, field: field + ".port") }
+            copy.namespace = try ProjectRules.line(change.namespace, field: field + ".namespace")
             copy.deployment = try ProjectRules.line(change.deployment, field: field + ".deployment")
             copy.jaeger = try ProjectRules.jaeger(change.jaeger, field: field + ".jaeger")
             copy.argoCDApplication = try ProjectRules.argoCDApplication(change.argoCDApplication, field: field + ".argoCDApplication")
+            copy.kubeconfig = try ProjectRules.kubeconfig(change.kubeconfig, field: field + ".kubeconfig")
             if !copy.isEmpty || !copy.unknownKeys.isEmpty {
                 result[name] = copy
             }
@@ -716,8 +713,8 @@ public struct ProjectChange: Sendable, Hashable {
     public var icon: String??
     public var docsPath: String?
     public var githubPage: String??
-    public var useParentSettings: Bool?
-    public var graphEnabled: Bool?
+    /// `.some(nil)` removes the project's value: it then takes its parent's.
+    public var graphEnabled: Bool??
     /// The whole list of the project's own environments, with the change applied.
     public var environments: [EnvironmentEntry]?
     /// All the changes to inherited environments, with the change applied.
@@ -728,7 +725,7 @@ public struct ProjectChange: Sendable, Hashable {
     public var dashboardGraphWindow: DashboardGraphWindow?
 
     public init(name: String? = nil, kind: ProjectKind? = nil, color: String?? = nil, icon: String?? = nil,
-                docsPath: String? = nil, githubPage: String?? = nil, useParentSettings: Bool? = nil, graphEnabled: Bool? = nil,
+                docsPath: String? = nil, githubPage: String?? = nil, graphEnabled: Bool?? = nil,
                 environments: [EnvironmentEntry]? = nil, environmentOverrides: [String: EnvironmentOverride]? = nil,
                 dashboardWidgets: [DashboardWidgetEntry]? = nil, dashboardGraphWindow: DashboardGraphWindow? = nil) {
         self.name = name
@@ -737,7 +734,6 @@ public struct ProjectChange: Sendable, Hashable {
         self.icon = icon
         self.docsPath = docsPath
         self.githubPage = githubPage
-        self.useParentSettings = useParentSettings
         self.graphEnabled = graphEnabled
         self.environments = environments
         self.environmentOverrides = environmentOverrides

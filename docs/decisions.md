@@ -54,6 +54,13 @@ which rules the app enforces, and never tells Claude how to work.
 | How is the connection to a cluster checked? | By listing its namespaces with the kubeconfig file, which also gives the suggestions. | same |
 | What may an inherited environment's Name field do? | Nothing: it shows the parent's name, disabled. | same |
 | May a copy of a stored environment skip the write rules? | No: each stored environment keeps at most one equal environment as it is; a copy is checked, so two environments can't share a name. | [Data › Changes](data.md#changes) |
+| How does a sub project take its parent's settings? | Field by field, always (the owner's choice, replacing V2's Use parent settings switch, whose key is kept without effect): an empty field takes the parent's value, shown greyed; the parent's environments show in the child, which changes them or adds its own. | [Data › Resolution](data.md#resolution) |
+| Which page does an empty GitHub page field give? | The nearest ancestor's typed page, else the origin's page of the project, else of its nearest ancestor: a typed page is a choice, an origin only a guess. | same |
+| May an own environment take an inherited environment's name? | No, as in V2; one already in a file stays there, unused. | same |
+| Which fields of an inherited environment can change? | All but its name: V3 adds the namespace and the kubeconfig file to V2's changes. | [Data › Environment override](data.md#environment-override) |
+| Which settings may a project of any type have? | All of them (the owner's choice); its type still decides its tools (the owner's choice: tools stay by type). | [Project Settings](ui/project-settings.md) |
+| Where are the sections a project doesn't show added? | A `+` menu in the window's toolbar, listing them in the form's order; an added section stays while the window is open, then shows only with a value. | [Project Settings › Adding a section](ui/project-settings.md#adding-a-section) |
+| How does a sub project choose its graph? | A pop-up: "Same as “<parent>”: On/Off", On, Off; a top-level project keeps a toggle, whose off removes the key. | [Project Settings › Fields](ui/project-settings.md#fields) |
 
 ## MCP server
 

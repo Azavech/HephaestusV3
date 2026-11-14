@@ -86,7 +86,7 @@ extension Project {
             environments: loaded.resolved.environments.map {
                 DeploymentEnvironment($0, inheritedFrom: inheritedNames.contains($0.name) ? loaded.parentID : nil)
             },
-            activity: nil, parentID: loaded.parentID, usesParentSettings: file.useParentSettings, environmentsAreResolved: true,
+            activity: nil, parentID: loaded.parentID, environmentsAreResolved: true,
             githubPage: loaded.resolved.githubPage, currentEnvironment: loaded.resolved.currentEnvironment, fileIssue: loaded.fileIssue,
             hasContract: FileManager.default.fileExists(atPath: loaded.root + "/openapi/contract.yaml")
         )

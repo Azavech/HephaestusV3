@@ -444,7 +444,7 @@ The files of [Data](data.md). Source files in `Sources/ProjectData/`:
 | `DataFolder.swift` | `DataFolder`: `resolve(environment:applicationSupport:)`, `folderName`, `appGroup`, `appGroupContainer`, `migrateFromAppGroup(container:)`, `overrideVariable`, `registryFile`, `currentEnvironmentsFile`, `invalidCopy(of:)`, `createIfNeeded()`, `lock()` |
 | `ProjectRules.swift` | `ProjectRules`, `ProjectRuleError` |
 | `GitHub.swift` | `GitHubPage`, `GitRemote` (`init?(remoteURL:)`, `isGitHubHost`, `gitHubPage(resolvedHostName:)`) |
-| `ProjectSnapshot.swift` | `ProjectSnapshot` (`revision`, `projects`, `issues`, `project(_:)`, `project(atRoot:)`, `family(of:)`), `LoadedProject` (`root`, `file`, `parentID`, `depth`, `childIDs`, `resolved`, `fileIssue`), `ResolvedSettings`, `ProjectIssue` (`path`, `source`, `reason`) |
+| `ProjectSnapshot.swift` | `ProjectSnapshot` (`revision`, `projects`, `issues`, `project(_:)`, `project(atRoot:)`, `family(of:)`), `LoadedProject` (`root`, `file`, `parentID`, `depth`, `childIDs`, `resolved`, `fileIssue`), `ResolvedSettings` (`environments`, `inheritedEnvironments`, `currentEnvironment`, `githubPage`, `defaultGithubPage`, `graphEnabled`, `inheritedGraphEnabled`; [Data › Resolution](data.md#resolution)), `ProjectIssue` (`path`, `source`, `reason`) |
 | `ProjectError.swift` | `ProjectError` |
 | `ProjectLibrary.swift` | `ProjectLibrary` (`load()`, `handle(_:)`, `watchedFolders`, `setTools(_:)`, `refreshOrigins()`, `create(_:)`, `open(folder:)`, `update(_:_:)`, `remove(_:)`, `setCurrentEnvironment(_:to:)`, `allocateNumber(for:_:)` with `NumberKind`), `NewProject`, `ProjectChange` |
 | `ProjectSession.swift` | `ProjectSession` (`phase`, `snapshot`, `shell`, `tools`, `isLookingUpTools`, `kubectl`, `projectLibrary`, `start()`, `lookUpTools()`, `stop()`, `observeFileEvents(_:)`, and the changes) |
@@ -454,9 +454,11 @@ The files of [Data](data.md). Source files in `Sources/ProjectData/`:
   in [Data](data.md), then its unknown keys. Single-line strings are trimmed with
   `ProjectRules.trimmedOrNil`.
 - **`ProjectFile`** keeps the known keys it doesn't use in `keptKeys`, read with `raw(_:)` and written with
-  `encodeIfPresent` at their places: `webTabs`, `skills`, `chatDefaults` after `subprojects`;
+  `encodeIfPresent` at their places: `useParentSettings` (V2's, without effect) after `githubPage`; `webTabs`,
+  `skills`, `chatDefaults` after `subprojects`;
   `dashboardWidgets`, `dashboardGraphWindow`, `deletedChats`, `commentAnswers` after `environmentOverrides`.
-  `color`, `icon` and `githubPage` are left out when nil and `graphEnabled` while false.
+  `color`, `icon`, `githubPage` and `graphEnabled` are left out when nil. `EnvironmentOverride` writes V2's
+  six keys with `encodeOptional` (`null` included) and V3's `namespace` and `kubeconfig` only when set.
   `environmentOverrides` is written through `EnvironmentOverride.SortedMap`, its names in Unicode code point
   order; `CurrentEnvironmentsFile.projects` likewise.
 - **Equality** compares every field, the kept and unknown keys included: a file that decodes to the value in
@@ -682,10 +684,9 @@ defaults to the main actor.
 | `symbol` | `String` | An SF Symbol name. |
 | `path` | `String` | The folder, such as `~/Developer/Services/shop/orders`. |
 | `repository` | `String` | Such as `services/orders`. |
-| `environments` | `[DeploymentEnvironment]` | Where a service runs. Empty for apps and libraries. Default `[]`. For the app's projects, as they apply (`environmentsAreResolved`). |
+| `environments` | `[DeploymentEnvironment]` | Where the project runs, whatever its type. Default `[]`. For the app's projects, as they apply (`environmentsAreResolved`); for a sample, its own. |
 | `activity` | `ProjectActivity?` | The figures the Projects window shows; nil for the app's projects until their tools report them. |
 | `parentID` | `Project.ID?` | The project whose folder holds this one; nil at the top level. Default nil. |
-| `usesParentSettings` | `Bool` | For a sub project: takes its parent's settings, environments included. Default `true`. |
 | `environmentsAreResolved` | `Bool` | True for the app's projects: `environments` already apply inheritance, and `ProjectTree.environments(of:)` returns them as they are. Default `false`. |
 | `githubPage`, `currentEnvironment`, `fileIssue` | `String?` | The resolved GitHub page, the environment the user works in, and why the project's file is invalid now. Default nil. |
 
@@ -700,7 +701,8 @@ defaults to the main actor.
 `DeploymentEnvironment: Identifiable` has `name` (its `id`), `cluster: String?`, `namespace: String?`,
 `url: String?` (the base URL), `health: Health?` (`.healthy`, `.degraded`, `.down`; nil until the Service
 Map reads it), `deployment`, `jaeger`, `argoCDApplication`, `kubeconfig` (all `String?`),
-`allowsInvalidCertificates: Bool` and `inheritedFrom: Project.ID?`. Appearance adds `healthTitle` (Unknown
+`allowsInvalidCertificates: Bool` and `inheritedFrom: Project.ID?` (the parent it comes from);
+`inherited(from:)` gives a copy with `inheritedFrom` set. Appearance adds `healthTitle` (Unknown
 without health), `healthSymbol`, `healthColor` and `place` (`<cluster> / <namespace>`, or the one known).
 
 `ProjectActivity` has `openTickets`, `ticketsInReview`, `draftTickets`, `lastBuild` (`BuildOutcome`:
@@ -718,8 +720,7 @@ and `serviceCount` (default 0). In the real suite each tool would answer these f
 | `ancestors(of:)` | Its ancestors, the top-level one first. |
 | `depth(of:)` | 0 at the top level, 1 for a sub project, and so on. |
 | `ordered(topLevel:)` | `[(project:, depth:)]`: each top-level project followed by its descendants. |
-| `settingsSource(of:)` | The project whose settings apply: itself, or for a sub project with `usesParentSettings`, its parent's source, up the tree. |
-| `environments(of:)` | The environments of the settings source. |
+| `environments(of:)` | The environments as they apply: an app's project's as they are; for a sample sub project, its parent's (as this resolves them, each `inherited(from:)` the parent), then its own whose names they don't have. |
 | `ticketTotals(of:)` | `(open:, inReview:, drafts:)` summed over the family. |
 | `path(of:)` | The names of the ancestors and the project, joined with `" › "`: `Shop › Orders`. |
 
@@ -1202,13 +1203,19 @@ access and keeps the text of each field (`name`, `icon`, `docsPath`, `githubPage
 `environmentName`, `kubeconfig`, `namespace`, `deployment`, `jaeger`, `url`, `port`), which `reload(except:)`
 refills from the stored values, except the field being edited. Every change is `async`: `applyName()`,
 `applyKind(_:)`, `applyTint(_:)` (the tint's name), `applyIcon()` (checked with `NSImage(systemSymbolName:)`),
-`applyDocsPath()`, `applyGitHubPage()`, `applyUseParentSettings(_:)`, `applyGraph(_:)`; `select(_:)`,
+`applyDocsPath()`, `applyGitHubPage()`, `applyGraph(_:)` (`true`, `false`, or `nil` to take the parent's;
+`graphSetting` is the stored value, `graphEnabled` and `inheritedGraphEnabled` the resolved ones); `select(_:)`,
 `addEnvironment()`, `removeEnvironment()`, `applyEnvironmentField(_:)`, `applyPendingEnvironmentFields()` (every
 changed field in one `ProjectChange`), `applyCertificates(_:)`; `checkCluster()`. Each calls the backend with a
 `ProjectChange` of the values it sets and, on failure, keeps `ProjectMessages.message(_:)` for the field
 (`message(_:)`). An own environment changes in `environments` (the whole list, the entry edited in place, its
-other keys kept); an inherited one in `environmentOverrides`, an empty field giving `nil`, the certificates
-stored only while they differ from the parent's, and a change that sets nothing removed. `connection`
+other keys kept); an inherited one in `environmentOverrides` (every field but the name), an empty field
+giving `nil`, the certificates stored only while they differ from the parent's, and a change that sets
+nothing removed. `OptionalSection` (`github`, `service`, `environments`, each with a `title` and `symbol`) names
+the sections the form shows only when they apply: `shows(_:)` is true for one added with `add(_:)` while the
+window is open (`addedSections`), and otherwise for GitHub when a page resolves, for Service when the type is
+`goService`, the project sets `graphEnabled` or the graph applies, for Environments when the type is `goService`,
+an environment applies or the project has a change to one. `addableSections` lists the others, in that order. `connection`
 (`none`, `checking`, `connected`, `failed(message)`), `namespaces` and `deployments` come from
 `kubectl.namespaces(kubeconfig:)` then `deployments(namespace:kubeconfig:)`, run by the view's
 `.task(id:)` on the selected environment, its kubeconfig file and its namespace.

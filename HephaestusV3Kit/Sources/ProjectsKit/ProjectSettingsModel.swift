@@ -17,12 +17,13 @@ protocol ProjectSettingsBackend: AnyObject {
 extension ProjectSession: ProjectSettingsBackend {}
 
 /// A project's settings: each field applies on its own, as soon as it changes (a text field on Return or
-/// when it loses the focus), with the rules of docs/ui/project-settings.md.
+/// when it loses the focus), with the rules of docs/ui/project-settings.md. A sub project takes each field it
+/// leaves empty from its parent.
 @Observable
 final class ProjectSettingsModel {
     /// A field, for its message.
     enum Field: Hashable {
-        case name, kind, tint, icon, docsPath, githubPage, useParentSettings, graph
+        case name, kind, tint, icon, docsPath, githubPage, graph
         case environments
         case environmentName, kubeconfig, namespace, deployment, jaeger, url, port, certificates
     }
@@ -35,8 +36,33 @@ final class ProjectSettingsModel {
         case failed(String)
     }
 
+    /// A section the form shows only when it applies, which `+` adds otherwise.
+    enum OptionalSection: String, CaseIterable, Identifiable {
+        case github, service, environments
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .github: String(localized: "GitHub", bundle: #bundle)
+            case .service: String(localized: "Service", bundle: #bundle)
+            case .environments: String(localized: "Environments", bundle: #bundle)
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .github: "link"
+            case .service: "point.3.connected.trianglepath.dotted"
+            case .environments: "server.rack"
+            }
+        }
+    }
+
     let projectID: Project.ID
     @ObservationIgnored private let backend: any ProjectSettingsBackend
+    /// The sections added with `+` while the window is open.
+    private(set) var addedSections: Set<OptionalSection> = []
 
     // Text fields, as typed.
     var name = ""
@@ -69,8 +95,28 @@ final class ProjectSettingsModel {
 
     var parent: LoadedProject? { project?.parentID.flatMap { backend.snapshot.project($0) } }
 
-    /// Whether the project's settings come from its parent: a sub project with Use parent settings on.
-    var usesParentSettings: Bool { parent != nil && (project?.file.useParentSettings ?? false) }
+    /// Whether the form shows the section: when the project's type uses it, when the project or its parent
+    /// sets one of its values, or once it is added with `+`.
+    func shows(_ section: OptionalSection) -> Bool {
+        guard let project else { return false }
+        if addedSections.contains(section) { return true }
+        switch section {
+        case .github:
+            return project.resolved.githubPage != nil
+        case .service:
+            return project.file.type == .goService || project.file.graphEnabled != nil || project.resolved.graphEnabled
+        case .environments:
+            return project.file.type == .goService || !project.resolved.environments.isEmpty || !project.file.environmentOverrides.isEmpty
+        }
+    }
+
+    /// The sections `+` offers: those the form doesn't show.
+    var addableSections: [OptionalSection] { OptionalSection.allCases.filter { !shows($0) } }
+
+    /// Shows the section until the window closes; it stays afterwards once one of its values is set.
+    func add(_ section: OptionalSection) {
+        addedSections.insert(section)
+    }
 
     /// Copies the stored values into the text fields, except `editing`, the field being edited.
     func reload(except editing: Field? = nil) {
@@ -125,16 +171,20 @@ final class ProjectSettingsModel {
         await apply(.githubPage, ProjectChange(githubPage: .some(trimmed.isEmpty ? nil : trimmed)))
     }
 
-    func applyUseParentSettings(_ on: Bool) async {
-        await apply(.useParentSettings, ProjectChange(useParentSettings: on))
+    /// On, off, or nil to take the parent's value.
+    func applyGraph(_ value: Bool?) async {
+        guard value != project?.file.graphEnabled else { return clear(.graph) }
+        await apply(.graph, ProjectChange(graphEnabled: .some(value)))
     }
 
-    func applyGraph(_ on: Bool) async {
-        await apply(.graph, ProjectChange(graphEnabled: on))
-    }
-
-    /// The graph as it applies: the parent's while the project uses its parent's settings.
+    /// The graph as it applies: the project's value, else its parent's.
     var graphEnabled: Bool { project?.resolved.graphEnabled ?? false }
+
+    /// The project's own value: nil takes the parent's.
+    var graphSetting: Bool? { project?.file.graphEnabled }
+
+    /// The parent's graph as it applies.
+    var inheritedGraphEnabled: Bool { project?.resolved.inheritedGraphEnabled ?? false }
 
     // MARK: Environments
 
@@ -206,6 +256,8 @@ final class ProjectSettingsModel {
             var change = file.environmentOverrides[name] ?? EnvironmentOverride()
             for field in fields {
                 switch field {
+                case .kubeconfig: change.kubeconfig = ProjectRules.trimmedOrNil(kubeconfig)
+                case .namespace: change.namespace = ProjectRules.trimmedOrNil(namespace)
                 case .deployment: change.deployment = ProjectRules.trimmedOrNil(deployment)
                 case .jaeger: change.jaeger = ProjectRules.trimmedOrNil(jaeger)
                 case .url: change.url = ProjectRules.trimmedOrNil(url)
@@ -292,9 +344,9 @@ final class ProjectSettingsModel {
         let inherited = isInherited
         let change = selectedEnvironment.flatMap { project?.file.environmentOverrides[$0] }
         if editing != .environmentName { environmentName = entry?.name ?? "" }
-        if editing != .kubeconfig { kubeconfig = entry?.kubeconfig ?? "" }
-        if editing != .namespace { namespace = entry?.namespace ?? "" }
         // An inherited environment shows the project's change, its parent's values as placeholders.
+        if editing != .kubeconfig { kubeconfig = (inherited ? change?.kubeconfig : entry?.kubeconfig) ?? "" }
+        if editing != .namespace { namespace = (inherited ? change?.namespace : entry?.namespace) ?? "" }
         if editing != .deployment { deployment = (inherited ? change?.deployment : entry?.deployment) ?? "" }
         if editing != .jaeger { jaeger = (inherited ? change?.jaeger : entry?.jaeger) ?? "" }
         if editing != .url { url = (inherited ? change?.url : entry?.url) ?? "" }

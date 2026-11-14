@@ -71,7 +71,7 @@ struct ProjectOverview: View {
                         }
                     }
                 }
-                // A sub project that uses its parent's settings lists its parent's environments.
+                // A sub project lists its parent's environments with its own.
                 if !environments.environments.isEmpty {
                     section(
                         String(localized: "Environments", bundle: #bundle), id: "environments",

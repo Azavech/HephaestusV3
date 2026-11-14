@@ -54,12 +54,12 @@ struct StringTests {
 
 @Suite("Inherited settings")
 struct InheritedSettingsTests {
-    @Test("A sub project that uses its parent's settings reads the parent's environments")
+    @Test("A sub project reads its parent's environments, marked as inherited")
     func inherited() {
         let orders = Project.sample("ORD")!
         let shop = Project.sample("SHOP")!
-        #expect(orders.usesParentSettings)
         #expect(orders.deploymentEnvironments.map(\.url) == shop.environments.map(\.url))
+        #expect(orders.deploymentEnvironments.allSatisfy { $0.inheritedFrom == "SHOP" })
         #expect(shop.deploymentEnvironments.map(\.url) == shop.environments.map(\.url))
     }
 }

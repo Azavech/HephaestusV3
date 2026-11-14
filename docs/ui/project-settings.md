@@ -1,10 +1,14 @@
 # Project Settings
 
 The Project Settings window shows and changes one project's settings: its name, type, tint and icon, its
-folder and parent, its GitHub page, and a service's graph and environments. Each field applies on its own, as
-soon as it changes; the window has no Save or Cancel button and never holds unsaved changes. It applies
-the rules of [Data › Changes](../data.md#changes), and every change writes the project's
-`.hephaestus/project.yml`.
+folder and parent, its GitHub page, its graph and its environments. Each field applies on its own, as soon as
+it changes; the window has no Save or Cancel button and never holds unsaved changes. It applies the rules of
+[Data › Changes](../data.md#changes), and every change writes the project's `.hephaestus/project.yml`.
+
+A sub project takes every value it leaves empty from its parent, field by field: an empty field shows the
+parent's value greyed, as its placeholder, and typing replaces it ([Data › Resolution](../data.md#resolution)).
+The GitHub, Service and Environments sections show when they apply to the project; **`+`** in the toolbar adds
+the others, whatever the project's type.
 
 ![Project Settings of Orders, a service: General, Location, GitHub, Service and Environments](images/project-settings.png)
 *Orders, a service, with its staging environment selected: kubectl reaches the cluster (the green dot), and
@@ -27,13 +31,26 @@ launch; macOS restores those open at quit.
 
 A grouped form (`Form`, `.formStyle(.grouped)`), scrolling vertically, in sections:
 
-| Section | Rows | Shows for |
+| Section | Rows | Shows |
 | --- | --- | --- |
-| **General** | Name, Identifier, Type, Tint, Icon | Every project |
-| **Location** | Folder, Parent, Use parent settings and its note, Docs Folder | Parent rows for a sub project only |
-| **GitHub** | GitHub Page | Every project |
-| **Service** | Enable graph | A service (`goService`) |
-| **Environments** | Environment with `+` and `−`, Name, Kubeconfig File, Namespace, Deployment, Jaeger, API Access, Allow invalid certificates | A service |
+| **General** | Name, Identifier, Type, Tint, Icon | Always |
+| **Location** | Folder, Parent and its note, Docs Folder | Always; Parent and its note for a sub project only |
+| **GitHub** | GitHub Page | When a page applies: the project's, a parent's, or an origin remote's |
+| **Service** | Enable graph, or for a sub project Graph | For a service (`goService`); for any other type when the project sets the graph or the graph applies (from a parent) |
+| **Environments** | Environment with `+` and `−`, Name, Kubeconfig File, Namespace, Deployment, Jaeger, API Access, Allow invalid certificates | For a service; for any other type when an environment applies (its own or a parent's) or the project has a change to one |
+
+### Adding a section
+
+The toolbar's **`+`** (`plus`, label "Add Settings", help "Add settings this project doesn’t show yet") is a
+menu of the sections the form doesn't show, in this order: **GitHub** (`link`), **Service**
+(`point.3.connected.trianglepath.dotted`), **Environments** (`server.rack`). Picking one shows it, empty, at
+its place in the form. It stays while the window is open; when the window opens again, it shows if one of its
+values is set, and otherwise goes back to the menu. With every section showing, `+` is disabled. A service
+shows Service and Environments, so its menu offers GitHub at most.
+
+![Project Settings of Scripts, a project of type Other with nothing set](images/project-settings-add.png)
+*Scripts, of type Other, with nothing set: only General and Location show, and `+` in the toolbar offers
+GitHub, Service and Environments.*
 
 ## Fields
 
@@ -46,21 +63,21 @@ file changed outside the app) shows in every field but the one being edited.
 | --- | --- | --- | --- |
 | **Name** | Text field | `name` | One line, 1–100 characters once trimmed: "Enter a name of 1 to 100 characters." |
 | **Identifier** | Read-only text, monospaced, selectable | `id` | Help: "The identifier is set at creation and cannot be changed." |
-| **Type** | Pop-up: Service, App, Library, Other, each with its symbol | `type` | Changing it keeps the environments in the file; only a service shows them. |
+| **Type** | Pop-up: Service, App, Library, Other, each with its symbol | `type` | Changing it keeps every setting; it decides the project's tools, and which sections show without `+`. |
 | **Tint** | Pop-up: Purple, Pink, Cyan, Green, Orange, each with a dot of its color: a 12-point circle drawn into an image that isn't a template (`TintSwatch`), since a menu draws symbols as templates in its own single color | `color`, written as the tint's name (`accent`, `accentSecondary`, `info`, `success`, `warning`) | A `#RRGGBB` color shows as the nearest tint until a tint is picked. |
 | **Icon** | Text field, monospaced, then the symbol it names; the kind's symbol as placeholder | `icon` | An SF Symbol of this Mac: "<name> is not an SF Symbol of this Mac."; empty removes the icon. |
 | **Folder** | The path, monospaced, middle-truncated, selectable, and **Show in Finder** | The project's folder | — |
-| **Parent** | `<name> (<ID>)` | The parent | Sub projects only. |
-| **Use parent settings** | Toggle | `useParentSettings` | Sub projects only. Note under it: "Its GitHub page and, for a service, its environments and graph come from “<parent>”." |
+| **Parent** | `<name> (<ID>)` | The parent | Sub projects only. Note under it: "Settings left empty take the values of “<parent>”, shown in grey." |
 | **Docs Folder** | Text field, monospaced, placeholder `docs` | `docsPath` | A relative path, not `.hephaestus` or inside it: "Enter a folder path inside the project, for example docs." |
-| **GitHub Page** | Text field, monospaced; placeholder: the origin's page, else `https://github.com/owner/name` | `githubPage` | `https://github.com/<owner>/<name>`, trimmed, a trailing `/` removed: "Enter a GitHub page, for example https://github.com/owner/name."; empty removes it. While the project uses its parent's settings, the field is disabled and shows the parent's page. |
-| **Enable graph** | Toggle | `graphEnabled` | Shows the graph as it applies; disabled, with the parent's value, while the project uses its parent's settings. |
+| **GitHub Page** | Text field, monospaced; placeholder: the page an empty field gives (`defaultGithubPage`: the nearest ancestor's typed page, else the origin's of the project or its nearest ancestor), else `https://github.com/owner/name` | `githubPage` | `https://github.com/<owner>/<name>`, trimmed, a trailing `/` removed: "Enter a GitHub page, for example https://github.com/owner/name."; empty removes it, and the placeholder's page applies. |
+| **Enable graph** | Toggle, top-level projects | `graphEnabled` | Shows the graph as it applies. On writes `true`; off removes the key, which is off. |
+| **Graph** | Pop-up, sub projects: "Same as “<parent>”: On" (or ": Off", the parent's graph as it applies), a separator, **On**, **Off** | `graphEnabled` | The first item removes the key, so the parent's graph applies; On and Off write `true` and `false`. |
 
 ## Environments
 
 ![Project Settings of Worker, a sub project, with an inherited environment selected](images/project-settings-subproject.png)
-*Worker inherits Orders' environments: on staging, only its address, deployment, Jaeger and certificates
-change, the parent's values as placeholders.*
+*Worker inherits Orders' environments, GitHub page and graph: on staging, its own deployment shows, and the
+other fields show Orders' values greyed.*
 
 - **Environment**: a pop-up of the environments as they apply, the inherited ones first, then the project's
   own. It opens on the project's current environment; picking another one shows its values and doesn't change
@@ -91,28 +108,30 @@ change, the parent's values as placeholders.*
   `http` or `https` URL: "Enter an http or https URL."; port: 1–65535: "Enter a port from 1 to 65535.";
   empty removes either.
 - **Allow invalid certificates**: toggle, applied at once.
-- **Inherited environments.** While an inherited environment is selected, a note says "Inherited from
-  <parent>: only its address, deployment, Jaeger and certificates change here.", `−` is disabled, Name,
-  Kubeconfig File, Namespace and **Browse…** are disabled with the parent's values, and Deployment, Jaeger,
-  URL and Port show the project's change, empty when it has none, with the parent's values as placeholders.
-  They write `environmentOverrides`: an empty field gives back the parent's value, and a change that sets
-  nothing is removed. The certificates toggle shows the value that applies and is stored only while it
-  differs from the parent's. The dot and the suggestions use the parent's kubeconfig file and namespace.
+- **Inherited environments.** A sub project's pop-up lists its parent's environments first, whatever the
+  two projects' types. While one is selected, a note says "Inherited from “<parent>”: fields left empty keep
+  its values, shown in grey.", `−` is disabled and Name is disabled with the parent's name. Kubeconfig File,
+  Namespace, Deployment, Jaeger, URL and Port show the project's change, empty when it has none, with the
+  parent's values as placeholders. They write `environmentOverrides`: an empty field gives back the parent's
+  value, and a change that sets nothing is removed. The certificates toggle shows the value that applies and
+  is stored only while it differs from the parent's. The dot and the suggestions use the kubeconfig file and
+  namespace that apply.
 - The Argo CD application has no field; a stored one is kept by every change.
 
 ## States
 
 | State | When | What shows |
 | --- | --- | --- |
-| **Service** | The project is a service. | Every section. |
-| **Sub project** | The project has a parent. | Parent, Use parent settings and its note; while on, the GitHub page and the graph are the parent's, disabled, and the inherited environments come first. |
-| **App, library or other** | Not a service. | General, Location and GitHub only. |
+| **Service** | The project is a service. | Every section; GitHub when a page applies, else in `+`. |
+| **Sub project** | The project has a parent. | Parent and its note; the sections its parent's values apply to, those values greyed in its empty fields; the Graph pop-up; the inherited environments first. |
+| **App, library or other** | Not a service. | General and Location; GitHub, Service and Environments when they apply, else in `+`. |
+| **Nothing set** | Not a service, and no page, graph or environment applies. | General and Location only; `+` offers the three others. |
 | **No environments** | A service without environments. | The pop-up and `−` disabled, the footer's sentence. |
 | **Cluster reached / not reached** | The selected environment has a kubeconfig file. | The green or red dot; the suggestions, or kubectl's message. |
 | **Project not found** | The project left the list (removed, or its file deleted). | `ContentUnavailableView`: `folder.badge.questionmark`, "Project Not Found", "The project is no longer in the list." |
 
 ![Project Settings of Notes, an app](images/project-settings-app.png)
-*An app: no Service or Environments section.*
+*An app with its origin's GitHub page: no graph or environment applies, so Service and Environments are in `+`.*
 
 ![Project Settings of Orders in the dark appearance](images/project-settings-dark.png)
 *The dark appearance.*
@@ -128,7 +147,8 @@ of its own: a form already reads as one column.
 | Element | Identifier |
 | --- | --- |
 | The form | `projectSettings` |
-| Rows | `projectSettings.name`, `.identifier`, `.type`, `.tint`, `.icon`, `.folder`, `.showInFinder`, `.parent`, `.useParentSettings`, `.docsPath`, `.githubPage`, `.graph` |
+| Rows | `projectSettings.name`, `.identifier`, `.type`, `.tint`, `.icon`, `.folder`, `.showInFinder`, `.parent`, `.parent.note`, `.docsPath`, `.githubPage`, `.graph` |
+| `+` | `projectSettings.addSection`; its items `projectSettings.addSection.github`, `.service`, `.environments` |
 | Environments | `projectSettings.environment`, `.environment.add`, `.environment.remove`, `.environment.inherited`, `.environmentName`, `.kubeconfig`, `.namespace`, `.deployment`, `.jaeger`, `.url`, `.port`, `.certificates` |
 | Messages | `projectSettings.<row>.message`, `projectSettings.connection.message` |
 | Not found | `projectSettings.notFound` |
@@ -139,7 +159,7 @@ the cluster"; the icon's symbol is hidden from VoiceOver.
 ## Previews
 
 `ProjectSettingsWindow` on a fixed snapshot whose kubectl answers from fixed lists: "Service", "Service,
-Dark", "Sub Project, Inherited", "App", "Not Found", "Largest Text".
+Dark", "Sub Project, Inherited", "App", "Other, Nothing Set", "Not Found", "Largest Text".
 
 ## Open issues
 

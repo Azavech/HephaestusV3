@@ -176,8 +176,8 @@ Clicking a card selects that sub project in the sidebar and shows its overview.
 
 ### Environments
 
-The section lists the environments of the project whose settings apply, and shows when there are any.
-Only services have environments. Each card shows:
+The section lists the project's environments as they apply, and shows when there are any, whatever the
+project's type. Each card shows:
 
 - a status dot in the health's color, and the environment's name in `headline`;
 - a health badge at the trailing edge: **Healthy** `checkmark.circle.fill` in `success`, **Degraded**
@@ -185,20 +185,18 @@ Only services have environments. Each card shows:
 - the cluster and the namespace, as `cluster / namespace`, monospaced, in `caption`;
 - the URL, monospaced, on one line that truncates in the middle. You can select and copy it.
 
-**Inherited from <parent>.** A sub project can take its parent's settings, its environments among them.
-This is the project's **Use parent settings**, on by default (`usesParentSettings`). When a sub project does, the
-section lists its parent's environments, and the title carries the note "Inherited from Shop" (the user's
-choice). The parent may itself use its own parent's settings: the environments, and the name in the note,
-come from the first project up the tree that has settings of its own (`ProjectTree.settingsSource(of:)`).
-A sub project with settings of its own lists its own environments, without a note.
+**Inherited from <parent>.** A sub project takes its parent's environments, as the parent has them (its
+parent's included), with its own changes, then its own environments ([Data › Resolution](../data.md#resolution)).
+When some come from the parent, the title carries the note "Inherited from Shop" (the user's choice), naming the
+direct parent (`ProjectTree.environments(of:)`). A project whose environments are all its own has no note.
 
 The tools follow the same rule (the user's choice): the Dashboard, the Service Map and Contracts read the
 environments the overview lists, so Orders' Service Map offers Shop's environments, and Orders' requests in
 Contracts go to Shop's URLs.
 
-Orders, Payments and Edge Gateway use Shop's settings, so each lists Shop's three environments under
-"Inherited from Shop". ToolsKit uses the settings of Tools, an app without environments, so it shows no
-section.
+Orders, Payments and Edge Gateway inherit Shop's three environments, and theirs have the same names, so
+each lists Shop's under "Inherited from Shop". ToolsKit's parent, Tools, has no environments, nor has
+ToolsKit, so it shows no section.
 
 ### Activity
 
@@ -481,10 +479,9 @@ tool symbols.
   numbered below the runs and tickets the recent events name, so no number shows twice. The code notes
   that each tool will report its own events through a shared protocol.
 - **Unused environments:** Orders, Payments and Edge Gateway have environments of their own in the sample
-  data, but they use Shop's settings, so the overview and every tool list Shop's.
+  data, named like Shop's, so the overview and every tool list Shop's.
 - **Not saved:** the selection starts on the first project at each launch, and the sidebar's folding lasts
   while the window is open.
-- **Data only:** no control sets a sub project's **Use parent settings**; it comes from the data.
 
 ## Previews
 
