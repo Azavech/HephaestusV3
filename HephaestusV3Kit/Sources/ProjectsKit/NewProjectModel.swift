@@ -29,6 +29,8 @@ final class NewProjectModel {
     /// As typed; shown and stored in uppercase.
     var identifier = ""
     private(set) var identifierEdited = false
+    /// The user typed in the identifier field, a clearing included: its messages show from then on.
+    private(set) var identifierTouched = false
     /// The type the user picked; nil while it follows the folder.
     var pickedKind: Project.Kind?
     /// The parent the user picked, `.some(nil)` for None; nil while it follows the folder.
@@ -71,14 +73,17 @@ final class NewProjectModel {
 
     // MARK: Edits that stop a field from following
 
+    /// A typed identifier stops following the name; cleared, it follows the name again from its next change.
     func setIdentifier(_ text: String) {
         identifier = text.uppercased()
-        identifierEdited = true
+        identifierEdited = !text.isEmpty
+        identifierTouched = true
     }
 
+    /// A typed folder name stops following the name; cleared, it follows the name again from its next change.
     func setFolderName(_ text: String) {
         folderName = text
-        folderNameEdited = true
+        folderNameEdited = !text.isEmpty
     }
 
     /// Opens the folder panel for a field.
@@ -162,7 +167,7 @@ final class NewProjectModel {
     }
 
     var identifierMessage: String? {
-        guard !identifier.isEmpty || identifierEdited else { return nil }
+        guard !identifier.isEmpty || identifierTouched else { return nil }
         let value = identifier.uppercased()
         if value.isEmpty { return String(localized: "Enter an identifier.", bundle: #bundle) }
         guard ProjectRules.isIdentifier(value) else { return ProjectMessages.ruleMessage(.identifierFormat) }

@@ -237,12 +237,12 @@ project of the selected project. The rules are those of [Data › Changes](../da
 | --- | --- | --- | --- |
 | **Parent Project** (New Sub Project, first row) | Pop-up of the selected project's top-level project and its descendants, indented by depth | The selected project | — |
 | **Name** | Text field | Empty; the folder's name after Create Project Here… | One line, 1–100 characters once trimmed: "Enter a name of 1 to 100 characters." |
-| **Identifier** | Text field, monospaced, shown in uppercase | The name's first four ASCII letters, accents removed, until the user edits it | Empty: "Enter an identifier."; else 2–8 letters A–Z: "Use 2 to 8 letters (A–Z)."; else used by no project: "<ID> is already used by “<name>”." |
+| **Identifier** | Text field, monospaced, shown in uppercase | The name's suggestion ([Data › Ids](../data.md#ids)): its capitals when it starts with one and has two or more (`AntiBeeCycle` → `ABC`, `YeenCloud` → `YC`), else its first four letters; it follows the name until the user types in the field, and again from the next change of the name once the field is cleared | Empty: "Enter an identifier."; else 2–8 letters A–Z: "Use 2 to 8 letters (A–Z)."; else used by no project: "<ID> is already used by “<name>”." |
 | **Type** | Pop-up: Service, App, Library, Other | Service when the project's folder holds `go.mod`, else Other, until the user picks one | — |
 | **Parent Project** (New Project) | Pop-up: None, a divider, every project indented by depth | The innermost project whose folder holds the project's folder, else None, until the user picks one | Picking a project moves the location to its folder. |
 | **Folder** | Segmented control: **New Folder**, **Existing Folder** | New Folder; Existing Folder after Create Project Here… | — |
 | **Location** (New Folder) | The path, monospaced, and **Choose…** (a folder panel) | The folder holding the selected project's top-level folder; without a selection, `~/Developer` when it exists, else the home folder | — |
-| **Folder Name** (New Folder) | Text field | The name, `/` and `:` made `-`, trimmed, without leading dots, until the user edits it | 1–255 UTF-8 bytes, no `/`, not starting with `.`: "Enter a folder name without “/” that does not start with “.”." |
+| **Folder Name** (New Folder) | Text field | The name, `/` and `:` made `-`, trimmed, without leading dots, until the user types in the field, and again from the next change of the name once it is cleared | 1–255 UTF-8 bytes, no `/`, not starting with `.`: "Enter a folder name without “/” that does not start with “.”." |
 | **Folder** (Existing Folder) | The path and **Choose…** | None, or the folder of Create Project Here… | "Choose a folder." while none |
 | **Project Folder** | The resulting path, monospaced, secondary | — | With a parent: the folder must be inside the parent's: "Choose a folder inside “<parent>”." |
 

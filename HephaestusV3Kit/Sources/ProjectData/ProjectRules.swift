@@ -12,11 +12,19 @@ public enum ProjectRules {
         return (2...8).contains(bytes.count) && bytes.allSatisfy { (0x41...0x5A).contains($0) }
     }
 
-    /// The identifier suggested for a name: its first four ASCII letters, accents removed, uppercased;
-    /// empty when the name has fewer than two.
+    /// The identifier a name suggests, from its ASCII letters, accents removed: a name that starts with a capital
+    /// and has two capitals or more gives its capitals, at most eight (`AntiBeeCycle` → `ABC`, `YeenCloud` → `YC`,
+    /// `Orders API` → `OAPI`); any other name its first four letters, uppercased (`orders` → `ORDE`). Nothing when
+    /// that gives fewer than two letters.
     public static func suggestedIdentifier(fromName name: String) -> String {
-        let folded = name.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
-        let letters = folded.uppercased().unicodeScalars.filter { (0x41...0x5A).contains($0.value) }
+        let folded = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+        func isCapital(_ scalar: Unicode.Scalar) -> Bool { (0x41...0x5A).contains(scalar.value) }
+        if let first = folded.unicodeScalars.first, isCapital(first) {
+            let capitals = folded.unicodeScalars.filter(isCapital)
+            if capitals.count >= 2 { return String(String.UnicodeScalarView(capitals.prefix(8))) }
+        }
+        let letters = folded.uppercased().unicodeScalars.filter(isCapital)
         let suggestion = String(String.UnicodeScalarView(letters.prefix(4)))
         return suggestion.count >= 2 ? suggestion : ""
     }

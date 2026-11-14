@@ -34,6 +34,8 @@ which rules the app enforces, and never tells Claude how to work.
 
 | Question | Default chosen | Where |
 | --- | --- | --- |
+| What identifier does a name suggest? | The owner's rule: a name that starts with a capital gives its capitals (`AntiBeeCycle` → `ABC`, `YeenCloud` → `YC`), at most eight; a name with fewer than two capitals, or that starts with another character, its first four letters. | [Data › Ids](data.md#ids) |
+| What does clearing the identifier or the folder name do? | The owner's rule: the field follows the name again from the name's next change. The identifier's message ("Enter an identifier.") still shows while it is empty. | [UI › Projects › New Project](ui/projects.md#new-project) |
 | How are outside changes applied? | A batch that matters loads the whole tree again and compares it with memory, rather than handling each path on its own: the projects are few and their files small, and one rule covers renames, moves and dropped events. | [Data › Outside changes](data.md#outside-changes) |
 | What does a project whose file became invalid show? | The version loaded before, with a file issue giving the reason. | same |
 | Where does the windows' code meet the project data? | ProjectsKit depends on ProjectData, the data target of its own feature, and maps it onto ToolsFoundation's `Project`; the data targets stay free of UI, and ToolsFoundation of data. The plan had ProjectData depend on ToolsFoundation instead. | [Architecture › The package](architecture.md#the-package) |

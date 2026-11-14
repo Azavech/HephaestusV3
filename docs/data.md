@@ -100,8 +100,11 @@ folder](#data-folder)).
 | Attachment and comment id | uppercase UUID | `5F2B6A1C-3D4E-4F50-8A6B-7C8D9E0F1A2B` | V3, at random |
 
 The identifier is unique among the projects of this Mac, sub projects included. It prefixes the project's
-tickets (`ORD-142`). A name suggests one: its first four ASCII letters, accents removed, uppercased; nothing
-when the name has fewer than two (`ProjectRules.suggestedIdentifier(fromName:)`).
+tickets (`ORD-142`). A name suggests one from its ASCII letters, accents removed
+(`ProjectRules.suggestedIdentifier(fromName:)`): a name that starts with a capital and has two capitals or more
+gives its capitals, at most eight (`AntiBeeCycle` → `ABC`, `YeenCloud` → `YC`, `Orders API` → `OAPI`); any other
+name its first four letters, uppercased (`orders` → `ORDE`, `Orders` → `ORDE`); nothing when that gives fewer than
+two letters.
 
 ## Data folder
 

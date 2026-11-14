@@ -81,8 +81,16 @@ struct RulesTests {
         #expect(!ProjectRules.isIdentifier("ABCDEFGHI"))
         #expect(!ProjectRules.isIdentifier("Heph"))
         #expect(!ProjectRules.isIdentifier("HÉPH"))
-        #expect(ProjectRules.suggestedIdentifier(fromName: "Orders API") == "ORDE")
+        // A name that starts with a capital gives its capitals, when there are two or more.
+        #expect(ProjectRules.suggestedIdentifier(fromName: "AntiBeeCycle") == "ABC")
+        #expect(ProjectRules.suggestedIdentifier(fromName: "YeenCloud") == "YC")
+        #expect(ProjectRules.suggestedIdentifier(fromName: "Orders API") == "OAPI")
+        #expect(ProjectRules.suggestedIdentifier(fromName: " ÉtéDeLAn") == "EDLA")
+        #expect(ProjectRules.suggestedIdentifier(fromName: "ABCDEFGHIJ") == "ABCDEFGH")
+        // Otherwise its first four letters.
+        #expect(ProjectRules.suggestedIdentifier(fromName: "Orders") == "ORDE")
         #expect(ProjectRules.suggestedIdentifier(fromName: "Éclair") == "ECLA")
+        #expect(ProjectRules.suggestedIdentifier(fromName: "orders API") == "ORDE")
         #expect(ProjectRules.suggestedIdentifier(fromName: "A1") == "")
     }
 

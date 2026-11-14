@@ -81,7 +81,7 @@ struct NewProjectModelTests {
     func following() {
         let model = NewProjectModel(projects: [], location: developer)
         model.name = "Orders: API/v2"
-        #expect(model.identifier == "ORDE")
+        #expect(model.identifier == "OAPI")
         #expect(model.folderName == "Orders- API-v2")
         model.setIdentifier("ord")
         model.setFolderName("orders")
@@ -89,6 +89,21 @@ struct NewProjectModelTests {
         #expect(model.identifier == "ORD")
         #expect(model.folderName == "orders")
         #expect(model.projectFolder == "/Users/someone/Developer/orders")
+    }
+
+    @Test("A cleared identifier or folder name follows the name again from its next change")
+    func clearedFollowsAgain() {
+        let model = NewProjectModel(projects: [], location: developer)
+        model.name = "AntiBeeCycle"
+        #expect(model.identifier == "ABC")
+        model.setIdentifier("XY")
+        model.setFolderName("custom")
+        model.setIdentifier("")
+        model.setFolderName("")
+        #expect(model.identifier.isEmpty && model.folderName.isEmpty)
+        model.name = "YeenCloud"
+        #expect(model.identifier == "YC")
+        #expect(model.folderName == "YeenCloud")
     }
 
     @Test("The rules: name, identifier format and use, folder name, existing folder")
