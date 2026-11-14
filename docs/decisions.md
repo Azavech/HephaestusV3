@@ -49,7 +49,9 @@ which rules the app enforces, and never tells Claude how to work.
 | Which shortcut adds an existing folder? | ⌘O, File ▸ Add Existing Folder…, the Mac's Open shortcut; nothing else used it. | [Navigation › Menus and shortcuts](ui/navigation.md#menus-and-shortcuts) |
 | Where does a selection go after a removal? | The nearest ancestor still listed, else the first project. | [Projects › Remove Project](ui/projects.md#remove-project) |
 | Is Project Settings a section or a window? | A window per project (⇧⌘,), as each tool has its windows. | [Project Settings](ui/project-settings.md) |
-| How is the icon chosen? | A text field for the SF Symbol's name, checked against this Mac's symbols, with the symbol beside it; a searchable symbol popover can come later. | same |
+| How is the icon chosen? | A text field for the SF Symbol's name, checked against this Mac's symbols, with suggestions as it's typed, and a button showing the icon that opens a searchable symbol picker (the owner asked for both). Both come from AZDesign 0.5.0, which reads the system's own list of symbols, keywords and categories. | same |
+| Does a picked suggestion apply at once? | No: it fills the field, which applies on Return or when it loses the focus, as any typed text; a symbol picked in the picker applies at once. | same |
+| What does a field show when the window opens before the projects load? | The stored values, once the project loads; until then a text field applies nothing, so an empty field never removes a value. | same |
 | What does a namespace or deployment field offer? | A text field with a menu of the cluster's names, as macOS SwiftUI has no combo box; any name can be typed. | same |
 | How is the connection to a cluster checked? | By listing its namespaces with the kubeconfig file, which also gives the suggestions. | same |
 | What may an inherited environment's Name field do? | Nothing: it shows the parent's name, disabled. | same |

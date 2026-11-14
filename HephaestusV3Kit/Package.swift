@@ -37,7 +37,7 @@ let package = Package(
     ],
     dependencies: [
         // AZDesign by version, from its GitHub repo (workspace rule): bump the version to update it.
-        .package(url: "git@github.com:Azavech/AZDesign.git", from: "0.4.0"),
+        .package(url: "git@github.com:Azavech/AZDesign.git", from: "0.5.0"),
         .package(url: "https://github.com/jpsim/Yams.git", from: "6.2.2"),
         .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.9.0"),
     ],

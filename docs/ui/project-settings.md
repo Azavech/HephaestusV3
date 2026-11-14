@@ -56,8 +56,10 @@ GitHub, Service and Environments.*
 
 Text fields apply on Return and when they lose the keyboard focus, only when their value differs from the
 stored one; a value that breaks its rule shows its message in red under the row and isn't applied, and so does
-a change that fails. Pickers, toggles and buttons apply at once. A change made elsewhere (another window, the
-file changed outside the app) shows in every field but the one being edited.
+a change that fails. Pickers, toggles and buttons apply at once. The fields fill with the stored values when
+the form appears, also when the window opened before the projects loaded (a window macOS restores at launch);
+until then a text field applies nothing. A change made elsewhere (another window, the file changed outside the
+app) shows in every field but the one being edited.
 
 | Row | Control | Value | Rule and message |
 | --- | --- | --- | --- |
@@ -65,13 +67,31 @@ file changed outside the app) shows in every field but the one being edited.
 | **Identifier** | Read-only text, monospaced, selectable | `id` | Help: "The identifier is set at creation and cannot be changed." |
 | **Type** | Pop-up: Service, App, Library, Other, each with its symbol | `type` | Changing it keeps every setting; it decides the project's tools, and which sections show without `+`. |
 | **Tint** | Pop-up: Purple, Pink, Cyan, Green, Orange, each with a dot of its color: a 12-point circle drawn into an image that isn't a template (`TintSwatch`), since a menu draws symbols as templates in its own single color | `color`, written as the tint's name (`accent`, `accentSecondary`, `info`, `success`, `warning`) | A `#RRGGBB` color shows as the nearest tint until a tint is picked. |
-| **Icon** | Text field, monospaced, then the symbol it names; the kind's symbol as placeholder | `icon` | An SF Symbol of this Mac: "<name> is not an SF Symbol of this Mac."; empty removes the icon. |
+| **Icon** | Text field, monospaced, the kind's symbol as placeholder, with symbol suggestions; then a button showing the icon (see [Choosing an icon](#choosing-an-icon)) | `icon` | An SF Symbol of this Mac: "<name> is not an SF Symbol of this Mac."; empty removes the icon. |
 | **Folder** | The path, monospaced, middle-truncated, selectable, and **Show in Finder** | The project's folder | — |
 | **Parent** | `<name> (<ID>)` | The parent | Sub projects only. Note under it: "Settings left empty take the values of “<parent>”, shown in grey." |
 | **Docs Folder** | Text field, monospaced, placeholder `docs` | `docsPath` | A relative path, not `.hephaestus` or inside it: "Enter a folder path inside the project, for example docs." |
 | **GitHub Page** | Text field, monospaced; placeholder: the page an empty field gives (`defaultGithubPage`: the nearest ancestor's typed page, else the origin's of the project or its nearest ancestor), else `https://github.com/owner/name` | `githubPage` | `https://github.com/<owner>/<name>`, trimmed, a trailing `/` removed: "Enter a GitHub page, for example https://github.com/owner/name."; empty removes it, and the placeholder's page applies. |
 | **Enable graph** | Toggle, top-level projects | `graphEnabled` | Shows the graph as it applies. On writes `true`; off removes the key, which is off. |
 | **Graph** | Pop-up, sub projects: "Same as “<parent>”: On" (or ": Off", the parent's graph as it applies), a separator, **On**, **Off** | `graphEnabled` | The first item removes the key, so the parent's graph applies; On and Off write `true` and `false`. |
+
+## Choosing an icon
+
+![The symbol picker, opened from the Icon row, with server.rack selected](images/project-settings-icon-picker.png)
+*The symbol picker: a search field and a category menu above the system's symbols, the selected one highlighted;
+the name of the symbol under the pointer below. 420 × 460 points.*
+
+- **Suggestions.** As the name is typed, a menu under the field lists up to 12 symbols that match it, each with
+  its symbol, best first: the name itself, names starting with the text, names with a part starting with it,
+  names containing it, then names with a keyword starting with it (AZDesign's `symbolSuggestions(for:)`).
+  Nothing shows while the field is empty or holds a whole symbol name. Picking one puts its name in the field,
+  which then applies like typed text: on Return or when the field loses the focus.
+- **The button** after the field shows the icon (the kind's symbol while the field is empty or names no
+  symbol), with the help "Choose Icon…". It opens AZDesign's `SymbolPicker` in a popover, 420 × 460 points,
+  arrow at the bottom, on the project's icon (the kind's symbol when it has none). The picker searches the
+  system's symbols by name and keyword, and shows a category (All, What’s New, Draw… Math); clicking a symbol
+  closes the popover and applies it at once.
+- On a system without the list of SF Symbols the picker says "No Symbols", and a name can still be typed.
 
 ## Environments
 
@@ -147,14 +167,15 @@ of its own: a form already reads as one column.
 | Element | Identifier |
 | --- | --- |
 | The form | `projectSettings` |
-| Rows | `projectSettings.name`, `.identifier`, `.type`, `.tint`, `.icon`, `.folder`, `.showInFinder`, `.parent`, `.parent.note`, `.docsPath`, `.githubPage`, `.graph` |
+| Rows | `projectSettings.name`, `.identifier`, `.type`, `.tint`, `.icon`, `.icon.choose`, `.folder`, `.showInFinder`, `.parent`, `.parent.note`, `.docsPath`, `.githubPage`, `.graph` |
 | `+` | `projectSettings.addSection`; its items `projectSettings.addSection.github`, `.service`, `.environments` |
 | Environments | `projectSettings.environment`, `.environment.add`, `.environment.remove`, `.environment.inherited`, `.environmentName`, `.kubeconfig`, `.namespace`, `.deployment`, `.jaeger`, `.url`, `.port`, `.certificates` |
 | Messages | `projectSettings.<row>.message`, `projectSettings.connection.message` |
 | Not found | `projectSettings.notFound` |
 
 The connection dot is labeled "Checking the cluster", "kubectl reaches the cluster" or "kubectl can’t reach
-the cluster"; the icon's symbol is hidden from VoiceOver.
+the cluster". The icon button's VoiceOver label is "Choose Icon…". The picker's identifiers start with
+`projectSettings.icon.picker` (`.search`, `.category`, `.symbol.<name>`).
 
 ## Previews
 

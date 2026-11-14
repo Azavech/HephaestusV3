@@ -46,6 +46,7 @@ private struct ProjectSettingsForm: View {
 
     @FocusState private var focus: ProjectSettingsModel.Field?
     @State private var browsingKubeconfig = false
+    @State private var choosingIcon = false
 
     var body: some View {
         @Bindable var model = model
@@ -88,8 +89,9 @@ private struct ProjectSettingsForm: View {
                 .accessibilityIdentifier("projectSettings.addSection")
             }
         }
-        // Changes made elsewhere show, except in the field being edited.
-        .onChange(of: project) {
+        // The stored values fill the fields when the form appears (the window may open before the projects
+        // load, when macOS restores it at launch), then as they change elsewhere, except in the field being edited.
+        .onChange(of: project, initial: true) {
             model.reload(except: focus)
         }
         .onChange(of: focus) { old, _ in
@@ -143,10 +145,46 @@ private struct ProjectSettingsForm: View {
             }
             .accessibilityIdentifier("projectSettings.tint")
             message(.tint)
-            field(String(localized: "Icon", bundle: #bundle), text: $model.icon, field: .icon, prompt: Project.Kind(project.file.type).symbol,
-                  monospaced: true, symbol: model.icon.isEmpty ? Project.Kind(project.file.type).symbol : model.icon) {
-                await model.applyIcon()
+            icon
+        }
+    }
+
+    /// The icon's name, with suggestions as it's typed, then a button showing the icon that opens the symbol picker.
+    private var icon: some View {
+        @Bindable var model = model
+        let kindSymbol = Project.Kind(project.file.type).symbol
+        let shown = model.icon.isEmpty || NSImage(systemSymbolName: model.icon, accessibilityDescription: nil) == nil ? kindSymbol : model.icon
+        return Group {
+            LabeledContent(String(localized: "Icon", bundle: #bundle)) {
+                HStack(spacing: 8) {
+                    TextField(String(localized: "Icon", bundle: #bundle), text: $model.icon, prompt: Text(verbatim: kindSymbol))
+                        .labelsHidden()
+                        .multilineTextAlignment(.trailing)
+                        .font(.body.monospaced())
+                        .autocorrectionDisabled()
+                        .focused($focus, equals: .icon)
+                        .onSubmit { Task { await model.applyIcon() } }
+                        .symbolSuggestions(for: model.icon)
+                    Button {
+                        choosingIcon = true
+                    } label: {
+                        Label(String(localized: "Choose Icon…", bundle: #bundle), systemImage: shown)
+                            .labelStyle(.iconOnly)
+                            .frame(width: 22)
+                    }
+                    .help(String(localized: "Choose Icon…", bundle: #bundle))
+                    .accessibilityIdentifier("projectSettings.icon.choose")
+                    .popover(isPresented: $choosingIcon, arrowEdge: .bottom) {
+                        SymbolPicker(selection: model.icon.isEmpty ? kindSymbol : model.icon, identifier: "projectSettings.icon.picker") { name in
+                            choosingIcon = false
+                            Task { await model.pickIcon(name) }
+                        }
+                        .frame(width: 420, height: 460)
+                    }
+                }
             }
+            .accessibilityIdentifier("projectSettings.icon")
+            message(.icon)
         }
     }
 
@@ -347,25 +385,17 @@ private struct ProjectSettingsForm: View {
 
     /// A text field applying on Return or when it loses the focus, with its message under it.
     private func field(_ title: String, text: Binding<String>, field: ProjectSettingsModel.Field, prompt: String? = nil,
-                       monospaced: Bool = false, disabled: Bool = false, symbol: String? = nil,
+                       monospaced: Bool = false, disabled: Bool = false,
                        apply: @escaping () async -> Void) -> some View {
         Group {
             LabeledContent(title) {
-                HStack(spacing: 8) {
-                    TextField(title, text: text, prompt: prompt.map { Text(verbatim: $0) })
-                        .labelsHidden()
-                        .multilineTextAlignment(.trailing)
-                        .font(monospaced ? .body.monospaced() : .body)
-                        .focused($focus, equals: field)
-                        .onSubmit { Task { await apply() } }
-                        .disabled(disabled)
-                    if let symbol {
-                        Image(systemName: symbol)
-                            .foregroundStyle(.textSecondary)
-                            .frame(width: 22)
-                            .accessibilityHidden(true)
-                    }
-                }
+                TextField(title, text: text, prompt: prompt.map { Text(verbatim: $0) })
+                    .labelsHidden()
+                    .multilineTextAlignment(.trailing)
+                    .font(monospaced ? .body.monospaced() : .body)
+                    .focused($focus, equals: field)
+                    .onSubmit { Task { await apply() } }
+                    .disabled(disabled)
             }
             .accessibilityIdentifier("projectSettings.\(identifier(field))")
             message(field)

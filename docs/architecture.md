@@ -195,7 +195,7 @@ struct HephaestusV3App: App {
 | `defaultLocalization` | `"en"` |
 | `platforms` | `.macOS("27.0")` |
 | `products` | one library, `ToolsScenes`, of the target `ToolsScenes` |
-| `dependencies` | `.package(url: "git@github.com:Azavech/AZDesign.git", from: "0.4.0")`: AZDesign by version, from its GitHub repo over SSH. `.package(url: "https://github.com/jpsim/Yams.git", from: "6.2.2")`: Yams, the YAML library the owner approved. `.package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.9.0")`: swift-markdown, approved for Markdown (it brings swift-cmark). `Package.resolved` pins the exact versions (AZDesign 0.4.0, revision `b0db917`; Yams 6.2.2, revision `a27b21e`) |
+| `dependencies` | `.package(url: "git@github.com:Azavech/AZDesign.git", from: "0.5.0")`: AZDesign by version, from its GitHub repo over SSH. `.package(url: "https://github.com/jpsim/Yams.git", from: "6.2.2")`: Yams, the YAML library the owner approved. `.package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.9.0")`: swift-markdown, approved for Markdown (it brings swift-cmark). `Package.resolved` pins the exact versions (AZDesign 0.5.0, revision `dcc2d59`; Yams 6.2.2, revision `a27b21e`) |
 
 Shared values in the manifest:
 
@@ -262,7 +262,7 @@ messages are technical details in English under a window's localized sentence. S
   ExternalTools only.
 
 **AZDesign APIs the app uses.** AZDesign comes by version from its GitHub repo; every API below is in its
-release 0.4.0. Its reference pages (`docs/` in the AZDesign repo) document each API (the Docs column).
+release 0.5.0. Its reference pages (`docs/` in the AZDesign repo) document each API (the Docs column).
 
 **Updating AZDesign** follows the workspace rule: raise the version in `Package.swift`, read AZDesign's
 `CHANGELOG.md` (not its source) and apply its migration notes, resolve the packages (Xcode's File ▸ Packages
@@ -277,6 +277,7 @@ Commit both `Package.resolved` files with it.
 | Adaptive window | `AdaptiveWindowState`, `adaptiveWindow(_:layout:)`, `WindowLayout` (`.mac`, `.pad`, `.phone`, `forWidth(_:macWidth:sidePanelWidth:)`), the `windowLayout` environment value; `WindowSizeClasses` and `collapsedFromRegularWidth` through them | ToolsScenes, ProjectsKit, MachinesKit set it; the tool kits read `windowLayout` | `layout.md` |
 | Phone stack | `PhoneStack(selection:opensSelection:list:page:)` | ProjectsKit, TicketsKit, ContractsKit, BuildsKit, ChatKit, MachinesKit | `layout.md` |
 | Components | `StatusDot`, `Figure`, `DetailSection`, `InspectorSection`, `CheckboxGroup`, `MessageComposer`, `CardShape` (`.card`, `CardShape(minimum:)`) | ProjectsKit, ServiceMapKit, MachinesKit, TicketsKit, DashboardsKit, ChatKit | `components.md` |
+| SF Symbols | `SymbolPicker(selection:identifier:pick:)` and `symbolSuggestions(for:)`, on the system's `SymbolCatalog` | ProjectsKit (the Icon row of Project Settings) | `components.md` |
 | Styles | `.badge(_:)`, `.tintedIcon(_:)` (label styles); `.detailRow`, `.detailRow(combinesChildren:)`, `.stacked` (labeled content styles); `.suggestion` (button style) | Most kits | `styles.md` |
 | Modifiers | `foreground(_:onSelection:)`, `toolbarLabelPadding()` | Most kits | `styles.md` |
 | Preview traits | `.appChrome`, `.padLayout`, `.phoneLayout`, `.largestText` | Every kit's previews | `layout.md` |
@@ -1201,7 +1202,10 @@ The project selector. Spec: [Projects](ui/projects.md), [Menu bar](ui/menu-bar.m
 snapshot whose kubectl answers from fixed lists in the previews. It reads the project from the snapshot at each
 access and keeps the text of each field (`name`, `icon`, `docsPath`, `githubPage`, and the environment's
 `environmentName`, `kubeconfig`, `namespace`, `deployment`, `jaeger`, `url`, `port`), which `reload(except:)`
-refills from the stored values, except the field being edited. Every change is `async`: `applyName()`,
+refills from the stored values, except the field being edited; the form calls it when it appears and when the
+project changes. `hasValues` turns true at the first `reload` that finds the project: until then each text
+field's apply calls `reload()` instead, so a field opened before the project loaded never applies its empty
+text. `pickIcon(_:)` fills the icon field with a symbol picked in the picker and applies it. Every change is `async`: `applyName()`,
 `applyKind(_:)`, `applyTint(_:)` (the tint's name), `applyIcon()` (checked with `NSImage(systemSymbolName:)`),
 `applyDocsPath()`, `applyGitHubPage()`, `applyGraph(_:)` (`true`, `false`, or `nil` to take the parent's;
 `graphSetting` is the stored value, `graphEnabled` and `inheritedGraphEnabled` the resolved ones); `select(_:)`,

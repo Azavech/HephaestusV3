@@ -71,6 +71,9 @@ final class ProjectSettingsModel {
     var githubPage = ""
     /// The messages under the fields, in red: a broken rule or a failed change.
     private(set) var messages: [Field: String] = [:]
+    /// Whether the text fields hold the stored values: false until the project is loaded. Until then a text
+    /// field applies nothing, so that an empty field never replaces a stored value.
+    private(set) var hasValues = false
 
     // Environments.
     private(set) var selectedEnvironment: String?
@@ -121,6 +124,7 @@ final class ProjectSettingsModel {
     /// Copies the stored values into the text fields, except `editing`, the field being edited.
     func reload(except editing: Field? = nil) {
         guard let file = project?.file else { return }
+        hasValues = true
         if editing != .name { name = file.name }
         if editing != .icon { icon = file.icon ?? "" }
         if editing != .docsPath { docsPath = file.docsPath }
@@ -137,6 +141,7 @@ final class ProjectSettingsModel {
     // MARK: General
 
     func applyName() async {
+        guard hasValues else { return reload() }
         guard name != project?.file.name else { return clear(.name) }
         await apply(.name, ProjectChange(name: name))
     }
@@ -151,6 +156,7 @@ final class ProjectSettingsModel {
 
     /// An SF Symbol of this Mac, or none when the field is empty.
     func applyIcon() async {
+        guard hasValues else { return reload() }
         let trimmed = icon.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed != (project?.file.icon ?? "") else { return clear(.icon) }
         if !trimmed.isEmpty, NSImage(systemSymbolName: trimmed, accessibilityDescription: nil) == nil {
@@ -160,12 +166,20 @@ final class ProjectSettingsModel {
         await apply(.icon, ProjectChange(icon: .some(trimmed.isEmpty ? nil : trimmed)))
     }
 
+    /// A symbol chosen in the picker: it fills the field and applies at once.
+    func pickIcon(_ name: String) async {
+        icon = name
+        await applyIcon()
+    }
+
     func applyDocsPath() async {
+        guard hasValues else { return reload() }
         guard docsPath != project?.file.docsPath else { return clear(.docsPath) }
         await apply(.docsPath, ProjectChange(docsPath: docsPath))
     }
 
     func applyGitHubPage() async {
+        guard hasValues else { return reload() }
         let trimmed = githubPage.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed != (project?.file.githubPage ?? "") else { return clear(.githubPage) }
         await apply(.githubPage, ProjectChange(githubPage: .some(trimmed.isEmpty ? nil : trimmed)))
@@ -245,6 +259,7 @@ final class ProjectSettingsModel {
     /// Applies environment fields from their text: an own environment changes in `environments`; an
     /// inherited one in `environmentOverrides`, where an empty field gives the parent's value.
     private func applyEnvironmentFields(_ fields: [Field]) async {
+        guard hasValues else { return reload() }
         guard let file = project?.file, let name = selectedEnvironment, selected != nil else { return }
         var port: Int??
         if fields.contains(.port) {

@@ -13,6 +13,25 @@ private final class QuietRunner: ProcessRunning {
     }
 }
 
+/// A backend whose project loads after the window opens, as at launch; it records the changes asked.
+@MainActor
+private final class LateBackend: ProjectSettingsBackend {
+    var snapshot = ProjectSnapshot(revision: 0, projects: [])
+    var kubectl: Kubectl? { nil }
+    var changes: [ProjectChange] = []
+
+    func update(_ id: String, _ change: ProjectChange) async throws(ProjectError) {
+        changes.append(change)
+    }
+
+    func load() {
+        let file = ProjectFile(id: "ORD", name: "Orders", created: Date(timeIntervalSince1970: 0), icon: "cart", githubPage: "https://github.com/example/orders")
+        snapshot = ProjectSnapshot(revision: 1, projects: [
+            LoadedProject(root: "/tmp/orders", file: file, parentID: nil, depth: 0, childIDs: [], resolved: ResolvedSettings(), fileIssue: nil),
+        ])
+    }
+}
+
 @MainActor
 @Suite("Project Settings")
 struct ProjectSettingsTests {
@@ -191,6 +210,33 @@ struct ProjectSettingsTests {
             await worker.applyGraph(nil)
             #expect(session.snapshot.project("WRK")?.file.graphEnabled == nil)
             #expect(worker.graphEnabled)
+        }
+    }
+
+
+    @Test("Fields opened before the project loads apply nothing: they fill with the stored values instead")
+    func lateLoad() async {
+        let backend = LateBackend()
+        let model = ProjectSettingsModel(projectID: "ORD", backend: backend)
+        #expect(!model.hasValues)
+        backend.load()
+        await model.applyIcon()
+        await model.applyGitHubPage()
+        await model.applyName()
+        #expect(backend.changes.isEmpty)
+        #expect(model.hasValues)
+        #expect(model.icon == "cart")
+        #expect(model.githubPage == "https://github.com/example/orders")
+        #expect(model.name == "Orders")
+    }
+
+    @Test("A symbol picked in the picker applies at once")
+    func pickedIcon() async throws {
+        try await withSession { session, _ in
+            let model = ProjectSettingsModel(projectID: "ORD", backend: session)
+            await model.pickIcon("server.rack")
+            #expect(model.icon == "server.rack")
+            #expect(session.snapshot.project("ORD")?.file.icon == "server.rack")
         }
     }
 
