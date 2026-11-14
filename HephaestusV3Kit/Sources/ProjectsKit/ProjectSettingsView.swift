@@ -47,6 +47,8 @@ private struct ProjectSettingsForm: View {
     @FocusState private var focus: ProjectSettingsModel.Field?
     @State private var browsingKubeconfig = false
     @State private var choosingIcon = false
+    /// The section whose removal waits for the user's confirmation.
+    @State private var removing: ProjectSettingsModel.OptionalSection?
 
     var body: some View {
         @Bindable var model = model
@@ -54,11 +56,13 @@ private struct ProjectSettingsForm: View {
             general
             location
             if model.shows(.github) {
-                Section(String(localized: "GitHub", bundle: #bundle)) {
+                Section {
                     field(String(localized: "GitHub Page", bundle: #bundle), text: $model.githubPage, field: .githubPage,
                           prompt: project.resolved.defaultGithubPage ?? "https://github.com/owner/name", monospaced: true) {
                         await model.applyGitHubPage()
                     }
+                } header: {
+                    sectionHeader(.github)
                 }
             }
             if model.shows(.service) {
@@ -88,6 +92,15 @@ private struct ProjectSettingsForm: View {
                 .help(String(localized: "Add settings this project doesn’t show yet", bundle: #bundle))
                 .accessibilityIdentifier("projectSettings.addSection")
             }
+        }
+        .confirmationDialog(removing.map(removalTitle) ?? "", isPresented: Binding { removing != nil } set: { if !$0 { removing = nil } },
+                            titleVisibility: .visible, presenting: removing) { section in
+            Button(String(localized: "Remove", bundle: #bundle), role: .destructive) {
+                Task { await model.remove(section) }
+            }
+            .accessibilityIdentifier("projectSettings.removeSection.confirm")
+        } message: { section in
+            Text(verbatim: removalMessage(section))
         }
         // The stored values fill the fields when the form appears (the window may open before the projects
         // load, when macOS restores it at launch), then as they change elsewhere, except in the field being edited.
@@ -223,7 +236,7 @@ private struct ProjectSettingsForm: View {
 
     /// The graph: a toggle for a top-level project; for a sub project, also the parent's value.
     private var service: some View {
-        Section(String(localized: "Service", bundle: #bundle)) {
+        Section {
             if let parent = model.parent {
                 Picker(String(localized: "Graph", bundle: #bundle),
                        selection: Binding { model.graphSetting } set: { value in Task { await model.applyGraph(value) } }) {
@@ -242,6 +255,50 @@ private struct ProjectSettingsForm: View {
                     .accessibilityIdentifier("projectSettings.graph")
             }
             message(.graph)
+        } header: {
+            sectionHeader(.service)
+        }
+    }
+
+    /// A section's title and, when the project's type doesn't use the section, Remove at its trailing edge. Remove
+    /// asks first when the section holds values of the project's own; otherwise it only hides the section.
+    private func sectionHeader(_ section: ProjectSettingsModel.OptionalSection) -> some View {
+        HStack {
+            Text(verbatim: section.title)
+            Spacer()
+            if model.canRemove(section) {
+                Button(String(localized: "Remove", bundle: #bundle), role: .destructive) {
+                    if model.hasOwnValues(section) {
+                        removing = section
+                    } else {
+                        Task { await model.remove(section) }
+                    }
+                }
+                .buttonStyle(.borderless)
+                .font(.callout)
+                .help(String(localized: "Remove these settings from the project", bundle: #bundle))
+                .accessibilityIdentifier("projectSettings.removeSection.\(section.rawValue)")
+            }
+        }
+    }
+
+    private func removalTitle(_ section: ProjectSettingsModel.OptionalSection) -> String {
+        switch section {
+        case .github: String(localized: "Remove the GitHub settings?", bundle: #bundle)
+        case .service: String(localized: "Remove the Service settings?", bundle: #bundle)
+        case .environments: String(localized: "Remove the Environments settings?", bundle: #bundle)
+        }
+    }
+
+    private func removalMessage(_ section: ProjectSettingsModel.OptionalSection) -> String {
+        let name = project.file.name
+        return switch section {
+        case .github:
+            String(localized: "The GitHub page typed for “\(name)” is removed. A page from its parent or its origin remote still applies.", bundle: #bundle)
+        case .service:
+            String(localized: "The graph setting of “\(name)” is removed: its parent’s applies, else the graph is off.", bundle: #bundle)
+        case .environments:
+            String(localized: "The environments of “\(name)” and its changes to inherited ones are removed. Its parent’s environments still apply.", bundle: #bundle)
         }
     }
 
@@ -342,7 +399,7 @@ private struct ProjectSettingsForm: View {
                 message(.certificates)
             }
         } header: {
-            Text("Environments", bundle: #bundle)
+            sectionHeader(.environments)
         } footer: {
             if model.environments.isEmpty {
                 Text("No environment yet. Add one with +.", bundle: #bundle)
@@ -522,14 +579,16 @@ final class PreviewSettingsBackend: ProjectSettingsBackend {
         snapshot = ProjectSnapshot(revision: 1, projects: [
             LoadedProject(root: "/Users/example/Developer/orders",
                           file: ProjectFile(id: "ORD", name: "Orders", created: created, type: .goService, color: "accent",
-                                            icon: "cart", subprojects: ["worker"], graphEnabled: true, environments: [local, staging]),
+                                            icon: "cart", githubPage: "https://github.com/example/orders", subprojects: ["worker"],
+                                            graphEnabled: true, environments: [local, staging]),
                           parentID: nil, depth: 0, childIDs: ["WRK"], resolved: orders, fileIssue: nil),
             LoadedProject(root: "/Users/example/Developer/orders/worker",
                           file: ProjectFile(id: "WRK", name: "Worker", created: created, type: .goService,
                                             environmentOverrides: ["staging": EnvironmentOverride(deployment: "orders-worker")]),
                           parentID: "ORD", depth: 1, childIDs: [], resolved: worker, fileIssue: nil),
             LoadedProject(root: "/Users/example/Developer/notes",
-                          file: ProjectFile(id: "NOTE", name: "Notes", created: created, type: .swiftApplication, color: "success"),
+                          file: ProjectFile(id: "NOTE", name: "Notes", created: created, type: .swiftApplication, color: "success",
+                                            githubPage: "https://github.com/example/notes"),
                           parentID: nil, depth: 0, childIDs: [], resolved: app, fileIssue: nil),
             LoadedProject(root: "/Users/example/Developer/scripts",
                           file: ProjectFile(id: "SCR", name: "Scripts", created: created, color: "warning"),

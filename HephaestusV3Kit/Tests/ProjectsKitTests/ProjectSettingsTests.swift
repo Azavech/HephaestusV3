@@ -179,6 +179,7 @@ struct ProjectSettingsTests {
             #expect(!model.shows(.environments))
             model.add(.environments)
             #expect(model.shows(.environments))
+            #expect(model.canRemove(.environments))
             #expect(model.addableSections == [.github, .service])
             await model.addEnvironment()
             #expect(session.snapshot.project("SCR")?.file.environments.map(\.name) == ["New Environment"])
@@ -192,6 +193,56 @@ struct ProjectSettingsTests {
 
             let service = ProjectSettingsModel(projectID: "ORD", backend: session)
             #expect(service.addableSections == [.github])
+            #expect(!service.canRemove(.environments))
+            #expect(!service.canRemove(.service))
+        }
+    }
+
+    @Test("Remove deletes the section's own values in one change and hides it; a section the type uses stays")
+    func removeSections() async throws {
+        try await withSession { session, _ in
+            let model = ProjectSettingsModel(projectID: "SCR", backend: session)
+            model.add(.github)
+            model.githubPage = "https://github.com/example/scripts"
+            await model.applyGitHubPage()
+            await model.applyGraph(true)
+            model.add(.environments)
+            await model.addEnvironment()
+            #expect(model.addableSections.isEmpty)
+
+            await model.remove(.github)
+            await model.remove(.service)
+            await model.remove(.environments)
+            let file = try #require(session.snapshot.project("SCR")?.file)
+            #expect(file.githubPage == nil)
+            #expect(file.graphEnabled == nil)
+            #expect(file.environments.isEmpty)
+            #expect(model.addableSections == [.github, .service, .environments])
+            #expect(model.githubPage.isEmpty)
+
+            // A section added and left empty only hides.
+            model.add(.service)
+            await model.remove(.service)
+            #expect(!model.shows(.service))
+
+            // The type's sections can't be removed.
+            let service = ProjectSettingsModel(projectID: "ORD", backend: session)
+            await service.remove(.environments)
+            #expect(session.snapshot.project("ORD")?.file.environments.count == 2)
+            #expect(service.shows(.environments))
+        }
+    }
+
+    @Test("A value that only comes from the parent doesn't show a section; once added, the section shows it")
+    func inheritedValuesStayHidden() async throws {
+        try await withSession { session, _ in
+            try await session.update("ORD", ProjectChange(githubPage: .some("https://github.com/example/orders")))
+            let worker = ProjectSettingsModel(projectID: "WRK", backend: session)
+            #expect(!worker.shows(.github))
+            #expect(session.snapshot.project("WRK")?.resolved.githubPage == "https://github.com/example/orders")
+            worker.add(.github)
+            #expect(worker.githubPage.isEmpty)
+            #expect(session.snapshot.project("WRK")?.resolved.defaultGithubPage == "https://github.com/example/orders")
         }
     }
 

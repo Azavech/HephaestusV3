@@ -61,7 +61,9 @@ which rules the app enforces, and never tells Claude how to work.
 | May an own environment take an inherited environment's name? | No, as in V2; one already in a file stays there, unused. | same |
 | Which fields of an inherited environment can change? | All but its name: V3 adds the namespace and the kubeconfig file to V2's changes. | [Data › Environment override](data.md#environment-override) |
 | Which settings may a project of any type have? | All of them (the owner's choice); its type still decides its tools (the owner's choice: tools stay by type). | [Project Settings](ui/project-settings.md) |
-| Where are the sections a project doesn't show added? | A `+` menu in the window's toolbar, listing them in the form's order; an added section stays while the window is open, then shows only with a value. | [Project Settings › Adding a section](ui/project-settings.md#adding-a-section) |
+| Where are the sections a project doesn't show added? | A `+` menu in the window's toolbar, listing them in the form's order; an added section stays while the window is open, then shows only with a value. | [Project Settings › Adding and removing a section](ui/project-settings.md#adding-and-removing-a-section) |
+| When does an optional section show? | When the type uses it, the project sets a value of its own in it, or it was added: a value that only comes from the parent or the origin remote doesn't show it, so that every section the type doesn't use can be removed (the owner asked for removal). Once shown, the section shows those values greyed. | same |
+| How is a section removed? | Remove in its header, for every section the type doesn't use; it deletes the project's own values in it, in one change, after a confirmation when there are any. Inherited and origin values keep applying. | same |
 | How does a sub project choose its graph? | A pop-up: "Same as “<parent>”: On/Off", On, Off; a top-level project keeps a toggle, whose off removes the key. | [Project Settings › Fields](ui/project-settings.md#fields) |
 
 ## MCP server

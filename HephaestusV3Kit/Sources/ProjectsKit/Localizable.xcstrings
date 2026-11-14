@@ -449,6 +449,18 @@
     "Remove Project…" : {
 
     },
+    "Remove the Environments settings?" : {
+
+    },
+    "Remove the GitHub settings?" : {
+
+    },
+    "Remove the Service settings?" : {
+
+    },
+    "Remove these settings from the project" : {
+
+    },
     "Remove “%@” from Hephaestus V3?" : {
 
     },
@@ -485,6 +497,12 @@
     "Switch Project" : {
 
     },
+    "The GitHub page typed for “%@” is removed. A page from its parent or its origin remote still applies." : {
+
+    },
+    "The environments of “%@” and its changes to inherited ones are removed. Its parent’s environments still apply." : {
+
+    },
     "The folder already holds a project. Add it with Add Existing Folder instead." : {
 
     },
@@ -499,6 +517,9 @@
     },
     "The folder is missing." : {
       "comment" : "Why a project of the list didn't load"
+    },
+    "The graph setting of “%@” is removed: its parent’s applies, else the graph is off." : {
+
     },
     "The identifier is set at creation and cannot be changed." : {
 

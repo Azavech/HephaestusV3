@@ -98,27 +98,56 @@ final class ProjectSettingsModel {
 
     var parent: LoadedProject? { project?.parentID.flatMap { backend.snapshot.project($0) } }
 
-    /// Whether the form shows the section: when the project's type uses it, when the project or its parent
-    /// sets one of its values, or once it is added with `+`.
+    /// Whether the form shows the section: when the project's type uses it, when the project sets a value of
+    /// its own in it, or once it is added with `+`. A value that only comes from the parent or the origin remote
+    /// doesn't show it; once shown, the section shows that value greyed.
     func shows(_ section: OptionalSection) -> Bool {
-        guard let project else { return false }
-        if addedSections.contains(section) { return true }
+        project != nil && (addedSections.contains(section) || typeUses(section) || hasOwnValues(section))
+    }
+
+    /// Whether the project's type uses the section, which then always shows: a service's Service and Environments.
+    func typeUses(_ section: OptionalSection) -> Bool {
+        project?.file.type == .goService && section != .github
+    }
+
+    /// Whether the project sets a value of its own in the section: a typed GitHub page; a graph setting; an
+    /// environment or a change to an inherited one.
+    func hasOwnValues(_ section: OptionalSection) -> Bool {
+        guard let file = project?.file else { return false }
         switch section {
-        case .github:
-            return project.resolved.githubPage != nil
-        case .service:
-            return project.file.type == .goService || project.file.graphEnabled != nil || project.resolved.graphEnabled
-        case .environments:
-            return project.file.type == .goService || !project.resolved.environments.isEmpty || !project.file.environmentOverrides.isEmpty
+        case .github: return file.githubPage != nil
+        case .service: return file.graphEnabled != nil
+        case .environments: return !file.environments.isEmpty || !file.environmentOverrides.isEmpty
         }
     }
 
     /// The sections `+` offers: those the form doesn't show.
     var addableSections: [OptionalSection] { OptionalSection.allCases.filter { !shows($0) } }
 
+    /// Whether the section has Remove: it shows, and the project's type doesn't use it.
+    func canRemove(_ section: OptionalSection) -> Bool {
+        shows(section) && !typeUses(section)
+    }
+
     /// Shows the section until the window closes; it stays afterwards once one of its values is set.
     func add(_ section: OptionalSection) {
         addedSections.insert(section)
+    }
+
+    /// Removes the section: the project's own values in it are deleted from its file in one change, and the
+    /// form stops showing it. A value from the parent or the origin remote still applies. Nothing happens for
+    /// a section the type uses; when the change fails, the section stays with its message.
+    func remove(_ section: OptionalSection) async {
+        guard canRemove(section) else { return }
+        if hasOwnValues(section) {
+            let applied = switch section {
+            case .github: await apply(.githubPage, ProjectChange(githubPage: .some(nil)))
+            case .service: await apply(.graph, ProjectChange(graphEnabled: .some(nil)))
+            case .environments: await apply(.environments, ProjectChange(environments: [], environmentOverrides: [:]))
+            }
+            guard applied else { return }
+        }
+        addedSections.remove(section)
     }
 
     /// Copies the stored values into the text fields, except `editing`, the field being edited.

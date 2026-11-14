@@ -1216,10 +1216,13 @@ changed field in one `ProjectChange`), `applyCertificates(_:)`; `checkCluster()`
 other keys kept); an inherited one in `environmentOverrides` (every field but the name), an empty field
 giving `nil`, the certificates stored only while they differ from the parent's, and a change that sets
 nothing removed. `OptionalSection` (`github`, `service`, `environments`, each with a `title` and `symbol`) names
-the sections the form shows only when they apply: `shows(_:)` is true for one added with `add(_:)` while the
-window is open (`addedSections`), and otherwise for GitHub when a page resolves, for Service when the type is
-`goService`, the project sets `graphEnabled` or the graph applies, for Environments when the type is `goService`,
-an environment applies or the project has a change to one. `addableSections` lists the others, in that order. `connection`
+the sections the form shows only when they apply. `typeUses(_:)` is true for a `goService` project's Service and
+Environments; `hasOwnValues(_:)` for a typed `githubPage`, a set `graphEnabled`, own `environments` or any
+`environmentOverrides`. `shows(_:)` is true when the section was added with `add(_:)` while the window is open
+(`addedSections`), the type uses it or it has own values. `addableSections` lists the others, in that order.
+`canRemove(_:)` is true for a section that shows and the type doesn't use; `remove(_:)` deletes its own values
+in one `ProjectChange` (`githubPage: .some(nil)`; `graphEnabled: .some(nil)`; `environments: []` with
+`environmentOverrides: [:]`) and takes it out of `addedSections`, or leaves it when the change fails. `connection`
 (`none`, `checking`, `connected`, `failed(message)`), `namespaces` and `deployments` come from
 `kubectl.namespaces(kubeconfig:)` then `deployments(namespace:kubeconfig:)`, run by the view's
 `.task(id:)` on the selected environment, its kubeconfig file and its namespace.
