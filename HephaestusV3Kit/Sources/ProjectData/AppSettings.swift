@@ -22,6 +22,9 @@ public struct SettingsFile: Codable, Sendable, Hashable {
     /// How the windows the app opens appear: `tabs`, as tabs of the frontmost window, or `windows`, each on its
     /// own; nil, or another value, for `tabs` (Settings ▸ General).
     public var newWindows: String?
+    /// The project that receives feedback tickets (Settings ▸ General); nil hides the status bar's ladybug
+    /// and Help ▸ Send Feedback….
+    public var feedbackProjectID: String?
     public var unknownKeys: YAMLMapping
 
     public init(schema: Int = 1, mcpPort: Int = SettingsFile.defaultMCPPort, claudePath: String? = nil, chatModel: String? = nil,
@@ -35,7 +38,7 @@ public struct SettingsFile: Codable, Sendable, Hashable {
     }
 
     static let knownKeys: Set<String> = ["schema", "mcpPort", "claudePath", "chatModel", "chatEffort", "defaultVMCores", "defaultVMMemoryGB",
-                                         "defaultVMDiskGB", "newWindows"]
+                                         "defaultVMDiskGB", "newWindows", "feedbackProjectID"]
 
     /// Whether the windows the app opens become tabs of the frontmost window: unless `newWindows` is `windows`.
     public var opensWindowsAsTabs: Bool {
@@ -54,6 +57,7 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         defaultVMMemoryGB = try c.optional("defaultVMMemoryGB")
         defaultVMDiskGB = try c.optional("defaultVMDiskGB")
         newWindows = try c.optional("newWindows")
+        feedbackProjectID = try c.optional("feedbackProjectID")
         unknownKeys = try c.unknownKeys(known: Self.knownKeys)
     }
 
@@ -68,6 +72,7 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         try c.encodeIfPresent(defaultVMMemoryGB, "defaultVMMemoryGB")
         try c.encodeIfPresent(defaultVMDiskGB, "defaultVMDiskGB")
         try c.encodeIfPresent(newWindows, "newWindows")
+        try c.encodeIfPresent(feedbackProjectID, "feedbackProjectID")
         try c.encodeUnknownKeys(unknownKeys, known: Self.knownKeys)
     }
 

@@ -79,6 +79,25 @@ final class AppData {
         didSet { WindowDirectory.shared.opensWindowsAsTabs = opensWindowsAsTabs }
     }
 
+    /// The project that receives feedback tickets: `settings.yml`'s `feedbackProjectID`, nil until read.
+    private(set) var feedbackProjectID: Project.ID?
+
+    /// The feedback project while it is loaded; nil hides the status bar and Help ▸ Send Feedback….
+    var feedbackTarget: FeedbackTarget? {
+        directory.project(feedbackProjectID).map { FeedbackTarget(project: $0, store: ticketStore) }
+    }
+
+    /// Stores the feedback project, nil for none. Throws the storage error when it can't be stored; without a
+    /// data folder it holds until the app quits.
+    func setFeedbackProject(_ id: Project.ID?) throws(StorageError) {
+        if let folder = session.dataFolder {
+            var settings = folder.readSettings()
+            settings.feedbackProjectID = id
+            try folder.writeSettings(settings)
+        }
+        feedbackProjectID = id
+    }
+
     /// Stores how new windows open. Throws the storage error when it can't be stored; without a data folder it
     /// holds until the app quits.
     func setOpensWindowsAsTabs(_ value: Bool) throws(StorageError) {
@@ -144,7 +163,9 @@ final class AppData {
         }
         await session.start()
         if let folder = session.dataFolder {
-            opensWindowsAsTabs = folder.readSettings().opensWindowsAsTabs
+            let settings = folder.readSettings()
+            opensWindowsAsTabs = settings.opensWindowsAsTabs
+            feedbackProjectID = settings.feedbackProjectID
         }
         machineHost.load()
         await tickets.start()

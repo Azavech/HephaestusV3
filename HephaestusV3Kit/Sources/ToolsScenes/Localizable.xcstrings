@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ (not loaded)" : {
+
+    },
     "%@ – %@" : {
       "comment" : "A window's tab title: the window, then its project, such as Tickets – Orders",
       "localizations" : {
@@ -40,6 +43,12 @@
 
     },
     "External Token" : {
+
+    },
+    "Feedback" : {
+
+    },
+    "Feedback project" : {
 
     },
     "General" : {
@@ -82,6 +91,9 @@
 
     },
     "No Project" : {
+
+    },
+    "None" : {
 
     },
     "Not listening: %@" : {
@@ -129,6 +141,15 @@
     "Run the command in Terminal to give Claude Code the tools of Hephaestus V3. After Regenerate or a new port, run “claude mcp remove hephaestus” first." : {
 
     },
+    "Send Feedback" : {
+
+    },
+    "Send Feedback (⇧⌘B)" : {
+
+    },
+    "Send Feedback…" : {
+      "comment" : "Help menu item, ⇧⌘B"
+    },
     "Server" : {
 
     },
@@ -139,6 +160,9 @@
 
     },
     "Terminal sessions that use the current token stop working until you add the server again." : {
+
+    },
+    "The ladybug at the bottom of every window, and Help ▸ Send Feedback… (⇧⌘B), make a ticket in this project with a screenshot of the window. With None, neither shows." : {
 
     },
     "Virtual Machines" : {

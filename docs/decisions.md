@@ -219,6 +219,22 @@ The owner asked for an icon on 17 November 2026.
 | What does it show? | A hammer striking an anvil, with sparks: Hephaestus's forge. Light metal and an Orange handle on a gradient from Alucard Purple to Dracula Background, with Orange, Yellow and Pink sparks. | [UI › Foundations › App icon](ui/foundations.md#app-icon) |
 | In which format? | An Icon Composer document of three SVG layers, so that macOS draws it in Liquid Glass and makes its dark, clear and tinted versions. | same |
 
+## Feedback
+
+The owner asked on 17 November 2026 for V2's ladybug, sending a feedback ticket that is a regular ticket, not
+an item of its own. They chose V2's status bar at the bottom of every window, holding only the ladybug, and a
+feedback project set in Settings, without which the ladybug doesn't show.
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| What does Send make? | A ticket as New Ticket makes it, with its Title, Description, Priority and Save as Draft, in the feedback project; the screenshot and the added files become its attachments. No chat, no Claude. | [UI › Tickets › Feedback](ui/tickets.md#feedback) |
+| Where does it say what the feedback is about? | A context line after the description: the app's version, macOS, the window, its project and its selected item. V2's device has no counterpart. | [UI › Tickets › Context line](ui/tickets.md#context-line) |
+| What follows Send? | The ticket opens in the feedback project's Tickets window, as V2 showed its feedback chat. | [UI › Tickets › Feedback](ui/tickets.md#feedback) |
+| What if the files can't be attached? | The ticket stays, without them; the sheet says so and offers Show Ticket, so no second ticket is made. | same |
+| Which windows have the status bar? | Every window but Settings and the menu bar panel, and none while no feedback project is loaded: the bar only holds the ladybug. | [UI › Navigation › Status bar](ui/navigation.md#status-bar) |
+| How is the window captured? | V2's in-process capture, without its web-view step; a PNG over 5,000,000 bytes is made again at 1 pixel per point. | [UI › Tickets › Screenshot](ui/tickets.md#screenshot) |
+| Where is the setting stored? | `settings.yml`'s `feedbackProjectID`, the name of V2's earlier setting. | [Data › Settings file](data.md#settings-file) |
+
 ## Release
 
 The owner chose a GitHub release built by GitHub Actions, without an install page, an updater, Developer ID signing

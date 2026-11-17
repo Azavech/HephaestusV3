@@ -919,8 +919,9 @@ component comes from AZDesign.
 
 `ToolsScenes.swift` (scenes, `RouteHost`, `ToolWindowRoot`, commands, the tool reader, the widget mapping, Mac
 widths, `OpenWindowAction.openNew`), `WindowDirectory.swift` (window reuse and tabs), `AppData.swift` (the
-app's data), `AppTools.swift` (the MCP server's tools), `MCPSettingsView.swift` (Settings ▸ MCP) and
-`GeneralSettingsView.swift` (Settings ▸ General). Its only public type is
+app's data), `AppTools.swift` (the MCP server's tools), `MCPSettingsView.swift` (Settings ▸ MCP),
+`GeneralSettingsView.swift` (Settings ▸ General), `StatusBar.swift` (the status bar and feedback) and
+`WindowCapture.swift` (a window's PNG). Its only public type is
 `public struct ToolsScenes: Scene` with `public init()`.
 
 ### Scenes
@@ -1059,13 +1060,52 @@ Show Tab Bar and Show All Tabs are AppKit's own menu items, added as the Window 
 them: `RouteHost`'s routes (the Projects window, a tool, Project Settings, Virtual Machines), New *Tool* Window,
 Project Settings…, and the Window menu's items. The tab bar's + calls `openWindow` itself.
 
+**Status bar and feedback** (`StatusBar.swift`, [Navigation › Status bar](ui/navigation.md#status-bar),
+[Tickets › Feedback](ui/tickets.md#feedback)).
+
+- `FeedbackTarget` (`project: Project`, `store: LiveTicketStore`; `Sendable`) is
+  `AppData.feedbackTarget`: the project of `feedbackProjectID` while the directory has it, with the app's
+  ticket store; nil otherwise. `RouteHost` puts it in every window's environment, `\.feedbackTarget`.
+- `FeedbackSource` (`window: String`, `project: Project?`, `item: String?`) says what a window shows;
+  `contextLine(version:build:system:)` makes the ticket's context line, by default from the main bundle's
+  `CFBundleShortVersionString` and `CFBundleVersion` and `ProcessInfo.operatingSystemVersion`.
+- `View.statusBar(_ source:)` puts the window's content (`frame(maxWidth: .infinity, maxHeight: .infinity)`)
+  above `StatusBar` in a `VStack(spacing: 0)` while `\.feedbackTarget` is set. Its modifier keeps a
+  `FeedbackStarter` in `@State`, gives it its window through a `WindowReader`, publishes
+  `focusedSceneValue(\.sendFeedback, SendFeedbackAction)` while there is a target, and shows
+  `FeedbackTicketView` in a `.sheet(item:)` on `FeedbackStarter.request`. The sheet's finish calls
+  `FeedbackStarter.finish(_:)`, then, with a ticket id, `openRoute(.tool(.tickets, project:, focus: id))`.
+- Applied in `ToolsScenes`: the Projects window (`Projects`, the selected project), `ToolWindowRoot`
+  (`tool.title`, its project, `chatSubject?.title`), Project Settings (`Project Settings`, its project) and
+  Virtual Machines (`Virtual Machines`, no project).
+- `FeedbackStarter` (`@MainActor @Observable`): `request: FeedbackRequest?`, `weak window` (ignored by
+  observation). `start(_ source:isOn:)` does nothing when off, while a request is open, without a window, or
+  while the window has an attached sheet or is one; otherwise it captures the window
+  (`WindowCapture.capture`), writes the PNG as `screenshot.png` in a new
+  `<temporary>/HephaestusV3-Feedback-<UUID>` folder (no screenshot when either fails), and sets the request
+  (`folder`, `screenshot`, `context`). `finish(_:)` clears it and deletes the folder.
+- `SendFeedbackAction` (`@MainActor @Sendable` closure) is `FocusedValues.sendFeedback`. `FeedbackCommands`
+  puts `CommandGroup(after: .help)` with **Send Feedback…** (⇧⌘B), shown only while the focused value is set.
+- `StatusBar(start:)`: `Divider`, then an `HStack` 26 points high with the ladybug button at the trailing
+  edge, 10 points in, on `canvas`.
+
+**`WindowCapture`** (`WindowCapture.swift`) is V2's capture without its web-view step: `capture(_:) -> Data?`
+renders `hostWindow(of:)`'s frame view with `cacheDisplay` (`bitmapImageRepForCachingDisplay`), fills the
+`.behindWindow` `NSVisualEffectView`s with `NSColor.windowBackgroundColor` in their appearance
+(`destinationOver`), draws `fullScreenToolbarWindow(of:)` and `overlayWindows(of:)` at
+`placement(of:in:)`, encodes PNG, and renders again at 1 pixel per point above `maximumPNGSize`
+(5,000,000 bytes).
+
 **Settings ▸ General.** `AppData.opensWindowsAsTabs` (`private(set)`, true until read) is read from
 `settings.yml` (`SettingsFile.opensWindowsAsTabs`) once the session has started, and its `didSet` sets
 `WindowDirectory.shared.opensWindowsAsTabs`. `setOpensWindowsAsTabs(_:) throws(StorageError)` reads the file,
 sets the value, writes it, then sets the property; without a data folder it only sets the property.
 `GeneralSettingsPane(appData:)` gives `GeneralSettingsView(opensWindowsAsTabs:change:)` the value and that
 function; the view's radio group calls it on a new choice and shows the error's `description` when it throws
-([Navigation › Settings ▸ General](ui/navigation.md#settings--general)).
+([Navigation › Settings ▸ General](ui/navigation.md#settings--general)). `AppData.feedbackProjectID` is read
+from `settings.yml` at the same time; `setFeedbackProject(_:) throws(StorageError)` writes it the same way
+(nil removes the key). The view's Feedback section takes `feedbackProjectID`, `projects: [ProjectChoice]`
+(`id`, and `title` from `ProjectTree.path(of:)`, in the directory's order) and `changeFeedbackProject`.
 
 `WindowReader: NSViewRepresentable` reports its `NSWindow` from `viewDidMoveToWindow()` and from every
 `updateNSView`. `View.registersWindow(_ role:projectID:tabTitle:newTab:select:)` puts a zero-size,
@@ -1498,6 +1538,7 @@ Spec: [Tickets](ui/tickets.md). Data: `TicketData` ([TicketData](#ticketdata)) a
 | `MarkdownView.swift` | `MarkdownView`, `MarkdownInlines` (attributed inlines, highlighted code, token colors) |
 | `TicketActions.swift` | `TicketActions: ToolbarContent` |
 | `NewTicketView.swift` | `NewTicketView` |
+| `FeedbackTicketView.swift` | `FeedbackTicketModel`, `FeedbackTicketView` (public) |
 | `TicketAppearance.swift` | `TicketWords` (shared labels and the activity sentences, one per author); symbols, colors, shortcuts, next steps and `next` of statuses; priorities, bundle statuses, links and events |
 | `TicketsDashboardWidget.swift` | `TicketsDashboardWidget` |
 | `TicketTools.swift` | `TicketTools.operations(tickets:projects:)` (public), the private `TicketToolSet`, `ticketToolError`, `TicketJSON`, `BundleJSON` |
@@ -1505,7 +1546,17 @@ Spec: [Tickets](ui/tickets.md). Data: `TicketData` ([TicketData](#ticketdata)) a
 
 **Public API**: `TicketsRootView(project:focus:store:directory:)`, `TicketTools.operations(tickets:projects:)`, `LiveTicketStore(session:)` with
 `counts() -> [Project.ID: TicketCounts]`, `EnvironmentValues.ticketStore`, `TicketsReader.read(_:store:)`,
-`TicketsDashboardWidget(widget:context:)`.
+`TicketsDashboardWidget(widget:context:)`, `FeedbackTicketView(project:store:screenshot:context:onFinish:)`.
+
+**Feedback ticket.** `FeedbackTicketModel` (`@MainActor @Observable`) holds a `NewTicketDraft` on the
+feedback project, `screenshot: URL?`, `includesScreenshot` (true), `files: [URL]`, `context`, `projectName`,
+`isSending`, `message` and `createdWithoutFiles`, over `any TicketStore`. `canSend`: a title, not sending,
+nothing created. `add(_:)` refuses a folder or a file over `attachmentLimit` (20 MiB) for the whole call, else
+appends each new URL. `details(_:context:)` is the trimmed text, a blank line and the context line, or the
+context line alone. `send()` performs `.create` with that description, then, when there is anything,
+`.addAttachments(id, screenshot + files)`; it returns the id, or nil with `message` set (and
+`createdWithoutFiles` when only the attachments failed). `FeedbackTicketView` renders it
+([Tickets › Feedback](ui/tickets.md#feedback)) and calls `onFinish` with the id, or nil on Cancel.
 
 **Store.** `@MainActor protocol TicketStore`: `phase` (`loading`, `ready`, `failed`), `tickets(of:)`,
 `bundles(of:)`, `ticket(_:)`, `perform(_: TicketChangeRequest) async throws(TicketStoreError) -> String?` (the id
@@ -1992,7 +2043,8 @@ its data.
 
 ### Platform-specific code
 
-The package targets macOS only. AppKit appears in three places: `NSWindow` and `NSApp` in `WindowDirectory`,
+The package targets macOS only. AppKit appears in four places: `NSWindow` and `NSApp` in `WindowDirectory`,
+the rendering of `WindowCapture` (and `NSImage` and `NSWorkspace` icons in the feedback sheet),
 `NSScroller` in `DashboardSpace.scrollBarWidth`, and an `NSView` that catches the right click in
 `GraphCanvasView`. Builds and the Service Map use `VSplitView` and `HSplitView`. The iPad and iPhone layouts
 are the Mac window's own layouts at those widths, through AZDesign's adaptive window.
@@ -2033,11 +2085,11 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ChatDataTests | Chat files, Transcripts, Stream mapping, Chats on the Claude CLI, Launching the CLI | A complete chat file written back byte for byte, the `origin` key, the kinds' rules; replay (add, update, lines skipped), lines written by the app, the LF after a line cut short; captures of Claude Code 2.1.309 mapped to items and their ids, streamed text, the CLI's permission request, compaction lines, results after Stop; the CLI located in order, its version and models; a first message (arguments without prompt, hooks or the CLI's tools, the MCP configuration and its chat token, the attached line), a turn replayed to idle, the app's card and the CLI's request answered, Stop, an exit in error, a missing session started again, model and effort. A `FakeLauncher` replays the captures; nothing starts Claude. |
 | TicketDataTests | Ticket and bundle files, Ticket library | A complete ticket and bundle written back byte for byte; defaults, the creation entry and unknown keys; numbers from the counters, skipping existing files; provisional titles and the title, description and status messages; Claude's descriptions taken as written; drafts; link rules 1–7 with their messages and inverse links; history entries in order and changes that write nothing; Claude's status limits; the Complete and Reopened rules, Claude's bundle limits and the Complete rule at load; deletion order and the Trash; comments and their files; attachment copies, names, limits and paths; outside changes, invalid files and removals. Fixtures: example ticket and bundle files. Uses a test Trash folder. |
 | TextFormatsTests | Language detection, Token kinds, Word lists, Highlighter fixtures, Tokenizer edge cases, Markdown block model, Links, Heading anchors, Ticket and bundle ids, Linked ids, Soft line breaks | Every tokenizer against its fixtures and the word lists of [Text](text.md); the block model of every Markdown feature; links, images and path resolution read from [Text](text.md); ids. Fixtures: highlighting examples. |
-| ToolsScenesTests | MCP documentation | docs/mcp.md's tools, descriptions and input schemas equal the registry's. |
+| ToolsScenesTests | MCP documentation, Window tabs, Feedback | docs/mcp.md's tools, descriptions and input schemas equal the registry's; window tabs and the asked-for window; the context line, a window's PNG at its backing scale, overlay placement, the feedback request's temporary folder and screenshot, and starts that do nothing. Windows are never shown, or ordered far off screen. |
 | ToolsFoundationTests | Routes, Strings, Inherited settings | Each `FocusRequest` is new; `ChatReference.route` and ids per environment; shared titles from the catalog; unique tool shortcuts; inherited environments. |
 | ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker, Projects from the app's data, New Project, Projects window on the app's data, Project Settings, Project tools | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`.; the mapping of kinds, tints and environments; New Project's following fields, rules, type and parent from the folder, sub project folders and default location; the loading, empty and unavailable states; the selection after a removal and at load.; Project Settings' fields, rules and messages, environments added, renamed and removed, pending fields applied together, and inherited environments changed in the sub project's changes.; the five project tools through JSON-RPC on a real session, their refusals and `~/` expansion. |
 | DashboardsKitTests | What the Dashboard shows, Edit mode, Steps of the keyboard and VoiceOver, Settings, The Dashboard on the project files, Widgets of unavailable tools | Sample, default and saved lists; hidden service widgets; toolbar environment and time window; a change in every window of a project; list order; titles; Done, remove, add, first save, drags; every step and its limits; title, checkbox and Number rules. The live store on a real session in a temporary folder: the default list whatever the identifier, stored widgets read and written back in their layout with Recent Chats and unknown keys kept, the first change storing the default ids, the time window, a failed change and its message, a change made elsewhere, the mapping. Widgets shown by available tool; hidden widgets keep their places. Uses `MockDashboardLayoutStore`. |
-| TicketsKitTests | The store, The list, Selection and route focus, Comments, New Ticket, The reader, Changes, Tickets from the app's data, Ticket tools | Store queries and counts; grouping, filters, counts, bundles; default selection, focus, repeated routes, hidden and missing tickets, chat subject; comment drafts; the sheet's project, validation, creation and failure; reader sentences and suggestions; next step and status, comments with files, editing, links, deletion, bundles, the store's phases; the live store's mapping of statuses, priorities, links, blocking and activity; the ticket tools on real sessions in temporary folders (creation with a free description, comments with files, absolute paths, filters, Claude's status limits, bundles, deletion). Uses `MockTicketStore` and `SampleTicketStore`. |
+| TicketsKitTests | The store, The list, Selection and route focus, Comments, New Ticket, The reader, Changes, Tickets from the app's data, Ticket tools, Feedback ticket | Store queries and counts; grouping, filters, counts, bundles; default selection, focus, repeated routes, hidden and missing tickets, chat subject; comment drafts; the sheet's project, validation, creation and failure; reader sentences and suggestions; next step and status, comments with files, editing, links, deletion, bundles, the store's phases; the live store's mapping of statuses, priorities, links, blocking and activity; the ticket tools on real sessions in temporary folders (creation with a free description, comments with files, absolute paths, filters, Claude's status limits, bundles, deletion); the feedback ticket (the created draft and its description, the attachments in one request, the screenshot left out or missing, a blank title, failures of creation and of attachments, added files). Uses `MockTicketStore`, `RecordingTicketStore` and `SampleTicketStore`. |
 | ServiceMapKitTests | Focus formats, Service Map model, Service Map reader, Service widgets, Formats | Focus parsing; opening environment and view; history, Back, Show All; taps; repeated routes; missing items; chat subject; summary; request order and sorting; graph contents; logs; reader per environment, details and suggestions; widget readings; durations, literals, stable layout. Uses `MockServiceMapStore`. |
 | ContractsKitTests | Opening, Route focus, Filter, Request, Responses, Reader and chat, Sample contracts | Opening selection and environment; repeated routes, filters cleared, drafts kept; sections and matching; examples, URLs, draft keeping, Send; duration formats; reader sentences and suggestions; sample contracts. Uses `MockContractStore`. |
 | BuildsKitTests | Focus, Model, Reader, Samples and logs, Recent Builds widget | Focus parsing; default selection, focus by mode, repeated routes, steps, mode selections, chat subject; reader text and owner repository; default steps, open jobs, log line kinds, sample releases; recent runs within 1–20. Uses `MockBuildStore`. |

@@ -52,6 +52,8 @@ public struct ToolsScenes: Scene {
         Window(Text("Projects", bundle: #bundle), id: SceneID.projects) {
             routeHost {
                 ProjectsRootView(directory: appData.directory, session: appData.session, selection: $selectedProjectID)
+                    .statusBar(FeedbackSource(window: String(localized: "Projects", bundle: #bundle),
+                                              project: appData.directory.project(selectedProjectID)))
                     .focusedSceneValue(\.activeProject, appData.directory.project(selectedProjectID))
                     .registersWindow(.projects, projectID: selectedProjectID)
             }
@@ -61,6 +63,7 @@ public struct ToolsScenes: Scene {
             NewItemCommands()
             ToolCommands()
             ChatPanelCommands()
+            FeedbackCommands()
         }
 
         toolScene(.dashboard, size: CGSize(width: 1240, height: 820))
@@ -75,6 +78,8 @@ public struct ToolsScenes: Scene {
             routeHost {
                 if let projectID {
                     ProjectSettingsWindow(session: appData.session, projectID: projectID)
+                        .statusBar(FeedbackSource(window: String(localized: "Project Settings", bundle: #bundle),
+                                                  project: appData.directory.project(projectID)))
                         .registersWindow(
                             .projectSettings, projectID: projectID,
                             tabTitle: appData.directory.project(projectID).map {
@@ -92,6 +97,7 @@ public struct ToolsScenes: Scene {
             routeHost {
                 MachinesRootView(focus: machineFocus, store: appData.machineStore)
                     .environment(\.focusRequest, machineFocusRequest)
+                    .statusBar(FeedbackSource(window: String(localized: "Virtual Machines", bundle: #bundle), project: nil))
                     .registersWindow(.machines, projectID: nil)
             }
         }
@@ -269,6 +275,7 @@ private struct RouteHost<Content: View>: View {
             .environment(\.dashboardStore, appData.dashboardStore)
             .environment(\.chatStore, appData.chatStore)
             .environment(\.availableTools, AppData.availableTools)
+            .environment(\.feedbackTarget, appData.feedbackTarget)
             .task {
                 if appData.openRoute == nil { appData.openRoute = openRouteAction }
                 await appData.start()
@@ -315,6 +322,8 @@ private struct ToolWindowRoot: View {
 
     var body: some View {
         window
+            // The ladybug sends feedback about this window, its project and the item it has selected.
+            .statusBar(FeedbackSource(window: tool.title, project: directory.project(value?.projectID), item: chatSubject?.title))
             // Listed with what it shows, so that a route for it brings this window forward. The tool
             // selects the route's focus without starting afresh; the window's value keeps it, for
             // when the window is restored.

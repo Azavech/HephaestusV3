@@ -21,6 +21,7 @@ and the menus and shortcuts that reach them.
 
 - Tool windows don't open at launch. macOS restores those that were open when the app quit.
 - Every window but Settings and the menu bar panel can be a tab of any other ([Tabs](#tabs)).
+- The same windows have a [status bar](#status-bar) at the bottom while a feedback project is set.
 - Every window but Settings gets no narrower than 390 pt and no lower than 420 pt, and adapts its layout to
   its size ([Layout system](foundations.md#layout-system)).
 
@@ -71,6 +72,26 @@ window's tool.
 | **Chat panel button** | The last toolbar item, `sidebar.right`: shows or hides the chat panel. Absent in the Chat window, and everywhere when Settings ▸ Chat turns the panel off. See [Chat](chat.md). |
 | **Content** | The tool, laid out as a Mac, an iPad or an iPhone would, depending on the window's width. |
 | **Chat panel** | Beside the tool, over it, or as a full page. See [Chat](chat.md). |
+| **Status bar** | Under the content and the chat panel, across the window, while a feedback project is set ([Status bar](#status-bar)). |
+
+## Status bar
+
+![The Tickets window with its status bar: the ladybug at the bottom-right corner](images/status-bar.png)
+*The status bar under the Tickets window, with the ladybug at its right end.*
+
+V2's status bar, with only its ladybug (the user's choice): a bar across the bottom of every window but
+Settings and the menu bar panel (Projects, the tool windows, Project Settings and Virtual Machines), under
+their content and, in a tool window, under the chat panel too.
+
+- **Shown** while Settings ▸ General has a feedback project that is loaded
+  ([Settings ▸ General](#settings--general)); otherwise no window has the bar, and the content takes its room
+  (the user's choice).
+- **Look.** 26 points high, under a hairline (`Divider`), on `canvas`, in every layout. Nothing at its left.
+- **Ladybug** (`statusBar.feedback`), 10 points from the right edge: a borderless button with `ladybug` in
+  `textSecondary`, the tooltip "Send Feedback (⇧⌘B)" and the label "Send Feedback". A click captures the
+  window, then opens the Send Feedback sheet on it ([Tickets › Feedback](tickets.md#feedback)). It does
+  nothing while the window shows a sheet, or while its feedback is open.
+- The bar is one element, `statusBar`. Previews: "Status Bar", "Status Bar, Dark".
 
 ## Routes
 
@@ -155,9 +176,9 @@ Project Settings and Virtual Machines (default chosen at design time).
 
 ### Settings ▸ General
 
-![Settings ▸ General: Open new windows, As tabs of the front window selected](images/settings-general.png)
+![Settings ▸ General: Open new windows, As tabs of the front window selected; Feedback project Shop › Orders](images/settings-general.png)
 
-The first tab of Settings (`gearshape`), a grouped form with one section, **Windows**:
+The first tab of Settings (`gearshape`), a grouped form with two sections. **Windows**:
 
 | Element | Identifier | Content |
 | --- | --- | --- |
@@ -165,7 +186,21 @@ The first tab of Settings (`gearshape`), a grouped form with one section, **Wind
 | Message | `settings.general.message` | When `settings.yml` can't be written: the storage error, in `danger`, under the buttons; the choice still holds until the app quits. Cleared by the next choice that is stored. |
 | Footer | — | "Applies to the windows Hephaestus opens: a tool, a project, its settings. Windows macOS reopens at launch keep their places, and Window ▸ Merge All Windows and Move Tab to New Window work either way." In `textSecondary`. |
 
-Previews: **Tabs**, **Separate Windows, Dark**, **Not Stored**.
+**Feedback**:
+
+| Element | Identifier | Content |
+| --- | --- | --- |
+| **Feedback project** | `settings.general.feedbackProject` | A menu: **None** (the default), then every loaded project, top-level and sub projects in tree order, each named by its path ("Shop › Orders"). A project the setting names that isn't loaded shows as "<identifier> (not loaded)". A choice is written to `settings.yml`'s `feedbackProjectID` ([Data › Settings file](../data.md#settings-file)); None removes the key. |
+| Message | `settings.general.feedbackMessage` | When `settings.yml` can't be written: the storage error, in `danger`; the choice still holds until the app quits. |
+| Footer | — | "The ladybug at the bottom of every window, and Help ▸ Send Feedback… (⇧⌘B), make a ticket in this project with a screenshot of the window. With None, neither shows." |
+
+- While the chosen project is loaded, every window shows its [status bar](#status-bar) and the Help menu
+  its Send Feedback… item. With None, or while the project isn't loaded, neither shows (the user's choice).
+- To send feedback about Hephaestus itself, add its folder as a project (File ▸ Add Existing Folder…) and
+  pick it here, as V2's feedback went to its own project.
+
+Previews: **Tabs**, **Separate Windows, Feedback to Orders, Dark**, **Feedback Project Not Loaded**, **Not
+Stored**.
 
 ## Menus and shortcuts
 
@@ -218,6 +253,11 @@ AppKit adds the tab items to the Window menu, after Bring All to Front ([Tabs](#
 | Show All Tabs / Exit Tab Overview | ⇧⌘\ | Same |
 
 **App menu:** Settings… (⌘,) opens Settings, whose Chat pane is described in [Chat](chat.md).
+
+**Help menu:** **Send Feedback…** (⇧⌘B), after the Help search field, starts feedback about the key window,
+as its ladybug does ([Tickets › Feedback](tickets.md#feedback)). It shows only while the key window has a
+status bar: a feedback project is set and loaded, and the key window is one of the app's windows, not
+Settings.
 
 **Menu bar panel:** ↑ ↓ move, Return opens the highlighted project's window, ⌘1–⌘6 open its tools. See
 [Menu bar](menu-bar.md).

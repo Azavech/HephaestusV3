@@ -14,6 +14,19 @@
     "%@ has no tickets." : {
 
     },
+    "%@ is larger than 20 MB." : {
+
+    },
+    "%@ was created without its files: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ was created without its files: %2$@"
+          }
+        }
+      }
+    },
     "%lld of %lld done" : {
       "localizations" : {
         "en" : {
@@ -58,6 +71,9 @@
 
     },
     "Attach Files to the Comment" : {
+
+    },
+    "Attach Files…" : {
 
     },
     "Attachments (%lld)" : {
@@ -277,10 +293,16 @@
     "Edit the Ticket (⌘E)" : {
 
     },
+    "Exclude Screenshot" : {
+
+    },
     "Filter" : {
 
     },
     "Filter Tickets" : {
+
+    },
+    "Folders cannot be attached." : {
 
     },
     "High" : {
@@ -294,6 +316,9 @@
     },
     "In Review" : {
       "comment" : "A ticket's status"
+    },
+    "Include Screenshot" : {
+
     },
     "Is %@ ready to be marked as done?" : {
 
@@ -447,6 +472,9 @@
     "Open With Default App" : {
 
     },
+    "Opens it in Quick Look." : {
+
+    },
     "Pick a ticket to see its details." : {
 
     },
@@ -472,6 +500,9 @@
       "comment" : "The kind of a link between tickets"
     },
     "Remove" : {
+
+    },
+    "Remove %@" : {
 
     },
     "Remove %@?" : {
@@ -501,6 +532,15 @@
     "Save as Draft" : {
 
     },
+    "Screenshot of the window" : {
+
+    },
+    "Send" : {
+
+    },
+    "Send Feedback" : {
+
+    },
     "Send to Review" : {
 
     },
@@ -517,6 +557,9 @@
 
     },
     "Show All Tickets" : {
+
+    },
+    "Show Ticket" : {
 
     },
     "Show in Finder" : {
@@ -546,6 +589,12 @@
     "The file moves to the Trash." : {
 
     },
+    "The ticket couldn't be created." : {
+
+    },
+    "The window could not be captured." : {
+
+    },
     "Their files and attachments move to the Trash." : {
 
     },
@@ -571,6 +620,9 @@
       "comment" : "A ticket's priority"
     },
     "What did %@ change?" : {
+
+    },
+    "What happened, and what did you expect?" : {
 
     },
     "What's left before %@ can go to review?" : {

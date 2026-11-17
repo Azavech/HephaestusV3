@@ -1378,6 +1378,7 @@ and gives the defaults (`DataFolder.readSettings()`).
 | defaultVMMemoryGB | `defaultVMMemoryGB` | `Int?` | no | absent (4) | New machines' memory in GB, 4 to this Mac's. |
 | defaultVMDiskGB | `defaultVMDiskGB` | `Int?` | no | absent (64) | New machines' disk in GB, 32 to 2048. |
 | newWindows | `newWindows` | `String?` | no | absent (`tabs`) | How the windows the app opens appear: `tabs`, as tabs of the frontmost window, or `windows`, each on its own; absent or another value reads as `tabs` (`SettingsFile.opensWindowsAsTabs`). Written when Settings ▸ General changes it ([Navigation › Settings ▸ General](ui/navigation.md#settings--general)). A V3 key. |
+| feedbackProjectID | `feedbackProjectID` | `String?` | no | absent | The project that receives feedback tickets ([Navigation › Settings ▸ General](ui/navigation.md#settings--general)); absent for none, which hides the status bar and Help ▸ Send Feedback…. Written after `newWindows`, and removed by None. A V3 key, named as an earlier V2 setting was, which V2 no longer read. |
 | unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
 
 ```yaml

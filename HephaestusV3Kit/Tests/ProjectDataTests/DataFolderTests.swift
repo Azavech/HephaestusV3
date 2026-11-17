@@ -76,6 +76,25 @@ struct DataFolderTests {
         }
     }
 
+    @Test("settings.yml's feedbackProjectID: absent for none, written after newWindows, removed with nil")
+    func feedbackProject() throws {
+        try withTemporaryFolder { root in
+            let folder = DataFolder(url: root)
+            #expect(folder.readSettings().feedbackProjectID == nil)
+            var settings = folder.readSettings()
+            settings.opensWindowsAsTabs = false
+            settings.feedbackProjectID = "HV3"
+            try folder.writeSettings(settings)
+            #expect(try String(contentsOf: folder.settingsFile, encoding: .utf8)
+                == "schema: 1\nmcpPort: 47830\nnewWindows: windows\nfeedbackProjectID: HV3\n")
+            settings = folder.readSettings()
+            #expect(settings.feedbackProjectID == "HV3")
+            settings.feedbackProjectID = nil
+            try folder.writeSettings(settings)
+            #expect(try String(contentsOf: folder.settingsFile, encoding: .utf8) == "schema: 1\nmcpPort: 47830\nnewWindows: windows\n")
+        }
+    }
+
     @Test(".hephaestus/.gitignore holds the line chats/")
     func gitignore() throws {
         try withTemporaryFolder { root in
