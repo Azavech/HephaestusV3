@@ -20,6 +20,7 @@ and the menus and shortcuts that reach them.
 | **Menu bar panel** | Menu bar item | The `wrench.and.screwdriver` icon | 360 × 460 pt | [Menu bar](menu-bar.md) |
 
 - Tool windows don't open at launch. macOS restores those that were open when the app quit.
+- Every window but Settings and the menu bar panel can be a tab of any other ([Tabs](#tabs)).
 - Every window but Settings gets no narrower than 390 pt and no lower than 420 pt, and adapts its layout to
   its size ([Layout system](foundations.md#layout-system)).
 
@@ -112,11 +113,38 @@ and its project. Each window reports itself when it appears and whenever its pro
   selects its project or machine there.
 - **The Window menu's items** follow the same rules.
 - **File ▸ New *Tool* Window (⌘N)** is the one way to get a second window of a tool and project: it asks for
-  a new window, as on any Mac. Routes keep bringing forward the frontmost one.
+  a new window, as on any Mac. Routes keep bringing forward the frontmost one. The tab bar's + does the same
+  as a new tab ([Tabs](#tabs)).
+- **A window that is a tab** counts as open, behind its tab group's front tab, even when the group is
+  minimized. A route to it un-minimizes the group and selects its tab.
 
 **Switching project.** The project switcher moves a window to another project: the tool starts afresh on it,
 without the old selection, and the chat panel starts a new conversation. Picking the project the window
 already shows changes nothing.
+
+## Tabs
+
+Windows can share one window's tabs, as in Safari, and leave them again (the user's request). Every window
+but Settings and the menu bar panel takes part, whatever its tool or project: Projects, the tool windows,
+Project Settings and Virtual Machines (default chosen at design time).
+
+- **Gathering.** Window ▸ Merge All Windows makes every open window a tab of the key window. Dragging a
+  window's tab bar, or a tab, onto another window's tab bar adds it there.
+- **Leaving.** Window ▸ Move Tab to New Window, or dragging a tab out of the tab bar, gives the tab its own
+  window again, at the tab group's size.
+- **Tab bar.** It shows while a window has two tabs or more; View ▸ Show Tab Bar shows it with one. AppKit
+  draws it, with a close button on each tab and + at its end. A tab group takes one size: a window that joins
+  it takes the group's frame.
+- **Tab title.** A tool window's tab reads the tool, then its project's name ("Tickets – Orders"), so that
+  tabs of one tool for two projects differ; Project Settings reads "Project Settings – Orders". The Projects
+  and Virtual Machines tabs read the window's title. The window's own title and subtitle don't change
+  (default chosen at design time).
+- **+** opens another window of the front tab's tool on its project, as File ▸ New *Tool* Window (⌘N), as a
+  new tab after it. In the Projects, Project Settings and Virtual Machines tabs, which open once each, + only
+  beeps (default chosen at design time).
+- **New windows** open as tabs when the Mac's Desktop & Dock ▸ "Prefer tabs when opening documents" says so,
+  as in any Mac app; by default only in full screen.
+- **Routes** treat each tab as its window ([Window reuse](#window-reuse)).
 
 ## Menus and shortcuts
 
@@ -151,11 +179,22 @@ Only the available tools and windows are listed ([Available tools](#available-to
 The tool items act on the **key window's project**: the selection in the Projects window, or a tool
 window's project.
 
+AppKit adds the tab items to the Window menu, after Bring All to Front ([Tabs](#tabs)):
+
+| Item | Shortcut | Enabled |
+| --- | --- | --- |
+| Show Previous Tab | ⌃⇧⇥ | When the key window has other tabs |
+| Show Next Tab | ⌃⇥ | Same |
+| Move Tab to New Window | — | Same |
+| Merge All Windows | — | When another window is open |
+
 **View menu:**
 
 | Item | Shortcut | Enabled |
 | --- | --- | --- |
 | Show Chat Panel / Hide Chat Panel | ⌃⌘C | In a tool window that offers the panel |
+| Show Tab Bar / Hide Tab Bar | — | In any window but Settings; added by AppKit ([Tabs](#tabs)) |
+| Show All Tabs / Exit Tab Overview | ⇧⌘\ | Same |
 
 **App menu:** Settings… (⌘,) opens Settings, whose Chat pane is described in [Chat](chat.md).
 

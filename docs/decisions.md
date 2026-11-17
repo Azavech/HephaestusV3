@@ -196,6 +196,18 @@ which rules the app enforces, and never tells Claude how to work.
 | How is image.yml written? | With mode 0600, since it holds the guest password. | [Data › Image file](data.md#image-file) |
 | What does deleting do? | A machine's or an image's folder is deleted, not moved to the Trash; an image takes its machines with it. Each asks first. | [UI › Virtual Machines › Alerts](ui/virtual-machines.md#alerts) |
 
+## Window tabs
+
+The owner asked, on 17 November 2026, that windows can share one window's tabs, with Merge All Windows in the
+Window menu as in Safari, and leave them again.
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| Which windows can be tabs of one another? | Every window but Settings and the menu bar panel, whatever its tool or project: Projects, the tool windows, Project Settings and Virtual Machines. | [UI › Navigation › Tabs](ui/navigation.md#tabs) |
+| What does a tab read? | The tool, then the project's name ("Tickets – Orders"), and "Project Settings – Orders"; Projects and Virtual Machines their title. The windows' own titles don't change. | same |
+| What does the tab bar's + do? | What ⌘N does: another window of the front tab's tool on its project, as a new tab. In Projects, Project Settings and Virtual Machines, which open once each, it beeps. | same |
+| Where are the tab items? | AppKit's own: Show Previous Tab, Show Next Tab, Move Tab to New Window and Merge All Windows in the Window menu; Show Tab Bar and Show All Tabs in the View menu. | [UI › Navigation › Menus and shortcuts](ui/navigation.md#menus-and-shortcuts) |
+
 ## Release
 
 The owner chose a GitHub release built by GitHub Actions, without an install page, an updater, Developer ID signing

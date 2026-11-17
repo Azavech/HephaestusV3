@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ – %@" : {
+      "comment" : "A window's tab title: the window, then its project, such as Tickets – Orders",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ – %2$@"
+          }
+        }
+      }
+    },
     "Add Existing Folder…" : {
       "comment" : "File menu item, ⌘O"
     },

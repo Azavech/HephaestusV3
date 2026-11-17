@@ -33,6 +33,9 @@ enum SceneID {
 /// A route never opens a second window for what a window already shows: `WindowDirectory` brings that
 /// window forward instead, out of the Dock if it was minimised.
 ///
+/// Every window but Settings and the menu bar panel can be a tab of any other (Window ▸ Merge All
+/// Windows, Move Tab to New Window), through `WindowDirectory`.
+///
 /// This is the only target that knows every tool. Tools ask for a `Route`; `RouteHost` opens it.
 public struct ToolsScenes: Scene {
     /// The project data and the directory every window reads.
@@ -72,7 +75,12 @@ public struct ToolsScenes: Scene {
             routeHost {
                 if let projectID {
                     ProjectSettingsWindow(session: appData.session, projectID: projectID)
-                        .registersWindow(.projectSettings, projectID: projectID)
+                        .registersWindow(
+                            .projectSettings, projectID: projectID,
+                            tabTitle: appData.directory.project(projectID).map {
+                                WindowDirectory.tabTitle(String(localized: "Project Settings", bundle: #bundle), project: $0.name)
+                            }
+                        )
                 }
             }
         }
@@ -261,6 +269,7 @@ private struct ToolWindowRoot: View {
     @Environment(\.buildStore) private var buildStore
     @Environment(\.contractStore) private var contractStore
     @Environment(\.serviceMapStore) private var serviceMapStore
+    @Environment(\.openWindow) private var openWindow
 
     /// Whether this window shows the chat panel; each window keeps its own, across launches.
     @SceneStorage("chatPanelShown") private var chatPanelShown = false
@@ -289,7 +298,7 @@ private struct ToolWindowRoot: View {
             // Listed with what it shows, so that a route for it brings this window forward. The tool
             // selects the route's focus without starting afresh; the window's value keeps it, for
             // when the window is restored.
-            .registersWindow(.tool(tool), projectID: value?.projectID) { [$value, $focusRequest] focus in
+            .registersWindow(.tool(tool), projectID: value?.projectID, tabTitle: tabTitle, newTab: newTab) { [$value, $focusRequest] focus in
                 $focusRequest.wrappedValue = FocusRequest(focus)
                 $value.wrappedValue?.focus = focus
             }
@@ -363,6 +372,21 @@ private struct ToolWindowRoot: View {
             .accessibilityIdentifier("window.noProject")
             .frame(minWidth: 600, minHeight: 400)
             .background(.canvas)
+        }
+    }
+
+    /// The tab's title: the tool, then the project ("Tickets – Orders"), so that tabs of one tool for two
+    /// projects differ.
+    private var tabTitle: String? {
+        directory.project(value?.projectID).map { WindowDirectory.tabTitle(tool.title, project: $0.name) }
+    }
+
+    /// The tab bar's +: another window of the tool on the project, as File ▸ New *Tool* Window (⌘N), which
+    /// AppKit makes a new tab. Nothing without a project.
+    private var newTab: (() -> Void)? {
+        guard let projectID = value?.projectID, directory.project(projectID) != nil else { return nil }
+        return { [openWindow, tool] in
+            openWindow(id: tool.windowID, value: ToolWindowValue(projectID: projectID, instance: UUID()))
         }
     }
 

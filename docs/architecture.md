@@ -915,7 +915,7 @@ component comes from AZDesign.
 ## ToolsScenes
 
 Two files: `ToolsScenes.swift` (scenes, `RouteHost`, `ToolWindowRoot`, commands, the tool reader, the widget
-mapping, Mac widths) and `WindowDirectory.swift` (window reuse). Its only public type is
+mapping, Mac widths) and `WindowDirectory.swift` (window reuse and tabs). Its only public type is
 `public struct ToolsScenes: Scene` with `public init()`.
 
 ### Scenes
@@ -927,7 +927,7 @@ mapping, Mac widths) and `WindowDirectory.swift` (window reuse). Its only public
 | --- | --- | --- | --- | --- | --- |
 | Projects | `Window(Text("Projects", bundle: #bundle), id:)` | `projects` | `ProjectsRootView(directory: appData.directory, session: appData.session, selection: $selectedProjectID)`, with `focusedSceneValue(\.activeProject, …)` and `registersWindow(.projects, projectID: selectedProjectID)` | 1040 × 680 | Opens |
 | Dashboard, Tickets, Service Map, Contracts, Builds, Chat | `WindowGroup(Text(tool.title), id: tool.windowID, for: ToolWindowValue.self)` | the tool's `windowID` | `ToolWindowRoot(tool:value:)` | 1240 × 820, 1180 × 760, 1320 × 840, 1120 × 740, 1180 × 720, 1180 × 780 | `.defaultLaunchBehavior(.suppressed)` |
-| Project Settings | `WindowGroup(Text("Project Settings", bundle: #bundle), id:, for: Project.ID.self)` | `projectSettings` | `ProjectSettingsWindow(session: appData.session, projectID:)`, with `registersWindow(.projectSettings, projectID:)` | 600 × 720 | Suppressed |
+| Project Settings | `WindowGroup(Text("Project Settings", bundle: #bundle), id:, for: Project.ID.self)` | `projectSettings` | `ProjectSettingsWindow(session: appData.session, projectID:)`, with `registersWindow(.projectSettings, projectID:, tabTitle:)`, the tab title `WindowDirectory.tabTitle("Project Settings", project: name)` while the directory has the project | 600 × 720 | Suppressed |
 | Virtual Machines | `Window(Text("Virtual Machines", bundle: #bundle), id:)` | `machines` | `MachinesRootView(focus: machineFocus, store: appData.machineStore)`, with `.environment(\.focusRequest, machineFocusRequest)` and `registersWindow(.machines, projectID: nil)` | 1100 × 760 | Suppressed |
 | Menu bar | `MenuBarExtra(String(localized: "Open Project"), systemImage: "wrench.and.screwdriver")`, `.menuBarExtraStyle(.window)` | — | `ProjectLauncher(projects: appData.directory.projects)` | 360 × 460 (the panel's own) | Always present |
 | Settings | `Settings` | — | `TabView`: `ProjectsSettingsPane(session: appData.session)` labeled Projects (`folder`), `MCPSettingsPane(appData:)` labeled MCP, `MachineSettingsView(store: appData.machineStore)` labeled Virtual Machines (`desktopcomputer`) while the window is available, then `ChatSettingsView()` labeled with Chat's title and symbol while Chat is available; `.frame(width: 520, height: 440)`, `.tint(.accent)` | 520 × 440 | — |
@@ -995,25 +995,59 @@ Behavior is specified in [Navigation › Routes and Window reuse](ui/navigation.
 ### WindowDirectory
 
 `final class WindowDirectory`, a singleton (`static let shared`), keeps every window with what it shows, so
-that a route brings forward a window instead of opening a second one.
+that a route brings forward a window instead of opening a second one, and lets every window it keeps be a tab
+of any other ([Navigation › Tabs](ui/navigation.md#tabs)).
 
-- `enum Role: Hashable { case projects, machines, tool(ToolKind) }`.
+- `enum Role: Hashable { case projects, machines, tool(ToolKind), projectSettings }`.
 - Entries are keyed by `ObjectIdentifier(window)`: a `weak var window: NSWindow?`, the `role`, the
-  `projectID: Project.ID?` and an optional `select: ((String) -> Void)?`.
-- `register(_:role:projectID:select:)` adds or replaces a window's entry.
+  `projectID: Project.ID?`, an optional `select: ((String) -> Void)?`, and `newTab: NewTabResponder`, kept
+  for as long as the window lives because a responder chain holds its responders weakly.
+- `register(_:role:projectID:tabTitle:newTab:select:)` adds or replaces a window's entry, reusing its
+  `NewTabResponder` and setting the responder's `open` to `newTab`, then calls `joinTabs(_:title:newTab:)`.
+- `static let tabbingIdentifier = "fr.azavech.hephaestusv3.windows"`. SwiftUI gives each scene its own
+  identifier (`SwiftUI-WindowGroup-<id>`, `SwiftUI-SingleWindow-<id>`), which lets only windows of one scene
+  merge, and makes its single windows' `tabbingMode` `.disallowed`.
+- `static func joinTabs(_ window:title:newTab:)`, on every report: sets the window's `tabbingIdentifier` to
+  `tabbingIdentifier` and its `tabbingMode` to `.automatic` when they differ; sets `window.tab.title` to
+  `title`, or to nil (following the window's title) when `title` is nil and the tab's title differs from the
+  window's; and, unless `newTab` is already somewhere in the window's responder chain (looked for over at most
+  32 responders), puts it just after the window: `newTab.nextResponder = window.nextResponder`,
+  `window.nextResponder = newTab`.
+- `static func tabTitle(_ window: String, project: String) -> String`: `String(localized: "\(window) –
+  \(project)")`, key `%@ – %@`, such as "Tickets – Orders".
 - `bringForward(role: Role?, projectID: Project.ID?, focus: String? = nil) -> Bool` drops entries whose window
-  is gone, keeps those that are visible or minimized and match (`role` nil matches any role; `projectID` nil
-  matches any project), and picks the frontmost by its index in `NSApp.orderedWindows` (minimized windows
-  last). It calls `select(focus)` when there is a focus, then `show(_:)`. False when nothing matches.
-- `static func show(_:)` deminiaturizes the window if needed, calls `makeKeyAndOrderFront(nil)` and
-  `NSApp.activate()`.
+  is gone, keeps those that are open and match (`role` nil matches any role; `projectID` nil matches any
+  project), and picks the frontmost. Open: visible, minimized, or in the windows of a tab group whose
+  selected window is minimized; a tab behind another is visible to AppKit. Frontmost: the lowest rank, twice
+  the window's index in `NSApp.orderedWindows`, or, for a window not in that list, twice its tab group's
+  selected window's index plus one; `Int.max` otherwise, so minimized windows come last. It calls
+  `select(focus)` when there is a focus, then `show(_:)`. False when nothing matches.
+- `static func show(_:)`: for a window in its tab group's windows, deminiaturizes the group's selected window
+  when it is another and minimized, and selects the window's tab (`tabGroup.selectedWindow = window`); then
+  deminiaturizes the window if needed, calls `makeKeyAndOrderFront(nil)` and `NSApp.activate()`.
 - `static func activate()` calls `NSApp.activate()`, for windows SwiftUI opens from the menu bar while
   another app is in front.
 
+**`NewTabResponder: NSResponder`** takes the tab bar's + (`newWindowForTab(_:)`), which AppKit shows and
+enables whenever the responder chain answers it. SwiftUI's window controller (`AppKitWindowController`, the
+window's `nextResponder`) answers it by opening the window's scene without a value: a tool window without a
+project, an empty Project Settings window, or a second Projects window that takes over the scene. The
+responder sits ahead of it, and answers for every window: `var open: (() -> Void)?` is called when set, and
+`NSSound.beep()` is played otherwise. AppKit makes the window opened while it handles + a tab after the
+selected one, and selects it. Merge All Windows, Move Tab to New Window, Show Previous Tab, Show Next Tab,
+Show Tab Bar and Show All Tabs are AppKit's own menu items, added as the Window and View menus open.
+
 `WindowReader: NSViewRepresentable` reports its `NSWindow` from `viewDidMoveToWindow()` and from every
-`updateNSView`. `View.registersWindow(_ role:projectID:select:)` puts a zero-size, accessibility-hidden
-`WindowReader` in the view's background that calls `WindowDirectory.shared.register`. Because it reports on
-every update, a window that switches project registers again with its new project.
+`updateNSView`. `View.registersWindow(_ role:projectID:tabTitle:newTab:select:)` puts a zero-size,
+accessibility-hidden `WindowReader` in the view's background that calls `WindowDirectory.shared.register`.
+Because it reports on every update, a window that switches project registers again with its new project and
+its new tab title.
+
+| Window | `tabTitle` | `newTab` |
+| --- | --- | --- |
+| Projects, Virtual Machines | nil | nil |
+| Project Settings | `tabTitle("Project Settings", project: name)` | nil |
+| A tool window | `tabTitle(tool.title, project: name)`, nil without a project | `openWindow(id: tool.windowID, value: ToolWindowValue(projectID:, instance: UUID()))`, as ⌘N; nil without a project |
 
 ### ToolWindowRoot
 
@@ -1983,7 +2017,11 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ChatKitTests | Chat store, Sample engine, Chat panel, Chat window, Chat wording | Starting and continuing conversations, empty messages, ordering, decisions; mentions and reads; attachments, sending, New Chat, the Chat window route, suggestions; window selection, grouping, new chat, sending; approval sentences, suggestion wording and identifiers, references, unique sample ids; the live store's turns from a transcript (users' items, calls worded by their tools, failed calls, cards and their channels, notices, streamed text); the gate's rules. Uses `MockChatEngine`, and a chat session without projects. |
 
 ToolsScenesTests check that docs/mcp.md lists exactly the registered tools, in order, with their
-descriptions and input schemas; scenes, routes, `WindowDirectory` and the menus are checked by running the app.
+descriptions and input schemas (MCP documentation), and the tabs of `WindowDirectory` on windows that are
+never shown (Window tabs): the shared identifier and automatic mode, tab titles, the + reaching the window's
+last `newTab` once in the chain and ahead of what followed the window, a + with nothing to open, the
+directory keeping the responder. Scenes, routes, window reuse, merging and the menus are checked by running
+the app.
 
 ## Open issues
 
