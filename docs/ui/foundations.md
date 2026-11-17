@@ -116,6 +116,38 @@ widgets and its chips.
   choice).
 - The menu bar item uses `wrench.and.screwdriver`.
 
+### App icon
+
+A hammer striking an anvil, with sparks: Hephaestus's forge, in the app's Dracula colors (the user asked for
+an icon; the design is a default chosen at design time).
+
+![The app icon: default, dark, clear and tinted, then at 64 points](images/app-icon.png)
+
+It is an Icon Composer document, `HephaestusV3/AppIcon.icon`, so macOS draws it in Liquid Glass and makes its
+dark, clear and tinted versions from its layers (above, left to right, then the Dock's 64 points). Its colors
+are AZDesign's palette values, written in the document because an icon can't read the asset catalog.
+
+- **Canvas** 1024 × 1024 points. Its fill is a linear gradient, top to bottom, from Alucard Purple `#644AC9`
+  to Dracula Background `#282A36`.
+- **Layers.** One SVG each in `AppIcon.icon/Assets/`, drawn on the whole 1024-point canvas, each in its own
+  group, scaled 1.08 about the canvas's center and moved down 30 points inside the SVG. Front to back:
+
+| Group | SVG | Drawing | Translucency | Shadow |
+| --- | --- | --- | --- | --- |
+| sparks | `sparks.svg` | The heat on the anvil: an ellipse at (452, 489), 74 × 9, Orange `#FFB86C`. Six four-pointed sparks, each four quadratic curves through its center: Orange at (326, 436) radius 42 and (622, 436) radius 36; Yellow `#F1FA8C` at (246, 476) radius 20 and (694, 474) radius 18; Pink `#FF79C6` at (352, 368) radius 18 and (646, 372) radius 16. | Off | Neutral, 0.5 |
+| hammer | `hammer.svg` | Turned −20° about (454, 357). The handle, a rectangle from x 40 to 390 and y −26 to 26 with radius 26, Orange `#FFB86C`. The head, Foreground `#F8F8F2`: 116 wide and 236 high about its center, its striking face at the bottom, with corners of radius 22; above y −52 its sides slant in to x ±40 at y −108, then round to a top edge from x −26 to 26 at y −118. Its lower-left corner rests on the anvil. | 0.2 | Neutral, 0.5 |
+| anvil | `anvil.svg` | Foreground `#F8F8F2`, from the horn's tip at (200, 500): the top edge curves to the face at (380, 488), which runs to (800, 488); the heel goes down to 558, back to 712, then the waist curves down to (660, 640); the foot spreads to (744, 678) and (744, 736), runs to (396, 736), up to (396, 678) and in to (480, 640); the waist curves up to (456, 588) and the horn's underside curves back to the tip. | 0.3 | Neutral, 0.5 |
+
+- **Glass.** Every layer is Liquid Glass (Icon Composer's default). The document supports the `macOS` square
+  shape only.
+- **Build.** The target's synchronized folder makes the document a resource, and
+  `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon` names it: Xcode's asset compiler writes `Assets.car` and
+  `AppIcon.icns`, and `CFBundleIconName` `AppIcon` in the Info.plist.
+- **Checking it.** Icon Composer opens the document. `ictool` (inside Icon Composer) renders it: `ictool
+  HephaestusV3/AppIcon.icon --export-image --output-file icon.png --platform macOS --rendition Default --width
+  1024 --height 1024 --scale 1`, with the renditions Default, Dark, ClearLight, ClearDark, TintedLight and
+  TintedDark.
+
 ## Motion
 
 Motion marks a change; it is never decoration. Every animation uses one of AZDesign's named presets

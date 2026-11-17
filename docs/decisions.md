@@ -208,6 +208,15 @@ Window menu as in Safari, and leave them again.
 | What does the tab bar's + do? | What ⌘N does: another window of the front tab's tool on its project, as a new tab. In Projects, Project Settings and Virtual Machines, which open once each, it beeps. | same |
 | Where are the tab items? | AppKit's own: Show Previous Tab, Show Next Tab, Move Tab to New Window and Merge All Windows in the Window menu; Show Tab Bar and Show All Tabs in the View menu. | [UI › Navigation › Menus and shortcuts](ui/navigation.md#menus-and-shortcuts) |
 
+## App icon
+
+The owner asked for an icon on 17 November 2026.
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| What does it show? | A hammer striking an anvil, with sparks: Hephaestus's forge. Light metal and an Orange handle on a gradient from Alucard Purple to Dracula Background, with Orange, Yellow and Pink sparks. | [UI › Foundations › App icon](ui/foundations.md#app-icon) |
+| In which format? | An Icon Composer document of three SVG layers, so that macOS draws it in Liquid Glass and makes its dark, clear and tinted versions. | same |
+
 ## Release
 
 The owner chose a GitHub release built by GitHub Actions, without an install page, an updater, Developer ID signing

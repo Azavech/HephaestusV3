@@ -51,8 +51,8 @@ AZDesignCode (same package)      Fira Code for code views
 
 The architecture rests on a few rules:
 
-- **The app target is thin.** It holds only the entry point. All code lives in the local package
-  `HephaestusV3Kit`.
+- **The app target is thin.** It holds only the entry point and the app icon. All code lives in the local
+  package `HephaestusV3Kit`.
 - **One target per tool.** Tool targets depend on ToolsFoundation and AZDesign, never on one another. A tool
   reaches another tool's window by asking for a `Route` through the `openRoute` environment action.
 - **One place knows every tool.** ToolsScenes imports every kit. It declares the scenes, opens routes,
@@ -75,7 +75,8 @@ HephaestusV3/                    the repository root (GitHub: Azavech, private)
 ├─ .github/workflows/release.yml the release workflow ([Release](release.md))
 ├─ HephaestusV3.xcodeproj/       project.xcproj, in Xcode 27.2's JSON format; the app's Package.resolved
 │                                in project.xcworkspace/xcshareddata/swiftpm/
-├─ HephaestusV3/                 the app target's folder: HephaestusV3App.swift, HephaestusV3.entitlements
+├─ HephaestusV3/                 the app target's folder: HephaestusV3App.swift, HephaestusV3.entitlements,
+│                                AppIcon.icon (Icon Composer)
 ├─ HephaestusAgent/              the guest agent's target: main.swift, which calls GuestAgent.main()
 ├─ GuestAgent/                   the guest agent's package, for macOS 12 guests: GuestAgentKit, its tests,
 │                                and install-agent.sh ([Guest agent](guest-agent.md))
@@ -118,7 +119,8 @@ has no shared scheme files: Xcode creates the `HephaestusV3` scheme for the targ
 **Target `HephaestusV3`**: product type application, product `Products/HephaestusV3.app`, build phases
 compile sources, frameworks, resources and the script **Embed Guest Agent**, and a dependency on the target
 `HephaestusAgent`. The frameworks phase links the package product `ToolsScenes` of `HephaestusV3Kit`. The
-resources phase is empty: the target has no asset catalog. The script (`/bin/sh`, its inputs and outputs declared
+resources phase holds `HephaestusV3/AppIcon.icon`, through the synchronized folder: the asset compiler makes
+`Assets.car` and `AppIcon.icns` from it ([Foundations › App icon](ui/foundations.md#app-icon)). The script (`/bin/sh`, its inputs and outputs declared
 for the user script sandbox) copies `$(BUILT_PRODUCTS_DIR)/HephaestusAgent` to `Contents/Helpers/HephaestusAgent`
 and `$(SRCROOT)/GuestAgent/install-agent.sh` to `Contents/Resources/install-agent.sh`; the app's signature seals
 them. (The JSON project format's copy-files phase needs a reference syntax Xcode doesn't document, so a script does
@@ -134,6 +136,7 @@ arm64, `MACOSX_DEPLOYMENT_TARGET` 12.0, `CODE_SIGN_STYLE` Automatic, `DEVELOPMEN
 | --- | --- | --- |
 | `PRODUCT_BUNDLE_IDENTIFIER` | `fr.azavech.hephaestusv3` | Workspace rule `fr.azavech.<app>`. |
 | `INFOPLIST_KEY_CFBundleDisplayName` | `Hephaestus V3` | The name in Finder, the Dock and the menu bar. |
+| `ASSETCATALOG_COMPILER_APPICON_NAME` | `AppIcon` | The app icon, `HephaestusV3/AppIcon.icon`; Xcode writes `CFBundleIconName`. |
 | `PRODUCT_NAME` | `$(TARGET_NAME)` | `HephaestusV3.app`. |
 | `GENERATE_INFOPLIST_FILE` | `YES` | No Info.plist file. |
 | `DEVELOPMENT_TEAM` | `USWJAJULN9` | The only team allowed (also set at project level). Never another. |
@@ -2029,7 +2032,6 @@ Where the code doesn't yet meet the workspace's rules, or the architecture is kn
 
 - **Chat preferences in `UserDefaults`.** The chat panel switch and Claude's permissions live in
   `UserDefaults.standard`, not in the data folder's `settings.yml`.
-- **No asset catalog.** The app target has no app icon.
 - **Routes come only from inside the app.** No URL scheme, App Intents, Spotlight, widgets or Handoff lead
   into it yet. When they come, each becomes a `Route` handled by `RouteHost`. Nothing sends `.machine(id)` yet.
 - **Sample only**: Linux machines, machine snapshots and the CPU figure of the Virtual Machines window
