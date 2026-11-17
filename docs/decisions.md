@@ -235,7 +235,7 @@ feedback project set in Settings, without which the ladybug doesn't show.
 
 | Question | Default chosen | Where |
 | --- | --- | --- |
-| What does Send make? | A ticket as New Ticket makes it, with its Title, Description, Priority and Save as Draft, in the feedback project; the screenshot and the added files become its attachments. No chat, no Claude. | [UI › Tickets › Feedback](ui/tickets.md#feedback) |
+| What does Send make? | A ticket as New Ticket makes it without a title, in the feedback project: its title is the description's first line, and Save as Draft starts off (the user's choice). The screenshot and the added files become its attachments. No chat, no Claude. | [UI › Tickets › Feedback](ui/tickets.md#feedback) |
 | Where does it say what the feedback is about? | A context line after the description: the app's version, macOS, the window, its project and its selected item. V2's device has no counterpart. | [UI › Tickets › Context line](ui/tickets.md#context-line) |
 | What follows Send? | The ticket opens in the feedback project's Tickets window, as V2 showed its feedback chat. | [UI › Tickets › Feedback](ui/tickets.md#feedback) |
 | What if the files can't be attached? | The ticket stays, without them; the sheet says so and offers Show Ticket, so no second ticket is made. | same |

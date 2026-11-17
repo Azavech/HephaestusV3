@@ -385,15 +385,16 @@ list, on the `canvas` background.
 
 ## Feedback
 
-![The Send Feedback sheet: the Tickets window's screenshot, a title and a description, Project Orders, Priority Medium, Save as Draft on, the context line, Attach Files…, Cancel and Send](images/tickets-feedback.png)
-*Send Feedback over the Tickets window's screenshot: New Ticket's fields, the feedback project, and the line
-that says where the feedback comes from.*
+![The Send Feedback sheet: the Tickets window's screenshot, a description, Project Orders, Priority Medium, Save as Draft off, the context line, Attach Files…, Cancel and Send](images/tickets-feedback.png)
+*Send Feedback over the Tickets window's screenshot: a description whose first line becomes the title, the
+feedback project, New Ticket's priority and draft switch, and the line that says where the feedback comes from.*
 
 V2's feedback, brought back by the user on 17 November 2026: the ladybug of every window's
 [status bar](navigation.md#status-bar), or Help ▸ Send Feedback… (⇧⌘B), sends feedback about that window as a
 **regular ticket** of the feedback project chosen in [Settings ▸ General](navigation.md#settings--general)
 (the user's choice). There is no feedback chat and no Claude: the ticket is what New Ticket makes, with the
-window's screenshot and the files added as its attachments.
+window's screenshot and the files added as its attachments. It has no title field: like any ticket created
+without one, it takes the description's first line as its title (the user's choice).
 
 **Flow.**
 
@@ -416,15 +417,17 @@ window's screenshot and the files added as its attachments.
 | Screenshot | `feedback.screenshot` | The PNG scaled to fit 480 × 300 pt, centered; at 40 % opacity while left out. A click opens it in Quick Look. Its label is "Screenshot of the window". |
 | Eye | `feedback.screenshot.toggle` | In the screenshot's top-right corner, 8 pt in: `eye`, white, on a 24 pt black circle at 55 % opacity, shown while the pointer is over the screenshot; `eye.slash` while the screenshot is left out, shown at all times. A click leaves the screenshot out or puts it back. Tooltip and label: "Exclude Screenshot", or "Include Screenshot". The screenshot is in each time the sheet opens. |
 | No screenshot | `feedback.screenshot.missing` | When the window couldn't be captured: `eye.slash` and "The window could not be captured.", in `textSecondary`. Send then sends no screenshot. |
-| First group | `feedback.title`, `feedback.description` | New Ticket's **Title**, and its **Description** with "What happened, and what did you expect?" as placeholder, four lines high, growing to eight. Then the added files ([Added files](#added-files)). |
-| Second group | `feedback.project`, `feedback.priority`, `feedback.draft.toggle` | **Project**: the feedback project's name, read-only. New Ticket's **Priority** (Medium) and **Save as Draft** (on). Footer: the context line, `caption`, `textSecondary`, selectable (`feedback.context`). |
+| First group | `feedback.description` | **Description**, with "What happened, and what did you expect?" as placeholder, four lines high, growing to eight; its first line becomes the ticket's title. Then the added files ([Added files](#added-files)). No title field (the user's choice). |
+| Second group | `feedback.project`, `feedback.priority`, `feedback.draft.toggle` | **Project**: the feedback project's name, read-only. New Ticket's **Priority** (Medium) and **Save as Draft**, off (the user's choice). Footer: the context line, `caption`, `textSecondary`, selectable (`feedback.context`). |
 | Message | `feedback.message` | Why a file wasn't added, or why Send failed, in `danger`, under the form. |
 | Bottom bar | `feedback.attach`, `feedback.cancel`, `feedback.send` | Under a divider: **Attach Files…** (`paperclip`) at the leading edge; at the trailing edge a small progress indicator while sending, **Cancel** (Escape) and **Send** (Return). |
 
-- **Send** is enabled while the title holds more than spaces and line breaks, nothing is being sent, and the
-  ticket hasn't been created yet. It creates the ticket as New Ticket's **Create** does, in the feedback
-  project, with the title, the priority, the draft choice, and as description what was typed, trimmed, a
-  blank line, then the context line (the context line alone when nothing was typed). Then the screenshot,
+- **Send** is enabled while the description holds more than spaces and line breaks, nothing is being sent,
+  and the ticket hasn't been created yet. It creates the ticket as New Ticket's **Create** does without a
+  title, in the feedback project, with the priority, the draft choice, and as description what was typed,
+  trimmed, a blank line, then the context line. The ticket rules give it the provisional title: the
+  description's first line that is neither empty nor a heading, cut to 60 characters
+  ([Data › Tickets](../data.md)). Then the screenshot,
   unless it is left out, and the added files, in order, are attached in one request. While it runs, the form,
   Attach Files…, the files' remove buttons and Cancel are disabled.
 - **Creation fails**: the sheet stays, with the reason in the message line and what was typed.
@@ -785,7 +788,8 @@ pointed at, such as "TicketsRootView, iPhone, Filtered".
 - "Largest Text": Shop at the largest Dynamic Type size.
 
 `FeedbackTicketView` (size that fits, on `FeedbackTicketModel` over `SampleTicketStore`, with a gradient
-as screenshot): "Empty", "Filled, Dark", "Screenshot Left Out", "Not Captured".
+as screenshot): "Empty", "Filled, Dark" (a description of two paragraphs), "Screenshot Left Out", "Not
+Captured".
 
 `AddLinkSheet` and `BundleSheet` (size that fits): "Add Link", "New Bundle", "Edit Bundle, Dark".
 

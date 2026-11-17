@@ -1550,9 +1550,9 @@ Spec: [Tickets](ui/tickets.md). Data: `TicketData` ([TicketData](#ticketdata)) a
 `TicketsDashboardWidget(widget:context:)`, `FeedbackTicketView(project:store:screenshot:context:onFinish:)`.
 
 **Feedback ticket.** `FeedbackTicketModel` (`@MainActor @Observable`) holds a `NewTicketDraft` on the
-feedback project, `screenshot: URL?`, `includesScreenshot` (true), `files: [URL]`, `context`, `projectName`,
-`isSending`, `message` and `createdWithoutFiles`, over `any TicketStore`. `canSend`: a title, not sending,
-nothing created. `add(_:)` refuses a folder or a file over `attachmentLimit` (20 MiB) for the whole call, else
+feedback project, without a title and with `startsAsDraft` false, `screenshot: URL?`, `includesScreenshot` (true), `files: [URL]`, `context`, `projectName`,
+`isSending`, `message` and `createdWithoutFiles`, over `any TicketStore`. `canSend`: a description that isn't
+blank (it gives the ticket its provisional title), not sending, nothing created. `add(_:)` refuses a folder or a file over `attachmentLimit` (20 MiB) for the whole call, else
 appends each new URL. `details(_:context:)` is the trimmed text, a blank line and the context line, or the
 context line alone. `send()` performs `.create` with that description, then, when there is anything,
 `.addAttachments(id, screenshot + files)`; it returns the id, or nil with `message` set (and

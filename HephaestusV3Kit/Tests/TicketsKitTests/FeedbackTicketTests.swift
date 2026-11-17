@@ -40,18 +40,19 @@ struct FeedbackTicketTests {
         FeedbackTicketModel(project: Project.sample("ORD")!, screenshot: screenshot, context: context, store: store)
     }
 
-    @Test("Send creates New Ticket's ticket in the feedback project, the context after the description, then attaches the screenshot and the files in one request")
+    @Test("Send creates New Ticket's ticket without a title, out of the drafts, in the feedback project, the context after the description, then attaches the screenshot and the files in one request")
     func send() async {
         let store = RecordingTicketStore()
         let model = model(store)
-        model.draft.title = "The ladybug hides"
-        model.draft.details = "  It sits under the divider.\n"
+        #expect(!model.draft.startsAsDraft)
+        #expect(model.draft.title.isEmpty)
+        model.draft.details = "  The ladybug hides\nIt sits under the divider.\n"
         let log = URL(fileURLWithPath: "/tmp/feedback/app.log")
         model.add([log])
         #expect(await model.send() == "FB-1")
         var expected = NewTicketDraft(projectID: "ORD")
-        expected.title = "The ladybug hides"
-        expected.details = "It sits under the divider.\n\n" + context
+        expected.startsAsDraft = false
+        expected.details = "The ladybug hides\nIt sits under the divider.\n\n" + context
         #expect(store.performed == [.create(expected), .addAttachments("FB-1", [screenshot, log])])
         #expect(model.message == nil)
     }
@@ -60,27 +61,27 @@ struct FeedbackTicketTests {
     func withoutScreenshot() async {
         let store = RecordingTicketStore()
         let model = model(store)
-        model.draft.title = "Feedback"
+        model.draft.details = "Feedback"
         model.includesScreenshot = false
         #expect(await model.send() == "FB-1")
         #expect(store.performed.count == 1)
         let uncaptured = RecordingTicketStore()
         let other = self.model(uncaptured, screenshot: nil)
-        other.draft.title = "Feedback"
+        other.draft.details = "Feedback"
         #expect(await other.send() == "FB-1")
         #expect(uncaptured.performed.count == 1)
         if case .create(let draft) = uncaptured.performed.first {
-            #expect(draft.details == context)
+            #expect(draft.details == "Feedback\n\n" + context)
         } else {
             Issue.record("No ticket was created")
         }
     }
 
-    @Test("A blank title sends nothing")
-    func blankTitle() async {
+    @Test("A blank description sends nothing: it gives the ticket its title")
+    func blankDescription() async {
         let store = RecordingTicketStore()
         let model = model(store)
-        model.draft.title = "   "
+        model.draft.details = " \n  "
         #expect(!model.canSend)
         #expect(await model.send() == nil)
         #expect(store.performed.isEmpty)
@@ -91,7 +92,7 @@ struct FeedbackTicketTests {
         let store = RecordingTicketStore()
         store.createFails = "The project's tickets can't be written."
         let model = model(store)
-        model.draft.title = "Feedback"
+        model.draft.details = "Feedback"
         #expect(await model.send() == nil)
         #expect(model.message == "The project's tickets can't be written.")
         #expect(model.canSend)
@@ -103,7 +104,7 @@ struct FeedbackTicketTests {
         let store = RecordingTicketStore()
         store.attachFails = "The attachments of one request exceed 20 MB."
         let model = model(store)
-        model.draft.title = "Feedback"
+        model.draft.details = "Feedback"
         #expect(await model.send() == nil)
         #expect(model.createdWithoutFiles == "FB-1")
         #expect(model.message == "FB-1 was created without its files: The attachments of one request exceed 20 MB.")

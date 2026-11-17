@@ -8,9 +8,10 @@ import UniformTypeIdentifiers
 /// What the Send Feedback sheet holds: a new ticket, as New Ticket makes it, with the window's screenshot, the
 /// files added, and a line saying where the feedback comes from (docs/ui/tickets.md › Feedback).
 ///
-/// Send creates a regular ticket in the feedback project: the title, the description followed by the context
-/// line, the priority and the draft choice of New Ticket. Then the screenshot, unless it is left out, and the
-/// added files become the ticket's attachments, in one request.
+/// Send creates a regular ticket in the feedback project, as New Ticket does without a title: its title is the
+/// description's first line (the ticket rules' provisional title), its description what was typed followed by
+/// the context line, with New Ticket's priority and draft choice, the draft off. Then the screenshot, unless it
+/// is left out, and the added files become the ticket's attachments, in one request.
 @MainActor
 @Observable
 final class FeedbackTicketModel {
@@ -34,7 +35,10 @@ final class FeedbackTicketModel {
     @ObservationIgnored private let store: any TicketStore
 
     init(project: Project, screenshot: URL?, context: String, store: any TicketStore) {
-        draft = NewTicketDraft(projectID: project.id)
+        // Feedback goes into the workflow at once (the user's choice).
+        var draft = NewTicketDraft(projectID: project.id)
+        draft.startsAsDraft = false
+        self.draft = draft
         projectName = project.name
         self.screenshot = screenshot
         self.context = context
@@ -44,8 +48,10 @@ final class FeedbackTicketModel {
     /// The largest file a ticket takes, and the most one request takes together (docs/data.md › Attachments).
     static let attachmentLimit = 20 * 1024 * 1024
 
+    /// A description with more than spaces in it, which also gives the ticket its title; nothing being sent,
+    /// nothing created yet.
     var canSend: Bool {
-        draft.canCreate && !isSending && createdWithoutFiles == nil
+        !draft.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending && createdWithoutFiles == nil
     }
 
     /// Adds files, in order, leaving out those already added. A folder, or a file larger than 20 MB, adds
@@ -149,9 +155,6 @@ public struct FeedbackTicketView: View {
                 }
 
                 Section {
-                    TextField(String(localized: "Title", bundle: #bundle), text: $model.draft.title, prompt: Text("Title", bundle: #bundle))
-                        .labelsHidden()
-                        .accessibilityIdentifier("feedback.title")
                     TextField(
                         String(localized: "Description", bundle: #bundle), text: $model.draft.details,
                         prompt: Text("What happened, and what did you expect?", bundle: #bundle), axis: .vertical
@@ -362,8 +365,7 @@ private let previewContext = "App: Hephaestus V3 1.0.18 (40) · macOS 27.2 · Wi
 #Preview("Filled, Dark", traits: .appChrome, .sizeThatFitsLayout) {
     let model = FeedbackTicketModel(project: Project.sample("ORD")!, screenshot: previewScreenshot(), context: previewContext,
                                     store: SampleTicketStore())
-    model.draft.title = "The ladybug hides behind the chat panel"
-    model.draft.details = "With the chat panel open, the status bar's ladybug sits under the panel's divider."
+    model.draft.details = "The ladybug hides behind the chat panel\n\nWith the chat panel open, the status bar's ladybug sits under the panel's divider."
     return FeedbackTicketView(model: model)
         .preferredColorScheme(.dark)
 }
