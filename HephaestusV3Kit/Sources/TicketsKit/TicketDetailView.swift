@@ -80,7 +80,8 @@ struct TicketDetailView: View {
 
     @ViewBuilder private func mainParts(properties showsProperties: Bool) -> some View {
         if let edit = model.edit, edit.ticketID == ticket.id {
-            TicketEditor(edit: model.editBinding(edit), onCancel: { model.cancelEditing() }, onSave: { Task { await model.saveEditing() } })
+            TicketEditor(edit: model.editBinding(edit), projectID: ticket.projectID, onCancel: { model.cancelEditing() },
+                         onSave: { Task { await model.saveEditing() } })
         } else {
             header
             description
@@ -373,12 +374,15 @@ extension TicketsModel {
 
 private struct TicketEditor: View {
     @Binding var edit: TicketEdit
+    /// The ticket's project, for Generate Title's link.
+    let projectID: Project.ID
     let onCancel: () -> Void
     let onSave: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            GeneratedTitleField(title: $edit.title, description: edit.details, identifier: "ticket.edit") {
+            GeneratedTitleField(title: $edit.title, description: edit.details,
+                                ticket: GenerateTitleAction.Ticket(id: edit.ticketID, projectID: projectID), identifier: "ticket.edit") {
                 TextField(String(localized: "Title", bundle: #bundle), text: $edit.title, prompt: Text("Title", bundle: #bundle))
                     .font(.title2.weight(.semibold))
                     .accessibilityIdentifier("ticket.edit.title")
@@ -854,7 +858,7 @@ struct TicketNotFoundView: View {
             .toolbar { TicketActions(ticket: model.selectedTicket) }
     }
     .frame(width: 980, height: 760)
-    .environment(\.generateTitle, GenerateTitleAction { _ in "Retry storm between checkout and payments" })
+    .environment(\.generateTitle, GenerateTitleAction { _, _ in "Retry storm between checkout and payments" })
 }
 
 #Preview("Comment Draft", traits: .appChrome) {

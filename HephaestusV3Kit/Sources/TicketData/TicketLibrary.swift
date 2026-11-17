@@ -241,9 +241,11 @@ public actor TicketLibrary {
         }
     }
 
-    /// A ticket created without a title: its provisional title, and the description `set-ticket-title` reads.
+    /// A ticket created without a title: its project, which the run links it in, its provisional title, and the
+    /// description `set-ticket-title` reads.
     public struct UntitledTicket: Sendable, Hashable {
         public let id: String
+        public let projectID: String
         public let provisionalTitle: String
         public let description: String
     }
@@ -298,7 +300,7 @@ public actor TicketLibrary {
         }
         let snapshot = publish()
         if !hasTitle {
-            untitledHandler?(UntitledTicket(id: id, provisionalTitle: title, description: description))
+            untitledHandler?(UntitledTicket(id: id, projectID: projectID, provisionalTitle: title, description: description))
         }
         return (id, snapshot)
     }

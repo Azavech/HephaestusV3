@@ -185,12 +185,14 @@ final class AppData {
 
     // MARK: Titles (docs/ui/tickets.md › Titles written by Claude)
 
-    /// New Ticket's **Generate Title**: a title for a description from `set-ticket-title`.
+    /// **Generate Title**, in New Ticket and the editor: a title for a description from `set-ticket-title`,
+    /// linking the ticket when it exists.
     var generateTitle: GenerateTitleAction {
-        GenerateTitleAction { [chats] description throws(GenerateTitleError) in
+        GenerateTitleAction { [chats] description, ticket throws(GenerateTitleError) in
             let answer: String
             do throws(ChatError) {
-                answer = try await chats.run(.setTicketTitle, input: description)
+                answer = try await chats.run(.setTicketTitle, input: description,
+                                             attaching: ticket.map { [Self.link(ticket: $0.id, in: $0.projectID)] } ?? [])
             } catch {
                 throw GenerateTitleError(error.description)
             }
@@ -211,10 +213,16 @@ final class AppData {
         }
     }
 
-    /// Asks `set-ticket-title` for the ticket's title, and gives it to the ticket while it still has its
-    /// provisional title. A failure leaves the provisional title.
+    /// The link of a ticket in a skill's run: the line a chat's message carries for it.
+    static func link(ticket id: String, in projectID: String) -> ChatItemReference {
+        ChatItemReference(tool: ToolKind.tickets.rawValue, projectID: projectID, focus: id, title: id)
+    }
+
+    /// Asks `set-ticket-title` for the ticket's title, linking the ticket, and gives it to the ticket while it
+    /// still has its provisional title. A failure leaves the provisional title.
     private func titleUntitled(_ ticket: TicketLibrary.UntitledTicket) async {
-        guard let answer = try? await chats.run(.setTicketTitle, input: ticket.description),
+        guard let answer = try? await chats.run(.setTicketTitle, input: ticket.description,
+                                                attaching: [Self.link(ticket: ticket.id, in: ticket.projectID)]),
               let title = TicketRules.title(fromAnswer: answer), let library = tickets.library else { return }
         if (try? await library.setGeneratedTitle(title, of: ticket.id, replacing: ticket.provisionalTitle)) != nil {
             await tickets.refresh()

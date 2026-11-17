@@ -13,16 +13,28 @@ nonisolated public struct GenerateTitleError: Error, Sendable, Hashable {
 /// (docs/ui/system-prompts.md). ToolsScenes gives it to every window; **Generate Title**, in New Ticket and in the
 /// ticket editor, calls it.
 nonisolated public struct GenerateTitleAction: Sendable {
-    private let generate: @MainActor @Sendable (String) async throws(GenerateTitleError) -> String
+    /// The ticket a title is for, which the run links as a chat links an item, so that Claude can read it.
+    public struct Ticket: Sendable, Hashable {
+        public let id: String
+        public let projectID: Project.ID
 
-    public init(_ generate: @escaping @MainActor @Sendable (String) async throws(GenerateTitleError) -> String) {
+        public init(id: String, projectID: Project.ID) {
+            self.id = id
+            self.projectID = projectID
+        }
+    }
+
+    private let generate: @MainActor @Sendable (String, Ticket?) async throws(GenerateTitleError) -> String
+
+    public init(_ generate: @escaping @MainActor @Sendable (String, Ticket?) async throws(GenerateTitleError) -> String) {
         self.generate = generate
     }
 
-    /// A title for `description`.
+    /// A title for `description`; `ticket` when the ticket exists (the editor's), nil before it's created (New
+    /// Ticket's).
     @MainActor
-    public func callAsFunction(_ description: String) async throws(GenerateTitleError) -> String {
-        try await generate(description)
+    public func callAsFunction(_ description: String, ticket: Ticket? = nil) async throws(GenerateTitleError) -> String {
+        try await generate(description, ticket)
     }
 }
 

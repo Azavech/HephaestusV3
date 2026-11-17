@@ -12,6 +12,8 @@ struct GeneratedTitleField<Field: View>: View {
     @Binding var title: String
     /// What the title is written from: Generate Title is disabled while it holds only spaces and line breaks.
     let description: String
+    /// The ticket, which the run links; nil before it's created.
+    var ticket: GenerateTitleAction.Ticket? = nil
     /// The identifiers' start: the button is `<identifier>.generateTitle`, the reason
     /// `<identifier>.generateTitle.message`.
     let identifier: String
@@ -53,12 +55,13 @@ struct GeneratedTitleField<Field: View>: View {
     /// Replaces the title with the one `set-ticket-title` writes from the description.
     private func generate(with action: GenerateTitleAction) {
         let description = description
+        let ticket = ticket
         generating = true
         message = nil
         Task {
             defer { generating = false }
             do throws(GenerateTitleError) {
-                title = try await action(description)
+                title = try await action(description, ticket: ticket)
             } catch {
                 message = error.message
             }
@@ -76,7 +79,7 @@ struct GeneratedTitleField<Field: View>: View {
     }
     .padding()
     .frame(width: 420)
-    .environment(\.generateTitle, GenerateTitleAction { _ in "Readiness probe flaps after index refreshes" })
+    .environment(\.generateTitle, GenerateTitleAction { _, _ in "Readiness probe flaps after index refreshes" })
 }
 
 #Preview("Failure", traits: .appChrome, .sizeThatFitsLayout) {
@@ -89,7 +92,7 @@ struct GeneratedTitleField<Field: View>: View {
     }
     .padding()
     .frame(width: 420)
-    .environment(\.generateTitle, GenerateTitleAction { _ throws(GenerateTitleError) in
+    .environment(\.generateTitle, GenerateTitleAction { _, _ throws(GenerateTitleError) in
         throw GenerateTitleError("Claude didn't answer within 2 minutes.")
     })
 }
@@ -103,5 +106,5 @@ struct GeneratedTitleField<Field: View>: View {
     }
     .padding()
     .frame(width: 420)
-    .environment(\.generateTitle, GenerateTitleAction { _ in "Never asked" })
+    .environment(\.generateTitle, GenerateTitleAction { _, _ in "Never asked" })
 }

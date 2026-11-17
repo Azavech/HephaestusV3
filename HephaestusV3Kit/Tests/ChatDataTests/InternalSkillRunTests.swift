@@ -12,6 +12,8 @@ import Testing
 private final class SkillRunner: ProcessRunning, Sendable {
     let answer: ProcessResult
     private let state = Mutex<[(request: ProcessRequest, input: Data?)]>([])
+    /// The MCP configuration files of the runs, read while each ran.
+    let configurations = Mutex<[Data]>([])
 
     init(answer: ProcessResult) {
         self.answer = answer
@@ -27,6 +29,10 @@ private final class SkillRunner: ProcessRunning, Sendable {
             return ProcessResult(termination: .exited(0), standardOutput: Data("2.1.322 (Claude Code)\n".utf8))
         }
         if request.arguments.first == "-p", request.arguments.contains("json") {
+            if let index = request.arguments.firstIndex(of: "--mcp-config"), request.arguments[index + 1].hasPrefix("/"),
+               let data = FileManager.default.contents(atPath: request.arguments[index + 1]) {
+                configurations.withLock { $0.append(data) }
+            }
             return answer
         }
         return ProcessResult(termination: .exited(1))
@@ -43,13 +49,24 @@ private func json(_ text: String, error: Bool = false) -> ProcessResult {
 @MainActor
 @Suite("Internal skill runs")
 struct InternalSkillRunTests {
-    @Test("Print mode, JSON, no saved session, the skill's model and effort, no tools or MCP; the content as the system prompt when it isn't blank")
+    @Test("Print mode, JSON, no saved session, the skill's model and effort, none of the CLI's tools, the app's MCP server alone with its tools allowed; the content as the system prompt when it isn't blank")
     func arguments() {
+        let config = URL(fileURLWithPath: "/Data/Runtime/mcp/skill-1.json")
         let base = ["-p", "--output-format", "json", "--no-session-persistence", "--model", "haiku", "--effort", "low", "--tools", "",
-                    "--strict-mcp-config", "--mcp-config", #"{"mcpServers":{}}"#]
-        #expect(InternalSkillRun.arguments(InternalSkillValues(content: " \n", model: "haiku", effort: .low)) == base)
-        #expect(InternalSkillRun.arguments(InternalSkillValues(content: "Title it.", model: "haiku", effort: .low))
+                    "--strict-mcp-config", "--mcp-config", "/Data/Runtime/mcp/skill-1.json",
+                    "--allowedTools", "mcp__hephaestus__get_ticket,mcp__hephaestus__list_tickets"]
+        let tools = ["get_ticket", "list_tickets"]
+        #expect(InternalSkillRun.arguments(InternalSkillValues(content: " \n", model: "haiku", effort: .low), mcpConfig: config, tools: tools)
+            == base)
+        #expect(InternalSkillRun.arguments(InternalSkillValues(content: "Title it.", model: "haiku", effort: .low), mcpConfig: config, tools: tools)
             == base + ["--system-prompt", "Title it."])
+    }
+
+    @Test("The message is the input, then an Attached line per linked item, as a chat's message carries them")
+    func message() {
+        let ticket = ChatItemReference(tool: "tickets", projectID: "HEPH", focus: "HEPH-3", title: "HEPH-3")
+        #expect(InternalSkillRun.message("test", attaching: []) == "test")
+        #expect(InternalSkillRun.message("test", attaching: [ticket]) == "test\n\nAttached: ticket HEPH-3 of project HEPH")
     }
 
     @Test("The answer is the JSON's result; an error, a timeout, or no JSON throws the CLI's own words")
@@ -98,6 +115,24 @@ struct InternalSkillRunTests {
         #expect(run.request.arguments.suffix(2) == ["--system-prompt", "Title it."])
         #expect(run.request.currentDirectory?.hasSuffix("/Data/Runtime/claude-cwd") == true)
         #expect(run.input.map { String(decoding: $0, as: UTF8.self) } == "Tabs close when I click")
+        #expect(runner.configurations.withLock { $0 }.count == 1, "A run without a link has the app's server too")
+
+        // A run that links the ticket: its Attached line. Each run has the app's server with a token of the
+        // skill's own, ended with the run, its configuration file removed.
+        let ticket = ChatItemReference(tool: "tickets", projectID: "HEPH", focus: "HEPH-3", title: "HEPH-3")
+        #expect(try await session.run(.setTicketTitle, input: "test", attaching: [ticket]) == "Tabs close on click")
+        let linked = try #require(runner.runs.last)
+        #expect(linked.input.map { String(decoding: $0, as: UTF8.self) } == "test\n\nAttached: ticket HEPH-3 of project HEPH")
+        let index = try #require(linked.request.arguments.firstIndex(of: "--mcp-config"))
+        let config = linked.request.arguments[index + 1]
+        #expect(config.hasPrefix(data.url.path + "/Runtime/mcp/skill-"))
+        #expect(!FileManager.default.fileExists(atPath: config))
+        let written = try #require(runner.configurations.withLock { $0 }.last)
+        let server = try JSONValue.parse(written)["mcpServers"]?["hephaestus"]
+        #expect(server?["url"]?.stringValue == "http://127.0.0.1:47998/mcp")
+        let token = try #require(server?["headers"]?["Authorization"]?.stringValue?.replacing("Bearer ", with: ""))
+        #expect(token.count == 64)
+        #expect(session.tokens.caller(for: token) == nil, "The token ends with the run")
         await projects.stop()
     }
 }

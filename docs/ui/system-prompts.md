@@ -47,14 +47,17 @@ split view does.
 ## Internal skills
 
 **Running a skill.** The app runs a skill as the Claude CLI in print mode, once, without a chat: the skill's
-model and effort, its content as the system prompt (left out while it is blank), the input as the message, and
-nothing else of the app's: no tools, no MCP server, no saved session, in an empty folder. Claude's answer is
-taken as it comes ([Data › Internal skills](../data.md#internal-skills)). So until the content says how to
-answer, the answer is what the model makes of the input alone.
+model and effort, its content as the system prompt (left out while it is blank), the input as the message, in an
+empty folder, without a saved session or the CLI's own tools. Every run has the app's MCP server (the user's
+request), as a chat has, with a token that only reads ([MCP › Permissions](../mcp.md#permissions)). The item a
+run is for is linked as a chat's message links the item of its chip: an `Attached:` line after the input, such as
+`Attached: ticket HEPH-3 of project HEPH`, which Claude reads with `get_ticket`. Claude's answer is taken as it
+comes ([Data › Internal skills](../data.md#internal-skills)). So until the content says how to answer, the
+answer is what the model makes of the input and of what it reads.
 
 | Name | Default content | Default model and effort | Used by |
 | --- | --- | --- | --- |
-| `set-ticket-title` | Empty | Haiku, Low: a short answer (default chosen at design time) | A ticket created without a title (feedback, Claude's `create_ticket`), and **Generate Title**, in New Ticket and in the ticket editor ([Tickets › Titles written by Claude](tickets.md#titles-written-by-claude)). Its input is the ticket's description. |
+| `set-ticket-title` | Empty | Haiku, Low: a short answer (default chosen at design time) | A ticket created without a title (feedback, Claude's `create_ticket`), and **Generate Title**, in New Ticket and in the ticket editor ([Tickets › Titles written by Claude](tickets.md#titles-written-by-claude)). Its input is the ticket's description, then the ticket's `Attached:` line when it exists: not in New Ticket, before it's created. |
 
 A skill the code adds without its own defaults runs on the CLI's `default` model at High effort, as a new chat
 does.

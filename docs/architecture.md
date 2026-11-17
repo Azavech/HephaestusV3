@@ -507,7 +507,7 @@ The MCP server of [MCP](mcp.md). No UI, no default isolation. Source files in `S
 | `ToolOperation.swift` | `ToolError` (`code`, `message`), `ToolPermission` (`read`, `changeTickets`, `deleteTickets`, `changeProjects`, `removeProjects`, `renameChats`; `changes`), `ToolCallText` (`action`, `request`, `preview`, `item`), `ToolItem` (`tool`, `projectID`, `focus`, `title`), `ToolOperation` (`name`, `description`, `inputSchema`, `permission`, `describe: (@Sendable (JSONValue) -> ToolCallText)?`, `run: @Sendable (JSONValue) async throws(ToolError) -> JSONValue`, `listing`), `ToolRegistry` (`operations`, `names`, `subscript(name:)`; names unique), `JSONValue.string(_:)` |
 | `MCPProtocol.swift` | `MCPReply` (`json`, `accepted`, `unsupportedVersion`), `MCPProtocol` (`supportedVersions`, `serverName`, `Gate`, `init(registry:version:gate:)`, `handle(body:protocolVersions:caller:)`) |
 | `HTTP.swift` | `HTTPHead`, `HTTPResponse` (the rejections' texts, `data`), `HTTPParser` (`head(in:)`, `body(of:in:)`, the limits) |
-| `MCPTokens.swift` | `MCPCaller` (`external`, `chat(String)`, `chatID`, the task-local `current`), `MCPTokens` (a token → caller map: `replace(with:)` for the external tokens, `issue(forChat:)`, `revoke(_:)`, `caller(for:)` and `accepts(_:)` in constant time, `generate()` with `SecRandomCopyBytes`, `bearer(_:)`) |
+| `MCPTokens.swift` | `MCPCaller` (`external`, `chat(String)`, `internalSkill(String)`, `chatID`, the task-local `current`), `MCPTokens` (a token → caller map: `replace(with:)` for the external tokens, `issue(forChat:)`, `issue(forSkill:)`, `revoke(_:)`, `caller(for:)` and `accepts(_:)` in constant time, `generate()` with `SecRandomCopyBytes`, `bearer(_:)`) |
 | `MCPServer.swift` | `MCPServer` (actor: `state`, `states`, `start(port:)`, `stop()`), the private `MCPConnection` and `OneShot` |
 
 - **Operations.** A kit declares its tools as `ToolOperation`s whose `run` is a `@MainActor` closure calling
@@ -619,7 +619,7 @@ ExternalTools, ProjectData and MCPKit. Source files in `Sources/ChatData/`:
 | `ChatSession.swift` | `LoadedChat`, `ChatState`, `ChatError`, `StreamingText`, `ChatSession` (state, start, the CLI's check, settings, reading, files, `refreshState`) |
 | `ChatRun.swift` | `ChatRun` (one live process), and `ChatSession`'s `send`, launch, output handling, turns, exit, `stop`, `stopAll`, `answer`, `requestApproval`, `setSettings`, `rename`, `probeModels` |
 | `InternalSkill.swift` | `InternalSkill` (`name`, `defaults`, `init(name:defaultContent:defaultModel:defaultEffort:)`, `setTicketTitle`, `all`, `isValidName(_:)`), `InternalSkillValues` (`content`, `model`, `effort`, `otherLines`), and on `DataFolder`: `skillsFolder`, `skillFile(of:)`, `readSkill(_:)`, `writeSkill(_:of:)` ([Data › Internal skills](data.md#internal-skills)) |
-| `InternalSkillRun.swift` | `InternalSkillRun` (`timeout` 120 s, `arguments(_:)`, `request(cliPath:values:environment:folder:)`, `answer(from:)`), and `ChatSession.run(_:input:) async throws(ChatError) -> String`: fails at once without an available CLI or data folder; otherwise reads the skill's values, runs the request through the session's `runner` with the input on standard input, and returns `answer(from:)` |
+| `InternalSkillRun.swift` | `InternalSkillRun` (`timeout` 120 s, `arguments(_:mcpConfig:tools:)`, `request(cliPath:values:environment:folder:mcpConfig:tools:)`, `message(_:attaching:)`, which is `ClaudeInput.text(_:carrying:)`, `answer(from:)`), and `ChatSession.run(_:input:attaching:) async throws(ChatError) -> String`: fails at once without an available CLI or data folder; otherwise issues a token (`tokens.issue(forSkill:)`), writes `Runtime/mcp/skill-<UUID>.json` with `ChatLaunch.mcpConfiguration(port:token:)`, reads the skill's values, runs the request with the session's `toolNames` through its `runner`, the message on standard input, and returns `answer(from:)`; the token is revoked and the file deleted however the run ends |
 
 - **`ChatSession`** (`@MainActor @Observable`, one for the app, made by `AppData`) publishes `chats` (every
   loaded project's, by id), `status`, `models`, `transcripts` (those read: of chats open in a window and of
@@ -679,7 +679,7 @@ defaults to the main actor.
 | `NewItemCommand.swift` | `NewItemCommand`, the `newItem` focused value, `newItemCommand(_:action:)` |
 | `ChatVocabulary.swift` | `ChatReference`, `ToolReading`, `ToolReader`, `ReportChatSubjectAction`, `ChatPanelControl`, `ChatPanelToolbarItem` |
 | `Dashboard.swift` | `DashboardWidget`, `DashboardCells`, `DashboardGrid`, `DashboardWidgetKind`, `DashboardProjectField`, `DashboardContext` |
-| `GenerateTitleAction.swift` | `GenerateTitleError` (`message`), `GenerateTitleAction` (a `@MainActor @Sendable` closure from a description to a title, `async throws(GenerateTitleError)`, called with `callAsFunction`) and the `generateTitle` environment value, nil by default: ToolsScenes sets it in `RouteHost` to `AppData.generateTitle`; New Ticket's **Generate Title** shows only with it |
+| `GenerateTitleAction.swift` | `GenerateTitleError` (`message`), `GenerateTitleAction` (a `@MainActor @Sendable` closure from a description and a `GenerateTitleAction.Ticket?` (`id`, `projectID`: the ticket the run links, nil in New Ticket) to a title, `async throws(GenerateTitleError)`, called with `callAsFunction(_:ticket:)`) and the `generateTitle` environment value, nil by default: ToolsScenes sets it in `RouteHost` to `AppData.generateTitle`; **Generate Title** shows only with it |
 | `DashboardWidgetRenderer.swift` | `DashboardWidgetRenderer` (a `@MainActor @Sendable` closure from `(DashboardWidget, DashboardContext)` to `AnyView`, called with `callAsFunction`) and the `dashboardWidgetRenderer` environment value, nil by default: ToolsScenes sets it in `RouteHost` to its `DashboardWidgetView`, so that a window can draw another tool's widget (the project overview's graph) |
 | `Appearance.swift` | Titles, symbols, shortcuts and colors of the shared types |
 | `Components.swift` | `ProjectIcon` |
@@ -1187,9 +1187,12 @@ renders `hostWindow(of:)`'s frame view with `cacheDisplay` (`bitmapImageRepForCa
 After `tickets.start()`, `AppData.start()` gives the ticket library an `onUntitled` handler that calls
 `queueTitling(_:)` on the main actor. `queueTitling` chains a `Task` after the previous one (`titling`), so the
 titles are written one after the other; each runs `titleUntitled(_:)`: `chats.run(.setTicketTitle, input:
-description)`, `TicketRules.title(fromAnswer:)`, then `library.setGeneratedTitle(_:of:replacing:)` and
-`tickets.refresh()` when it renamed; any failure leaves the provisional title. `AppData.generateTitle` is the
-`GenerateTitleAction` of **Generate Title**, in New Ticket and the ticket editor: the same run and rule, a
+description, attaching: [AppData.link(ticket:in:)])`, the link being the ticket's `ChatItemReference` (tool
+`tickets`, the ticket's project, its id as focus and title; `UntitledTicket` carries `projectID` for it), then
+`TicketRules.title(fromAnswer:)`, `library.setGeneratedTitle(_:of:replacing:)` and `tickets.refresh()` when it
+renamed; any failure leaves the provisional title. `AppData.generateTitle` is the `GenerateTitleAction` of
+**Generate Title**, in New Ticket and the ticket editor: the same run and rule, linking the ticket the action
+is given (the editor's, as `TicketEditor` passes its ticket's id and project to `GeneratedTitleField`), a
 `ChatError`'s description or "Claude's answer has no title." as its error.
 
 **Settings ▸ General.** `AppData.opensWindowsAsTabs` (`private(set)`, true until read) is read from
@@ -1561,7 +1564,7 @@ Spec: [Tickets](ui/tickets.md). Data: `TicketData` ([TicketData](#ticketdata)) a
 | `MarkdownView.swift` | `MarkdownView`, `MarkdownInlines` (attributed inlines, highlighted code, token colors) |
 | `TicketActions.swift` | `TicketActions: ToolbarContent` |
 | `NewTicketView.swift` | `NewTicketView` |
-| `GeneratedTitleField.swift` | `GeneratedTitleField`: a Title field given as content, **Generate Title** after it (from `\.generateTitle`, absent without one) and the failure's reason under it, as two views; used by `NewTicketView` and `TicketEditor` |
+| `GeneratedTitleField.swift` | `GeneratedTitleField`: a Title field given as content, **Generate Title** after it (from `\.generateTitle`, absent without one, called with the field's `ticket`, nil in New Ticket) and the failure's reason under it, as two views; used by `NewTicketView` and `TicketEditor` |
 | `FeedbackTicketView.swift` | `FeedbackTicketModel`, `FeedbackTicketView` (public) |
 | `TicketAppearance.swift` | `TicketWords` (shared labels and the activity sentences, one per author); symbols, colors, shortcuts, next steps and `next` of statuses; priorities, bundle statuses, links and events |
 | `TicketsDashboardWidget.swift` | `TicketsDashboardWidget` |
@@ -1857,7 +1860,8 @@ selection changes and on disappear. ToolsScenes shows it in the `.systemPrompts`
 - `ChatSettingsView()`: reads `\.chatStore`; the internal `init(previewStatus:)` for previews.
 - `LiveChatStore(session: ChatSession, describe: @MainActor (String, JSONValue) -> ToolCallText?)`, its
   `session`, and `EnvironmentValues.chatStore`.
-- `ChatGate.check(_:_:_:chats:defaults:)`, `ChatTools.operations(chats:projects:)`.
+- `ChatGate.check(_:_:_:chats:defaults:)`: an `internalSkill` caller gets nil for a `read` operation but
+  `open_in_app`, otherwise `ToolError(.forbidden, "An internal skill's run only reads.")`; `ChatTools.operations(chats:projects:)`.
 - `ChatPreferences.showsPanelKey` (`"chat.showsPanel"`).
 
 **Model.** `ChatConversation`: `id`, `projectID`, `title`, `origin: ToolKind?`, `createdAt`, `turns`,

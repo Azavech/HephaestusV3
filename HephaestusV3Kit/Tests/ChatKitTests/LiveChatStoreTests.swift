@@ -118,4 +118,28 @@ struct ChatGateTests {
         #expect(await ChatGate.check(.chat("C"), operation(.changeProjects), [:], chats: chats, defaults: defaults)?.code == .forbidden,
                 "Projects default to Ask First")
     }
+
+    @Test("An internal skill's run reads, whatever the settings say; it changes nothing and opens no window")
+    func internalSkill() async {
+        let chats = bareSession()
+        let skill = MCPCaller.internalSkill("set-ticket-title")
+        defaults.set("always", forKey: ChatPreferences.ticketChangesKey)
+        #expect(await ChatGate.check(skill, operation(.read), [:], chats: chats, defaults: defaults) == nil)
+        for permission in [ToolPermission.changeTickets, .deleteTickets, .renameChats, .changeProjects, .callAPIs, .startBuilds] {
+            #expect(await ChatGate.check(skill, operation(permission), [:], chats: chats, defaults: defaults)
+                == ToolError(.forbidden, "An internal skill's run only reads."))
+        }
+        let open = ToolOperation(name: "open_in_app", description: "", inputSchema: .object(), permission: .read) { _ throws(ToolError) in .null }
+        #expect(await ChatGate.check(skill, open, [:], chats: chats, defaults: defaults)?.code == .forbidden)
+    }
+
+    @Test("A skill run's token is the skill's until it ends")
+    func skillToken() {
+        let tokens = MCPTokens()
+        let token = tokens.issue(forSkill: "set-ticket-title")
+        #expect(tokens.caller(for: token) == .internalSkill("set-ticket-title"))
+        #expect(tokens.caller(for: token)?.chatID == nil)
+        tokens.revoke(token)
+        #expect(tokens.caller(for: token) == nil)
+    }
 }

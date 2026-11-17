@@ -31,6 +31,7 @@ are.
 | Stored request values | `<data folder>/openapi-requests.json` | `StoredContract` | Contracts |
 | Chat transcript | `<project>/.hephaestus/chats/<CHAT-ID>.jsonl` | `ChatItem` on each line | Chat |
 | Chat MCP configuration | `<data folder>/Runtime/mcp/<CHAT-ID>.json` | — (JSON) | Chat |
+| Skill run MCP configuration | `<data folder>/Runtime/mcp/skill-<UUID>.json` | — (JSON) | System Prompts |
 | Chat log | `<data folder>/Logs/claude-<CHAT-ID>.log` | — (text) | Chat |
 | Image file | `<data folder>/VirtualMachines/Images/<IMAGE-ID>/image.yml` | `ImageFile` | Virtual Machines |
 | Machine file | `<data folder>/VirtualMachines/Machines/<VM-ID>/vm.yml` | `MachineFile` | Virtual Machines |
@@ -135,6 +136,7 @@ The files that belong to this Mac rather than to a project.
 | `settings.yml`, `secrets.json` | The app's settings and the MCP server's token ([Settings file](#settings-file), [Secrets file](#secrets-file)). |
 | `skills/<name>/SKILL.md` | An internal skill's content, once the user wrote it ([Internal skills](#internal-skills)). |
 | `Runtime/mcp/<CHAT-ID>.json` | A running chat's MCP configuration, mode 0600, deleted when its process ends ([Chat processes](#chat-processes)). |
+| `Runtime/mcp/skill-<UUID>.json` | A running internal skill's MCP configuration, mode 0600, deleted when the run ends ([Internal skills](#internal-skills)). |
 | `Runtime/claude-cwd/` | The empty folder the CLI's model probe runs in. |
 | `Runtime/downloads/<UUID>/` | A release file gh downloads, before it moves into the Downloads folder; removed afterwards ([Builds › Downloads](#downloads)). |
 | `VirtualMachines/` | The images and machines ([Virtual machines › Storage](#storage)). |
@@ -1435,15 +1437,26 @@ effort: low
   file without front matter is all content, with the default model and effort; without a file, or one that can't
   be read as UTF-8, the skill's defaults. The front matter has no `description` of the app's: the app runs these
   skills itself rather than handing them to the CLI as skills (default chosen at design time).
-- **Running a skill** (`ChatSession.run(_:input:)`, `InternalSkillRun`): the CLI found for the chats, in
-  `Runtime/claude-cwd` (empty), with the login shell's environment, as
+- **Running a skill** (`ChatSession.run(_:input:attaching:)`, `InternalSkillRun`): the CLI found for the chats,
+  in `Runtime/claude-cwd` (empty), with the login shell's environment, as
 
 ```text
 claude -p --output-format json --no-session-persistence --model <model> --effort <effort> --tools "" \
-  --strict-mcp-config --mcp-config '{"mcpServers":{}}' [--system-prompt <content>]
+  --strict-mcp-config --mcp-config <data folder>/Runtime/mcp/skill-<UUID>.json \
+  --allowedTools mcp__hephaestus__<tool>,… [--system-prompt <content>]
 ```
 
-  `--system-prompt` only while the content isn't blank; the input on standard input; stopped after 2 minutes.
+  `--system-prompt` only while the content isn't blank; stopped after 2 minutes.
+- **MCP access** (the user's request): every run gets the app's MCP server, as a chat does. Its configuration
+  file is a chat's ([Chat processes](#chat-processes)), with a token made for the run
+  (`MCPTokens.issue(forSkill:)`), written mode 0600 before the run and deleted after it; the token ends with the
+  run. The token's caller is `MCPCaller.internalSkill(<name>)`: the server lets it read and nothing else, and not
+  open windows ([MCP › Permissions](mcp.md#permissions)), whatever Settings ▸ Chat says. The CLI's own tools stay
+  off.
+- **The message**, on standard input, is the input, then one `Attached:` line per item the run links, as a
+  chat's message carries the item of its chip ([Messages](#messages)): `set-ticket-title` links the ticket it
+  titles, `Attached: ticket HEPH-3 of project HEPH`, when the ticket exists ([UI › Tickets › Generate
+  Title](ui/tickets.md#generate-title)). Claude reads the ticket with `get_ticket`.
   The answer is the JSON's `result` when `subtype` is `success` and `is_error` isn't true; otherwise the run fails
   with the `result`, standard error or standard output, in that order of availability. Before the CLI is checked,
   or without one, the run fails at once and starts nothing.

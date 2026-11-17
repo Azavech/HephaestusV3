@@ -90,6 +90,9 @@ Each request goes through these steps in order; the first that fails sends its r
   (`MCPCaller.chat(<chat id>)`, a task-local value), the external token's as `MCPCaller.external`. The ticket
   tools record a chat's id with Claude's changes ([Data › Ticket history](data.md#ticket-file)), and the
   [permissions](#permissions) apply to chats only.
+- Each **skill run token** belongs to one run of an internal skill ([Data › Internal
+  skills](data.md#internal-skills)): made the same way when the run starts, in the run's configuration file, and
+  ended with the run. Its caller is `MCPCaller.internalSkill(<skill name>)`.
 
 ## JSON-RPC
 
@@ -212,6 +215,9 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
   `askFirst`.
 - The CLI runs every tool of the server without asking (`--allowedTools`): the gate is where the user's
   permissions hold, whatever the CLI's own settings say.
+- **An internal skill's run** only reads (default chosen at design time: the app runs it for its answer alone,
+  in the background, where no card can show): the `read` tools run but `open_in_app`; every other call is
+  refused with `An internal skill's run only reads.` (`forbidden`), whatever Settings ▸ Chat says.
 
 ## External use
 
@@ -252,7 +258,8 @@ what to ask the user, how to write a ticket. The app writes no system prompts, s
 (the owner's rule: [Decisions](decisions.md)). Claude follows the same rules as the user, except the
 changes reserved to the user ([Data › Ticket rules](data.md#ticket-rules)). In the app's chats, Claude also
 reads one line V3 writes with each message, naming the item the message carries ([Data ›
-Messages](data.md#messages)); nothing else.
+Messages](data.md#messages)), and the same line in an internal skill's run, for the item it links ([Data ›
+Internal skills](data.md#internal-skills)); nothing else.
 
 ## Tools
 

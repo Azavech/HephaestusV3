@@ -2,11 +2,14 @@ import Foundation
 import Security
 import Synchronization
 
-/// Who calls a tool: Claude with the external token (a terminal session), or Claude in one of the app's
-/// chats, with that chat's token (docs/mcp.md › Authentication).
+/// Who calls a tool: Claude with the external token (a terminal session), Claude in one of the app's chats,
+/// with that chat's token, or Claude running one of the app's internal skills, with that run's token
+/// (docs/mcp.md › Authentication).
 public enum MCPCaller: Sendable, Hashable {
     case external
     case chat(String)
+    /// A run of an internal skill, by the skill's name, such as `set-ticket-title`: it only reads.
+    case internalSkill(String)
 
     /// The chat's id; nil for the external token.
     public var chatID: String? {
@@ -19,7 +22,7 @@ public enum MCPCaller: Sendable, Hashable {
 
 /// The bearer tokens the server accepts (docs/mcp.md › Authentication): 64 lowercase hexadecimal characters
 /// encoding 32 random bytes, compared in constant time, never logged. The external tokens stay until replaced;
-/// a chat's token lives as long as the chat's process.
+/// a chat's or a skill run's token lives as long as its process.
 public final class MCPTokens: Sendable {
     private let tokens = Mutex<[String: MCPCaller]>([:])
 
@@ -42,7 +45,14 @@ public final class MCPTokens: Sendable {
         return token
     }
 
-    /// Ends a chat's token.
+    /// A new token for one run of an internal skill.
+    public func issue(forSkill name: String) -> String {
+        let token = Self.generate()
+        tokens.withLock { $0[token] = .internalSkill(name) }
+        return token
+    }
+
+    /// Ends a chat's or a skill run's token.
     public func revoke(_ token: String) {
         _ = tokens.withLock { $0.removeValue(forKey: token) }
     }

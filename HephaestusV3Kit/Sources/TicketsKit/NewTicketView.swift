@@ -100,7 +100,7 @@ struct NewTicketView: View {
         projectID: "ORD"
     )
     NewTicketView(draft: $draft)
-        .environment(\.generateTitle, GenerateTitleAction { _ in "Readiness probe flaps after index refreshes" })
+        .environment(\.generateTitle, GenerateTitleAction { _, _ in "Readiness probe flaps after index refreshes" })
 }
 
 #Preview("Filled", traits: .appChrome, .sizeThatFitsLayout) {

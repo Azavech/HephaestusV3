@@ -6,13 +6,21 @@ import ProjectData
 import ToolsFoundation
 
 /// What a chat's Claude may do without asking, as the user set it (docs/mcp.md › Permissions). The MCP server
-/// asks before each call of a chat's Claude; the external token's calls run as before.
+/// asks before each call of a chat's Claude; the external token's calls run as before; a run of an internal
+/// skill only reads.
 public enum ChatGate {
+    /// The refusal of anything but a read to an internal skill's run.
+    static let skillRefusal = "An internal skill's run only reads."
+
     /// Nil lets the call run; an error refuses it. A change set to Ask First waits for the user's answer to a
     /// card in the chat.
     @MainActor
     public static func check(_ caller: MCPCaller, _ operation: ToolOperation, _ arguments: JSONValue, chats: ChatSession,
                              defaults: UserDefaults = .standard) async -> ToolError? {
+        if case .internalSkill = caller {
+            // The app runs the skill in the background, for its answer alone: it reads, and opens no window.
+            return operation.permission == .read && operation.name != "open_in_app" ? nil : ToolError(.forbidden, skillRefusal)
+        }
         guard case .chat(let chatID) = caller else { return nil }
         func rule(_ key: String) -> ChangePermission {
             defaults.string(forKey: key).flatMap(ChangePermission.init(rawValue:)) ?? .askFirst
