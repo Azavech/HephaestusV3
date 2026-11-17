@@ -97,6 +97,11 @@ final class Workspace {
         WorkspaceValue(tabs: tabs, selection: selection)
     }
 
+    /// The tab bar shows only while the window has two tabs or more (the user's choice).
+    var showsTabBar: Bool {
+        tabs.count > 1
+    }
+
     var selectedTab: WorkspaceTab? {
         tabs.first { $0.id == selection } ?? tabs.first
     }

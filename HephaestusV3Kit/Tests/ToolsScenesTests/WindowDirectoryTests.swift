@@ -37,6 +37,17 @@ struct WorkspaceTests {
         #expect(workspace.remove(UUID()) == nil)
     }
 
+    @Test("The tab bar shows only with two tabs or more")
+    func tabBar() {
+        let workspace = Workspace(WorkspaceValue(tabs: [WorkspaceTab(content: orders)]))
+        #expect(!workspace.showsTabBar)
+        let second = WorkspaceTab(content: payments)
+        workspace.add(second)
+        #expect(workspace.showsTabBar)
+        workspace.remove(second.id)
+        #expect(!workspace.showsTabBar)
+    }
+
     @Test("Tabs move within bounds, and Next and Previous wrap around")
     func moveAndStep() {
         let tabs = [WorkspaceTab(content: .projects), WorkspaceTab(content: orders), WorkspaceTab(content: payments)]
@@ -180,6 +191,7 @@ struct WindowDirectoryTests {
 
     @Test("Without a window, a new tab opens one")
     func openWithoutWindow() {
+        _ = NSApplication.shared
         var opened: [WorkspaceValue] = []
         WindowDirectory().open(WorkspaceTab(content: orders)) { opened.append($0) }
         #expect(opened.count == 1)

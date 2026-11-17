@@ -75,10 +75,13 @@ private struct WorkspaceWindow: View {
     private func window(_ tab: WorkspaceTab) -> some View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
-                TabBar(workspace: workspace, title: title(of:), symbol: symbol(of:), newTab: newTab(for: tab), moveToNewWindow: moveToNewWindow)
-                Divider()
+                // A single tab shows no tab bar: its content goes up under the toolbar.
+                if workspace.showsTabBar {
+                    TabBar(workspace: workspace, title: title(of:), symbol: symbol(of:), newTab: newTab(for: tab), moveToNewWindow: moveToNewWindow)
+                    Divider()
+                }
                 TabContentView(tab: tab, workspace: workspace, appData: appData, selectedProjectID: $selectedProjectID,
-                        machineFocus: machineFocus, machineFocusRequest: machineFocusRequest)
+                        machineFocus: machineFocus, machineFocusRequest: machineFocusRequest, underTabBar: workspace.showsTabBar)
                     .id(tab.id)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -224,12 +227,14 @@ private struct TabContentView: View {
     @Binding var selectedProjectID: Project.ID?
     let machineFocus: String?
     let machineFocusRequest: FocusRequest?
+    /// Whether the tab bar is between the toolbar and the tab's content.
+    let underTabBar: Bool
 
     var body: some View {
         content
-            // The tab bar is between the toolbar and the tab's content: the toolbar's edge effect, made for
-            // content that scrolls under it, would blur the content's first rows.
-            .scrollEdgeEffectHidden(true, for: .top)
+            // Under the tab bar, the toolbar's edge effect, made for content that scrolls under the toolbar,
+            // would blur the content's first rows. A single tab's content goes under the toolbar, and keeps it.
+            .scrollEdgeEffectHidden(underTabBar, for: .top)
     }
 
     @ViewBuilder private var content: some View {

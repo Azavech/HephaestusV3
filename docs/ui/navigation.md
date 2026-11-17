@@ -77,7 +77,7 @@ chat panel is on the right, outside the tabs; the status bar runs under both.*
 | **Title and subtitle** | The tool's name, and the project's path from its top-level project, such as "Shop › Orders". Hidden below 760 pt of tab width. |
 | **The tool's toolbar items** | Defined by the tool, as each tool's page lists them. |
 | **Chat panel button** | The last toolbar item, `sidebar.right`: shows or hides the chat panel. Absent in Chat's tab, and everywhere when Settings ▸ Chat turns the panel off. See [Chat](chat.md). |
-| **Tab bar** | Under the toolbar, across the tab area: one tab per tab of the window, then + ([Tabs](#tabs)). |
+| **Tab bar** | Under the toolbar, across the tab area, with two tabs or more: one tab per tab of the window, then + ([Tabs](#tabs)). |
 | **Tab** | The selected tab's content, sidebar included, laid out as a Mac, an iPad or an iPhone would, depending on the window's width. |
 | **Chat panel** | On the right, outside the tabs, beside them on a Mac, over them on an iPad, the whole window on an iPhone. See [Chat](chat.md). |
 | **Status bar** | Under the tabs and the chat panel, across the window, while a feedback project is set ([Status bar](#status-bar)). |
@@ -148,8 +148,10 @@ already shows changes nothing.
 The app draws its own tabs (the user's choice, 17 November 2026): macOS's window tabs put a sidebar beside the
 tab bar and can't share one chat panel across tabs. macOS's tabbing is off, and so are its tab items.
 
-**Tab bar.** Under the toolbar, across the tab area (not over the chat panel), 36 pt high on `canvas`, under
-nothing and over a hairline. It shows with one tab too.
+**Tab bar.** Under the toolbar, across the tab area (not over the chat panel), 36 pt high on `canvas`, over a
+hairline. It shows only while the window has two tabs or more (the user's choice): with one tab, the tab's
+content goes up under the toolbar, its sidebar running the window's height, and New Tab (⌘T) makes the second
+tab.
 
 - **Tabs** share the bar's width, 120 to 240 pt each, 4 pt apart, 8 pt in from the edges; past that the bar
   scrolls sideways. Each shows its symbol and title, in `callout`: `textPrimary` and a `surface` capsule when

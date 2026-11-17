@@ -1008,7 +1008,8 @@ Behavior is specified in [Navigation › Routes and Window reuse](ui/navigation.
   `init(_ content:focus:)` makes a window of one tab; `.initial` is Projects. It is the window's scene value.
 - **`Workspace`** (`@MainActor @Observable`), one per window, made by `WorkspaceRoot` from its value (an empty
   list gives Projects; an unknown selection, the first tab):
-  - `tabs`, `selection`, `selectedTab` (the selected tab, else the first), `subjects: [UUID: ChatReference]`
+  - `tabs`, `selection`, `selectedTab` (the selected tab, else the first), `showsTabBar` (two tabs or more),
+    `subjects: [UUID: ChatReference]`
     (each tab's reported item), `focusRequests: [UUID: FocusRequest]` (a route's focus for an open tab),
     `lastProjectID` (the project of the last selected tab that showed one), and `value`.
   - `select(_:)` (and `lastProjectID`), `selectNext()` and `selectPrevious()` (wrapping), `add(_:)` (after the
@@ -1048,8 +1049,8 @@ For the selected tab: `offersChatPanel = chatPanelEnabled && tool != .chat`; `sh
 && chatPanelShown`; `layout = adaptiveWindow.layout(macWidth: tool?.macLayoutWidth ?? 760, sidePanelWidth:
 showsChatPanel ? 341 : 0)`.
 
-1. An `HStack(spacing: 0)`: a `VStack(spacing: 0)` of `TabBar`, a `Divider` and the selected tab's
-   `TabContentView` (`.id(tab.id)`, filling); then, in the `.mac` layout with the panel shown, a `Divider` and the
+1. An `HStack(spacing: 0)`: a `VStack(spacing: 0)` of `TabBar` and a `Divider` while `showsTabBar`, then the
+   selected tab's `TabContentView` (`.id(tab.id)`, filling); then, in the `.mac` layout with the panel shown, a `Divider` and the
    panel, 341 wide, with `.motionTransition(.panel, edge: .trailing)`.
 2. In `.pad` and `.phone`, the panel is an overlay at the trailing edge instead: after a `Divider` (not in
    `.phone`), 341 wide (the window's width in `.phone`), with a shadow of radius 14 in `.pad`.
@@ -1066,8 +1067,9 @@ toggles `chatPanelShown`, on `.canvas`. Its project is the tab's (Projects: the 
 `workspace.lastProjectID`'s. Without any, a `ContentUnavailableView` "No Project", "Select a project to chat
 about it." (`chatPanel.noProject`).
 
-**`TabContentView`** draws the selected tab, with `.scrollEdgeEffectHidden(true, for: .top)`: the tab bar sits
-between the toolbar and the content, and the toolbar's edge effect would blur the content's first rows.
+**`TabContentView`** draws the selected tab, with `.scrollEdgeEffectHidden(underTabBar, for: .top)`: under the
+tab bar, the toolbar's edge effect would blur the content's first rows; a single tab's content goes under the
+toolbar and keeps it.
 
 | Content | View |
 | --- | --- |
@@ -2087,7 +2089,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ChatDataTests | Chat files, Transcripts, Stream mapping, Chats on the Claude CLI, Launching the CLI | A complete chat file written back byte for byte, the `origin` key, the kinds' rules; replay (add, update, lines skipped), lines written by the app, the LF after a line cut short; captures of Claude Code 2.1.309 mapped to items and their ids, streamed text, the CLI's permission request, compaction lines, results after Stop; the CLI located in order, its version and models; a first message (arguments without prompt, hooks or the CLI's tools, the MCP configuration and its chat token, the attached line), a turn replayed to idle, the app's card and the CLI's request answered, Stop, an exit in error, a missing session started again, model and effort. A `FakeLauncher` replays the captures; nothing starts Claude. |
 | TicketDataTests | Ticket and bundle files, Ticket library | A complete ticket and bundle written back byte for byte; defaults, the creation entry and unknown keys; numbers from the counters, skipping existing files; provisional titles and the title, description and status messages; Claude's descriptions taken as written; drafts; link rules 1–7 with their messages and inverse links; history entries in order and changes that write nothing; Claude's status limits; the Complete and Reopened rules, Claude's bundle limits and the Complete rule at load; deletion order and the Trash; comments and their files; attachment copies, names, limits and paths; outside changes, invalid files and removals. Fixtures: example ticket and bundle files. Uses a test Trash folder. |
 | TextFormatsTests | Language detection, Token kinds, Word lists, Highlighter fixtures, Tokenizer edge cases, Markdown block model, Links, Heading anchors, Ticket and bundle ids, Linked ids, Soft line breaks | Every tokenizer against its fixtures and the word lists of [Text](text.md); the block model of every Markdown feature; links, images and path resolution read from [Text](text.md); ids. Fixtures: highlighting examples. |
-| ToolsScenesTests | MCP documentation, Tabs, Window directory, Feedback | docs/mcp.md's tools, descriptions and input schemas equal the registry's; a window's tabs (the initial tab, adding, closing, moving, Next and Previous, kept tool states, reported items, one chat conversation per project, a project's tab, the restored value); routes over windows ordered far off screen (no macOS tabs, selecting the tab that shows a route with its focus, a new tab in the frontmost window or a window of its own, Merge All Windows); the feedback context line, a window's PNG, overlay placement, the feedback request's temporary folder. Windows are never shown, or ordered far off screen. |
+| ToolsScenesTests | MCP documentation, Tabs, Window directory, Feedback | docs/mcp.md's tools, descriptions and input schemas equal the registry's; a window's tabs (the initial tab, the tab bar's visibility, adding, closing, moving, Next and Previous, kept tool states, reported items, one chat conversation per project, a project's tab, the restored value); routes over windows ordered far off screen (no macOS tabs, selecting the tab that shows a route with its focus, a new tab in the frontmost window or a window of its own, Merge All Windows); the feedback context line, a window's PNG, overlay placement, the feedback request's temporary folder. Windows are never shown, or ordered far off screen. |
 | ToolsFoundationTests | Routes, Strings, Inherited settings | Each `FocusRequest` is new; `ChatReference.route` and ids per environment; shared titles from the catalog; unique tool shortcuts; inherited environments. |
 | ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker, Projects from the app's data, New Project, Projects window on the app's data, Project Settings, Project tools | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`.; the mapping of kinds, tints and environments; New Project's following fields, rules, type and parent from the folder, sub project folders and default location; the loading, empty and unavailable states; the selection after a removal and at load.; Project Settings' fields, rules and messages, environments added, renamed and removed, pending fields applied together, and inherited environments changed in the sub project's changes.; the five project tools through JSON-RPC on a real session, their refusals and `~/` expansion. |
 | DashboardsKitTests | What the Dashboard shows, Edit mode, Steps of the keyboard and VoiceOver, Settings, The Dashboard on the project files, Widgets of unavailable tools | Sample, default and saved lists; hidden service widgets; toolbar environment and time window; a change in every window of a project; list order; titles; Done, remove, add, first save, drags; every step and its limits; title, checkbox and Number rules. The live store on a real session in a temporary folder: the default list whatever the identifier, stored widgets read and written back in their layout with Recent Chats and unknown keys kept, the first change storing the default ids, the time window, a failed change and its message, a change made elsewhere, the mapping. Widgets shown by available tool; hidden widgets keep their places. Uses `MockDashboardLayoutStore`. |

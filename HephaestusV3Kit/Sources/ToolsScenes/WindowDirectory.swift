@@ -34,7 +34,8 @@ final class WindowDirectory {
     /// The open windows with their tabs, front to back, minimised windows last.
     func windows() -> [(window: NSWindow, workspace: Workspace)] {
         entries = entries.filter { $0.value.window != nil && $0.value.workspace != nil }
-        let order = NSApp.orderedWindows
+        // `NSApp` is nil until an application exists, as in a test that makes no window.
+        let order = NSApp?.orderedWindows ?? []
         return entries.values
             .compactMap { entry -> (NSWindow, Workspace)? in
                 guard let window = entry.window, let workspace = entry.workspace, window.isVisible || window.isMiniaturized else { return nil }
