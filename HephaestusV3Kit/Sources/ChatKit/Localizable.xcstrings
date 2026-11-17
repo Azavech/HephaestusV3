@@ -98,14 +98,23 @@
     "Compacting the conversation… %@" : {
       "comment" : "The time since it began, such as 0:12"
     },
+    "Content" : {
+
+    },
     "Don't Allow" : {
 
     },
     "Done" : {
       "comment" : "Closes the inspector sheet"
     },
+    "Editing…" : {
+
+    },
     "Effort" : {
       "comment" : "How hard Claude thinks"
+    },
+    "Empty: Claude gets nothing from this skill." : {
+
     },
     "Extra High" : {
       "comment" : "An effort level"
@@ -155,6 +164,9 @@
     "Model" : {
 
     },
+    "Name" : {
+
+    },
     "Never" : {
       "comment" : "A permission: Claude may never do it"
     },
@@ -168,6 +180,9 @@
 
     },
     "No Chats" : {
+
+    },
+    "No Skill Selected" : {
 
     },
     "No model is connected to this example yet, so I can't answer. Above is what I read through the tools; a connected model would answer from it." : {
@@ -184,6 +199,9 @@
     },
     "Not Allowed" : {
       "comment" : "The user didn't allow the change"
+    },
+    "Not saved: %@" : {
+
     },
     "Off, tool windows have no Chat button and no panel. The Chat window stays in the Window menu." : {
 
@@ -247,6 +265,12 @@
     "Sample reply" : {
 
     },
+    "Saved" : {
+
+    },
+    "Select an internal skill to edit its content." : {
+
+    },
     "Show Inspector" : {
 
     },
@@ -278,6 +302,15 @@
 
     },
     "Summarize run %@" : {
+
+    },
+    "System Prompts" : {
+
+    },
+    "The app defines this skill and its name." : {
+
+    },
+    "The app has no data folder." : {
 
     },
     "Through %@, as if you did it" : {

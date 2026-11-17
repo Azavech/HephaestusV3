@@ -57,6 +57,7 @@ public struct ToolsScenes: Scene {
         }
         .defaultSize(width: 1320, height: 840)
         .commands {
+            SystemPromptsCommands()
             NewItemCommands()
             ToolCommands()
             TabCommands()
@@ -223,6 +224,26 @@ private struct NewItemCommands: Commands {
         }
         // SwiftUI's Close: Close Tab and Close Window replace it.
         CommandGroup(replacing: .saveItem) {}
+    }
+}
+
+/// Hephaestus V3 ▸ System Prompts… (⌥⌘,), after Settings…: the internal skills, in their tab.
+private struct SystemPromptsCommands: Commands {
+    var body: some Commands {
+        CommandGroup(after: .appSettings) {
+            SystemPromptsMenuItem()
+        }
+    }
+}
+
+private struct SystemPromptsMenuItem: View {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Button(String(localized: "System Prompts…", bundle: #bundle, comment: "App menu item, ⌥⌘,: the internal skills")) {
+            WindowDirectory.shared.showOrOpen(.systemPrompts, openWindow: openWindow)
+        }
+        .keyboardShortcut(",", modifiers: [.command, .option])
     }
 }
 

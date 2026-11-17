@@ -243,6 +243,19 @@ feedback project set in Settings, without which the ladybug doesn't show.
 | How is the window captured? | V2's in-process capture, without its web-view step; a PNG over 5,000,000 bytes is made again at 1 pixel per point. | [UI › Tickets › Screenshot](ui/tickets.md#screenshot) |
 | Where is the setting stored? | `settings.yml`'s `feedbackProjectID`, the name of V2's earlier setting. | [Data › Settings file](data.md#settings-file) |
 
+## System Prompts
+
+The owner asked on 17 November 2026 for a menu bar item opening a window where they edit Claude skills: internal
+skills only, each with a name in Claude's skill format and a content, starting with an empty, unused
+`set-ticket-title`. They chose an App menu item, a tab, and skills defined in the code only.
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| Where is the content kept? | `<data folder>/skills/<name>/SKILL.md`, Claude's skill layout, with only `name` in its front matter; the code keeps the list and each default. | [Data › Internal skills](data.md#internal-skills) |
+| When is a change saved? | One second after the last keystroke, and at once when another skill is selected or the tab goes away; a line says Saved, Editing… or why it wasn't. | [UI › System Prompts › Saving](ui/system-prompts.md#saving) |
+| Which shortcut? | ⌥⌘,, beside Settings' ⌘, and Project Settings' ⇧⌘,. | [UI › System Prompts](ui/system-prompts.md) |
+| Which code owns it? | ChatData (the skills and their files) and ChatKit (the view), since the skills are what Claude is told. | [Architecture › ChatKit](architecture.md#chatkit) |
+
 ## Release
 
 The owner chose a GitHub release built by GitHub Actions, without an install page, an updater, Developer ID signing

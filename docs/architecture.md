@@ -234,7 +234,7 @@ Shared values in the manifest:
 | `ContractsKit` | Contracts and the request builder; the contracts reader. | same | `toolTarget` |
 | `BuildsKit` | Builds; the Recent Builds widget; the builds reader. | same | `toolTarget` |
 | `MachinesKit` | The Virtual Machines window, Settings ▸ Virtual Machines, the `vm_` tools. | same, plus MachineData, MCPKit, ProjectData | `toolTarget(data:)` |
-| `ChatKit` | The Chat window, the chat panel, Settings ▸ Chat, the shared chat store. | same | `toolTarget` |
+| `ChatKit` | The Chat window, the chat panel, Settings ▸ Chat, System Prompts, the shared chat store. | same, plus ChatData, MCPKit, ProjectData, FileStorage | `toolTarget(data:)` |
 | `ToolsScenes` | Scenes, menu commands, route handling, the app's data (`AppData`), the MCP server's tools (`AppTools`) and Settings ▸ MCP. The only target that knows every tool. | ToolsFoundation, ProjectData, FileStorage, MCPKit, ProjectsKit, DashboardsKit, TicketsKit, ServiceMapKit, ContractsKit, BuildsKit, MachinesKit, ChatKit, the data targets, AZDesign | `.target` |
 
 Every UI target has `Localizable.xcstrings` as its only resource; the data targets have none, since their
@@ -618,6 +618,7 @@ ExternalTools, ProjectData and MCPKit. Source files in `Sources/ChatData/`:
 | `ClaudeProcess.swift` | `ChatLaunch` (`arguments`, `request`, `logLine`, `mcpConfiguration`), `ClaudeInput` (the lines written: `message`, `control`, `allow`, `deny`, `unsupported`, `text(_:carrying:)`, `attachedLine`), `ClaudeConnection` and `ClaudeLaunching` (protocols), `SystemClaudeLauncher`, `SystemClaudeConnection` |
 | `ChatSession.swift` | `LoadedChat`, `ChatState`, `ChatError`, `StreamingText`, `ChatSession` (state, start, the CLI's check, settings, reading, files, `refreshState`) |
 | `ChatRun.swift` | `ChatRun` (one live process), and `ChatSession`'s `send`, launch, output handling, turns, exit, `stop`, `stopAll`, `answer`, `requestApproval`, `setSettings`, `rename`, `probeModels` |
+| `InternalSkill.swift` | `InternalSkill` (`name`, `defaultContent`, `setTicketTitle`, `all`, `isValidName(_:)`), and on `DataFolder`: `skillsFolder`, `skillFile(of:)`, `readContent(of:)`, `writeContent(_:of:)` ([Data › Internal skills](data.md#internal-skills)) |
 
 - **`ChatSession`** (`@MainActor @Observable`, one for the app, made by `AppData`) publishes `chats` (every
   loaded project's, by id), `status`, `models`, `transcripts` (those read: of chats open in a window and of
@@ -999,7 +1000,7 @@ Behavior is specified in [Navigation › Routes and Window reuse](ui/navigation.
 `Workspace.swift` holds a window's tabs ([Navigation › Tabs](ui/navigation.md#tabs)).
 
 - **`WorkspaceContent`** (`Codable, Hashable, Sendable`): `.projects`, `.tool(ToolKind, project: Project.ID)`,
-  `.projectSettings(Project.ID)`, `.machines`. `projectID` is the tool's or the settings' project; `tool` the
+  `.projectSettings(Project.ID)`, `.machines`, `.systemPrompts`. `projectID` is the tool's or the settings' project; `tool` the
   tool; `isSingle` is true for all but a tool (Projects, a project's settings and Virtual Machines are each one
   tab in the app, which routes select; New Tab and New Window make none).
 - **`WorkspaceTab`** (`Codable, Hashable, Identifiable, Sendable`): `id: UUID`, `content`, `focus: String?` (the
@@ -1077,6 +1078,7 @@ toolbar and keeps it.
 | `.tool(tool, project)` | `ToolTab`; "No Project", "This tab's project isn't loaded. Pick another one in Projects." (`window.noProject`) when the directory doesn't have it |
 | `.projectSettings(project)` | `ProjectSettingsWindow(session:projectID:)`, `.toolbar { ChatPanelToolbarItem() }` |
 | `.machines` | `MachinesRootView(state: workspace.state(for:) { MachinesTabState(focus: machineFocus, store:) })`, `.environment(\.focusRequest, machineFocusRequest)`, `.toolbar { ChatPanelToolbarItem() }` |
+| `.systemPrompts` | `SystemPromptsView(store: appData.skillStore)`, `.toolbar { ChatPanelToolbarItem() }` |
 
 **`ToolTab`** builds the tool's root view from its kept state (`TicketsRootView(state: workspace.state(for: tab)
 { TicketsTabState(project:focus: tab.focus, …) })`, and so for each tool; the Dashboard's widgets through
@@ -1794,7 +1796,8 @@ placement, or a menu in `.phone`. Refresh has an empty action. It reports `chatS
 
 ### ChatKit
 
-Spec: [Chat](ui/chat.md): the Chat window, the chat panel, Settings ▸ Chat. Depends on ChatData and MCPKit.
+Spec: [Chat](ui/chat.md): the Chat window, the chat panel, Settings ▸ Chat; [System Prompts](ui/system-prompts.md).
+Depends on ChatData, MCPKit, ProjectData and FileStorage.
 
 | File | Contents |
 | --- | --- |
@@ -1810,6 +1813,16 @@ Spec: [Chat](ui/chat.md): the Chat window, the chat panel, Settings ▸ Chat. De
 | `ChatTranscript.swift` | `ChatTranscript`, `ChatActivity`, `ChatActivityText`, `ChatAuthorRow`, `ChatTurnView`, `NoticeRow`, `ToolCallRow`, `ApprovalCard`, `ChatFailure`, `ContextChip`, `ProjectChip`, `SuggestionList` |
 | `ChatSettingsView.swift` | `ChatSettingsView`, `ReplySettingsRows`, `ChatPermissionsSection`, `ModelRow` |
 | `ChatSamples.swift` | `ChatConversation.samples` |
+| `SystemPromptsView.swift` | `InternalSkillStore` (protocol: `content(of:)`, `save(_:of:)`), `LiveInternalSkillStore` (public, `init(dataFolder:)`; without a folder it shows the defaults and every save fails), `SampleInternalSkillStore`, `SystemPromptsModel`, `SystemPromptsView` (public, `init(store:)`), `SkillEditor` |
+
+**System Prompts.** `SystemPromptsModel` (`@MainActor @Observable`) takes the skills (`InternalSkill.all`), a store
+and `saveDelay` (1 s). It reads every content at once; `selection` starts on the first skill. `setContent(_:of:)`
+shows the change and schedules a save after `saveDelay`, cancelling the one before; `save(_:)` writes a changed
+content and records a failure's `description` in `failures`, cleared by the next save that works; `saveAll()` saves
+every change. `isSaved(_:)` compares the shown content with the stored one. The view calls `saveAll()` when the
+selection changes and on disappear. ToolsScenes shows it in the `.systemPrompts` tab with `AppData.skillStore`
+(`LiveInternalSkillStore(dataFolder: DataFolder.resolve())`), and **System Prompts…** (⌥⌘,) is
+`CommandGroup(after: .appSettings)` (`SystemPromptsCommands`), which calls `showOrOpen(.systemPrompts)`.
 
 **Public API**
 
@@ -2086,7 +2099,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ClusterDataTests | Clusters, Service graph, Traces | kubectl's prefix, status and pods, restart, scale (and its failure message), logs, Argo CD in its namespace and sync, missing fields; the forwarding line; boxes, databases, buckets, arrows and source problems; go.mod and values files; OTLP spans; calls, figures, requests and their logs, the 3 s rule. A fake kubectl; nothing reaches a cluster. |
 | ContractDataTests | Contracts | Operations in the order of `paths` and methods, parameters merged, `$ref` across files and outside the folder, schemes, the prefilled body; unreadable files; URLs, query, header order and replacements, the request; JSON in order, form bodies; stored values read, mode 0600, earlier keys left out. Temporary folders only; nothing is sent. |
 | BuildDataTests | gh, Builds from gh | Repositories from GitHub pages; gh's environment and the failure messages; runs, a run's jobs and steps, logs by step (CR LF included), re-run and cancel after `--`; releases without drafts, the latest marked; a download's pattern, free name and temporary folder. A fake runner answers gh. |
-| ChatDataTests | Chat files, Transcripts, Stream mapping, Chats on the Claude CLI, Launching the CLI | A complete chat file written back byte for byte, the `origin` key, the kinds' rules; replay (add, update, lines skipped), lines written by the app, the LF after a line cut short; captures of Claude Code 2.1.309 mapped to items and their ids, streamed text, the CLI's permission request, compaction lines, results after Stop; the CLI located in order, its version and models; a first message (arguments without prompt, hooks or the CLI's tools, the MCP configuration and its chat token, the attached line), a turn replayed to idle, the app's card and the CLI's request answered, Stop, an exit in error, a missing session started again, model and effort. A `FakeLauncher` replays the captures; nothing starts Claude. |
+| ChatDataTests | Chat files, Transcripts, Stream mapping, Chats on the Claude CLI, Launching the CLI, Internal skills | A complete chat file written back byte for byte, the `origin` key, the kinds' rules; replay (add, update, lines skipped), lines written by the app, the LF after a line cut short; captures of Claude Code 2.1.309 mapped to items and their ids, streamed text, the CLI's permission request, compaction lines, results after Stop; the CLI located in order, its version and models; a first message (arguments without prompt, hooks or the CLI's tools, the MCP configuration and its chat token, the attached line), a turn replayed to idle, the app's card and the CLI's request answered, Stop, an exit in error, a missing session started again, model and effort. A `FakeLauncher` replays the captures; nothing starts Claude. The internal skills: the list and set-ticket-title, the name format, `SKILL.md` written and read back in a temporary folder, a file without front matter. |
 | TicketDataTests | Ticket and bundle files, Ticket library | A complete ticket and bundle written back byte for byte; defaults, the creation entry and unknown keys; numbers from the counters, skipping existing files; provisional titles and the title, description and status messages; Claude's descriptions taken as written; drafts; link rules 1–7 with their messages and inverse links; history entries in order and changes that write nothing; Claude's status limits; the Complete and Reopened rules, Claude's bundle limits and the Complete rule at load; deletion order and the Trash; comments and their files; attachment copies, names, limits and paths; outside changes, invalid files and removals. Fixtures: example ticket and bundle files. Uses a test Trash folder. |
 | TextFormatsTests | Language detection, Token kinds, Word lists, Highlighter fixtures, Tokenizer edge cases, Markdown block model, Links, Heading anchors, Ticket and bundle ids, Linked ids, Soft line breaks | Every tokenizer against its fixtures and the word lists of [Text](text.md); the block model of every Markdown feature; links, images and path resolution read from [Text](text.md); ids. Fixtures: highlighting examples. |
 | ToolsScenesTests | MCP documentation, Tabs, Window directory, Feedback | docs/mcp.md's tools, descriptions and input schemas equal the registry's; a window's tabs (the initial tab, the tab bar's visibility, adding, closing, moving, Next and Previous, kept tool states, reported items, one chat conversation per project, a project's tab, the restored value); routes over windows ordered far off screen (no macOS tabs, selecting the tab that shows a route with its focus, a new tab in the frontmost window or a window of its own, Merge All Windows); the feedback context line, a window's PNG, overlay placement, the feedback request's temporary folder. Windows are never shown, or ordered far off screen. |
@@ -2100,7 +2113,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | MachinesKitTests | Machines window: selection and routes, Machines window: layouts, Machines: states and sizes, Machines: actions | Opening and route selection, unknown machines, images; Mac width, layout by width, side columns per layout; actions per state, starting and shutting down; size and download formats; sample ids; start, pause, resume and stop through the store, the limit of 2 and its alert, deletions (an image's machines too), a failure shown once, the guest account, Finish Setup's condition. Uses a sample store (`MockMachineStore`). |
 | MachineDataTests | Virtual machine files, Guest disks, macOS versions, Guest addresses, Guest agent protocol, Machine host | image.yml and vm.yml written byte for byte, earlier keys, lowercase ids, skipped folders and machines not started by the user; a machine's clone; disk growth (the recovery container moved, both tables, the MBR) and other layouts; ipsw.me's list and order; DHCP leases; frames and a connection over a socket pair; the host with a fake backend: an image's download, install and failures, the interrupted image, the setup and Finish Setup's SIP rule, the missing agent, New Machine's checks and the limit of 2, stop through the agent or at once, edits and the grown disk's container, a machine stopping by itself, deletions, the guest account, the defaults. |
 | GuestAgentKitTests (GuestAgent package) | Guest agent | The hello and status, SIP's parsing, exec (outputs, timeout, truncation, params), the file methods, unknown methods (`setEnv` among them). Over a socket pair, `/bin/sh -c`, never as root. |
-| ChatKitTests | Chat store, Sample engine, Chat panel, Chat window, Chat wording | Starting and continuing conversations, empty messages, ordering, decisions; mentions and reads; attachments, sending, New Chat, the Chat window route, suggestions; window selection, grouping, new chat, sending; approval sentences, suggestion wording and identifiers, references, unique sample ids; the live store's turns from a transcript (users' items, calls worded by their tools, failed calls, cards and their channels, notices, streamed text); the gate's rules. Uses `MockChatEngine`, and a chat session without projects. |
+| ChatKitTests | Chat store, Sample engine, Chat panel, Chat window, Chat wording, System Prompts | Starting and continuing conversations, empty messages, ordering, decisions; mentions and reads; attachments, sending, New Chat, the Chat window route, suggestions; window selection, grouping, new chat, sending; approval sentences, suggestion wording and identifiers, references, unique sample ids; the live store's turns from a transcript (users' items, calls worded by their tools, failed calls, cards and their channels, notices, streamed text); the gate's rules. Uses `MockChatEngine`, and a chat session without projects. System Prompts: opening, the delayed save, Save All, a failed save and its recovery. |
 
 ToolsScenesTests check that docs/mcp.md lists exactly the registered tools, in order, with their
 descriptions and input schemas (MCP documentation), a window's tabs (Tabs), routes over the windows' tabs

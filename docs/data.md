@@ -133,6 +133,7 @@ The files that belong to this Mac rather than to a project.
 | `registry.yml` | The top-level projects ([Registry file](#registry-file)). |
 | `current-environments.yml` | The environment chosen for each service ([Current environments file](#current-environments-file)); absent until a first choice. |
 | `settings.yml`, `secrets.json` | The app's settings and the MCP server's token ([Settings file](#settings-file), [Secrets file](#secrets-file)). |
+| `skills/<name>/SKILL.md` | An internal skill's content, once the user wrote it ([Internal skills](#internal-skills)). |
 | `Runtime/mcp/<CHAT-ID>.json` | A running chat's MCP configuration, mode 0600, deleted when its process ends ([Chat processes](#chat-processes)). |
 | `Runtime/claude-cwd/` | The empty folder the CLI's model probe runs in. |
 | `Runtime/downloads/<UUID>/` | A release file gh downloads, before it moves into the Downloads folder; removed afterwards ([Builds › Downloads](#downloads)). |
@@ -1400,6 +1401,30 @@ access.
 - `DataFolder.externalToken(make:)` reads the token; when the file is missing, isn't a JSON object, or holds no
   valid token, it makes one and writes it, the file's other keys kept. `replaceExternalToken(with:)` writes a
   new one the same way. The mode is set to 0600 after each write.
+
+## Internal skills
+
+The app's own Claude skills, whose list and names the code defines (`InternalSkill.all` in ChatData) and whose
+content the user writes in [System Prompts](ui/system-prompts.md). A V3 addition.
+
+- **Names**: Claude's skill name format, 1 to 64 characters of lowercase ASCII letters, digits and hyphens, not
+  starting or ending with a hyphen, without two in a row (`InternalSkill.isValidName`). Today: `set-ticket-title`,
+  empty by default, used by nothing yet.
+- **File**: `<data folder>/skills/<name>/SKILL.md`, Claude's skill layout. Written atomically by
+  `DataFolder.writeContent(_:of:)`, its folder made when missing: a front matter of one key, then the content
+  exactly as typed (no line break added):
+
+```text
+---
+name: set-ticket-title
+---
+<content>
+```
+
+- **Reading** (`DataFolder.readContent(of:)`): the text after the front matter's closing `---` line; a file
+  without front matter is all content; without a file, or one that can't be read as UTF-8, the skill's default
+  content. The front matter has no `description`: nothing hands these skills to the CLI yet (default chosen at
+  design time).
 
 ## Unknown keys
 

@@ -186,6 +186,7 @@ private struct WorkspaceWindow: View {
         case .tool(let tool, _): tool.title
         case .projectSettings: String(localized: "Project Settings", bundle: #bundle)
         case .machines: String(localized: "Virtual Machines", bundle: #bundle)
+        case .systemPrompts: String(localized: "System Prompts", bundle: #bundle)
         }
     }
 
@@ -201,6 +202,7 @@ private struct WorkspaceWindow: View {
         case .tool(let tool, _): tool.symbol
         case .projectSettings: "gearshape"
         case .machines: "desktopcomputer"
+        case .systemPrompts: "text.book.closed"
         }
     }
 
@@ -260,6 +262,9 @@ private struct TabContentView: View {
         case .machines:
             MachinesRootView(state: workspace.state(for: tab) { MachinesTabState(focus: machineFocus, store: appData.machineStore) })
                 .environment(\.focusRequest, machineFocusRequest)
+                .toolbar { ChatPanelToolbarItem() }
+        case .systemPrompts:
+            SystemPromptsView(store: appData.skillStore)
                 .toolbar { ChatPanelToolbarItem() }
         }
     }
@@ -454,6 +459,7 @@ struct TabBar: View {
         case .tool(let tool, let project): "\(tool.rawValue).\(project)"
         case .projectSettings(let project): "projectSettings.\(project)"
         case .machines: "machines"
+        case .systemPrompts: "systemPrompts"
         }
     }
 }

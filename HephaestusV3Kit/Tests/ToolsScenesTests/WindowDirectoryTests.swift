@@ -117,11 +117,12 @@ struct WorkspaceTests {
     @Test("The window's value round-trips through its restoration, tabs, focus and selection included")
     func value() throws {
         let tabs = [WorkspaceTab(content: .projects), WorkspaceTab(content: orders, focus: "ORD-142"),
-                    WorkspaceTab(content: .projectSettings("ORD")), WorkspaceTab(content: .machines)]
+                    WorkspaceTab(content: .projectSettings("ORD")), WorkspaceTab(content: .machines), WorkspaceTab(content: .systemPrompts)]
         let value = WorkspaceValue(tabs: tabs, selection: tabs[1].id)
         let decoded = try JSONDecoder().decode(WorkspaceValue.self, from: JSONEncoder().encode(value))
         #expect(decoded == value)
         #expect(Workspace(decoded).value == value)
+        #expect(WorkspaceContent.systemPrompts.isSingle && WorkspaceContent.systemPrompts.projectID == nil)
         #expect(WorkspaceContent.projects.isSingle && WorkspaceContent.machines.isSingle && WorkspaceContent.projectSettings("ORD").isSingle)
         #expect(!orders.isSingle)
     }

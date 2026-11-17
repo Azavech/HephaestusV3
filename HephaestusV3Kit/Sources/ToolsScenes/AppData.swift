@@ -49,6 +49,8 @@ final class AppData {
     let chats: ChatSession
     /// The chats as the Chat windows and panels show them.
     let chatStore: LiveChatStore
+    /// The internal skills' content, in the data folder (System Prompts).
+    let skillStore: LiveInternalSkillStore
     /// The MCP server's tools, once it starts: the chats word their calls with them.
     @ObservationIgnored private let operations: Operations
     @ObservationIgnored private var started = false
@@ -126,6 +128,7 @@ final class AppData {
         let host = MachineHost(dataFolder: DataFolder.resolve())
         machineHost = host
         machineStore = LiveMachineStore(host: host)
+        skillStore = LiveInternalSkillStore(dataFolder: DataFolder.resolve())
         let tokens = MCPTokens()
         self.tokens = tokens
         chats = ChatSession(projects: session, tokens: tokens, device: TicketSession.computerName())

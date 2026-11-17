@@ -13,13 +13,15 @@ nonisolated enum WorkspaceContent: Codable, Hashable, Sendable {
     case projectSettings(Project.ID)
     /// The Mac's virtual machines; one in the whole app.
     case machines
+    /// The internal skills' content; one in the whole app.
+    case systemPrompts
 
     /// The project the tab shows, if it shows one by itself.
     var projectID: Project.ID? {
         switch self {
         case .tool(_, let project): project
         case .projectSettings(let project): project
-        case .projects, .machines: nil
+        case .projects, .machines, .systemPrompts: nil
         }
     }
 
@@ -28,8 +30,8 @@ nonisolated enum WorkspaceContent: Codable, Hashable, Sendable {
         if case .tool(let tool, _) = self { tool } else { nil }
     }
 
-    /// Projects, a project's settings and Virtual Machines are each in one tab of the app at most: a route
-    /// selects that tab, and New Tab and New Window make none.
+    /// Projects, a project's settings, Virtual Machines and System Prompts are each in one tab of the app at
+    /// most: a route selects that tab, and New Tab and New Window make none.
     var isSingle: Bool {
         tool == nil
     }

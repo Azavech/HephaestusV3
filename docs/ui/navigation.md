@@ -6,7 +6,7 @@ reused, and the menus and shortcuts that reach them.
 ## Windows
 
 The app has one kind of window, which holds **tabs** that the app draws itself (the user's choice): each tab
-shows Projects, one tool for one project, a project's settings, or Virtual Machines. The windows' pages call a
+shows Projects, one tool for one project, a project's settings, Virtual Machines, or System Prompts. The windows' pages call a
 tab by its old window's name, "the Tickets window", meaning the tab.
 
 | Tab | How many | Opens | Page |
@@ -20,6 +20,7 @@ tab by its old window's name, "the Tickets window", meaning the tab.
 | **Chat** | Same | ⌘6, a tile, the menu bar panel, the chat panel | [Chat](chat.md) |
 | **Virtual Machines** | One in the app | ⌘7 (Window menu) | [Virtual Machines](virtual-machines.md) |
 | **Project Settings** | One per project | ⇧⌘, (File menu), Projects' More menu | [Project Settings](project-settings.md) |
+| **System Prompts** | One in the app | ⌥⌘, (App menu) | [System Prompts](system-prompts.md) |
 
 | Other window | Kind | Opens | Size | Page |
 | --- | --- | --- | --- | --- |
@@ -133,7 +134,8 @@ every window with its tabs.
   stay. A second route to the same item selects it again, even after the user picked another.
 - **Otherwise** the route opens a new tab, which starts on the focus: a tab of the frontmost window, or a window
   of its own, as [Settings ▸ General](#settings--general) says.
-- **Projects, Virtual Machines and each project's Project Settings** are one tab each in the app. A route to them
+- **Projects, Virtual Machines, System Prompts and each project's Project Settings** are one tab each in the
+  app. A route to them
   selects that tab, and selects its project or machine there.
 - **The Window menu's items** follow the same rules.
 - **File ▸ New Window (⌘N), New Tab (⌘T) and the tab bar's +** are the ways to get a second tab of a tool and
@@ -269,7 +271,8 @@ The app's tab items follow Bring All to Front, under macOS's names and shortcuts
 | --- | --- | --- |
 | Show Chat Panel / Hide Chat Panel | ⌃⌘C | While the window offers the panel: not in Chat's tab, nor with Settings ▸ Chat's switch off |
 
-**App menu:** Settings… (⌘,) opens Settings, whose Chat pane is described in [Chat](chat.md).
+**App menu:** Settings… (⌘,) opens Settings, whose Chat pane is described in [Chat](chat.md). **System
+Prompts…** (⌥⌘,), right after it, selects the [System Prompts](system-prompts.md) tab or opens it.
 
 **Help menu:** **Send Feedback…** (⇧⌘B), after the Help search field, starts feedback about the key window,
 as its ladybug does ([Tickets › Feedback](tickets.md#feedback)). It shows only while the key window has a

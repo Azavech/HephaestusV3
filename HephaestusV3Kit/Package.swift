@@ -81,7 +81,7 @@ let package = Package(
         toolTarget("BuildsKit", data: ["BuildData", "MCPKit", "ProjectData", "ExternalTools"]),
         toolTarget("MachinesKit", data: ["MachineData", "MCPKit", "ProjectData"]),
         // Claude as one more client of the tools: the Chat window and the panel beside each tool.
-        toolTarget("ChatKit", data: ["ChatData", "MCPKit"]),
+        toolTarget("ChatKit", data: ["ChatData", "MCPKit", "ProjectData", "FileStorage"]),
 
         // The only target that knows every tool: scenes, menu commands and route handling.
         .target(
