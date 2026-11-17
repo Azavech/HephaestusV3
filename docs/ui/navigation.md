@@ -153,7 +153,8 @@ tab bar and can't share one chat panel across tabs. macOS's tabbing is off, and 
 **Tab bar.** Under the toolbar, across the tab area (not over the chat panel), 36 pt high on `canvas`, over a
 hairline. It shows only while the window has two tabs or more (the user's choice): with one tab, the tab's
 content goes up under the toolbar, its sidebar running the window's height, and New Tab (⌘T) makes the second
-tab.
+tab. Under the tab bar, the content starts right below the bar's hairline: nothing of the toolbar covers it, no
+blur over its first rows and no toolbar-high band at the top of its columns.
 
 - **Tabs** share the bar's width, 120 to 240 pt each, 4 pt apart, 8 pt in from the edges; past that the bar
   scrolls sideways. Each shows its symbol and title, in `callout`: `textPrimary` and a `surface` capsule when

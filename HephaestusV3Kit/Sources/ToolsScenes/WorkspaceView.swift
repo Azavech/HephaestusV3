@@ -234,9 +234,12 @@ private struct TabContentView: View {
 
     var body: some View {
         content
-            // Under the tab bar, the toolbar's edge effect, made for content that scrolls under the toolbar,
-            // would blur the content's first rows. A single tab's content goes under the toolbar, and keeps it.
+            // A single tab's content goes under the toolbar, and keeps what the toolbar puts over it. Under the
+            // tab bar, it doesn't: the toolbar's edge effect would blur the content's first rows, and a split
+            // view gives each of its columns a toolbar-high titlebar background at its own top, as if it started
+            // at the top of the window, which would hide the columns' first 52 points.
             .scrollEdgeEffectHidden(underTabBar, for: .top)
+            .toolbarBackgroundVisibility(underTabBar ? .hidden : .automatic, for: .windowToolbar)
     }
 
     @ViewBuilder private var content: some View {

@@ -1070,9 +1070,18 @@ toggles `chatPanelShown`, on `.canvas`. Its project is the tab's (Projects: the 
 `workspace.lastProjectID`'s. Without any, a `ContentUnavailableView` "No Project", "Select a project to chat
 about it." (`chatPanel.noProject`).
 
-**`TabContentView`** draws the selected tab, with `.scrollEdgeEffectHidden(underTabBar, for: .top)`: under the
-tab bar, the toolbar's edge effect would blur the content's first rows; a single tab's content goes under the
-toolbar and keeps it.
+**`TabContentView`** draws the selected tab, with `.scrollEdgeEffectHidden(underTabBar, for: .top)` and
+`.toolbarBackgroundVisibility(underTabBar ? .hidden : .automatic, for: .windowToolbar)`. A single tab's content
+goes under the toolbar, and keeps both. Under the tab bar:
+
+- the toolbar's edge effect would blur the content's first rows;
+- a `NavigationSplitView` (AppKit's split view) gives each of its columns, inspector included, a titlebar
+  background as high as the toolbar (52 pt, an `NSScrollPocket` in it) at its own top, as if the split view
+  started at the top of the window. Under the tab bar it starts 37 pt lower, so those backgrounds cover the
+  columns' first 52 pt with a band (seen in dark mode). The toolbar background's visibility hides them.
+
+The screenshot tool can't show the band: it hosts SwiftUI in a plain `NSWindow`, whose columns' backgrounds draw
+nothing. A SwiftUI `Window` scene does.
 
 | Content | View |
 | --- | --- |
