@@ -39,9 +39,13 @@ public enum InternalSkillRun {
                        environment: ShellEnvironment.forChildren(environment), currentDirectory: folder.path)
     }
 
-    /// The message: the input, then the `Attached:` line of each linked item, as a chat's message carries them.
+    /// The message: the input, then the `Attached:` line of each linked item, as a chat's message carries them;
+    /// the lines alone without an input.
     public static func message(_ input: String, attaching references: [ChatItemReference]) -> String {
-        ClaudeInput.text(input, carrying: references)
+        guard !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return references.map(ClaudeInput.attachedLine).joined(separator: "\n")
+        }
+        return ClaudeInput.text(input, carrying: references)
     }
 
     /// Claude's answer: the `result` of the CLI's JSON when it succeeded. Throws with the CLI's own words

@@ -84,6 +84,7 @@ Each call Claude makes to one of the app's tools shows as one row on a `surfaceS
 | Call | Action | Detail | Open |
 | --- | --- | --- | --- |
 | `get_ticket` | Read ticket ORD-142 | The ticket's one-line answer from Tickets, as it is now: title · status · priority | The ticket |
+| `get_attachment` | Read an attachment of ORD-142 | — | The ticket |
 | `list_tickets`, `list_bundles` | Listed the tickets of ORD; Listed the bundles of ORD | — | The project's Tickets window |
 | `get_bundle` | Read bundle ORD-B2 | — | Tickets, on the bundle |
 | A ticket or bundle change | Commented on ORD-142; Moved ORD-142 to In Progress; Created a ticket in ORD; Changed ORD-142; Deleted ORD-142… | — | The ticket |

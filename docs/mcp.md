@@ -279,6 +279,7 @@ a project: Claude may read and change every project of this Mac, as the user can
 | `update_project` | ProjectsKit | changeProjects | `ProjectSession.update` |
 | `remove_project` | ProjectsKit | removeProjects | `ProjectSession.remove` |
 | `list_tickets`, `get_ticket`, `list_bundles`, `get_bundle` | TicketsKit | read | the ticket library's snapshot |
+| `get_attachment` | TicketsKit | read | the ticket library's snapshot, then the file |
 | `create_ticket`, `update_ticket`, `delete_ticket`, `set_ticket_status`, `add_comment`, `update_comment`, `delete_comment`, `remove_attachment` | TicketsKit | changeTickets (the deletions and `remove_attachment`: deleteTickets) | `TicketLibrary`, as Claude (`TicketTools`) |
 | `create_bundle`, `update_bundle`, `set_bundle_status`, `delete_bundle` | TicketsKit | changeTickets (`delete_bundle`: deleteTickets) | `TicketLibrary`, as Claude |
 | `list_chats`, `get_chat` | ChatKit | read | the chat session |
@@ -534,6 +535,50 @@ Input schema:
   },
   "required" : [
     "ticketID"
+  ],
+  "type" : "object"
+}
+```
+
+### get_attachment
+
+- **Calls:** the ticket library's snapshot, then the file at `<project folder>/.hephaestus/<path>`, read and scaled
+  off the main actor (`AttachmentContent`).
+- **Result:** for an image (its content type, or else its extension, conforms to `public.image`), one image item
+  ([Tool results](#tool-results)): ImageIO's thumbnail with its orientation applied, at most 1568 pixels on its
+  longest side (a smaller image keeps its size), as PNG, or as JPEG at quality 0.8 when the PNG would be over
+  3,750,000 bytes. For a text (UTF-8 without NUL bytes), `name`, `contentType`, `text` and `truncated`: the text is
+  cut after 256 KB on a character's boundary.
+- **Errors:** a malformed ticket id (`invalid`); an unknown ticket, or an attachment that is neither the ticket's
+  nor one of its comments' (`notFound`, `Attachment <id> not found.`); a missing file (`notFound`, `The file of
+  attachment <name> is missing: <path>.`); an image ImageIO can't read (`invalid`); any other file (`invalid`,
+  `Attachment <name> is <content type>, neither an image nor a text: its path is <path>.`); a project that isn't
+  loaded (`unavailable`).
+
+Description:
+
+```text
+Returns a file attached to a ticket or to one of its comments. An image (PNG, JPEG, HEIC, GIF, TIFF…) comes as an image, scaled down to 1568 pixels on its longest side when larger. A UTF-8 text comes as JSON with name, contentType, text and truncated, cut after 256 KB. Any other file is refused, with its path.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "attachmentID" : {
+      "description" : "The attachment's UUID, as get_ticket returns it.",
+      "type" : "string"
+    },
+    "ticketID" : {
+      "description" : "Ticket id, such as ORD-12.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "ticketID",
+    "attachmentID"
   ],
   "type" : "object"
 }

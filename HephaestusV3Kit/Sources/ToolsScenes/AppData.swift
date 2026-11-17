@@ -185,14 +185,20 @@ final class AppData {
 
     // MARK: Titles (docs/ui/tickets.md › Titles written by Claude)
 
-    /// **Generate Title**, in New Ticket and the editor: a title for a description from `set-ticket-title`,
-    /// linking the ticket when it exists.
+    /// **Generate Title**, in New Ticket and the editor: a title from `set-ticket-title`. In the editor, the run
+    /// links the ticket, which Claude reads whole; its message holds the description only while the editor's
+    /// differs from the saved one. In New Ticket, before the ticket exists, the message is the description.
     var generateTitle: GenerateTitleAction {
-        GenerateTitleAction { [chats] description, ticket throws(GenerateTitleError) in
+        GenerateTitleAction { [chats, tickets] description, ticket throws(GenerateTitleError) in
             let answer: String
             do throws(ChatError) {
-                answer = try await chats.run(.setTicketTitle, input: description,
-                                             attaching: ticket.map { [Self.link(ticket: $0.id, in: $0.projectID)] } ?? [])
+                if let ticket {
+                    let saved = tickets.snapshot.ticket(ticket.id)?.file.description
+                    answer = try await chats.run(.setTicketTitle, input: description == saved ? "" : description,
+                                                 attaching: [Self.link(ticket: ticket.id, in: ticket.projectID)])
+                } else {
+                    answer = try await chats.run(.setTicketTitle, input: description)
+                }
             } catch {
                 throw GenerateTitleError(error.description)
             }
@@ -218,10 +224,11 @@ final class AppData {
         ChatItemReference(tool: ToolKind.tickets.rawValue, projectID: projectID, focus: id, title: id)
     }
 
-    /// Asks `set-ticket-title` for the ticket's title, linking the ticket, and gives it to the ticket while it
-    /// still has its provisional title. A failure leaves the provisional title.
+    /// Asks `set-ticket-title` for the ticket's title, with the ticket's link alone: Claude reads the ticket
+    /// whole. Gives the title to the ticket while it still has its provisional title; a failure leaves the
+    /// provisional title.
     private func titleUntitled(_ ticket: TicketLibrary.UntitledTicket) async {
-        guard let answer = try? await chats.run(.setTicketTitle, input: ticket.description,
+        guard let answer = try? await chats.run(.setTicketTitle, input: "",
                                                 attaching: [Self.link(ticket: ticket.id, in: ticket.projectID)]),
               let title = TicketRules.title(fromAnswer: answer), let library = tickets.library else { return }
         if (try? await library.setGeneratedTitle(title, of: ticket.id, replacing: ticket.provisionalTitle)) != nil {

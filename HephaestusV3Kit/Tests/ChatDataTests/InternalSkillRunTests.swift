@@ -67,6 +67,8 @@ struct InternalSkillRunTests {
         let ticket = ChatItemReference(tool: "tickets", projectID: "HEPH", focus: "HEPH-3", title: "HEPH-3")
         #expect(InternalSkillRun.message("test", attaching: []) == "test")
         #expect(InternalSkillRun.message("test", attaching: [ticket]) == "test\n\nAttached: ticket HEPH-3 of project HEPH")
+        #expect(InternalSkillRun.message(" \n", attaching: [ticket]) == "Attached: ticket HEPH-3 of project HEPH",
+                "Without an input, the link alone")
     }
 
     @Test("The answer is the JSON's result; an error, a timeout, or no JSON throws the CLI's own words")

@@ -1,6 +1,8 @@
 import ExternalTools
 import FileStorage
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 import MCPKit
 import ProjectData
 import TicketData
@@ -66,10 +68,77 @@ struct TicketToolsTests {
         let world = try await ToolWorld()
         defer { Task { await world.close() } }
         #expect(TicketTools.operations(tickets: world.tickets, projects: world.projects).map(\.name) == [
-            "list_tickets", "get_ticket", "create_ticket", "update_ticket", "delete_ticket", "set_ticket_status", "add_comment",
+            "list_tickets", "get_ticket", "get_attachment", "create_ticket", "update_ticket", "delete_ticket", "set_ticket_status", "add_comment",
             "update_comment", "delete_comment", "remove_attachment", "list_bundles", "get_bundle", "create_bundle", "update_bundle",
             "set_bundle_status", "delete_bundle",
         ])
+    }
+
+    /// A PNG of `width` × `height` pixels, all one color.
+    private func png(width: Int, height: Int) throws -> Data {
+        let context = try #require(CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                             space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(red: 0.4, green: 0.2, blue: 0.8, alpha: 1)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        let image = try #require(context.makeImage())
+        let data = NSMutableData()
+        let destination = try #require(CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, image, nil)
+        #expect(CGImageDestinationFinalize(destination))
+        return data as Data
+    }
+
+    @Test("get_attachment returns an image as an image, scaled down past 1568 pixels; a text as its text; another file refused")
+    func attachments() async throws {
+        let world = try await ToolWorld()
+        defer { Task { await world.close() } }
+        let repo = world.root.appendingPathComponent("Repo")
+        try png(width: 2000, height: 1000).write(to: repo.appendingPathComponent("shot.png"))
+        try png(width: 40, height: 30).write(to: repo.appendingPathComponent("small.png"))
+        try Data([0x00, 0x01, 0x02, 0xFF]).write(to: repo.appendingPathComponent("blob.bin"))
+        let ticket = try await world.call("create_ticket", ["projectID": "ORD", "title": "Crash", "description": "See the files.",
+                                                            "attachments": ["shot.png", "small.png", "blob.bin"]])
+        let commented = try await world.call("add_comment", ["ticketID": "ORD-1", "text": "The log.", "attachments": ["run.log"]])
+        func id(_ name: String, in list: JSONValue?) -> String {
+            list?.arrayValue?.first { $0["name"]?.stringValue == name }?["id"]?.stringValue ?? ""
+        }
+        let files = ticket["attachments"]
+        let log = id("run.log", in: commented["comments"]?.arrayValue?.first?["attachments"])
+
+        let shot = try await world.call("get_attachment", ["ticketID": "ord-1", "attachmentID": .string(id("shot.png", in: files))])
+        #expect(shot["type"]?.stringValue == "image" && shot["mimeType"]?.stringValue == "image/png")
+        let data = try #require(Data(base64Encoded: shot["data"]?.stringValue ?? ""))
+        let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
+        let properties = try #require(CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any])
+        #expect(properties[kCGImagePropertyPixelWidth] as? Int == 1568)
+        #expect(properties[kCGImagePropertyPixelHeight] as? Int == 784)
+
+        let small = try await world.call("get_attachment", ["ticketID": "ORD-1", "attachmentID": .string(id("small.png", in: files))])
+        let smallData = try #require(Data(base64Encoded: small["data"]?.stringValue ?? ""))
+        let smallSource = try #require(CGImageSourceCreateWithData(smallData as CFData, nil))
+        #expect((CGImageSourceCopyPropertiesAtIndex(smallSource, 0, nil) as? [CFString: Any])?[kCGImagePropertyPixelWidth] as? Int == 40,
+                "A small image keeps its size")
+
+        let text = try await world.call("get_attachment", ["ticketID": "ORD-1", "attachmentID": .string(log)])
+        #expect(text["text"]?.stringValue == "log" && text["truncated"]?.boolValue == false && text["name"]?.stringValue == "run.log")
+
+        let binary = await world.failure("get_attachment", ["ticketID": "ORD-1", "attachmentID": .string(id("blob.bin", in: files))])
+        #expect(binary?.code == .invalid)
+        #expect(binary?.message.contains("/Repo/.hephaestus/attachments/ORD-1/") == true)
+        #expect(await world.failure("get_attachment", ["ticketID": "ORD-1", "attachmentID": .string(UUID().uuidString)])?.code == .notFound)
+        #expect(await world.failure("get_attachment", ["ticketID": "ORD-9", "attachmentID": .string(log)])?.code == .notFound)
+    }
+
+    @Test("A text is cut after 256 KB on a character's boundary; NUL bytes or invalid UTF-8 aren't text")
+    func textLimits() throws {
+        let long = Data(String(repeating: "a", count: AttachmentContent.maxTextBytes - 1).utf8) + Data("é and more".utf8)
+        let cut = try #require(AttachmentContent.text(long))
+        #expect(cut.truncated && cut.text.utf8.count == AttachmentContent.maxTextBytes - 1)
+        #expect(AttachmentContent.text(Data("plain".utf8))?.truncated == false)
+        #expect(AttachmentContent.text(Data([0x61, 0x00, 0x62])) == nil)
+        #expect(AttachmentContent.text(Data([0xC3, 0x28])) == nil)
+        #expect(AttachmentContent.isImage(contentType: "application/octet-stream", url: URL(fileURLWithPath: "/a/shot.jpeg")))
+        #expect(!AttachmentContent.isImage(contentType: "text/plain", url: URL(fileURLWithPath: "/a/run.log")))
     }
 
     @Test("Claude creates a ticket with a free description, comments with a file, and the window's session sees it")

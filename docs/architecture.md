@@ -619,7 +619,7 @@ ExternalTools, ProjectData and MCPKit. Source files in `Sources/ChatData/`:
 | `ChatSession.swift` | `LoadedChat`, `ChatState`, `ChatError`, `StreamingText`, `ChatSession` (state, start, the CLI's check, settings, reading, files, `refreshState`) |
 | `ChatRun.swift` | `ChatRun` (one live process), and `ChatSession`'s `send`, launch, output handling, turns, exit, `stop`, `stopAll`, `answer`, `requestApproval`, `setSettings`, `rename`, `probeModels` |
 | `InternalSkill.swift` | `InternalSkill` (`name`, `defaults`, `init(name:defaultContent:defaultModel:defaultEffort:)`, `setTicketTitle`, `all`, `isValidName(_:)`), `InternalSkillValues` (`content`, `model`, `effort`, `otherLines`), and on `DataFolder`: `skillsFolder`, `skillFile(of:)`, `readSkill(_:)`, `writeSkill(_:of:)` ([Data › Internal skills](data.md#internal-skills)) |
-| `InternalSkillRun.swift` | `InternalSkillRun` (`timeout` 120 s, `arguments(_:mcpConfig:tools:)`, `request(cliPath:values:environment:folder:mcpConfig:tools:)`, `message(_:attaching:)`, which is `ClaudeInput.text(_:carrying:)`, `answer(from:)`), and `ChatSession.run(_:input:attaching:) async throws(ChatError) -> String`: fails at once without an available CLI or data folder; otherwise issues a token (`tokens.issue(forSkill:)`), writes `Runtime/mcp/skill-<UUID>.json` with `ChatLaunch.mcpConfiguration(port:token:)`, reads the skill's values, runs the request with the session's `toolNames` through its `runner`, the message on standard input, and returns `answer(from:)`; the token is revoked and the file deleted however the run ends |
+| `InternalSkillRun.swift` | `InternalSkillRun` (`timeout` 120 s, `arguments(_:mcpConfig:tools:)`, `request(cliPath:values:environment:folder:mcpConfig:tools:)`, `message(_:attaching:)`: `ClaudeInput.text(_:carrying:)`, or the `attachedLine`s alone for a blank input, `answer(from:)`), and `ChatSession.run(_:input:attaching:) async throws(ChatError) -> String`: fails at once without an available CLI or data folder; otherwise issues a token (`tokens.issue(forSkill:)`), writes `Runtime/mcp/skill-<UUID>.json` with `ChatLaunch.mcpConfiguration(port:token:)`, reads the skill's values, runs the request with the session's `toolNames` through its `runner`, the message on standard input, and returns `answer(from:)`; the token is revoked and the file deleted however the run ends |
 
 - **`ChatSession`** (`@MainActor @Observable`, one for the app, made by `AppData`) publishes `chats` (every
   loaded project's, by id), `status`, `models`, `transcripts` (those read: of chats open in a window and of
@@ -1186,14 +1186,15 @@ renders `hostWindow(of:)`'s frame view with `cacheDisplay` (`bitmapImageRepForCa
 **Titles written by Claude** ([Tickets › Titles written by Claude](ui/tickets.md#titles-written-by-claude)).
 After `tickets.start()`, `AppData.start()` gives the ticket library an `onUntitled` handler that calls
 `queueTitling(_:)` on the main actor. `queueTitling` chains a `Task` after the previous one (`titling`), so the
-titles are written one after the other; each runs `titleUntitled(_:)`: `chats.run(.setTicketTitle, input:
-description, attaching: [AppData.link(ticket:in:)])`, the link being the ticket's `ChatItemReference` (tool
-`tickets`, the ticket's project, its id as focus and title; `UntitledTicket` carries `projectID` for it), then
+titles are written one after the other; each runs `titleUntitled(_:)`: `chats.run(.setTicketTitle, input: "",
+attaching: [AppData.link(ticket:in:)])`, the link being the ticket's `ChatItemReference` (tool `tickets`, the
+ticket's project, its id as focus and title; `UntitledTicket` is `id`, `projectID` and `provisionalTitle`), then
 `TicketRules.title(fromAnswer:)`, `library.setGeneratedTitle(_:of:replacing:)` and `tickets.refresh()` when it
 renamed; any failure leaves the provisional title. `AppData.generateTitle` is the `GenerateTitleAction` of
-**Generate Title**, in New Ticket and the ticket editor: the same run and rule, linking the ticket the action
-is given (the editor's, as `TicketEditor` passes its ticket's id and project to `GeneratedTitleField`), a
-`ChatError`'s description or "Claude's answer has no title." as its error.
+**Generate Title**, in New Ticket and the ticket editor: the same run and rule. Given a ticket (the editor's,
+as `TicketEditor` passes its ticket's id and project to `GeneratedTitleField`), it links it, with the
+description as input only while it differs from the saved one (`tickets.snapshot`); without one (New Ticket),
+the description is the input. Its error is a `ChatError`'s description, or "Claude's answer has no title."
 
 **Settings ▸ General.** `AppData.opensWindowsAsTabs` (`private(set)`, true until read) is read from
 `settings.yml` (`SettingsFile.opensWindowsAsTabs`) once the session has started, and its `didSet` sets
@@ -1564,6 +1565,7 @@ Spec: [Tickets](ui/tickets.md). Data: `TicketData` ([TicketData](#ticketdata)) a
 | `MarkdownView.swift` | `MarkdownView`, `MarkdownInlines` (attributed inlines, highlighted code, token colors) |
 | `TicketActions.swift` | `TicketActions: ToolbarContent` |
 | `NewTicketView.swift` | `NewTicketView` |
+| `AttachmentContent.swift` | `AttachmentContent` (`nonisolated`): `read(_:name:contentType:)`, `get_attachment`'s result; `isImage(contentType:url:)`; `image(_:)`, ImageIO's thumbnail at most `maxPixels` (1568) with its transform, PNG or JPEG past `maxImageBytes` (3,750,000); `text(_:)`, UTF-8 without NUL cut at `maxTextBytes` (256 KB) on a character's boundary |
 | `GeneratedTitleField.swift` | `GeneratedTitleField`: a Title field given as content, **Generate Title** after it (from `\.generateTitle`, absent without one, called with the field's `ticket`, nil in New Ticket) and the failure's reason under it, as two views; used by `NewTicketView` and `TicketEditor` |
 | `FeedbackTicketView.swift` | `FeedbackTicketModel`, `FeedbackTicketView` (public) |
 | `TicketAppearance.swift` | `TicketWords` (shared labels and the activity sentences, one per author); symbols, colors, shortcuts, next steps and `next` of statuses; priorities, bundle statuses, links and events |

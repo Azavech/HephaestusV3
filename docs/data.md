@@ -1454,9 +1454,16 @@ claude -p --output-format json --no-session-persistence --model <model> --effort
   open windows ([MCP › Permissions](mcp.md#permissions)), whatever Settings ▸ Chat says. The CLI's own tools stay
   off.
 - **The message**, on standard input, is the input, then one `Attached:` line per item the run links, as a
-  chat's message carries the item of its chip ([Messages](#messages)): `set-ticket-title` links the ticket it
-  titles, `Attached: ticket HEPH-3 of project HEPH`, when the ticket exists ([UI › Tickets › Generate
-  Title](ui/tickets.md#generate-title)). Claude reads the ticket with `get_ticket`.
+  chat's message carries the item of its chip ([Messages](#messages)); the lines alone when the input is blank.
+  `set-ticket-title` (the user's request: Claude reads the whole ticket, not its description alone):
+  - an untitled ticket: `Attached: ticket HEPH-3 of project HEPH` alone;
+  - the editor's **Generate Title**: the same line, after the description being edited while it differs from
+    the saved one;
+  - New Ticket's, before the ticket exists: the description, without a line.
+
+  Claude reads the ticket with `get_ticket` (title, status, priority, labels, dates, description, comments,
+  links, history, attachments' paths) and its files with `get_attachment` ([MCP ›
+  get_attachment](mcp.md#get_attachment)).
   The answer is the JSON's `result` when `subtype` is `success` and `is_error` isn't true; otherwise the run fails
   with the `result`, standard error or standard output, in that order of availability. Before the CLI is checked,
   or without one, the run fails at once and starts nothing.

@@ -397,9 +397,11 @@ around each form's own Title field:
 - **Disabled** while the description holds only spaces and line breaks (the user's request), and while a title
   is being written. A small progress indicator shows before it meanwhile.
 - **A click** runs the internal skill `set-ticket-title` on the description ([System
-  Prompts](system-prompts.md)), with the app's MCP server. In the editor, the run links the ticket, as a chat
-  links the item of its chip (`Attached: ticket HEPH-3 of project HEPH`, the user's request), so Claude can read
-  it, as last saved, with `get_ticket`; in New Ticket there is no ticket yet, and the description is all of it.
+  Prompts](system-prompts.md)), with the app's MCP server. In the editor, the run sends the ticket's link, as
+  a chat links the item of its chip (`Attached: ticket HEPH-3 of project HEPH`, the user's request): Claude
+  reads the whole ticket as last saved, status, comments and attachments included, with `get_ticket` and
+  `get_attachment`; a description being edited and not saved yet comes before the link. In New Ticket there is
+  no ticket yet, and the description is all of it.
   It puts its answer's title in the Title field, replacing what was there: the
   answer's first line that isn't empty, without a heading's `#`s or one pair of quotes around it, cut to 200
   characters ([Titles written by Claude](#titles-written-by-claude)). The user can change it before **Create**
@@ -415,8 +417,9 @@ around each form's own Title field:
 
 A ticket created **without a title** (the user's request): from Send Feedback, which has no title field, or by
 Claude's `create_ticket` without one. It takes the description's first line as its provisional title at once,
-then the app runs `set-ticket-title` on its description, in the background, linking the ticket as the editor's
-**Generate Title** does ([Generate Title](#generate-title)):
+then the app runs `set-ticket-title` in the background with the ticket's link alone, as the editor's **Generate
+Title** does ([Generate Title](#generate-title)): Claude reads the ticket whole, attachments included (the
+screenshot of a feedback ticket):
 
 - When the answer gives a title ([Generate Title](#generate-title)'s rule), it replaces the provisional one,
   written by the app on its own: the history entry's author is `automatic`, and the activity reads "It was named

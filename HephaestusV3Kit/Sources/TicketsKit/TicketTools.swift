@@ -12,7 +12,7 @@ public enum TicketTools {
     @MainActor
     public static func operations(tickets: TicketSession, projects: ProjectSession) -> [ToolOperation] {
         let tools = TicketToolSet(tickets: tickets, projects: projects)
-        return [tools.listTickets, tools.getTicket, tools.createTicket, tools.updateTicket, tools.deleteTicket, tools.setTicketStatus,
+        return [tools.listTickets, tools.getTicket, tools.getAttachment, tools.createTicket, tools.updateTicket, tools.deleteTicket, tools.setTicketStatus,
                 tools.addComment, tools.updateComment, tools.deleteComment, tools.removeAttachment,
                 tools.listBundles, tools.getBundle, tools.createBundle, tools.updateBundle, tools.setBundleStatus, tools.deleteBundle]
     }
@@ -77,6 +77,44 @@ extension TicketToolSet {
             describe: TicketTools.describe("get_ticket")
         ) { @MainActor arguments throws(ToolError) in
             try await ticketResult(try arguments.string("ticketID"))
+        }
+    }
+
+    var getAttachment: ToolOperation {
+        ToolOperation(
+            name: "get_attachment",
+            description: "Returns a file attached to a ticket or to one of its comments. An image (PNG, JPEG, HEIC, GIF, TIFF…) comes as an image, scaled down to 1568 pixels on its longest side when larger. A UTF-8 text comes as JSON with name, contentType, text and truncated, cut after 256 KB. Any other file is refused, with its path.",
+            inputSchema: .object(properties: [
+                ("ticketID", TicketTools.ticketID),
+                ("attachmentID", .string("The attachment's UUID, as get_ticket returns it.")),
+            ], required: ["ticketID", "attachmentID"]),
+            permission: .read,
+            describe: TicketTools.describe("get_attachment")
+        ) { @MainActor arguments throws(ToolError) in
+            let value = try arguments.string("ticketID")
+            let id = value.uppercased()
+            guard TicketIDs.parseTicket(id) != nil else { throw ToolError(.invalid, "\"\(value)\" is not a valid ticket id.") }
+            let attachment = try uuid(arguments, "attachmentID", "Attachment")
+            guard let ticket = try await library().snapshot.ticket(id) else { throw ToolError(.notFound, "Ticket \(id) not found.") }
+            let entries = ticket.file.attachments + ticket.file.comments.flatMap(\.attachments)
+            guard let entry = entries.first(where: { $0.id == attachment }) else {
+                throw ToolError(.notFound, "Attachment \(attachment.uuidString) not found.")
+            }
+            guard let root = projects.snapshot.project(ticket.projectID)?.root else {
+                throw ToolError(.unavailable, "The project of \(id) isn't loaded.")
+            }
+            let url = URL(fileURLWithPath: root + "/.hephaestus/" + entry.path)
+            // Reading and scaling a large image takes a moment: off the main actor.
+            let name = entry.name
+            let contentType = entry.contentType
+            let result = await Task.detached { () -> Result<JSONValue, ToolError> in
+                do throws(ToolError) {
+                    return .success(try AttachmentContent.read(url, name: name, contentType: contentType))
+                } catch {
+                    return .failure(error)
+                }
+            }.value
+            return try result.get()
         }
     }
 
@@ -539,6 +577,8 @@ extension TicketTools {
             return ToolCallText(action: String(localized: "Listed the tickets of \(project)", bundle: #bundle), item: list)
         case "get_ticket":
             return ToolCallText(action: String(localized: "Read ticket \(ticket)", bundle: #bundle), item: ticketItem)
+        case "get_attachment":
+            return ToolCallText(action: String(localized: "Read an attachment of \(ticket)", bundle: #bundle), item: ticketItem)
         case "create_ticket":
             let preview = [value("title"), value("description")].filter { !$0.isEmpty }.joined(separator: "\n\n")
             return ToolCallText(action: String(localized: "Created a ticket in \(project)", bundle: #bundle),

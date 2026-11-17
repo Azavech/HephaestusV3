@@ -131,8 +131,8 @@ struct TicketLibraryTests {
         try await world.create("Has a title")
         let claude = try await world.library.create(.init(projectID: "HEPH", description: "From a chat"), by: World.claude).id
         #expect(told.withLock { $0 } == [
-            TicketLibrary.UntitledTicket(id: id, projectID: "HEPH", provisionalTitle: "Tabs close when I click", description: "Tabs close when I click\n\nApp: Hephaestus V3"),
-            TicketLibrary.UntitledTicket(id: claude, projectID: "HEPH", provisionalTitle: "From a chat", description: "From a chat"),
+            TicketLibrary.UntitledTicket(id: id, projectID: "HEPH", provisionalTitle: "Tabs close when I click"),
+            TicketLibrary.UntitledTicket(id: claude, projectID: "HEPH", provisionalTitle: "From a chat"),
         ])
     }
 
