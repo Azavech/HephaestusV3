@@ -12,7 +12,7 @@ struct SystemPromptsTests {
     @Test("It lists the app's skills, the first selected, with their stored content")
     func opening() {
         let model = SystemPromptsModel(store: SampleInternalSkillStore(contents: ["set-ticket-title": "Stored"]))
-        #expect(model.skills.map(\.name) == ["set-ticket-title"])
+        #expect(model.skills.map(\.name) == ["set-ticket-title", "report-feedback"])
         #expect(model.selected == skill)
         #expect(model.content(of: skill) == "Stored")
         #expect(model.isSaved(skill))

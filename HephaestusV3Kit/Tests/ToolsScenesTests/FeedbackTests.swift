@@ -19,15 +19,15 @@ struct FeedbackTests {
         return window
     }
 
-    @Test("The context line names the app, macOS, the window, then the project and the item when there are some")
-    func contextLine() {
+    @Test("The context names the app, macOS, the window, then the project and the item when there are some")
+    func context() {
         let orders = Project.sample("ORD")!
         let system = OperatingSystemVersion(majorVersion: 27, minorVersion: 2, patchVersion: 0)
-        #expect(FeedbackSource(window: "Tickets", project: orders, item: "ORD-142").contextLine(version: "1.0.18", build: "40", system: system)
-            == "App: Hephaestus V3 1.0.18 (40) · macOS 27.2 · Window: Tickets · Project: Orders (ORD) · Item: ORD-142")
+        #expect(FeedbackSource(window: "Tickets", project: orders, item: "ORD-142").context(version: "1.0.18", build: "40", system: system)
+            == ["App: Hephaestus V3 1.0.18 (40)", "macOS 27.2", "Window: Tickets", "Project: Orders (ORD)", "Item: ORD-142"])
         let patched = OperatingSystemVersion(majorVersion: 27, minorVersion: 2, patchVersion: 1)
-        #expect(FeedbackSource(window: "Virtual Machines", project: nil).contextLine(version: "1.0", build: "1", system: patched)
-            == "App: Hephaestus V3 1.0 (1) · macOS 27.2.1 · Window: Virtual Machines")
+        #expect(FeedbackSource(window: "Virtual Machines", project: nil).context(version: "1.0", build: "1", system: patched)
+            == ["App: Hephaestus V3 1.0 (1)", "macOS 27.2.1", "Window: Virtual Machines"])
     }
 
     @Test("A window's capture is a PNG of its frame at its backing scale")
@@ -61,7 +61,7 @@ struct FeedbackTests {
         let screenshot = try #require(request.screenshot)
         #expect(screenshot.lastPathComponent == "screenshot.png")
         #expect(NSBitmapImageRep(data: try Data(contentsOf: screenshot)) != nil)
-        #expect(request.context.hasSuffix("Window: Tickets · Project: Orders (ORD) · Item: ORD-142"))
+        #expect(request.context.suffix(3) == ["Window: Tickets", "Project: Orders (ORD)", "Item: ORD-142"])
         // A second start while the sheet is open changes nothing.
         feedback.start(source, isOn: true)
         #expect(feedback.request?.id == request.id)

@@ -138,6 +138,7 @@ The files that belong to this Mac rather than to a project.
 | `Runtime/mcp/<CHAT-ID>.json` | A running chat's MCP configuration, mode 0600, deleted when its process ends ([Chat processes](#chat-processes)). |
 | `Runtime/mcp/skill-<UUID>.json` | A running internal skill's MCP configuration, mode 0600, deleted when the run ends ([Internal skills](#internal-skills)). |
 | `Runtime/claude-cwd/` | The empty folder the CLI's model probe runs in. |
+| `Runtime/plugins/hephaestus-skills/` | The internal skills chats call, as a Claude Code plugin, written before each chat process starts ([Chat plugin](#chat-plugin)). |
 | `Runtime/downloads/<UUID>/` | A release file gh downloads, before it moves into the Downloads folder; removed afterwards ([Builds › Downloads](#downloads)). |
 | `VirtualMachines/` | The images and machines ([Virtual machines › Storage](#storage)). |
 | `Runtime/guest/` | The guest agent and its install script, shared with a setup machine ([Virtual machines › Setup](#setup)). |
@@ -737,7 +738,7 @@ folders (attachments, agents) stay as they are.
 | schema | `schema` | `Int` | no | `1` | |
 | id | `id` | `String` | yes | — | An uppercase UUID (`ChatIDs.isChatID`), equal to the file's name. |
 | title | `title` | `String` | no | `New Chat` | One line. V3 titles a new chat with the first line of its first message that isn't empty, at most 80 characters; a rename takes 1 to 100 characters on one line. |
-| kind | `kind` | `ChatFile.Kind` | yes | — | `project`, `ticket`, `bundle`, `feedback`, `ci` or `setup` ([Chat kinds](#chat-kinds)). V3 makes `project` chats only. |
+| kind | `kind` | `ChatFile.Kind` | yes | — | `project`, `ticket`, `bundle`, `feedback`, `ci` or `setup` ([Chat kinds](#chat-kinds)). V3 makes `project` chats, and `feedback` chats from Send Feedback ([Feedback chats](#feedback-chats)). |
 | ticketID | `ticket` | `String?` | no | `null` | Always written, `null` when absent. |
 | bundleID | `bundle` | `String?` | no | `null` | Always written, `null` when absent. |
 | orchestratorChatID | `orchestrator` | `String?` | no | absent | A `ticket` or `ci` chat's orchestrator, kept as read ([Chat kinds](#chat-kinds)). Written only when set. |
@@ -782,7 +783,7 @@ A file that breaks these rules is invalid and isn't listed:
 | `project` | `null` | `null` | |
 | `ticket` | required | `null` | may have an `orchestrator` |
 | `bundle` | `null` | required | |
-| `feedback` | `null`, or the first ticket it made | `null` | |
+| `feedback` | `null`, or the first ticket it made ([Feedback chats](#feedback-chats)) | `null` | its files in `chats/<CHAT-ID>/` |
 | `ci` | exactly one of `ticket` and `bundle` | | `orchestrator` required |
 | `setup` | `null` | `null` | `image` required |
 
@@ -912,14 +913,18 @@ The arguments, one element each, no shell:
   --tools ""
   --strict-mcp-config --mcp-config <data folder>/Runtime/mcp/<CHAT-ID>.json
   --allowedTools mcp__hephaestus__<tool>,mcp__hephaestus__<tool>,…
+  --plugin-dir <data folder>/Runtime/plugins
 ```
 
 - `--tools ""` leaves Claude none of the CLI's own tools (shell, files, web, agents); `--strict-mcp-config`
   leaves it the app's server alone. Claude reads and changes only through the app's tools, as the user does.
 - `--allowedTools` lists every tool of the app's server: the CLI runs them without asking, and the app's server
   asks the user before a change, as Settings ▸ Chat says ([MCP › Permissions](mcp.md#permissions)).
-- No system prompt, no hook, no skill, no plugin: V3 sends Claude nothing written for it besides its tools'
-  descriptions and the line of a message's item ([Decisions › What Claude reads](decisions.md#what-claude-reads)).
+- No system prompt and no hook: V3 sends Claude nothing written for it besides its tools' descriptions and the
+  line of a message's item ([Decisions › What Claude reads](decisions.md#what-claude-reads)). The one plugin is
+  the user's: the internal skills chats call, as the user wrote them, regenerated before each launch ([Chat
+  plugin](#chat-plugin)). When it can't be written, the CLI starts without `--plugin-dir` and the chat gets a
+  warning, "Skills could not be prepared: <reason>".
 - The MCP configuration, mode 0600: `{"mcpServers":{"hephaestus":{"type":"http","url":"http://127.0.0.1:<port>/mcp","headers":{"Authorization":"Bearer <token>"}}}}`, the token a new chat token
   ([MCP › Authentication](mcp.md#authentication)), revoked with the file when the process ends.
 
@@ -929,6 +934,9 @@ and the message. Control request ids are `hephaestus-<n>`, counting from 1 per p
 #### Messages
 
 Each message is one line: `{"type":"user","message":{"role":"user","content":[{"type":"text","text":<text>}]},"uuid":<user item id>}`.
+A message with images, a feedback chat's first one ([Feedback chats](#feedback-chats)), has one block per image
+before the text block, `{"type":"image","source":{"type":"base64","media_type":"image/png","data":<base 64>}}`,
+each a [Claude image](#claude-images): a message whose image comes after its text wouldn't call its skill.
 `<text>` is the message, then, for the item its chip carried, a blank line and one line V3 writes:
 
 | Item | Line |
@@ -938,6 +946,7 @@ Each message is one line: `{"type":"user","message":{"role":"user","content":[{"
 | A service, a request | `Attached: service payments-api of project ORD, as seen in Staging`; `Attached: request req-8f3a of project ORD, as seen in Staging` |
 | A run, a release | `Attached: run 1288 of project ORD`; `Attached: release v1.4.0 of project ORD` |
 | An operation | `Attached: operation createOrder of project ORD` |
+| A file (a skill's run) | `Attached: file /absolute/path` |
 
 #### Turns
 
@@ -977,6 +986,72 @@ after its current CLI turn. The turn's end writes `updated`.
 | A resumed process exits before its `system/init`, its standard error saying `No conversation found with session ID` | `sessionStarted` false, the warning line, and one launch again with `--session-id`, writing the same messages. |
 | Any exit | Open blocks finish as items; the cards still waiting are cancelled; the token and the MCP configuration go. |
 | `set_model`, `apply_flag_settings` | A model or effort change of a chat whose process runs: `{"subtype":"set_model","model":<model>}`, `{"subtype":"apply_flag_settings","settings":{"effortLevel":<effort>}}`. |
+
+### Feedback chats
+
+Send Feedback's chat (`ChatSession.createFeedback`, [UI › Chat › Feedback](ui/chat.md#feedback)), as V2's
+`chats.createFeedback`:
+
+1. Fails, creating nothing, for a blank comment (`invalid`, `comment: write what happened.`), an unavailable CLI
+   (`unavailable`), a project that isn't loaded (`notFound`), a file over 20 MB (`invalid`, `<name> is larger
+   than 20 MB.`), or the screenshot and the files over 20 MB together (`invalid`, `The attachments of one
+   request exceed 20 MB.`).
+2. Copies the screenshot, unless it is left out, then the added files, in order, into
+   `.hephaestus/chats/<CHAT-ID>/`: `<UUID>-screenshot.png`, then `<UUID>-<name>`. A copy that fails removes the
+   folder (`unavailable`, `The feedback's files couldn't be stored: <reason>`).
+3. Writes the [chat file](#chat-file): kind `feedback`, `ticket` null, the title the comment's first line that
+   isn't empty, at most 80 characters, the sheet's model and effort, no `origin`.
+4. Sends the first message, its text below, the images among the stored files (by content type, else
+   extension) before it, the screenshot first; the user item stores the text.
+
+```
+/hephaestus-skills:report-feedback
+<comment, trimmed>
+
+Feedback context:
+- <context line>…
+- Screenshot: <absolute path of the stored screenshot>
+- Attachment: <absolute path of a stored file>…
+```
+
+The context lines are the sheet's, in order (`App: Hephaestus V3 <version> (<build>)`, `macOS <version>`,
+`Window: <name>`, `Project: <name> (<ID>)`, `Item: <item>`, the last two when there are some); the Screenshot
+line only with a screenshot; one Attachment line per file, in order. Lines are separated by `\n`; the text
+doesn't end with one. The CLI runs it as a call of the skill: the skill's content, then the rest of the text as
+its arguments.
+
+**Its ticket.** `create_ticket` called with this chat's token, while the chat is `feedback` with `ticket` null,
+writes the ticket with `chats: [<CHAT-ID>]`, then sets the chat's `ticket` to the new id (V2's feedback link).
+Later tickets aren't linked.
+
+### Chat plugin
+
+The internal skills chats call ([Internal skills](#internal-skills)), as a Claude Code plugin, which every chat's
+CLI gets with `--plugin-dir <data folder>/Runtime/plugins` (V2's generated plugin, without its projects' own
+skills: V3 has none):
+
+```
+<data folder>/Runtime/plugins/
+  hephaestus-skills/
+    .claude-plugin/plugin.json      {"name":"hephaestus-skills","version":"1.0.0"}
+    skills/report-feedback/SKILL.md
+```
+
+- Written before each chat process starts (`DataFolder.writeChatPlugin`): `plugin.json` and each `SKILL.md`
+  atomically, only when they differ; a folder in `skills/` of another name is removed.
+- Each `SKILL.md` is the user's file (`skills/<name>/SKILL.md`) as last saved: its front matter's `name` and
+  other lines, then its content, without the app's `model` and `effort` keys, so that the chat keeps its own
+  model and effort.
+- The skills the app runs itself (`set-ticket-title`) aren't in it. A running process keeps the plugin it
+  started with.
+
+### Claude images
+
+An image Claude gets (`ClaudeImage` in FileStorage): a feedback chat's images, and `get_attachment`'s ([MCP ›
+get_attachment](mcp.md#get_attachment)). ImageIO's thumbnail of the file, its orientation applied, at most
+1568 pixels on its longest side (a smaller image keeps its size), as PNG, or as JPEG at quality 0.8 when the PNG
+would be over 3,750,000 bytes. A file is an image when its content type, or else its extension, conforms to
+`public.image`; one ImageIO can't read isn't sent.
 
 ### Chat loading and outside changes
 
@@ -1381,7 +1456,7 @@ and gives the defaults (`DataFolder.readSettings()`).
 | defaultVMMemoryGB | `defaultVMMemoryGB` | `Int?` | no | absent (4) | New machines' memory in GB, 4 to this Mac's. |
 | defaultVMDiskGB | `defaultVMDiskGB` | `Int?` | no | absent (64) | New machines' disk in GB, 32 to 2048. |
 | newWindows | `newWindows` | `String?` | no | absent (`tabs`) | How the windows the app opens appear: `tabs`, as tabs of the frontmost window, or `windows`, each on its own; absent or another value reads as `tabs` (`SettingsFile.opensWindowsAsTabs`). Written when Settings ▸ General changes it ([Navigation › Settings ▸ General](ui/navigation.md#settings--general)). A V3 key. |
-| feedbackProjectID | `feedbackProjectID` | `String?` | no | absent | The project that receives feedback tickets ([Navigation › Settings ▸ General](ui/navigation.md#settings--general)); absent for none, which hides the status bar and Help ▸ Send Feedback…. Written after `newWindows`, and removed by None. A V3 key, named as an earlier V2 setting was, which V2 no longer read. |
+| feedbackProjectID | `feedbackProjectID` | `String?` | no | absent | The project that receives feedback chats ([Navigation › Settings ▸ General](ui/navigation.md#settings--general)); absent for none, which hides the status bar and Help ▸ Send Feedback…. Written after `newWindows`, and removed by None. A V3 key, named as an earlier V2 setting was, which V2 no longer read. |
 | unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
 
 ```yaml
@@ -1410,8 +1485,10 @@ The app's own Claude skills, whose list and names the code defines (`InternalSki
 content the user writes in [System Prompts](ui/system-prompts.md). A V3 addition.
 
 - **Names**: Claude's skill name format, 1 to 64 characters of lowercase ASCII letters, digits and hyphens, not
-  starting or ending with a hyphen, without two in a row (`InternalSkill.isValidName`). Today: `set-ticket-title`,
-  empty by default, used by nothing yet.
+  starting or ending with a hyphen, without two in a row (`InternalSkill.isValidName`). Today:
+  `set-ticket-title`, which the app runs itself ([Running a skill](#internal-skills), below), and
+  `report-feedback`, which chats call (`isCalledFromChats`), through the [chat plugin](#chat-plugin): a feedback
+  chat's first message calls it ([Feedback chats](#feedback-chats)). Both empty by default.
 - **File**: `<data folder>/skills/<name>/SKILL.md`, Claude's skill layout. Written atomically by
   `DataFolder.writeSkill(_:of:)`, its folder made when missing: a front matter with `name` (the code's),
   `model` and `effort`, then the other front matter lines read, in their order; then the content exactly as

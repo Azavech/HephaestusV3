@@ -16,8 +16,8 @@ final class ChatRun {
     var mapper: StreamMapper
     /// The messages written and not finished, oldest first, each with the CLI's last state.
     var outstanding: [(uuid: String, state: String?)] = []
-    /// The text of each message written, for a launch again when the session is missing.
-    var messages: [String: String] = [:]
+    /// Each message written, its text and images, for a launch again when the session is missing.
+    var messages: [String: OutgoingMessage] = [:]
     var cliTurnOpen = false
     /// A turn runs: from a message written, or a CLI turn the CLI began, until nothing is outstanding.
     var inTurn = false
@@ -79,10 +79,12 @@ extension ChatSession {
     // MARK: Sending
 
     /// Sends a message to the chat, or to a new chat of `projectID` when `chatID` is nil, and returns the chat's
-    /// id. `references` are the items the message carries; `origin` is the tool whose panel starts a new chat.
+    /// id. `references` are the items the message carries; `origin` is the tool whose panel starts a new chat;
+    /// `title` a new chat's, instead of the message's first line; `images` go before the text, as Claude sees
+    /// them.
     @discardableResult
     public func send(_ text: String, references: [ChatItemReference], to chatID: String?, projectID: String,
-                     origin: String? = nil) async throws(ChatError) -> String {
+                     origin: String? = nil, title: String? = nil, images: [ClaudeImage] = []) async throws(ChatError) -> String {
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !message.isEmpty else { throw .invalid("text: write a message.") }
         let cli = try await availableCLI()
@@ -92,15 +94,27 @@ extension ChatSession {
             id = chatID
             await open(id)
         } else {
-            guard let project = projects.snapshot.project(projectID) else { throw .notFound("Project \(projectID) not found.") }
-            id = ChatIDs.make()
-            let created = now()
-            let file = ChatFile(id: id, title: Self.title(of: message), created: created, settings: defaults, origin: origin)
-            try? ProjectFolder(root: URL(fileURLWithPath: project.root, isDirectory: true)).ensureGitignore()
-            try write(file, projectID: projectID)
-            transcripts[id] = []
-            touch(id)
+            id = try makeChat(projectID: projectID, title: title ?? message, settings: defaults, origin: origin)
         }
+        post(message, references: references, images: images, to: id, cli: cli)
+        return id
+    }
+
+    /// Writes a new chat's file, of `kind`, with the first line of `title`, and lists it.
+    func makeChat(_ id: String = ChatIDs.make(), projectID: String, title: String, kind: ChatFile.Kind = .project, settings: ChatSettings,
+                  origin: String? = nil) throws(ChatError) -> String {
+        guard let project = projects.snapshot.project(projectID) else { throw .notFound("Project \(projectID) not found.") }
+        let file = ChatFile(id: id, title: Self.title(of: title), kind: kind, created: now(), settings: settings, origin: origin)
+        try? ProjectFolder(root: URL(fileURLWithPath: project.root, isDirectory: true)).ensureGitignore()
+        try write(file, projectID: projectID)
+        transcripts[id] = []
+        touch(id)
+        return id
+    }
+
+    /// Records the user's message in the chat, then writes it to the chat's process, starting one when none
+    /// runs.
+    func post(_ message: String, references: [ChatItemReference], images: [ClaudeImage], to id: String, cli: String) {
         let item = UserItem(created: now(), text: message, sender: device, references: references)
         record(.user(item), in: id)
         change(id) {
@@ -108,14 +122,13 @@ extension ChatSession {
             $0.closed = false
         }
         failed.remove(id)
-        let line = ClaudeInput.text(message, carrying: references)
+        let line = OutgoingMessage(text: ClaudeInput.text(message, carrying: references), images: images)
         if let run = runs[id], !run.connection.hasExited, !run.endedByApp {
             deliver(item.id, line, to: run)
         } else {
             launch(id, cli: cli, messages: [(item.id, line)])
         }
         refreshState(id)
-        return id
     }
 
     /// A new chat's title: the message's first line that isn't empty, at most 80 characters.
@@ -124,10 +137,10 @@ extension ChatSession {
         return String(line.prefix(80))
     }
 
-    private func deliver(_ uuid: String, _ text: String, to run: ChatRun) {
-        run.messages[uuid] = text
+    private func deliver(_ uuid: String, _ message: OutgoingMessage, to run: ChatRun) {
+        run.messages[uuid] = message
         run.outstanding.append((uuid, nil))
-        run.connection.write(ClaudeInput.message(text, uuid: uuid))
+        run.connection.write(ClaudeInput.message(message.text, images: message.images, uuid: uuid))
         run.idleTimer?.cancel()
         if !run.inTurn {
             run.inTurn = true
@@ -136,7 +149,7 @@ extension ChatSession {
 
     // MARK: Launching
 
-    func launch(_ chatID: String, cli: String, messages: [(uuid: String, text: String)]) {
+    func launch(_ chatID: String, cli: String, messages: [(uuid: String, message: OutgoingMessage)]) {
         guard let chat = chats[chatID], let project = projects.snapshot.project(chat.projectID), let dataFolder = projects.dataFolder else {
             record(.system(SystemItem(created: now(), text: "Claude failed to start: the chat's project isn't loaded.", level: .error)), in: chatID)
             failed.insert(chatID)
@@ -144,9 +157,18 @@ extension ChatSession {
         }
         let token = tokens.issue(forChat: chatID)
         let config = dataFolder.url.appendingPathComponent("Runtime/mcp/\(chatID).json")
+        // The internal skills chats call, as the user last saved them; without them, and a warning, when they can't
+        // be written.
+        let plugin: URL?
+        do {
+            plugin = try dataFolder.writeChatPlugin()
+        } catch {
+            plugin = nil
+            record(.system(SystemItem(created: now(), text: "Skills could not be prepared: \(error)", level: .warning)), in: chatID)
+        }
         let launch = ChatLaunch(cliPath: cli, chatID: chatID, resume: chat.file.sessionStarted, model: chat.file.settings.model,
                                 effort: chat.file.settings.effort, mcpConfig: config, tools: toolNames, workingDirectory: project.root,
-                                environment: projects.tools.environment)
+                                environment: projects.tools.environment, pluginDir: plugin)
         let connection: any ClaudeConnection
         do {
             try FileManager.default.createDirectory(at: config.deletingLastPathComponent(), withIntermediateDirectories: true,
@@ -169,7 +191,7 @@ extension ChatSession {
         run.initializeID = run.controlID()
         connection.write(ClaudeInput.control(run.initializeID, ["subtype": "initialize"]))
         for message in messages {
-            deliver(message.uuid, message.text, to: run)
+            deliver(message.uuid, message.message, to: run)
         }
         run.startTimer = Task { [weak self, weak run] in
             try? await Task.sleep(for: Self.startTimeout)
@@ -302,7 +324,7 @@ extension ChatSession {
             change(chatID) { $0.sessionStarted = false }
             record(.system(SystemItem(created: now(), text: "Claude's session for this chat was not found. A new session started: Claude doesn't remember this chat's earlier messages.",
                                       level: .warning)), in: chatID)
-            let messages = run.outstanding.map { ($0.uuid, run.messages[$0.uuid] ?? "") }
+            let messages = run.outstanding.map { ($0.uuid, run.messages[$0.uuid] ?? OutgoingMessage(text: "")) }
             launch(chatID, cli: cli, messages: messages)
             runs[chatID]?.retried = true
             refreshState(chatID)
@@ -501,4 +523,10 @@ extension ChatSession {
         }
         if let list, list != models { models = list }
     }
+}
+
+/// A message as written to the CLI: its text, with the items' lines, and the images before it.
+struct OutgoingMessage {
+    var text: String
+    var images: [ClaudeImage] = []
 }

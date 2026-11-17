@@ -137,8 +137,8 @@ struct TicketToolsTests {
         #expect(AttachmentContent.text(Data("plain".utf8))?.truncated == false)
         #expect(AttachmentContent.text(Data([0x61, 0x00, 0x62])) == nil)
         #expect(AttachmentContent.text(Data([0xC3, 0x28])) == nil)
-        #expect(AttachmentContent.isImage(contentType: "application/octet-stream", url: URL(fileURLWithPath: "/a/shot.jpeg")))
-        #expect(!AttachmentContent.isImage(contentType: "text/plain", url: URL(fileURLWithPath: "/a/run.log")))
+        #expect(ClaudeImage.isImage(contentType: "application/octet-stream", url: URL(fileURLWithPath: "/a/shot.jpeg")))
+        #expect(!ClaudeImage.isImage(contentType: "text/plain", url: URL(fileURLWithPath: "/a/run.log")))
     }
 
     @Test("Claude creates a ticket with a free description, comments with a file, and the window's session sees it")
@@ -182,5 +182,38 @@ struct TicketToolsTests {
         #expect(try await world.call("get_bundle", ["bundleID": "ORD-B1"])["tickets"]?.arrayValue?.isEmpty == true)
         #expect(await world.failure("get_ticket", ["ticketID": "ORD-1"]) == ToolError(.notFound, "Ticket ORD-1 not found."))
         #expect(await world.failure("list_bundles", ["projectID": "XYZ"])?.code == .notFound)
+    }
+}
+
+/// The first ticket a feedback chat's Claude creates lists the chat, and the chat records it (docs/ui/chat.md ›
+/// Feedback).
+@Suite("Feedback link")
+@MainActor
+struct FeedbackLinkTests {
+    @Test("A feedback chat's first ticket lists the chat; its later tickets and other callers' don't")
+    func link() async throws {
+        let world = try await ToolWorld()
+        defer { Task { await world.close() } }
+        var unlinked: Set<String> = ["FEEDBACK"]
+        var linked: [String: String] = [:]
+        let feedback = FeedbackLink(isUnlinked: { unlinked.contains($0) }, link: { chat, ticket in
+            unlinked.remove(chat)
+            linked[chat] = ticket
+        })
+        let create = try #require(TicketTools.operations(tickets: world.tickets, projects: world.projects, feedback: feedback)
+            .first { $0.name == "create_ticket" })
+        func call(as caller: MCPCaller) async throws -> JSONValue {
+            try await MCPCaller.$current.withValue(caller) {
+                try await create.run(["projectID": "ORD", "title": "From feedback", "description": "Seen in the feedback."])
+            }
+        }
+        let first = try await call(as: .chat("FEEDBACK"))
+        #expect(first["chats"]?.arrayValue?.compactMap(\.stringValue) == ["FEEDBACK"])
+        #expect(linked == ["FEEDBACK": "ORD-1"])
+        let second = try await call(as: .chat("FEEDBACK"))
+        #expect(second["chats"]?.arrayValue?.isEmpty == true)
+        let external = try await call(as: .external)
+        #expect(external["chats"]?.arrayValue?.isEmpty == true)
+        #expect(linked.count == 1)
     }
 }

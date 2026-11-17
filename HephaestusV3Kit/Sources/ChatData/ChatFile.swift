@@ -4,7 +4,8 @@ import Foundation
 /// `.hephaestus/chats/<CHAT-ID>.yml`: a chat's metadata (docs/data.md › Chat file), with its
 /// `origin`; the chat's transcript is the `.jsonl` file next to it.
 public struct ChatFile: Codable, Sendable, Hashable {
-    /// What started the chat. The app starts `project` chats only; it reads the other kinds as they are.
+    /// What started the chat. The app starts `project` chats, and `feedback` chats from Send Feedback; it reads
+    /// the other kinds as they are.
     public enum Kind: String, Codable, Sendable, Hashable, CaseIterable {
         case project, ticket, bundle, feedback, ci, setup
     }

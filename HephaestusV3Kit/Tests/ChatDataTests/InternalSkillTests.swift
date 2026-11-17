@@ -14,10 +14,12 @@ struct InternalSkillTests {
         try body(DataFolder(url: url))
     }
 
-    @Test("The app defines set-ticket-title: empty, Haiku at a low effort; every name is in Claude's skill format, once")
+    @Test("The app defines set-ticket-title, empty, Haiku at a low effort, and report-feedback, empty, called from chats; every name is in Claude's skill format, once")
     func definitions() {
-        #expect(InternalSkill.all.map(\.name) == ["set-ticket-title"])
+        #expect(InternalSkill.all.map(\.name) == ["set-ticket-title", "report-feedback"])
         #expect(InternalSkill.setTicketTitle.defaults == InternalSkillValues(content: "", model: "haiku", effort: .low))
+        #expect(!InternalSkill.setTicketTitle.isCalledFromChats && InternalSkill.reportFeedback.isCalledFromChats)
+        #expect(InternalSkill.reportFeedback.defaults == InternalSkillValues(content: "", model: "default", effort: .high))
         #expect(InternalSkill(name: "plain").defaults == InternalSkillValues(content: "", model: "default", effort: .high))
         #expect(InternalSkill.all.allSatisfy { InternalSkill.isValidName($0.name) })
         #expect(Set(InternalSkill.all.map(\.name)).count == InternalSkill.all.count)

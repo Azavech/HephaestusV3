@@ -1,5 +1,6 @@
 import Darwin
 import ExternalTools
+import FileStorage
 import Foundation
 import MCPKit
 import Synchronization
@@ -24,7 +25,7 @@ public struct ChatLaunch: Sendable, Hashable {
     public var environment: [String: String]
 
     public init(cliPath: String, chatID: String, resume: Bool, model: String, effort: Effort, mcpConfig: URL, tools: [String],
-                workingDirectory: String, environment: [String: String]) {
+                workingDirectory: String, environment: [String: String], pluginDir: URL? = nil) {
         self.cliPath = cliPath
         self.chatID = chatID
         self.resume = resume
@@ -34,6 +35,7 @@ public struct ChatLaunch: Sendable, Hashable {
         self.tools = tools
         self.workingDirectory = workingDirectory
         self.environment = environment
+        self.pluginDir = pluginDir
     }
 
     /// One argument per element, no shell involved. `--tools ""` leaves Claude none of the CLI's own tools
@@ -50,7 +52,7 @@ public struct ChatLaunch: Sendable, Hashable {
             "--strict-mcp-config",
             "--mcp-config", mcpConfig.path,
             "--allowedTools", tools.map { "mcp__\(MCPProtocol.serverName)__\($0)" }.joined(separator: ","),
-        ]
+        ] + (pluginDir.map { ["--plugin-dir", $0.path] } ?? [])
     }
 
     /// The CLI's time limit for a tool call, in milliseconds: a call waits while the user decides on its card.
@@ -72,6 +74,9 @@ public struct ChatLaunch: Sendable, Hashable {
         }.joined(separator: " ")
     }
 
+    /// The app's internal skills, as a plugin the chat can call them from (`--plugin-dir`); nil leaves them out.
+    public var pluginDir: URL?
+
     /// The MCP configuration file: the app's server on 127.0.0.1 with the chat's token.
     public static func mcpConfiguration(port: Int, token: String) -> Data {
         JSONValue.object(["mcpServers": [MCPProtocol.serverName: [
@@ -84,8 +89,13 @@ public struct ChatLaunch: Sendable, Hashable {
 public enum ClaudeInput {
     /// A user message: its text, with the item it carries on the last line (docs/ui/chat.md › What Claude
     /// receives). `uuid` is the user item's id.
-    public static func message(_ text: String, uuid: String) -> Data {
-        line(["type": "user", "message": ["role": "user", "content": [["type": "text", "text": .string(text)]]], "uuid": .string(uuid)])
+    /// `images` come first, each a base-64 image block, as the Messages API takes them.
+    public static func message(_ text: String, images: [ClaudeImage] = [], uuid: String) -> Data {
+        let blocks: [JSONValue] = images.map { image in
+            ["type": "image", "source": ["type": "base64", "media_type": .string(image.mimeType), "data": .string(image.data.base64EncodedString())]]
+        }
+        return line(["type": "user", "message": ["role": "user", "content": .array(blocks + [["type": "text", "text": .string(text)]])],
+                     "uuid": .string(uuid)])
     }
 
     public static func control(_ id: String, _ request: JSONValue) -> Data {
@@ -135,6 +145,7 @@ public enum ClaudeInput {
         case "builds":
             if let tag = after("release:") { "release \(tag) of project \(project)" } else { "run \(focus) of project \(project)" }
         case "contracts": "operation \(focus) of project \(project)"
+        case ChatItemReference.fileTool: "file \(focus)"
         default: "\(reference.tool) item \(focus) of project \(project)"
         }
         return "Attached: \(item)"

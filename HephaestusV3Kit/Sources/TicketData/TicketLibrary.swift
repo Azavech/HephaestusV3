@@ -227,9 +227,12 @@ public actor TicketLibrary {
         public var links: [TicketLinkEntry]
         /// Files copied in as the ticket's attachments.
         public var attachments: [URL]
+        /// The chats the ticket is linked to: the feedback chat that created it.
+        public var chats: [String]
 
         public init(projectID: String, title: String = "", description: String = "", status: TicketFileStatus = .todo,
-                    priority: TicketFilePriority? = nil, labels: [String] = [], links: [TicketLinkEntry] = [], attachments: [URL] = []) {
+                    priority: TicketFilePriority? = nil, labels: [String] = [], links: [TicketLinkEntry] = [], attachments: [URL] = [],
+                    chats: [String] = []) {
             self.projectID = projectID
             self.title = title
             self.description = description
@@ -238,6 +241,7 @@ public actor TicketLibrary {
             self.labels = labels
             self.links = links
             self.attachments = attachments
+            self.chats = chats
         }
     }
 
@@ -288,7 +292,7 @@ public actor TicketLibrary {
         let date = now()
         let attachments = try copy(files, into: id, in: projectID)
         let file = TicketFile(id: id, title: title, status: status, created: date, createdBy: actor.author, description: description,
-                              attachments: attachments, links: links,
+                              attachments: attachments, chatIDs: request.chats, links: links,
                               history: [entry(.created, date: date, to: status.rawValue, by: actor)],
                               priority: request.priority, labels: TicketRules.labels(request.labels))
         do {

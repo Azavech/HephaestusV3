@@ -10,20 +10,34 @@ public struct InternalSkill: Hashable, Sendable, Identifiable {
     public let name: String
     /// The content, model and effort until the user changes them.
     public let defaults: InternalSkillValues
+    /// A skill a chat calls, as `/hephaestus-skills:<name>` (V2's called skills): every chat's plugin has it. The
+    /// app runs the others itself, and no chat sees them.
+    public let isCalledFromChats: Bool
 
     public var id: String { name }
 
-    public init(name: String, defaultContent: String = "", defaultModel: String = ChatSettings.defaultModel, defaultEffort: Effort = .high) {
+    public init(name: String, defaultContent: String = "", defaultModel: String = ChatSettings.defaultModel, defaultEffort: Effort = .high,
+                isCalledFromChats: Bool = false) {
         self.name = name
         defaults = InternalSkillValues(content: defaultContent, model: defaultModel, effort: defaultEffort)
+        self.isCalledFromChats = isCalledFromChats
     }
 
-    /// Setting a ticket's title from its description: empty, and used by nothing yet. A short answer, so a quick
-    /// model at a low effort.
+    /// Setting a ticket's title: the app runs it on each ticket created without a title, and for Generate Title.
+    /// A short answer, so a quick model at a low effort.
     public static let setTicketTitle = InternalSkill(name: "set-ticket-title", defaultModel: "haiku", defaultEffort: .low)
 
+    /// Turning feedback into a ticket: the first message of a feedback chat calls it.
+    public static let reportFeedback = InternalSkill(name: "report-feedback", isCalledFromChats: true)
+
     /// Every internal skill, in the order System Prompts lists them.
-    public static let all: [InternalSkill] = [.setTicketTitle]
+    public static let all: [InternalSkill] = [.setTicketTitle, .reportFeedback]
+
+    /// The plugin that gives chats the skills they call, as V2 named it.
+    public static let pluginName = "hephaestus-skills"
+
+    /// How a chat's message calls the skill: `/hephaestus-skills:report-feedback`.
+    public var command: String { "/\(Self.pluginName):\(name)" }
 
     /// Claude's skill name format: 1 to 64 characters, lowercase ASCII letters, digits and hyphens, not starting
     /// or ending with a hyphen, without two hyphens in a row.
@@ -56,6 +70,59 @@ public struct InternalSkillValues: Hashable, Sendable {
 extension DataFolder {
     /// `skills/`: the internal skills, one folder each, as Claude's skills are laid out.
     public var skillsFolder: URL { url.appendingPathComponent("skills", isDirectory: true) }
+
+    /// `Runtime/plugins/`: what every chat's CLI gets with `--plugin-dir`, which loads each plugin in it.
+    public var pluginsFolder: URL { url.appendingPathComponent("Runtime/plugins", isDirectory: true) }
+
+    /// Writes `Runtime/plugins/hephaestus-skills/` (docs/data.md › Chat plugin): its `.claude-plugin/plugin.json`,
+    /// then `skills/<name>/SKILL.md` for each skill chats call, as the user last saved it, without the app's
+    /// `model` and `effort` keys, so that the chat keeps its own; a folder of another name is removed. Returns
+    /// the folder to give `--plugin-dir`.
+    @discardableResult
+    public func writeChatPlugin(_ skills: [InternalSkill] = InternalSkill.all) throws(StorageError) -> URL {
+        let plugin = pluginsFolder.appendingPathComponent(InternalSkill.pluginName, isDirectory: true)
+        let called = skills.filter(\.isCalledFromChats)
+        let manifest = plugin.appendingPathComponent(".claude-plugin/plugin.json")
+        let folder = plugin.appendingPathComponent("skills", isDirectory: true)
+        func directory(_ url: URL) throws(StorageError) {
+            do {
+                try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            } catch {
+                throw .writeFailed(path: url.path, reason: (error as NSError).localizedDescription)
+            }
+        }
+        try directory(manifest.deletingLastPathComponent())
+        let json = #"{"name":"\#(InternalSkill.pluginName)","version":"1.0.0"}"# + "\n"
+        if (try? Data(contentsOf: manifest)) != Data(json.utf8) {
+            try write(Data(json.utf8), to: manifest)
+        }
+        try directory(folder)
+        let kept = Set(called.map(\.name))
+        for entry in (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? [] where !kept.contains(entry) {
+            try? FileManager.default.removeItem(at: folder.appendingPathComponent(entry))
+        }
+        for skill in called {
+            let values = readSkill(skill)
+            let lines = ["name: \(skill.name)"] + values.otherLines
+            let text = "---\n" + lines.joined(separator: "\n") + "\n---\n" + values.content
+            let file = folder.appendingPathComponent(skill.name, isDirectory: true).appendingPathComponent("SKILL.md")
+            try directory(file.deletingLastPathComponent())
+            if (try? Data(contentsOf: file)) != Data(text.utf8) {
+                try write(Data(text.utf8), to: file)
+            }
+        }
+        return pluginsFolder
+    }
+
+    private func write(_ data: Data, to file: URL) throws(StorageError) {
+        do {
+            _ = try AtomicFile.write(data, to: file)
+        } catch let error as StorageError {
+            throw error
+        } catch {
+            throw .writeFailed(path: file.path, reason: String(describing: error))
+        }
+    }
 
     /// `skills/<name>/SKILL.md`.
     public func skillFile(of skill: InternalSkill) -> URL {

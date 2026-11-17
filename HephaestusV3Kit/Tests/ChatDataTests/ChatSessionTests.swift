@@ -147,7 +147,7 @@ struct ChatSessionTests {
         #expect(ClaudeModel.name(of: "claude-opus-5-5", in: world.session.models) == "Opus 5.5")
     }
 
-    @Test("A first message makes the chat and starts the CLI: no prompt, no tools of its own, the app's tools allowed")
+    @Test("A first message makes the chat and starts the CLI: no prompt, no tools of its own, the app's tools allowed, the skills chats call")
     func firstMessage() async throws {
         let world = try await ChatWorld()
         defer { Task { await world.close() } }
@@ -160,7 +160,9 @@ struct ChatSessionTests {
         let cli = try #require(world.launcher.chats.first)
         let arguments = cli.request.arguments
         #expect(arguments.contains("--session-id") && arguments.contains(id) && !arguments.contains("--resume"))
-        #expect(!arguments.contains("--append-system-prompt") && !arguments.contains("--settings") && !arguments.contains("--plugin-dir"))
+        #expect(!arguments.contains("--append-system-prompt") && !arguments.contains("--settings"))
+        let plugins = try #require(arguments.firstIndex(of: "--plugin-dir"))
+        #expect(arguments[plugins + 1] == world.root.appendingPathComponent("Data/Runtime/plugins").path)
         let tools = try #require(arguments.firstIndex(of: "--tools"))
         #expect(arguments[tools + 1] == "")
         let allowed = try #require(arguments.firstIndex(of: "--allowedTools"))

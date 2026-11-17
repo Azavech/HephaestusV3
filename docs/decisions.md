@@ -237,18 +237,23 @@ The owner asked for an icon on 17 November 2026.
 
 ## Feedback
 
-The owner asked on 17 November 2026 for V2's ladybug, sending a feedback ticket that is a regular ticket, not
-an item of its own. They chose V2's status bar at the bottom of every window, holding only the ladybug, and a
-feedback project set in Settings, without which the ladybug doesn't show.
+The owner asked on 17 November 2026 for V2's ladybug, first sending a feedback ticket that is a regular ticket.
+They chose V2's status bar at the bottom of every window, holding only the ladybug, and a feedback project set in
+Settings, without which the ladybug doesn't show. The same day they asked for feedback to start a chat that calls
+a new internal skill, `report-feedback`, behaving as V2's feedback did.
 
 | Question | Default chosen | Where |
 | --- | --- | --- |
-| What does Send make? | A ticket as New Ticket makes it without a title, in the feedback project: its title is the description's first line, and Save as Draft starts off (the user's choice). The screenshot and the added files become its attachments. No chat, no Claude. | [UI › Tickets › Feedback](ui/tickets.md#feedback) |
-| Where does it say what the feedback is about? | A context line after the description: the app's version, macOS, the window, its project and its selected item. V2's device has no counterpart. | [UI › Tickets › Context line](ui/tickets.md#context-line) |
-| What follows Send? | The ticket opens in the feedback project's Tickets window, as V2 showed its feedback chat. | [UI › Tickets › Feedback](ui/tickets.md#feedback) |
-| What if the files can't be attached? | The ticket stays, without them; the sheet says so and offers Show Ticket, so no second ticket is made. | same |
+| What does Send make? | A feedback chat in the feedback project, no longer a ticket (the owner's request, as V2 did it): its first message calls the internal skill `report-feedback` with the comment, the context, the screenshot and the files; what Claude makes of it is the skill's to say. | [UI › Chat › Feedback](ui/chat.md#feedback) |
+| What does the sheet keep? | The screenshot, the comment, the files, the context, and V2's chat settings: the Model and Effort menus. Priority and Save as Draft go: the skill chooses the priority (the owner's choice). V2's permission mode menu has no counterpart. | same |
+| Where does it say what the feedback is about? | The context: the app's version, macOS, the window, its project and its selected item, one line in the sheet, a `Feedback context:` list in the message. V2's device has no counterpart. | [UI › Chat › Context](ui/chat.md#context) |
+| What follows Send? | The feedback project's Chat tab shows the new chat (the owner's choice), and Claude starts at once (the owner's choice). | [UI › Chat › Feedback](ui/chat.md#feedback) |
+| Where are the screenshot and the files? | In the chat's folder, `.hephaestus/chats/<chat id>/<UUID>-<name>`, as V2 stored them; their paths are in the message, and the images go before its text, so that Claude sees them and can attach them to a ticket. | [Data › Feedback chats](data.md#feedback-chats) |
+| How does a chat call the skill? | As V2 did: every chat's CLI gets the skills chats call as the plugin `hephaestus-skills` (`--plugin-dir`), and the message starts with `/hephaestus-skills:report-feedback`. The plugin's `SKILL.md` drops the app's `model` and `effort`, so the chat keeps its own. | [Data › Chat plugin](data.md#chat-plugin) |
+| Which ticket is the chat's? | The first one its Claude creates, as V2's feedback link: the ticket lists the chat, the chat records the ticket. | [MCP › create_ticket](mcp.md#create_ticket) |
+| What is the chat's title? | The comment's first line: V2's Haiku names aren't brought over. | [Data › Feedback chats](data.md#feedback-chats) |
 | Which windows have the status bar? | Every window but Settings and the menu bar panel, and none while no feedback project is loaded: the bar only holds the ladybug. | [UI › Navigation › Status bar](ui/navigation.md#status-bar) |
-| How is the window captured? | V2's in-process capture, without its web-view step; a PNG over 5,000,000 bytes is made again at 1 pixel per point. | [UI › Tickets › Screenshot](ui/tickets.md#screenshot) |
+| How is the window captured? | V2's in-process capture, without its web-view step; a PNG over 5,000,000 bytes is made again at 1 pixel per point. | [UI › Chat › Screenshot](ui/chat.md#screenshot) |
 | Where is the setting stored? | `settings.yml`'s `feedbackProjectID`, the name of V2's earlier setting. | [Data › Settings file](data.md#settings-file) |
 
 ## System Prompts

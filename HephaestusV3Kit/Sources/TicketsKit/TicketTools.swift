@@ -5,13 +5,28 @@ import ProjectData
 import TicketData
 import ToolsFoundation
 
+/// The feedback chats, as `create_ticket` needs them: the first ticket a feedback chat's Claude creates lists the
+/// chat in its `chats`, and the chat records it as its ticket (docs/ui/chat.md › Feedback).
+public struct FeedbackLink {
+    /// Whether the chat is a feedback chat without its ticket yet.
+    public let isUnlinked: @MainActor (String) -> Bool
+    /// Records the ticket as the chat's.
+    public let link: @MainActor (String, String) -> Void
+
+    public init(isUnlinked: @escaping @MainActor (String) -> Bool, link: @escaping @MainActor (String, String) -> Void) {
+        self.isUnlinked = isUnlinked
+        self.link = link
+    }
+}
+
 /// The ticket and bundle operations the MCP server offers Claude (docs/mcp.md › Ticket tools): the same
 /// library the Tickets window changes, as Claude, with the rules for Claude.
 public enum TicketTools {
-    /// The ticket tools, then the bundle tools, in the order of docs/mcp.md.
+    /// The ticket tools, then the bundle tools, in the order of docs/mcp.md. `feedback` links the first ticket a
+    /// feedback chat's Claude creates to that chat.
     @MainActor
-    public static func operations(tickets: TicketSession, projects: ProjectSession) -> [ToolOperation] {
-        let tools = TicketToolSet(tickets: tickets, projects: projects)
+    public static func operations(tickets: TicketSession, projects: ProjectSession, feedback: FeedbackLink? = nil) -> [ToolOperation] {
+        let tools = TicketToolSet(tickets: tickets, projects: projects, feedback: feedback)
         return [tools.listTickets, tools.getTicket, tools.getAttachment, tools.createTicket, tools.updateTicket, tools.deleteTicket, tools.setTicketStatus,
                 tools.addComment, tools.updateComment, tools.deleteComment, tools.removeAttachment,
                 tools.listBundles, tools.getBundle, tools.createBundle, tools.updateBundle, tools.setBundleStatus, tools.deleteBundle]
@@ -38,10 +53,12 @@ public enum TicketTools {
 private struct TicketToolSet {
     let tickets: TicketSession
     let projects: ProjectSession
+    let feedback: FeedbackLink?
 
-    init(tickets: TicketSession, projects: ProjectSession) {
+    init(tickets: TicketSession, projects: ProjectSession, feedback: FeedbackLink?) {
         self.tickets = tickets
         self.projects = projects
+        self.feedback = feedback
     }
 }
 
@@ -135,11 +152,14 @@ extension TicketToolSet {
             describe: TicketTools.describe("create_ticket")
         ) { @MainActor arguments throws(ToolError) in
             let projectID = try arguments.string("projectID").uppercased()
+            // A feedback chat's first ticket lists the chat, and the chat records it (V2's feedback link).
+            let linked = MCPCaller.current.chatID.flatMap { chat in feedback?.isUnlinked(chat) == true ? chat : nil }
             let request = TicketLibrary.NewTicket(
                 projectID: projectID, title: arguments["title"]?.stringValue ?? "", description: try arguments.string("description"),
                 priority: arguments["priority"]?.stringValue.flatMap(TicketFilePriority.init(rawValue:)),
                 labels: arguments["labels"]?.arrayValue?.compactMap(\.stringValue) ?? [],
-                links: try links(arguments["links"]), attachments: try files(arguments["attachments"], in: projectID)
+                links: try links(arguments["links"]), attachments: try files(arguments["attachments"], in: projectID),
+                chats: linked.map { [$0] } ?? []
             )
             let library = try library()
             let id: String
@@ -147,6 +167,9 @@ extension TicketToolSet {
                 id = try await library.create(request, by: TicketTools.claude).id
             } catch {
                 throw ticketToolError(error)
+            }
+            if let linked {
+                feedback?.link(linked, id)
             }
             await tickets.refresh()
             return try await ticketResult(id)

@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ is larger than 20 MB." : {
+
+    },
     "%@ · from %@" : {
       "comment" : "A chat's last date, then the tool whose panel started it",
       "localizations" : {
@@ -47,7 +50,16 @@
     "Attach %@" : {
 
     },
+    "Attach Files…" : {
+
+    },
+    "Call" : {
+
+    },
     "Call APIs that change data" : {
+
+    },
+    "Cancel" : {
 
     },
     "Change projects" : {
@@ -62,10 +74,16 @@
     "Chats run Claude Code from this Mac. Empty, the app finds it in ~/.local/bin, /opt/homebrew/bin, /usr/local/bin, or your shell's PATH." : {
 
     },
+    "Checking the Claude CLI…" : {
+
+    },
     "Claude" : {
 
     },
     "Claude CLI" : {
+
+    },
+    "Claude CLI is not available: %@" : {
 
     },
     "Claude Can" : {
@@ -95,6 +113,9 @@
     "Claude's turn ended with an error." : {
 
     },
+    "Comment" : {
+
+    },
     "Compacting the conversation… %@" : {
       "comment" : "The time since it began, such as 0:12"
     },
@@ -116,8 +137,14 @@
     "Empty: Claude gets nothing from this skill." : {
 
     },
+    "Exclude Screenshot" : {
+
+    },
     "Extra High" : {
       "comment" : "An effort level"
+    },
+    "Folders cannot be attached." : {
+
     },
     "Found automatically" : {
 
@@ -134,8 +161,14 @@
     "High" : {
       "comment" : "An effort level"
     },
+    "How a chat's message calls this skill." : {
+
+    },
     "In This Chat" : {
       "comment" : "A section: the items this chat attached or read"
+    },
+    "Include Screenshot" : {
+
     },
     "Inspector" : {
 
@@ -226,6 +259,9 @@
     "Open in the Chat Window" : {
 
     },
+    "Opens it in Quick Look." : {
+
+    },
     "Operate deployments" : {
 
     },
@@ -234,6 +270,9 @@
     },
     "Path" : {
       "comment" : "The Claude CLI's path"
+    },
+    "Project" : {
+
     },
     "Projects" : {
       "comment" : "The Projects window, as a tool"
@@ -268,7 +307,19 @@
     "Saved" : {
 
     },
+    "Screenshot of the window" : {
+
+    },
     "Select an internal skill to edit its content." : {
+
+    },
+    "Send" : {
+
+    },
+    "Send (⌘↩)" : {
+
+    },
+    "Send Feedback" : {
 
     },
     "Show Inspector" : {
@@ -313,6 +364,9 @@
     "The app has no data folder." : {
 
     },
+    "The window could not be captured." : {
+
+    },
     "Through %@, as if you did it" : {
       "comment" : "How Claude would make a change: through a tool, such as Tickets"
     },
@@ -342,6 +396,9 @@
     },
     "What does %@ depend on?" : {
       "comment" : "A suggestion; the value is a service, such as payments-api"
+    },
+    "What happened, and what did you expect?" : {
+
     },
     "What needs my attention?" : {
 

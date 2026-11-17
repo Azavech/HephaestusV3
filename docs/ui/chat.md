@@ -365,6 +365,137 @@ The panel slides in from the window's right edge and back out (the user's choice
 
 Hiding the panel keeps its open conversations, their drafts and a subject the user took off: shown again, the panel is as the user left it (the user's choice). The window keeps them, one per project, for as long as it is open, not the panel. **New Chat** leaves the current one. Selecting a tab of another project, or switching a tab to another project, shows that project's conversation, a new one the first time; the others stay, and stay in the Chat window's list.
 
+## Feedback
+
+![The Send Feedback sheet: the Tickets window's screenshot, a comment, Project Shop, the Model and Effort menus, the context line, Attach Files…, Cancel and Send](images/chat-feedback.png)
+*Send Feedback over the Tickets window's screenshot: the comment, the feedback chat's model and effort, and the
+line that says where the feedback comes from.*
+
+V2's feedback, as V2 did it (the user's request, 17 November 2026): the ladybug of every window's
+[status bar](navigation.md#status-bar), or Help ▸ Send Feedback… (⇧⌘B), starts a **feedback chat** about that
+window in the feedback project chosen in [Settings ▸ General](navigation.md#settings--general). Its first
+message calls the internal skill `report-feedback` ([System Prompts](system-prompts.md)) with the comment, the
+context, the screenshot and the files added. What Claude does with it is the skill's to say: the user writes it.
+V2's prompts don't come over; nor does its permission mode menu (V3's chats have none).
+
+**Flow.**
+
+1. Start: the ladybug of a window, or Help ▸ Send Feedback… for the key window. Nothing while the window
+   shows a sheet or its feedback is already open.
+2. Capture: the window is rendered into a PNG ([Screenshot](#screenshot)), saved as `screenshot.png` in a new
+   temporary folder, `HephaestusV3-Feedback-<UUID>`.
+3. Sheet: the **Send Feedback** sheet opens on that window, after the capture, so it is never in the
+   screenshot.
+4. Send: the feedback chat is created and its first message sent ([The feedback chat](#the-feedback-chat)); the
+   sheet closes, its temporary folder is deleted, and the feedback project's Chat tab shows the chat (the user's
+   choice): a route, which a window already showing that project's chats takes, and which becomes a tab when
+   [new windows open as tabs](navigation.md#tabs).
+5. Claude runs `report-feedback` in that chat, as the user wrote it; a change it makes, such as
+   `create_ticket`, asks first as Settings ▸ Chat says ([Approval cards](#approval-cards)).
+
+**The sheet** (`feedback.sheet`), 520 pt wide, 600 pt high at least and 700 pt by default, on `canvas`:
+
+| Part | Identifier | Contents |
+| --- | --- | --- |
+| Heading | — | **Send Feedback** (`title3`, semibold), a heading for VoiceOver. |
+| Screenshot | `feedback.screenshot` | The PNG scaled to fit 480 × 300 pt, centered; at 40 % opacity while left out. A click opens it in Quick Look. Its label is "Screenshot of the window". |
+| Eye | `feedback.screenshot.toggle` | In the screenshot's top-right corner, 8 pt in: `eye`, white, on a 24 pt black circle at 55 % opacity, shown while the pointer is over the screenshot; `eye.slash` while the screenshot is left out, shown at all times. A click leaves the screenshot out or puts it back. Tooltip and label: "Exclude Screenshot", or "Include Screenshot". The screenshot is in each time the sheet opens. |
+| No screenshot | `feedback.screenshot.missing` | When the window couldn't be captured: `eye.slash` and "The window could not be captured.", in `textSecondary`. Send then sends no screenshot. |
+| First group | `feedback.comment` | **Comment**, with "What happened, and what did you expect?" as placeholder, four lines high, growing to eight; required. Then the added files ([Added files](#added-files)). |
+| Second group | `feedback.project`, `feedback.model`, `feedback.effort` | **Project**: the feedback project's name, read-only. The chat's **Model** and **Effort**, as Settings ▸ Chat lists them, on Settings ▸ Chat's defaults each time the sheet opens; the choice sets only this chat. No priority and no draft switch: the skill decides them (the user's choice). Footer: the context, `caption`, `textSecondary`, selectable (`feedback.context`). |
+| Message | `feedback.message` | Why a file wasn't added, or why Send failed, in `danger`; otherwise why Send waits for the CLI, in `textSecondary`: "Checking the Claude CLI…", or "Claude CLI is not available: <reason>". Under the form. |
+| Bottom bar | `feedback.attach`, `feedback.cancel`, `feedback.send` | Under a divider: **Attach Files…** (`paperclip`) at the leading edge; at the trailing edge a small progress indicator while sending, **Cancel** (Escape) and **Send** (⌘Return, as V2's; `borderedProminent`; help "Send (⌘↩)"). |
+
+- **Send** is enabled while the comment holds more than spaces and line breaks, the Claude CLI is available,
+  and nothing is being sent. A screenshot left out, or none, doesn't stop it. While it runs, the form, Attach
+  Files…, the files' remove buttons and Cancel are disabled.
+- **Send fails**: nothing is created; the sheet stays with the reason in the message line, and what was typed,
+  the screenshot's state, the files and the menus are kept.
+- **Cancel** closes the sheet and deletes the screenshot; nothing is created.
+
+### Added files
+
+- **Attach Files…** opens an open panel for files, several at once. Files dropped anywhere on the sheet are
+  added too. A file already added isn't added again.
+- A folder adds nothing from its drop or choice, with "Folders cannot be attached."; a file larger than
+  20 MB, with "<name> is larger than 20 MB." (the ticket attachments' limit, [Data](../data.md)). The next
+  successful addition clears the message. Send fails when the screenshot and the files exceed 20 MB together:
+  "The attachments of one request exceed 20 MB."
+- Each added file is a chip in a row under the comment, which scrolls sideways: the file's icon, its name, its
+  size and a remove button (`xmark`, "Remove <name>"). The chip is `feedback.file.<name>`.
+
+### The feedback chat
+
+`ChatSession.createFeedback` ([Data › Feedback chats](../data.md#feedback-chats)):
+
+1. Checks the comment and the Claude CLI, then the files' sizes; any failure creates nothing.
+2. Copies the screenshot, unless it is left out, then the added files, in order, into the chat's folder:
+   `.hephaestus/chats/<chat id>/<UUID>-screenshot.png`, `<UUID>-<name>`, in the feedback project.
+3. Writes the chat: kind `feedback`, without a ticket, named after the comment's first line (V2's Haiku names
+   are left out), on the sheet's model and effort. It is listed with the project's other chats.
+4. Sends its first message: `/hephaestus-skills:report-feedback`, the comment, then `Feedback context:` with
+   the context, the stored screenshot's path and each stored file's path. The images among the stored files,
+   the screenshot first, go before the text as images, so that Claude sees them; the paths let Claude attach
+   the files to a ticket.
+
+```text
+/hephaestus-skills:report-feedback
+The ladybug hides behind the chat panel
+
+Feedback context:
+- App: Hephaestus V3 1.0.31 (52)
+- macOS 27.2
+- Window: Tickets
+- Project: Orders (ORD)
+- Item: ORD-142
+- Screenshot: /Users/me/Developer/Shop/.hephaestus/chats/3F25…/1B4E…-screenshot.png
+- Attachment: /Users/me/Developer/Shop/.hephaestus/chats/3F25…/8D0E…-app.log
+```
+
+- Every chat's CLI gets the skills chats call, `report-feedback` among them, as the plugin
+  `hephaestus-skills` ([Data › Chat plugin](../data.md#chat-plugin)): the CLI runs the message as a call of
+  the skill, the skill's text then the rest of the message as its arguments, the images still visible. The user
+  can call it the same way in any chat.
+- **The ticket.** The first ticket the chat's Claude creates with `create_ticket` lists the chat in its `chats`,
+  and the chat records it as its `ticket` (V2's feedback link); later tickets from the same chat aren't linked
+  ([MCP › create_ticket](../mcp.md#create_ticket)). A ticket created without a title is titled by
+  `set-ticket-title` ([Tickets › Titles written by Claude](tickets.md#titles-written-by-claude)).
+
+### Context
+
+The lines that say where the feedback comes from, from the window at capture time (`FeedbackSource.context`):
+the sheet's footer joins them with " · ", the first message lists them, each after `- `:
+
+| Part | Value |
+| --- | --- |
+| App | `App: Hephaestus V3 <CFBundleShortVersionString> (<CFBundleVersion>)` |
+| macOS | `macOS <major>.<minor>`, and `.<patch>` when it isn't 0 |
+| Window | `Window: ` and the window's name: the tool's title, Projects, Project Settings or Virtual Machines |
+| Project | `Project: <name> (<identifier>)`: the tool window's or Project Settings' project, or the one selected in the Projects window; absent for Virtual Machines and when nothing is selected |
+| Item | `Item: ` and the item the tool window has selected, as its chat panel names it (`ORD-142`, `payments-api`, `Run 1288`); absent when nothing is selected and in the other windows |
+
+Example, in the footer: `App: Hephaestus V3 1.0.19 (41) · macOS 27.2 · Window: Tickets · Project: Orders (ORD) · Item:
+ORD-142`. V2's device line has no counterpart; V2's Section is the Window part (default chosen at design time).
+
+### Screenshot
+
+V2's capture, inside the app's process, without screen-capture APIs, so no screen recording permission is
+needed:
+
+1. The window's frame view (`contentView.superview`: title bar, toolbar and content) is rendered with
+   `cacheDisplay` at the window's backing scale.
+2. Views that blend with what is behind the window (`NSVisualEffectView` with `.behindWindow`) are filled,
+   behind their pixels, with the window background color of their appearance, so they show opaque.
+3. In full screen, the window holding the title bar and toolbar is drawn over the bitmap at its place, and so
+   is each attached sheet, after its visible child windows.
+4. A PNG over 5,000,000 bytes is rendered again at 1 pixel per point, to leave room for added files in the
+   feedback's 20 MB (default chosen at design time).
+
+- A sheet, the background of an alert sheet, or the toolbar window of a window in full screen, is captured as
+  the window it belongs to. Other windows, menus, popovers and the pointer aren't in the screenshot. V2's step
+  for web views is left out: V3 has none. A virtual machine's screen, drawn by Virtualization, may show blank.
+- When no bitmap can be made, the sheet shows "The window could not be captured.", and Send sends no screenshot.
+
 ## Settings ▸ Chat
 
 The Settings window's **Chat** tab (`bubble.left.and.text.bubble.right`), at 520 × 440 pt; its form scrolls. It opens from the app menu's Settings item (⌘,); see [navigation.md](navigation.md).
@@ -493,6 +624,7 @@ Previews use the windows' models with the sample conversations, and with the sam
 - `ChatPanel.swift`: "Panel, Ticket" (ORD-142 attached, 341 × 640 pt), "Panel, No Subject" (the Dashboard), "Panel, Subject Taken Off", "Panel, Conversation", "Panel, Conversation, Dark", "Panel, Approval Answered" (Allowed), "Panel, Reading", "Panel, iPhone" (420 pt), "Panel, Largest Text", "Panel, Conversation, Largest Text".
 - `ChatTranscript.swift`: "Approval, Waiting", "Approval, Allowed", "Approval, Not Allowed, Dark", "Approval, Narrow, Largest Text" (the note and the answer stacked).
 - `ChatSettingsView.swift`: "Settings" (the CLI found, 520 × 440 pt), "Settings, CLI Not Found", "Settings, Looking", "Settings, Dark", "Settings, Largest Text".
+- `FeedbackView.swift` (size that fits, on a `FeedbackModel` with a stand-in sender, the screenshot a gradient, the feedback project Shop): "Empty", "Filled, Dark" (a comment of two paragraphs), "Screenshot Left Out", "Not Captured", "No Claude CLI" (Send disabled, "Claude CLI is not available: Claude CLI not found.").
 
 ## Open issues
 

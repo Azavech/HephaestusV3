@@ -1,14 +1,14 @@
 import AppKit
 import AZDesign
+import ChatKit
 import SwiftUI
-import TicketsKit
 import ToolsFoundation
 
-/// Where feedback goes: the project chosen in Settings ▸ General, while it is loaded, and the store that
-/// creates its tickets. Nil hides the status bar and Help ▸ Send Feedback….
+/// Where feedback goes: the project chosen in Settings ▸ General, while it is loaded, and the chats that start
+/// its feedback chats. Nil hides the status bar and Help ▸ Send Feedback….
 nonisolated struct FeedbackTarget: Sendable {
     let project: Project
-    let store: LiveTicketStore
+    let chats: LiveChatStore
 }
 
 nonisolated extension EnvironmentValues {
@@ -25,12 +25,13 @@ nonisolated struct FeedbackSource: Hashable, Sendable {
     /// The item the window has selected, as the chat panel names it: `ORD-142`, `payments-api`, `Run 1288`.
     var item: String? = nil
 
-    /// "App: Hephaestus V3 1.0.18 (40) · macOS 27.2 · Window: Tickets · Project: Orders (ORD) · Item: ORD-142".
-    /// The window's name in the app's words; the rest as written here (docs/ui/tickets.md › Feedback).
-    func contextLine(
+    /// `App: Hephaestus V3 1.0.18 (40)`, `macOS 27.2`, `Window: Tickets`, `Project: Orders (ORD)`, `Item: ORD-142`:
+    /// the sheet joins them with ` · `, the feedback chat's first message lists them (docs/ui/chat.md › Feedback).
+    /// The window's name in the app's words; the rest as written here.
+    func context(
         version: String = Self.appVersion, build: String = Self.appBuild,
         system: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion
-    ) -> String {
+    ) -> [String] {
         var macOS = "\(system.majorVersion).\(system.minorVersion)"
         if system.patchVersion > 0 {
             macOS += ".\(system.patchVersion)"
@@ -42,7 +43,7 @@ nonisolated struct FeedbackSource: Hashable, Sendable {
         if let item {
             parts.append("Item: \(item)")
         }
-        return parts.joined(separator: " · ")
+        return parts
     }
 
     static var appVersion: String { Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?" }
@@ -95,11 +96,11 @@ private struct StatusBarModifier: ViewModifier {
         .focusedSceneValue(\.sendFeedback, target == nil ? nil : startAction)
         .sheet(item: Binding(get: { feedback.request }, set: { feedback.request = $0 })) { request in
             if let target {
-                FeedbackTicketView(project: target.project, store: target.store, screenshot: request.screenshot,
-                                   context: request.context) { id in
+                FeedbackView(project: target.project, chats: target.chats, screenshot: request.screenshot, context: request.context) { id in
                     feedback.finish(request)
+                    // The feedback project's Chat tab shows the new chat (the user's choice).
                     if let id {
-                        openRoute(.tool(.tickets, project: target.project.id, focus: id))
+                        openRoute(.tool(.chat, project: target.project.id, focus: id))
                     }
                 }
             }
@@ -137,7 +138,7 @@ final class FeedbackStarter {
                 screenshot = nil
             }
         }
-        request = FeedbackRequest(folder: folder, screenshot: screenshot, context: source.contextLine())
+        request = FeedbackRequest(folder: folder, screenshot: screenshot, context: source.context())
     }
 
     /// Closes the sheet and deletes its screenshot.
@@ -147,12 +148,12 @@ final class FeedbackStarter {
     }
 }
 
-/// One Send Feedback sheet: its temporary folder, the window's PNG in it, and the context line.
+/// One Send Feedback sheet: its temporary folder, the window's PNG in it, and the context lines.
 struct FeedbackRequest: Identifiable {
     let id = UUID()
     let folder: URL
     let screenshot: URL?
-    let context: String
+    let context: [String]
 }
 
 /// The bar at the bottom of a window: 26 points high under a hairline, with the ladybug at its right end.

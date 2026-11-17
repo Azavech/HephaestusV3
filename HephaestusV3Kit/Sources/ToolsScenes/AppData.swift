@@ -83,12 +83,12 @@ final class AppData {
         didSet { WindowDirectory.shared.opensWindowsAsTabs = opensWindowsAsTabs }
     }
 
-    /// The project that receives feedback tickets: `settings.yml`'s `feedbackProjectID`, nil until read.
+    /// The project that receives feedback chats: `settings.yml`'s `feedbackProjectID`, nil until read.
     private(set) var feedbackProjectID: Project.ID?
 
     /// The feedback project while it is loaded; nil hides the status bar and Help ▸ Send Feedback….
     var feedbackTarget: FeedbackTarget? {
-        directory.project(feedbackProjectID).map { FeedbackTarget(project: $0, store: ticketStore) }
+        directory.project(feedbackProjectID).map { FeedbackTarget(project: $0, chats: chatStore) }
     }
 
     /// Stores the feedback project, nil for none. Throws the storage error when it can't be stored; without a

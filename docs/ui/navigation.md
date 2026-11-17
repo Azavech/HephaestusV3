@@ -95,7 +95,7 @@ Its feedback is about the selected tab.
 - **Look.** 26 points high, under a hairline (`Divider`), on `canvas`, in every layout. Nothing at its left.
 - **Ladybug** (`statusBar.feedback`), 10 points from the right edge: a borderless button with `ladybug` in
   `textSecondary`, the tooltip "Send Feedback (⇧⌘B)" and the label "Send Feedback". A click captures the
-  window, then opens the Send Feedback sheet on it ([Tickets › Feedback](tickets.md#feedback)). It does
+  window, then opens the Send Feedback sheet on it ([Chat › Feedback](chat.md#feedback)). It does
   nothing while the window shows a sheet, or while its feedback is open.
 - The bar is one element, `statusBar`. Previews: "Status Bar", "Status Bar, Dark".
 
@@ -212,7 +212,7 @@ The first tab of Settings (`gearshape`), a grouped form with two sections. **Win
 | --- | --- | --- |
 | **Feedback project** | `settings.general.feedbackProject` | A menu: **None** (the default), then every loaded project, top-level and sub projects in tree order, each named by its path ("Shop › Orders"). A project the setting names that isn't loaded shows as "<identifier> (not loaded)". A choice is written to `settings.yml`'s `feedbackProjectID` ([Data › Settings file](../data.md#settings-file)); None removes the key. |
 | Message | `settings.general.feedbackMessage` | When `settings.yml` can't be written: the storage error, in `danger`; the choice still holds until the app quits. |
-| Footer | — | "The ladybug at the bottom of every window, and Help ▸ Send Feedback… (⇧⌘B), make a ticket in this project with a screenshot of the window. With None, neither shows." |
+| Footer | — | "The ladybug at the bottom of every window, and Help ▸ Send Feedback… (⇧⌘B), start a chat in this project about the window, with its screenshot, which calls the internal skill report-feedback. With None, neither shows." |
 
 - While the chosen project is loaded, every window shows its [status bar](#status-bar) and the Help menu
   its Send Feedback… item. With None, or while the project isn't loaded, neither shows (the user's choice).
@@ -276,7 +276,7 @@ The app's tab items follow Bring All to Front, under macOS's names and shortcuts
 Prompts…** (⌥⌘,), right after it, selects the [System Prompts](system-prompts.md) tab or opens it.
 
 **Help menu:** **Send Feedback…** (⇧⌘B), after the Help search field, starts feedback about the key window,
-as its ladybug does ([Tickets › Feedback](tickets.md#feedback)). It shows only while the key window has a
+as its ladybug does ([Chat › Feedback](chat.md#feedback)). It shows only while the key window has a
 status bar: a feedback project is set and loaded, and the key window is one of the app's windows, not
 Settings. Its feedback is about the selected tab.
 

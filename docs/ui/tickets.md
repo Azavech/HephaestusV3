@@ -415,11 +415,11 @@ around each form's own Title field:
 
 ### Titles written by Claude
 
-A ticket created **without a title** (the user's request): from Send Feedback, which has no title field, or by
-Claude's `create_ticket` without one. It takes the description's first line as its provisional title at once,
+A ticket created **without a title** (the user's request): by Claude's `create_ticket` without one, as a
+[feedback chat](chat.md#feedback)'s Claude may make it. It takes the description's first line as its provisional title at once,
 then the app runs `set-ticket-title` in the background with the ticket's link alone, as the editor's **Generate
 Title** does ([Generate Title](#generate-title)): Claude reads the ticket whole, attachments included (the
-screenshot of a feedback ticket):
+screenshot a feedback chat attached):
 
 - When the answer gives a title ([Generate Title](#generate-title)'s rule), it replaces the provisional one,
   written by the app on its own: the history entry's author is `automatic`, and the activity reads "It was named
@@ -431,102 +431,10 @@ screenshot of a feedback ticket):
 
 ## Feedback
 
-![The Send Feedback sheet: the Tickets window's screenshot, a description, Project Orders, Priority Medium, Save as Draft off, the context line, Attach Files…, Cancel and Send](images/tickets-feedback.png)
-*Send Feedback over the Tickets window's screenshot: a description whose first line becomes the title, the
-feedback project, New Ticket's priority and draft switch, and the line that says where the feedback comes from.*
-
-V2's feedback, brought back by the user on 17 November 2026: the ladybug of every window's
-[status bar](navigation.md#status-bar), or Help ▸ Send Feedback… (⇧⌘B), sends feedback about that window as a
-**regular ticket** of the feedback project chosen in [Settings ▸ General](navigation.md#settings--general)
-(the user's choice). There is no feedback chat and no Claude: the ticket is what New Ticket makes, with the
-window's screenshot and the files added as its attachments. It has no title field: like any ticket created
-without one, it takes the description's first line as its title (the user's choice).
-
-**Flow.**
-
-1. Start: the ladybug of a window, or Help ▸ Send Feedback… for the key window. Nothing while the window
-   shows a sheet or its feedback is already open.
-2. Capture: the window is rendered into a PNG ([Screenshot](#screenshot)), saved as `screenshot.png` in a new
-   temporary folder, `HephaestusV3-Feedback-<UUID>`.
-3. Sheet: the **Send Feedback** sheet opens on that window, after the capture, so it is never in the
-   screenshot.
-4. Send: the ticket is created, then its files are attached; the sheet closes, its temporary folder is
-   deleted, and the new ticket opens in the feedback project's Tickets window (a route, which a window
-   already showing that project's tickets takes, and which becomes a tab when
-   [new windows open as tabs](navigation.md#tabs); default chosen at design time).
-
-**The sheet** (`feedback.sheet`), 520 pt wide, 600 pt high at least and 680 pt by default, on `canvas`:
-
-| Part | Identifier | Contents |
-| --- | --- | --- |
-| Heading | — | **Send Feedback** (`title3`, semibold), a heading for VoiceOver. |
-| Screenshot | `feedback.screenshot` | The PNG scaled to fit 480 × 300 pt, centered; at 40 % opacity while left out. A click opens it in Quick Look. Its label is "Screenshot of the window". |
-| Eye | `feedback.screenshot.toggle` | In the screenshot's top-right corner, 8 pt in: `eye`, white, on a 24 pt black circle at 55 % opacity, shown while the pointer is over the screenshot; `eye.slash` while the screenshot is left out, shown at all times. A click leaves the screenshot out or puts it back. Tooltip and label: "Exclude Screenshot", or "Include Screenshot". The screenshot is in each time the sheet opens. |
-| No screenshot | `feedback.screenshot.missing` | When the window couldn't be captured: `eye.slash` and "The window could not be captured.", in `textSecondary`. Send then sends no screenshot. |
-| First group | `feedback.description` | **Description**, with "What happened, and what did you expect?" as placeholder, four lines high, growing to eight; its first line becomes the ticket's title. Then the added files ([Added files](#added-files)). No title field (the user's choice). |
-| Second group | `feedback.project`, `feedback.priority`, `feedback.draft.toggle` | **Project**: the feedback project's name, read-only. New Ticket's **Priority** (Medium) and **Save as Draft**, off (the user's choice). Footer: the context line, `caption`, `textSecondary`, selectable (`feedback.context`). |
-| Message | `feedback.message` | Why a file wasn't added, or why Send failed, in `danger`, under the form. |
-| Bottom bar | `feedback.attach`, `feedback.cancel`, `feedback.send` | Under a divider: **Attach Files…** (`paperclip`) at the leading edge; at the trailing edge a small progress indicator while sending, **Cancel** (Escape) and **Send** (Return). |
-
-- **Send** is enabled while the description holds more than spaces and line breaks, nothing is being sent,
-  and the ticket hasn't been created yet. It creates the ticket as New Ticket's **Create** does without a
-  title, in the feedback project, with the priority, the draft choice, and as description what was typed,
-  trimmed, a blank line, then the context line. The ticket rules give it the provisional title: the
-  description's first line that is neither empty nor a heading, cut to 60 characters
-  ([Data › Tickets](../data.md)); then `set-ticket-title` writes its title
-  ([Titles written by Claude](#titles-written-by-claude)). Then the screenshot,
-  unless it is left out, and the added files, in order, are attached in one request. While it runs, the form,
-  Attach Files…, the files' remove buttons and Cancel are disabled.
-- **Creation fails**: the sheet stays, with the reason in the message line and what was typed.
-- **Attaching fails** (the files exceed 20 MB together, for example): the ticket exists without them. The
-  message reads "<ID> was created without its files: <reason>", Cancel and Send give way to **Show Ticket**
-  (`feedback.show`, Return), which closes the sheet and opens the ticket, and no second ticket can be sent.
-- **Cancel** closes the sheet and deletes the screenshot; nothing is created.
-
-### Added files
-
-- **Attach Files…** opens an open panel for files, several at once. Files dropped anywhere on the sheet are
-  added too. A file already added isn't added again.
-- A folder adds nothing from its drop or choice, with "Folders cannot be attached."; a file larger than
-  20 MB, with "<name> is larger than 20 MB." (the ticket attachments' limit, [Data](../data.md)). The next
-  successful addition clears the message.
-- Each added file is a chip in a row under the description, which scrolls sideways: the file's icon, its
-  name, its size and a remove button (`xmark`, "Remove <name>"). The chip is `feedback.file.<name>`.
-
-### Context line
-
-One line, in the ticket's description and in the sheet's footer, from the window at capture time, its parts
-joined with " · ":
-
-| Part | Value |
-| --- | --- |
-| App | `App: Hephaestus V3 <CFBundleShortVersionString> (<CFBundleVersion>)` |
-| macOS | `macOS <major>.<minor>`, and `.<patch>` when it isn't 0 |
-| Window | `Window: ` and the window's name: the tool's title, Projects, Project Settings or Virtual Machines |
-| Project | `Project: <name> (<identifier>)`: the tool window's or Project Settings' project, or the one selected in the Projects window; absent for Virtual Machines and when nothing is selected |
-| Item | `Item: ` and the item the tool window has selected, as its chat panel names it (`ORD-142`, `payments-api`, `Run 1288`); absent when nothing is selected and in the other windows |
-
-Example: `App: Hephaestus V3 1.0.19 (41) · macOS 27.2 · Window: Tickets · Project: Orders (ORD) · Item:
-ORD-142`. V2's device line has no counterpart; V2's Section is the Window part (default chosen at design time).
-
-### Screenshot
-
-V2's capture, inside the app's process, without screen-capture APIs, so no screen recording permission is
-needed:
-
-1. The window's frame view (`contentView.superview`: title bar, toolbar and content) is rendered with
-   `cacheDisplay` at the window's backing scale.
-2. Views that blend with what is behind the window (`NSVisualEffectView` with `.behindWindow`) are filled,
-   behind their pixels, with the window background color of their appearance, so they show opaque.
-3. In full screen, the window holding the title bar and toolbar is drawn over the bitmap at its place, and so
-   is each attached sheet, after its visible child windows.
-4. A PNG over 5,000,000 bytes is rendered again at 1 pixel per point, to leave room for added files in the
-   request's 20 MB (default chosen at design time).
-
-- A sheet, the background of an alert sheet, or the toolbar window of a window in full screen, is captured as
-  the window it belongs to. Other windows, menus, popovers and the pointer aren't in the screenshot. V2's step
-  for web views is left out: V3 has none. A virtual machine's screen, drawn by Virtualization, may show blank.
-- When no bitmap can be made, the sheet shows "The window could not be captured."
+Send Feedback (the status bar's ladybug, Help ▸ Send Feedback…) starts a feedback chat, no longer a ticket
+([Chat › Feedback](chat.md#feedback)). The first ticket that chat's Claude creates with `create_ticket` lists the
+chat in its `chats`, and the chat records it as its ticket; like any ticket created without a title, it is then
+titled by `set-ticket-title` ([Titles written by Claude](#titles-written-by-claude)).
 
 ## Add Link sheet
 
@@ -839,10 +747,6 @@ pointed at, such as "TicketsRootView, iPhone, Filtered".
 `GeneratedTitleField` (size that fits, 420 pt wide, a plain Title field): "Generator", whose stand-in writes a
 title; "Failure", whose stand-in fails, the reason showing once the wand is clicked in the live preview; "Empty
 Description", the wand disabled.
-
-`FeedbackTicketView` (size that fits, on `FeedbackTicketModel` over `SampleTicketStore`, with a gradient
-as screenshot): "Empty", "Filled, Dark" (a description of two paragraphs), "Screenshot Left Out", "Not
-Captured".
 
 `AddLinkSheet` and `BundleSheet` (size that fits): "Add Link", "New Bundle", "Edit Bundle, Dark".
 

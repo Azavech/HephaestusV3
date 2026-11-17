@@ -89,6 +89,9 @@ public struct ChatItemReference: Sendable, Hashable {
 
     /// The `tool` of the project itself.
     public static let projectTool = "project"
+    /// The `tool` of a file on this Mac, such as the feedback's screenshot: `focus` is its absolute path,
+    /// `title` its name.
+    public static let fileTool = "file"
 }
 
 /// A text block Claude wrote.

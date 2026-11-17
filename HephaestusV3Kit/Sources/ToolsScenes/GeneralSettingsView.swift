@@ -86,7 +86,7 @@ struct GeneralSettingsView: View {
             } header: {
                 Text("Feedback", bundle: #bundle)
             } footer: {
-                Text("The ladybug at the bottom of every window, and Help ▸ Send Feedback… (⇧⌘B), make a ticket in this project with a screenshot of the window. With None, neither shows.", bundle: #bundle)
+                Text("The ladybug at the bottom of every window, and Help ▸ Send Feedback… (⇧⌘B), start a chat in this project about the window, with its screenshot, which calls the internal skill report-feedback. With None, neither shows.", bundle: #bundle)
                     .font(.callout)
                     .foregroundStyle(.textSecondary)
             }

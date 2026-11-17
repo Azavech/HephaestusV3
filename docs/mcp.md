@@ -586,7 +586,7 @@ Input schema:
 
 ### create_ticket
 
-- **Calls:** `TicketLibrary.create` as Claude: [Data › Ticket changes](data.md#ticket-changes). The description is free Markdown, as the user's; the ticket starts `todo`, `createdBy: claude`. `title`, `priority` and `labels` are optional: without a title, the provisional title is kept.
+- **Calls:** `TicketLibrary.create` as Claude: [Data › Ticket changes](data.md#ticket-changes). The description is free Markdown, as the user's; the ticket starts `todo`, `createdBy: claude`. `title`, `priority` and `labels` are optional: without a title, the provisional title is kept, then `set-ticket-title` writes one. Called by a feedback chat that has no ticket yet, the ticket lists the chat in its `chats` and the chat records it as its `ticket` (`FeedbackLink`, [Data › Feedback chats](data.md#feedback-chats)).
 - **Result:** the new ticket's JSON.
 - **Errors:** an unknown project or linked ticket (`notFound`); an empty description without a title, a title, an attachment or a link that breaks a rule (`invalid`).
 

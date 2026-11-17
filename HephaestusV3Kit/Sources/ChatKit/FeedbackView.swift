@@ -1,57 +1,74 @@
+import AppKit
 import AZDesign
+import ChatData
 import Observation
 import QuickLook
 import SwiftUI
 import ToolsFoundation
 import UniformTypeIdentifiers
 
-/// What the Send Feedback sheet holds: a new ticket, as New Ticket makes it, with the window's screenshot, the
-/// files added, and a line saying where the feedback comes from (docs/ui/tickets.md › Feedback).
+/// Whether the Claude CLI can take the feedback, as the Send Feedback sheet says.
+enum FeedbackCLI: Equatable {
+    case available
+    case checking
+    case unavailable(String)
+}
+
+/// What the Send Feedback sheet holds (docs/ui/chat.md › Feedback): the window's screenshot, the comment, the
+/// files added, the chat's model and effort, and the lines that say where the feedback comes from.
 ///
-/// Send creates a regular ticket in the feedback project, as New Ticket does without a title: its title is the
-/// description's first line (the ticket rules' provisional title), its description what was typed followed by
-/// the context line, with New Ticket's priority and draft choice, the draft off. Then the screenshot, unless it
-/// is left out, and the added files become the ticket's attachments, in one request.
+/// Send creates a feedback chat in the feedback project, whose first message calls the internal skill
+/// `report-feedback` with all of it (`ChatSession.createFeedback`), as V2's Send Feedback did.
 @MainActor
 @Observable
-final class FeedbackTicketModel {
-    var draft: NewTicketDraft
+final class FeedbackModel {
+    var comment = ""
     /// The window's PNG, in a temporary folder; nil when the window couldn't be captured.
     let screenshot: URL?
-    /// Whether Send attaches the screenshot; on each time the sheet opens.
+    /// Whether Send sends the screenshot; on each time the sheet opens.
     var includesScreenshot = true
     /// The files added, in the order they were added.
     private(set) var files: [URL] = []
-    /// "App: Hephaestus V3 1.0.18 (40) · macOS 27.2 · Window: Tickets · Project: Orders (ORD) · Item: ORD-12".
-    let context: String
+    /// `App: Hephaestus V3 1.0.18 (40)`, `macOS 27.2`, `Window: Tickets`, `Project: Orders (ORD)`, `Item: ORD-142`.
+    let context: [String]
+    let projectID: String
     /// The feedback project's name.
     let projectName: String
+    /// The chat's model and effort: Settings ▸ Chat's defaults each time the sheet opens.
+    var settings: ChatSettings
     private(set) var isSending = false
     /// Why a file wasn't added, or why Send failed.
-    private(set) var message: String?
-    /// The ticket Send created when its files couldn't be attached: the sheet then offers to show it.
-    private(set) var createdWithoutFiles: String?
+    private(set) var failure: String?
 
-    @ObservationIgnored private let store: any TicketStore
+    @ObservationIgnored private let cli: @MainActor () -> FeedbackCLI
+    @ObservationIgnored private let sender: @MainActor (FeedbackReport) async throws(ChatError) -> String
 
-    init(project: Project, screenshot: URL?, context: String, store: any TicketStore) {
-        // Feedback goes into the workflow at once (the user's choice).
-        var draft = NewTicketDraft(projectID: project.id)
-        draft.startsAsDraft = false
-        self.draft = draft
+    init(project: Project, screenshot: URL?, context: [String], settings: ChatSettings, cli: @escaping @MainActor () -> FeedbackCLI,
+         send: @escaping @MainActor (FeedbackReport) async throws(ChatError) -> String) {
+        projectID = project.id
         projectName = project.name
         self.screenshot = screenshot
         self.context = context
-        self.store = store
+        self.settings = settings
+        self.cli = cli
+        sender = send
     }
 
-    /// The largest file a ticket takes, and the most one request takes together (docs/data.md › Attachments).
-    static let attachmentLimit = 20 * 1024 * 1024
+    /// The context in one line, as the sheet shows it.
+    var contextLine: String { context.joined(separator: " · ") }
 
-    /// A description with more than spaces in it, which also gives the ticket its title; nothing being sent,
-    /// nothing created yet.
+    /// Why Send waits for the CLI: it checks it, or it isn't there.
+    var cliMessage: String? {
+        switch cli() {
+        case .available: nil
+        case .checking: String(localized: "Checking the Claude CLI…", bundle: #bundle)
+        case .unavailable(let reason): String(localized: "Claude CLI is not available: \(reason)", bundle: #bundle)
+        }
+    }
+
+    /// A comment with more than spaces in it, an available CLI, nothing being sent.
     var canSend: Bool {
-        !draft.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending && createdWithoutFiles == nil
+        !comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && cli() == .available && !isSending
     }
 
     /// Adds files, in order, leaving out those already added. A folder, or a file larger than 20 MB, adds
@@ -60,15 +77,15 @@ final class FeedbackTicketModel {
         for url in urls {
             let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey])
             if values?.isDirectory == true {
-                message = String(localized: "Folders cannot be attached.", bundle: #bundle)
+                failure = String(localized: "Folders cannot be attached.", bundle: #bundle)
                 return
             }
-            if let size = values?.fileSize, size > Self.attachmentLimit {
-                message = String(localized: "\(url.lastPathComponent) is larger than 20 MB.", bundle: #bundle)
+            if let size = values?.fileSize, size > FeedbackReport.sizeLimit {
+                failure = String(localized: "\(url.lastPathComponent) is larger than 20 MB.", bundle: #bundle)
                 return
             }
         }
-        message = nil
+        failure = nil
         for url in urls where !files.contains(url) {
             files.append(url)
         }
@@ -78,60 +95,56 @@ final class FeedbackTicketModel {
         files.removeAll { $0 == url }
     }
 
-    /// The description of the ticket: what was typed, then the context line.
-    static func details(_ text: String, context: String) -> String {
-        let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        return text.isEmpty ? context : "\(text)\n\n\(context)"
+    /// What Send sends: the screenshot unless it is left out.
+    var report: FeedbackReport {
+        FeedbackReport(projectID: projectID, comment: comment, context: context, screenshot: includesScreenshot ? screenshot : nil,
+                       files: files, settings: settings)
     }
 
-    /// Creates the ticket, then attaches its files. Returns the ticket's id once both are done; nil when
-    /// either failed, with the reason in `message`.
+    /// Creates the feedback chat; returns its id, or nil with the reason in `failure`.
     func send() async -> String? {
         guard canSend else { return nil }
         isSending = true
-        message = nil
+        failure = nil
         defer { isSending = false }
-        var ticket = draft
-        ticket.details = Self.details(draft.details, context: context)
-        let id: String
-        do throws(TicketStoreError) {
-            guard let created = try await store.perform(.create(ticket)) else {
-                message = String(localized: "The ticket couldn't be created.", bundle: #bundle)
-                return nil
-            }
-            id = created
+        do throws(ChatError) {
+            return try await sender(report)
         } catch {
-            message = error.message
-            return nil
-        }
-        let attachments = (includesScreenshot ? [screenshot].compactMap { $0 } : []) + files
-        guard !attachments.isEmpty else { return id }
-        do throws(TicketStoreError) {
-            try await store.perform(.addAttachments(id, attachments))
-            return id
-        } catch {
-            createdWithoutFiles = id
-            message = String(localized: "\(id) was created without its files: \(error.message)", bundle: #bundle)
+            failure = error.description
             return nil
         }
     }
 }
 
-/// The Send Feedback sheet: the window's screenshot, then New Ticket's fields, the added files and where the
-/// feedback comes from. Send creates a regular ticket in the feedback project (docs/ui/tickets.md › Feedback).
-public struct FeedbackTicketView: View {
-    @State private var model: FeedbackTicketModel
-    /// Called with the ticket's id once it is created, or nil on Cancel.
+/// The Send Feedback sheet: the window's screenshot, the comment and the files added, the chat's model and
+/// effort, and where the feedback comes from. Send starts a feedback chat in the feedback project
+/// (docs/ui/chat.md › Feedback).
+public struct FeedbackView: View {
+    @State private var model: FeedbackModel
+    private let models: [ClaudeModel]
+    /// Called with the chat's id once it is created, or nil on Cancel.
     private let onFinish: (String?) -> Void
 
-    /// `screenshot` is the window's PNG; `context` the line that says where the feedback comes from.
-    public init(project: Project, store: LiveTicketStore, screenshot: URL?, context: String, onFinish: @escaping (String?) -> Void) {
-        _model = State(initialValue: FeedbackTicketModel(project: project, screenshot: screenshot, context: context, store: store))
+    /// `screenshot` is the window's PNG; `context` the lines that say where the feedback comes from.
+    public init(project: Project, chats: LiveChatStore, screenshot: URL?, context: [String], onFinish: @escaping (String?) -> Void) {
+        let session = chats.session
+        _model = State(initialValue: FeedbackModel(
+            project: project, screenshot: screenshot, context: context, settings: session.defaults,
+            cli: {
+                let status = session.status
+                if status.isAvailable { return .available }
+                if status.checking || status.error == nil { return .checking }
+                return .unavailable(status.error ?? "")
+            },
+            send: { report throws(ChatError) in try await session.createFeedback(report) }
+        ))
+        models = session.models.isEmpty ? ClaudeModel.fallback : session.models
         self.onFinish = onFinish
     }
 
-    init(model: FeedbackTicketModel, onFinish: @escaping (String?) -> Void = { _ in }) {
+    init(model: FeedbackModel, models: [ClaudeModel] = ClaudeModel.fallback, onFinish: @escaping (String?) -> Void = { _ in }) {
         _model = State(initialValue: model)
+        self.models = models
         self.onFinish = onFinish
     }
 
@@ -156,12 +169,12 @@ public struct FeedbackTicketView: View {
 
                 Section {
                     TextField(
-                        String(localized: "Description", bundle: #bundle), text: $model.draft.details,
+                        String(localized: "Comment", bundle: #bundle), text: $model.comment,
                         prompt: Text("What happened, and what did you expect?", bundle: #bundle), axis: .vertical
                     )
                     .lineLimit(4...8)
                     .labelsHidden()
-                    .accessibilityIdentifier("feedback.description")
+                    .accessibilityIdentifier("feedback.comment")
                     files
                 }
 
@@ -170,17 +183,9 @@ public struct FeedbackTicketView: View {
                         Text(verbatim: model.projectName)
                     }
                     .accessibilityIdentifier("feedback.project")
-                    Picker(TicketWords.priority, selection: $model.draft.priority) {
-                        Text(verbatim: TicketWords.none).tag(TicketPriority?.none)
-                        ForEach(TicketPriority.allCases) { priority in
-                            Text(verbatim: priority.title).tag(TicketPriority?.some(priority))
-                        }
-                    }
-                    .accessibilityIdentifier("feedback.priority")
-                    Toggle(String(localized: "Save as Draft", bundle: #bundle), isOn: $model.draft.startsAsDraft)
-                        .accessibilityIdentifier("feedback.draft.toggle")
+                    ReplySettingsRows(models: models, settings: model.settings, identifier: "feedback") { model.settings = $0 }
                 } footer: {
-                    Text(verbatim: model.context)
+                    Text(verbatim: model.contextLine)
                         .font(.caption)
                         .foregroundStyle(.textSecondary)
                         .textSelection(.enabled)
@@ -191,10 +196,10 @@ public struct FeedbackTicketView: View {
             .scrollContentBackground(.hidden)
             .disabled(model.isSending)
 
-            if let message = model.message {
+            if let message = model.failure ?? model.cliMessage {
                 Text(verbatim: message)
                     .font(.callout)
-                    .foregroundStyle(.danger)
+                    .foregroundStyle(model.failure == nil ? .textSecondary : .danger)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal)
                     .padding(.bottom, 8)
@@ -207,44 +212,40 @@ public struct FeedbackTicketView: View {
                 Button(String(localized: "Attach Files…", bundle: #bundle), systemImage: "paperclip") {
                     choosesFiles = true
                 }
-                .disabled(model.isSending || model.createdWithoutFiles != nil)
+                .disabled(model.isSending)
                 .accessibilityIdentifier("feedback.attach")
                 Spacer()
                 if model.isSending {
                     ProgressView().controlSize(.small)
                 }
-                if let created = model.createdWithoutFiles {
-                    Button(String(localized: "Show Ticket", bundle: #bundle)) { onFinish(created) }
-                        .keyboardShortcut(.defaultAction)
-                        .accessibilityIdentifier("feedback.show")
-                } else {
-                    Button(String(localized: "Cancel", bundle: #bundle), role: .cancel) { onFinish(nil) }
-                        .keyboardShortcut(.cancelAction)
-                        .disabled(model.isSending)
-                        .accessibilityIdentifier("feedback.cancel")
-                    Button(String(localized: "Send", bundle: #bundle)) {
-                        Task {
-                            if let id = await model.send() {
-                                onFinish(id)
-                            }
+                Button(String(localized: "Cancel", bundle: #bundle), role: .cancel) { onFinish(nil) }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(model.isSending)
+                    .accessibilityIdentifier("feedback.cancel")
+                Button(String(localized: "Send", bundle: #bundle)) {
+                    Task {
+                        if let id = await model.send() {
+                            onFinish(id)
                         }
                     }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(!model.canSend)
-                    .accessibilityIdentifier("feedback.send")
                 }
+                .keyboardShortcut(.return, modifiers: .command)
+                .buttonStyle(.borderedProminent)
+                .disabled(!model.canSend)
+                .help(Text("Send (⌘↩)", bundle: #bundle))
+                .accessibilityIdentifier("feedback.send")
             }
             .padding()
         }
         .background(.canvas)
-        .frame(minWidth: 520, idealWidth: 520, minHeight: 600, idealHeight: 680)
+        .frame(minWidth: 520, idealWidth: 520, minHeight: 600, idealHeight: 700)
         .fileImporter(isPresented: $choosesFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             if case .success(let urls) = result {
                 model.add(urls)
             }
         }
         .dropDestination(for: URL.self) { urls, _ in
-            guard !model.isSending, model.createdWithoutFiles == nil else { return false }
+            guard !model.isSending else { return false }
             model.add(urls)
             return true
         }
@@ -355,29 +356,36 @@ public struct FeedbackTicketView: View {
     return url
 }
 
-private let previewContext = "App: Hephaestus V3 1.0.18 (40) · macOS 27.2 · Window: Tickets · Project: Orders (ORD) · Item: ORD-142"
+private let previewContext = ["App: Hephaestus V3 1.0.30 (51)", "macOS 27.2", "Window: Tickets", "Project: Orders (ORD)", "Item: ORD-142"]
+
+@MainActor private func previewModel(screenshot: URL? = previewScreenshot(), cli: FeedbackCLI = .available) -> FeedbackModel {
+    FeedbackModel(project: Project.sample("SHOP")!, screenshot: screenshot, context: previewContext, settings: ChatSettings(),
+                  cli: { cli }, send: { _ throws(ChatError) in "PREVIEW" })
+}
 
 #Preview("Empty", traits: .appChrome, .sizeThatFitsLayout) {
-    FeedbackTicketView(model: FeedbackTicketModel(project: Project.sample("ORD")!, screenshot: previewScreenshot(), context: previewContext,
-                                                  store: SampleTicketStore()))
+    FeedbackView(model: previewModel())
 }
 
 #Preview("Filled, Dark", traits: .appChrome, .sizeThatFitsLayout) {
-    let model = FeedbackTicketModel(project: Project.sample("ORD")!, screenshot: previewScreenshot(), context: previewContext,
-                                    store: SampleTicketStore())
-    model.draft.details = "The ladybug hides behind the chat panel\n\nWith the chat panel open, the status bar's ladybug sits under the panel's divider."
-    return FeedbackTicketView(model: model)
+    let model = previewModel()
+    model.comment = "The ladybug hides behind the chat panel\n\nWith the chat panel open, the status bar's ladybug sits under the panel's divider."
+    return FeedbackView(model: model)
         .preferredColorScheme(.dark)
 }
 
 #Preview("Screenshot Left Out", traits: .appChrome, .sizeThatFitsLayout) {
-    let model = FeedbackTicketModel(project: Project.sample("ORD")!, screenshot: previewScreenshot(), context: previewContext,
-                                    store: SampleTicketStore())
+    let model = previewModel()
     model.includesScreenshot = false
-    return FeedbackTicketView(model: model)
+    return FeedbackView(model: model)
 }
 
 #Preview("Not Captured", traits: .appChrome, .sizeThatFitsLayout) {
-    FeedbackTicketView(model: FeedbackTicketModel(project: Project.sample("ORD")!, screenshot: nil, context: previewContext,
-                                                  store: SampleTicketStore()))
+    FeedbackView(model: previewModel(screenshot: nil))
+}
+
+#Preview("No Claude CLI", traits: .appChrome, .sizeThatFitsLayout) {
+    let model = previewModel(cli: .unavailable("Claude CLI not found."))
+    model.comment = "Tabs close on click."
+    return FeedbackView(model: model)
 }

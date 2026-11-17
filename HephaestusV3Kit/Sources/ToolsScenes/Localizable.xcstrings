@@ -186,7 +186,7 @@
     "Terminal sessions that use the current token stop working until you add the server again." : {
 
     },
-    "The ladybug at the bottom of every window, and Help ▸ Send Feedback… (⇧⌘B), make a ticket in this project with a screenshot of the window. With None, neither shows." : {
+    "The ladybug at the bottom of every window, and Help ▸ Send Feedback… (⇧⌘B), start a chat in this project about the window, with its screenshot, which calls the internal skill report-feedback. With None, neither shows." : {
 
     },
     "This tab's project isn't loaded. Pick another one in Projects." : {
