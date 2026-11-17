@@ -10,6 +10,17 @@ import ToolsFoundation
 /// Under the table, the log of the step picked in the details (or a release's notes) takes the
 /// height the window has; the divider between them moves. The details are always open: at the right
 /// of the window on a Mac, beside the log under the table on an iPad (the user's choice).
+/// What a tab keeps of Builds while another tab is in front: its model, so that its selection, filters
+/// and drafts are still there when the tab comes back. The app's window makes one per tab and project.
+@MainActor
+public final class BuildsTabState {
+    let model: BuildsModel
+
+    public init(project: Project, focus: String? = nil, store: LiveBuildStore) {
+        model = BuildsModel(project: project, focus: focus, store: store)
+    }
+}
+
 public struct BuildsRootView: View {
     @State private var model: BuildsModel
 
@@ -27,6 +38,11 @@ public struct BuildsRootView: View {
 
     init(model: BuildsModel) {
         _model = State(initialValue: model)
+    }
+
+    /// The builds a tab keeps.
+    public init(state: BuildsTabState) {
+        self.init(model: state.model)
     }
 
     public var body: some View {

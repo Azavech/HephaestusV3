@@ -199,16 +199,23 @@ which rules the app enforces, and never tells Claude how to work.
 ## Window tabs
 
 The owner asked, on 17 November 2026, that windows can share one window's tabs, with Merge All Windows in the
-Window menu as in Safari, and leave them again.
+Window menu as in Safari, and leave them again. Seeing macOS's tabs, the owner then asked that a tab hold its
+sidebar, under the tab bar, and that one chat panel sit on the right of the window, outside the tabs, for every
+tab. They chose the app's own tabs over macOS's, a chat panel that shows the selected tab's project's
+conversation, and a panel shown by default that ⌃⌘C still hides.
 
 | Question | Default chosen | Where |
 | --- | --- | --- |
-| Which windows can be tabs of one another? | Every window but Settings and the menu bar panel, whatever its tool or project: Projects, the tool windows, Project Settings and Virtual Machines. | [UI › Navigation › Tabs](ui/navigation.md#tabs) |
-| What does a tab read? | The tool, then the project's name ("Tickets – Orders"), and "Project Settings – Orders"; Projects and Virtual Machines their title. The windows' own titles don't change. | same |
-| What does the tab bar's + do? | What ⌘N does: another window of the front tab's tool on its project, as a new tab. In Projects, Project Settings and Virtual Machines, which open once each, it beeps. | same |
-| Do new windows open as tabs? | Yes by default (the user's choice): Settings ▸ General ▸ **Open new windows**, stored in `settings.yml`'s `newWindows`. It covers the windows the app opens when asked; windows macOS reopens at launch keep their places. | [UI › Navigation › Settings ▸ General](ui/navigation.md#settings--general) |
+| What can a tab show? | Projects, a tool for a project, a project's settings, Virtual Machines: everything the windows showed. Projects, Virtual Machines and each Project Settings are one tab in the app. | [UI › Navigation › Windows](ui/navigation.md#windows) |
+| What does a tab read? | The tool, then the project's name ("Tickets – Orders"), and "Project Settings – Orders"; Projects and Virtual Machines their name. | [UI › Navigation › Tabs](ui/navigation.md#tabs) |
+| How does a tab keep its state while another is in front? | Only the selected tab is drawn; a tool's tab keeps its tool's model, so its selection, filters and drafts stay, while scroll positions start afresh. Keeping every tab drawn would put every tab's toolbar items in the window's toolbar, and SwiftUI's `TabView` shows its own tab picker in the toolbar. | same |
+| What do + and New Tab (⌘T) make? | Another tab of the selected tab's tool and project. None in Projects, Project Settings and Virtual Machines. | same |
+| How do tabs leave a window? | Move Tab to New Window, from the Window menu or a tab's context menu, or a tab dragged 48 points out of the bar. Tabs don't move between windows by dragging: Merge All Windows gathers them. | same |
+| What do ⌘W and ⇧⌘W do? | Close Tab and Close Window, as in Safari; SwiftUI's Close is taken out. | [UI › Navigation › Menus and shortcuts](ui/navigation.md#menus-and-shortcuts) |
+| Where are the tab items? | The app's own, under macOS's names and shortcuts: Show Previous Tab (⌃⇧⇥), Show Next Tab (⌃⇥), Move Tab to New Window and Merge All Windows, after Bring All to Front. | same |
+| What does the chat panel show in a tab without a project? | The last project the window showed; with none, "No Project". The Dashboard is the origin of messages sent from Projects, Project Settings and Virtual Machines. | [UI › Chat › Chat panel](ui/chat.md#chat-panel) |
+| Do new tabs go into the front window? | Yes by default (the user's choice): Settings ▸ General ▸ **Open new windows**, stored in `settings.yml`'s `newWindows`, for what routes open. | [UI › Navigation › Settings ▸ General](ui/navigation.md#settings--general) |
 | Where is that setting? | A General tab, first in Settings, since it concerns every window. | same |
-| Where are the tab items? | AppKit's own: Show Previous Tab, Show Next Tab, Move Tab to New Window and Merge All Windows in the Window menu; Show Tab Bar and Show All Tabs in the View menu. | [UI › Navigation › Menus and shortcuts](ui/navigation.md#menus-and-shortcuts) |
 
 ## App icon
 

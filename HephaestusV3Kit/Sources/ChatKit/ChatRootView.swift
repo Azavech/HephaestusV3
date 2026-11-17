@@ -8,6 +8,17 @@ import ToolsFoundation
 ///
 /// Claude is one more client of the tools here: it reads items through their tools, each read shows as
 /// a row that opens the item in its own window, and it asks before it changes anything.
+/// What a tab keeps of Chat while another tab is in front: its model, so that its selection, filters
+/// and drafts are still there when the tab comes back. The app's window makes one per tab and project.
+@MainActor
+public final class ChatTabState {
+    let model: ChatWindowModel
+
+    public init(project: Project, focus: String? = nil, store: LiveChatStore, directory: ProjectDirectory) {
+        model = ChatWindowModel(project: project, focus: focus, store: store, directory: directory)
+    }
+}
+
 public struct ChatRootView: View {
     @State private var model: ChatWindowModel
     @State private var showsInspector = true
@@ -22,6 +33,11 @@ public struct ChatRootView: View {
     /// route's focus arrives as a focus request, which selects it without starting afresh.
     public init(project: Project, focus: String? = nil, store: LiveChatStore, directory: ProjectDirectory) {
         _model = State(initialValue: ChatWindowModel(project: project, focus: focus, store: store, directory: directory))
+    }
+
+    /// The chats a tab keeps.
+    public init(state: ChatTabState) {
+        _model = State(initialValue: state.model)
     }
 
     /// The window on the samples, for previews.

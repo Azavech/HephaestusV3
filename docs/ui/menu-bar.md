@@ -126,7 +126,7 @@ second one opening (the user's choice). See [Navigation › Window reuse](naviga
 
 | Action | Route | Result |
 | --- | --- | --- |
-| A click on a project, or Return | `.projectWindow(id)` | The frontmost window that shows the project comes forward, un-minimized: one of its tool windows, or the Projects window when the project is selected there. Minimized windows count after the others. When no window shows the project, the Projects window opens, or comes forward, with the project selected. |
+| A click on a project, or Return | `.projectWindow(id)` | The tab that shows the project is selected and its window comes forward, un-minimized: in the frontmost window that has one, its selected tab when that shows the project, else its first tab that does. Minimized windows count after the others. When no tab shows the project, Projects opens, or is selected, with the project selected. |
 | A tool button, or ⌘1–⌘6 | `.tool(tool, project:)` | The window of that tool for that project comes forward, un-minimized, or a new one opens. |
 | **Show All Projects** | `.project(id)` | The Projects window comes forward, or opens, with the project selected. |
 

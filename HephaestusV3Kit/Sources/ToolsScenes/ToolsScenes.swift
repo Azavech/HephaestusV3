@@ -1,3 +1,4 @@
+import AppKit
 import AZDesign
 import BuildsKit
 import ChatKit
@@ -11,100 +12,59 @@ import SwiftUI
 import TicketsKit
 import ToolsFoundation
 
-/// Ids of the windows that aren't project tools.
+/// Ids of the app's scenes.
 enum SceneID {
-    static let projects = "projects"
-    static let machines = "machines"
-    static let projectSettings = "projectSettings"
+    /// Every window but Settings and the menu bar panel: the app's tabs.
+    static let workspace = "workspace"
 }
 
 /// Every window of the app.
 ///
-/// - Projects: the project selector, opened at launch.
-/// - One window group per tool. Each window shows one project, which its toolbar switches,
-///   so Tickets for Orders and Service Map for Payments can sit side by side.
-/// - Virtual Machines: one window for the whole Mac.
+/// - One kind of window, which holds tabs drawn by the app (`WorkspaceRoot`): Projects, a tool for a
+///   project, a project's settings, Virtual Machines. Each tab's sidebar is inside the tab, and one chat
+///   panel sits on the right, outside the tabs. The first window, at launch, shows Projects.
 /// - A menu bar item that opens a project from anywhere.
 /// - Settings, with the chat's pane.
 ///
-/// Chat is a tool like the others, and its panel can sit beside any other tool's window: Claude reads
-/// items through `toolReader`, which sends each to the tool it belongs to.
+/// Chat is a tool like the others, and its panel sits beside every tab: Claude reads items through
+/// `toolReader`, which sends each to the tool it belongs to.
 ///
-/// A route never opens a second window for what a window already shows: `WindowDirectory` brings that
-/// window forward instead, out of the Dock if it was minimised.
-///
-/// Every window but Settings and the menu bar panel can be a tab of any other (Window ▸ Merge All
-/// Windows, Move Tab to New Window), through `WindowDirectory`.
+/// A route never opens a second tab for what a tab already shows: `WindowDirectory` selects that tab and
+/// brings its window forward instead.
 ///
 /// This is the only target that knows every tool. Tools ask for a `Route`; `RouteHost` opens it.
 public struct ToolsScenes: Scene {
     /// The project data and the directory every window reads.
     @State private var appData = AppData()
+    /// The project selected in Projects, which is one tab in the whole app.
     @State private var selectedProjectID: Project.ID?
-    /// The machine the Virtual Machines window opens on.
+    /// The machine the Virtual Machines tab opens on.
     @State private var machineFocus: String?
-    /// A route's ask to select a machine in the open Virtual Machines window.
+    /// A route's ask to select a machine in the open Virtual Machines tab.
     @State private var machineFocusRequest: FocusRequest?
 
-    public init() {}
+    public init() {
+        // The app draws its own tabs: macOS's tab items and tabbing are off.
+        NSWindow.allowsAutomaticWindowTabbing = false
+    }
 
     public var body: some Scene {
-        Window(Text("Projects", bundle: #bundle), id: SceneID.projects) {
+        WindowGroup(Text(verbatim: "Hephaestus V3"), id: SceneID.workspace, for: WorkspaceValue.self) { $value in
             routeHost {
-                ProjectsRootView(directory: appData.directory, session: appData.session, selection: $selectedProjectID)
-                    .statusBar(FeedbackSource(window: String(localized: "Projects", bundle: #bundle),
-                                              project: appData.directory.project(selectedProjectID)))
-                    .focusedSceneValue(\.activeProject, appData.directory.project(selectedProjectID))
-                    .registersWindow(.projects, projectID: selectedProjectID)
+                WorkspaceRoot(value: $value, appData: appData, selectedProjectID: $selectedProjectID, machineFocus: machineFocus,
+                              machineFocusRequest: machineFocusRequest)
             }
         }
-        .defaultSize(width: 1040, height: 680)
+        .defaultSize(width: 1320, height: 840)
         .commands {
             NewItemCommands()
             ToolCommands()
+            TabCommands()
             ChatPanelCommands()
             FeedbackCommands()
         }
 
-        toolScene(.dashboard, size: CGSize(width: 1240, height: 820))
-        toolScene(.tickets, size: CGSize(width: 1180, height: 760))
-        toolScene(.serviceMap, size: CGSize(width: 1320, height: 840))
-        toolScene(.contracts, size: CGSize(width: 1120, height: 740))
-        toolScene(.builds, size: CGSize(width: 1180, height: 720))
-        toolScene(.chat, size: CGSize(width: 1180, height: 780))
-
-        // One Project Settings window per project; a route brings the open one forward.
-        WindowGroup(Text("Project Settings", bundle: #bundle), id: SceneID.projectSettings, for: Project.ID.self) { $projectID in
-            routeHost {
-                if let projectID {
-                    ProjectSettingsWindow(session: appData.session, projectID: projectID)
-                        .statusBar(FeedbackSource(window: String(localized: "Project Settings", bundle: #bundle),
-                                                  project: appData.directory.project(projectID)))
-                        .registersWindow(
-                            .projectSettings, projectID: projectID,
-                            tabTitle: appData.directory.project(projectID).map {
-                                WindowDirectory.tabTitle(String(localized: "Project Settings", bundle: #bundle), project: $0.name)
-                            }
-                        )
-                }
-            }
-        }
-        .defaultSize(width: 600, height: 720)
-        .defaultLaunchBehavior(.suppressed)
-
-        // The Mac's images and virtual machines (`AppData.machinesAvailable`).
-        Window(Text("Virtual Machines", bundle: #bundle), id: SceneID.machines) {
-            routeHost {
-                MachinesRootView(focus: machineFocus, store: appData.machineStore)
-                    .environment(\.focusRequest, machineFocusRequest)
-                    .statusBar(FeedbackSource(window: String(localized: "Virtual Machines", bundle: #bundle), project: nil))
-                    .registersWindow(.machines, projectID: nil)
-            }
-        }
-        .defaultSize(width: 1100, height: 760)
-        .defaultLaunchBehavior(.suppressed)
-
-        // Type a few letters, then Return: the project's window comes forward.
+        // Type a few letters, then Return: the project's tab comes forward.
         MenuBarExtra(String(localized: "Open Project", bundle: #bundle), systemImage: "wrench.and.screwdriver") {
             routeHost {
                 ProjectLauncher(projects: appData.directory.projects)
@@ -145,37 +105,11 @@ public struct ToolsScenes: Scene {
         }
     }
 
-    private func toolScene(_ tool: ToolKind, size: CGSize) -> some Scene {
-        WindowGroup(Text(tool.title), id: tool.windowID, for: ToolWindowValue.self) { $value in
-            routeHost {
-                ToolWindowRoot(tool: tool, value: $value)
-            }
-        }
-        .defaultSize(size)
-        .defaultLaunchBehavior(.suppressed)
-    }
-
     private func routeHost(@ViewBuilder content: () -> some View) -> some View {
         RouteHost(
             appData: appData, selectedProjectID: $selectedProjectID, machineFocus: $machineFocus,
             machineFocusRequest: $machineFocusRequest, content: content
         )
-    }
-}
-
-extension OpenWindowAction {
-    /// Opens a window the user asked for: a tab of the frontmost window when Settings ▸ General says so
-    /// (`WindowDirectory.willOpenWindow()`).
-    func openNew(id: String) {
-        WindowDirectory.shared.willOpenWindow()
-        self(id: id)
-    }
-
-    /// Opens a window the user asked for, on `value`: a tab of the frontmost window when Settings ▸ General
-    /// says so.
-    func openNew<Value: Codable & Hashable>(id: String, value: Value) {
-        WindowDirectory.shared.willOpenWindow()
-        self(id: id, value: value)
     }
 }
 
@@ -217,45 +151,33 @@ private struct RouteHost<Content: View>: View {
         self.content = content()
     }
 
-    /// Opens a route: brings forward the window that shows it, or opens one (docs/ui/navigation.md › Routes).
+    /// Opens a route: selects the tab that shows it and brings its window forward, or opens a tab
+    /// (docs/ui/navigation.md › Routes).
     private var openRouteAction: OpenRouteAction {
         OpenRouteAction { [openWindow, $selectedProjectID, $machineFocus, $machineFocusRequest] route in
             let windows = WindowDirectory.shared
-            /// The Projects window on `id`: the open one, or a new one.
-            @MainActor func showProjects(_ id: Project.ID) {
-                $selectedProjectID.wrappedValue = id
-                if !windows.bringForward(role: .projects, projectID: nil) {
-                    openWindow.openNew(id: SceneID.projects)
-                    WindowDirectory.activate()
-                }
-            }
             switch route {
             case .project(let id):
-                showProjects(id)
+                $selectedProjectID.wrappedValue = id
+                windows.showOrOpen(.projects, openWindow: openWindow)
             case .projectWindow(let id):
-                if !windows.bringForward(role: nil, projectID: id) {
-                    showProjects(id)
+                if !windows.show(where: { $0.tab(showingProject: id) }) {
+                    $selectedProjectID.wrappedValue = id
+                    windows.showOrOpen(.projects, openWindow: openWindow)
                 }
             case .tool(let tool, let projectID, let focus):
-                if !windows.bringForward(role: .tool(tool), projectID: projectID, focus: focus) {
-                    openWindow.openNew(id: tool.windowID, value: ToolWindowValue(projectID: projectID, focus: focus))
-                    WindowDirectory.activate()
-                }
+                windows.showOrOpen(.tool(tool, project: projectID), focus: focus, openWindow: openWindow)
             case .projectSettings(let id):
-                if !windows.bringForward(role: .projectSettings, projectID: id) {
-                    openWindow.openNew(id: SceneID.projectSettings, value: id)
-                    WindowDirectory.activate()
-                }
+                windows.showOrOpen(.projectSettings(id), openWindow: openWindow)
             case .machine(let id):
-                // A new window opens on the machine; an open one is asked to select it.
+                // A new tab opens on the machine; an open one is asked to select it.
                 $machineFocus.wrappedValue = id
-                if windows.bringForward(role: .machines, projectID: nil) {
+                if windows.show(.machines) {
                     if let id {
                         $machineFocusRequest.wrappedValue = FocusRequest(id)
                     }
                 } else {
-                    openWindow.openNew(id: SceneID.machines)
-                    WindowDirectory.activate()
+                    windows.open(WorkspaceTab(content: .machines), openWindow: openWindow)
                 }
             }
         }
@@ -284,228 +206,35 @@ private struct RouteHost<Content: View>: View {
     }
 }
 
-/// A tool's window: the tool for its project, with the project switcher in the toolbar, and the chat
-/// panel beside it when the window shows it.
-private struct ToolWindowRoot: View {
-    let tool: ToolKind
-    @Binding var value: ToolWindowValue?
-    @Environment(\.projectDirectory) private var directory
-    @Environment(\.ticketStore) private var ticketStore
-    @Environment(\.dashboardStore) private var dashboardStore
-    @Environment(\.chatStore) private var chatStore
-    @Environment(\.buildStore) private var buildStore
-    @Environment(\.contractStore) private var contractStore
-    @Environment(\.serviceMapStore) private var serviceMapStore
-    @Environment(\.openWindow) private var openWindow
-
-    /// Whether this window shows the chat panel; each window keeps its own, across launches.
-    @SceneStorage("chatPanelShown") private var chatPanelShown = false
-    /// Whether tool windows offer the chat panel at all (Settings ▸ Chat).
-    @AppStorage(ChatPreferences.showsPanelKey) private var chatPanelEnabled = true
-    /// The item the tool has selected, which the chat panel asks about.
-    @State private var chatSubject: ChatReference?
-    /// The panel's conversation and draft, kept while the panel is hidden, until the window switches
-    /// to another project.
-    @State private var chatPanelModel: ChatPanelModel?
-    /// A route's ask to select an item in this window, once it is open.
-    @State private var focusRequest: FocusRequest?
-    /// The window's size, size classes and whether it narrowed from a regular width (AZDesign), which
-    /// pick the Mac's, an iPad's or an iPhone's layout.
-    @State private var adaptiveWindow = AdaptiveWindowState()
-
-    /// The chat panel's width beside or over the tool, its divider included.
-    private static let panelWidth: CGFloat = 341
-    /// Below this width the toolbar drops the window's title, which its buttons need the room of.
-    private static let titleWidth: CGFloat = 760
-    /// No window gets narrower than an iPhone.
-    private static let minimumWidth: CGFloat = 390
-
-    var body: some View {
-        window
-            // The ladybug sends feedback about this window, its project and the item it has selected.
-            .statusBar(FeedbackSource(window: tool.title, project: directory.project(value?.projectID), item: chatSubject?.title))
-            // Listed with what it shows, so that a route for it brings this window forward. The tool
-            // selects the route's focus without starting afresh; the window's value keeps it, for
-            // when the window is restored.
-            .registersWindow(.tool(tool), projectID: value?.projectID, tabTitle: tabTitle, newTab: newTab) { [$value, $focusRequest] focus in
-                $focusRequest.wrappedValue = FocusRequest(focus)
-                $value.wrappedValue?.focus = focus
-            }
-            // Another project starts a new conversation in the panel.
-            .onChange(of: value?.projectID, initial: true) {
-                chatPanelModel = chatStore.map { ChatPanelModel(store: $0) }
-                chatSubject = nil
-            }
-    }
-
-    @ViewBuilder private var window: some View {
-        if let value, let project = directory.project(value.projectID) {
-            // One panel in every layout, so its conversation survives a resize: beside the tool on a
-            // Mac (the tool makes room for it), over the tool on an iPad, the whole window on an iPhone.
-            ZStack(alignment: .trailing) {
-                content(for: project, focus: value.focus)
-                    // Another project starts the tool afresh, without the old selection. A later
-                    // route's focus arrives as a request instead, which the tool selects.
-                    .id(value.projectID)
-                    .environment(\.focusRequest, focusRequest)
-                    .environment(\.reportChatSubject, ReportChatSubjectAction { [$chatSubject] subject in
-                        $chatSubject.wrappedValue = subject
-                    })
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding(.trailing, showsChatPanel && layout == .mac ? Self.panelWidth : 0)
-                if showsChatPanel, let chatPanelModel {
-                    HStack(spacing: 0) {
-                        if layout != .phone {
-                            Divider()
-                        }
-                        ChatPanel(project: project, origin: tool, subject: chatSubject, model: chatPanelModel) {
-                            chatPanelControl.toggle()
-                        }
-                    }
-                    .frame(width: layout == .phone ? adaptiveWindow.size.width : Self.panelWidth)
-                    .frame(maxHeight: .infinity)
-                    .background(.canvas)
-                    // Over the content on an iPad, a shadow sets it apart.
-                    .shadow(radius: layout == .pad ? 14 : 0)
-                    // It slides in from the window's right edge and back out (AZDesign's `panel`
-                    // motion; a fade under Reduce Motion).
-                    .motionTransition(.panel, edge: .trailing)
-                }
-            }
-            // Measures the window and gives the tool and the panel its layout, its size classes and
-            // whether it narrowed from a regular width (AZDesign's adaptive window).
-            .adaptiveWindow($adaptiveWindow, layout: layout)
-            .frame(minWidth: Self.minimumWidth, minHeight: 420)
-            // No clipping here: it would take the toolbar's room from the tool's columns. The window's
-            // edge already hides the panel while it slides.
-            // The tool puts the panel's button last in its toolbar, at the right end.
-            .environment(\.chatPanel, offersChatPanel ? chatPanelControl : nil)
-                .navigationTitle(Text(tool.title))
-                .navigationSubtitle(Text(verbatim: directory.tree.path(of: project.id)))
-                // A narrow toolbar has no room for the title: the switcher names the project.
-                .toolbar(removing: adaptiveWindow.size.width < Self.titleWidth ? .title : nil)
-                .toolbar {
-                    ToolbarItem(placement: .navigation) {
-                        ProjectSwitcher(projects: directory.projects, selection: projectBinding, tool: tool)
-                    }
-                }
-                .focusedSceneValue(\.activeProject, project)
-                .focusedSceneValue(\.activeTool, tool)
-                .focusedSceneValue(\.chatPanel, offersChatPanel ? chatPanelControl : nil)
-        } else {
-            ContentUnavailableView {
-                Label(String(localized: "No Project", bundle: #bundle), systemImage: "folder")
-            } description: {
-                Text("Open this window from the Projects window.", bundle: #bundle)
-            }
-            .accessibilityIdentifier("window.noProject")
-            .frame(minWidth: 600, minHeight: 400)
-            .background(.canvas)
-        }
-    }
-
-    /// The tab's title: the tool, then the project ("Tickets – Orders"), so that tabs of one tool for two
-    /// projects differ.
-    private var tabTitle: String? {
-        directory.project(value?.projectID).map { WindowDirectory.tabTitle(tool.title, project: $0.name) }
-    }
-
-    /// The tab bar's +: another window of the tool on the project, as File ▸ New *Tool* Window (⌘N), which
-    /// AppKit makes a new tab. Nothing without a project.
-    private var newTab: (() -> Void)? {
-        guard let projectID = value?.projectID, directory.project(projectID) != nil else { return nil }
-        return { [openWindow, tool] in
-            openWindow(id: tool.windowID, value: ToolWindowValue(projectID: projectID, instance: UUID()))
-        }
-    }
-
-    /// The Chat window has no panel of its own, and Settings can take it off every window.
-    private var offersChatPanel: Bool {
-        chatPanelEnabled && tool != .chat
-    }
-
-    private var showsChatPanel: Bool {
-        offersChatPanel && chatPanelShown
-    }
-
-    private var chatPanelControl: ChatPanelControl {
-        ChatPanelControl(isShown: $chatPanelShown)
-    }
-
-    /// The Mac's layout while the tool's columns, and the chat panel when it is open beside them, fit;
-    /// an iPad's below that; an iPhone's in a narrow window.
-    private var layout: WindowLayout {
-        adaptiveWindow.layout(macWidth: tool.macLayoutWidth, sidePanelWidth: showsChatPanel ? Self.panelWidth : 0)
-    }
-
-    @ViewBuilder private func content(for project: Project, focus: String?) -> some View {
-        switch tool {
-        case .dashboard:
-            if let dashboardStore {
-                DashboardRootView(project: project, store: dashboardStore) { widget, context in
-                    DashboardWidgetView(widget: widget, context: context)
-                }
-            }
-        case .tickets:
-            if let ticketStore {
-                TicketsRootView(project: project, focus: focus, store: ticketStore, directory: directory)
-            }
-        case .serviceMap:
-            if let serviceMapStore {
-                ServiceMapRootView(project: project, focus: focus, store: serviceMapStore)
-            }
-        case .contracts:
-            if let contractStore {
-                ContractsRootView(project: project, focus: focus, store: contractStore)
-            }
-        case .builds:
-            if let buildStore {
-                BuildsRootView(project: project, focus: focus, store: buildStore)
-            }
-        case .chat:
-            if let chatStore {
-                ChatRootView(project: project, focus: focus, store: chatStore, directory: directory)
-            }
-        }
-    }
-
-    /// Switching project keeps the window and clears its focus. Picking the project it already shows
-    /// changes nothing.
-    private var projectBinding: Binding<Project.ID> {
-        Binding {
-            value?.projectID ?? ""
-        } set: { projectID in
-            if projectID != value?.projectID {
-                value = ToolWindowValue(projectID: projectID)
-            }
-        }
-    }
-}
-
-/// File ▸ New, as in a Mac app (the user's choice): ⌘N opens a new window of the key window's tool, on its
-/// project, and ⇧⌘N creates the key window's own kind of item ("New Ticket…" in Tickets). They replace
-/// the items SwiftUI adds for each window group, which open a tool window without a project.
+/// File ▸ New, as in a Mac app (the user's choice): ⌘N opens a window, ⌘T a tab, both on the key window's
+/// tool and project, ⇧⌘N creates the key window's own kind of item ("New Ticket…" in Tickets); ⌘W closes
+/// the tab, ⇧⌘W the window. They replace the items SwiftUI adds for the window group, and its Close.
 private struct NewItemCommands: Commands {
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
             NewWindowMenuItem()
+            NewTabMenuItem()
             NewItemMenuItem()
             AddFolderMenuItem()
             Divider()
+            CloseMenuItems()
+            Divider()
             ProjectSettingsMenuItem()
         }
+        // SwiftUI's Close: Close Tab and Close Window replace it.
+        CommandGroup(replacing: .saveItem) {}
     }
 }
 
-/// Project Settings…, ⇧⌘,: the settings of the key window's project, in their window.
+/// Project Settings…, ⇧⌘,: the settings of the key window's project, in their tab.
 private struct ProjectSettingsMenuItem: View {
     @FocusedValue(\.activeProject) private var project
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Button(String(localized: "Project Settings…", bundle: #bundle, comment: "File menu item, ⇧⌘,")) {
-            if let project, !WindowDirectory.shared.bringForward(role: .projectSettings, projectID: project.id) {
-                openWindow.openNew(id: SceneID.projectSettings, value: project.id)
+            if let project {
+                WindowDirectory.shared.showOrOpen(.projectSettings(project.id), openWindow: openWindow)
             }
         }
         .keyboardShortcut(",", modifiers: [.command, .shift])
@@ -513,7 +242,7 @@ private struct ProjectSettingsMenuItem: View {
     }
 }
 
-/// Add Existing Folder…, ⌘O: adds a folder that holds a project, from the Projects window.
+/// Add Existing Folder…, ⌘O: adds a folder that holds a project, from Projects.
 private struct AddFolderMenuItem: View {
     @FocusedValue(\.addFolder) private var addFolder
 
@@ -526,37 +255,65 @@ private struct AddFolderMenuItem: View {
     }
 }
 
-/// New <Tool> Window, ⌘N: another window of the key tool window's tool and project, even when one is
-/// open already; routes keep reusing the open one. Disabled where the key window isn't a tool window.
+/// New Window, ⌘N: a window with a new tab of the key window's tool and project, even when a tab shows them
+/// already; routes keep reusing the open one. Disabled where the selected tab isn't a tool's.
 private struct NewWindowMenuItem: View {
-    @FocusedValue(\.activeTool) private var tool
-    @FocusedValue(\.activeProject) private var project
+    @FocusedValue(\.workspace) private var workspace
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Button(title) {
-            if let tool, let project {
-                openWindow.openNew(id: tool.windowID, value: ToolWindowValue(projectID: project.id, instance: UUID()))
+        Button(String(localized: "New Window", bundle: #bundle)) {
+            if let content = toolContent {
+                openWindow(id: SceneID.workspace, value: WorkspaceValue(content))
             }
         }
         .keyboardShortcut("n")
-        .disabled(tool == nil || project == nil)
+        .disabled(toolContent == nil)
     }
 
-    private var title: String {
-        switch tool {
-        case .dashboard?: String(localized: "New Dashboard Window", bundle: #bundle)
-        case .tickets?: String(localized: "New Tickets Window", bundle: #bundle)
-        case .serviceMap?: String(localized: "New Service Map Window", bundle: #bundle)
-        case .contracts?: String(localized: "New Contracts Window", bundle: #bundle)
-        case .builds?: String(localized: "New Builds Window", bundle: #bundle)
-        case .chat?: String(localized: "New Chat Window", bundle: #bundle)
-        case nil: String(localized: "New Window", bundle: #bundle)
-        }
+    private var toolContent: WorkspaceContent? {
+        guard let content = workspace?.selectedTab?.content, content.tool != nil else { return nil }
+        return content
     }
 }
 
-/// New <Item>, ⇧⌘N: what the key window creates, from its `newItemCommand`. Disabled where it creates
+/// New Tab, ⌘T: a tab of the selected tab's tool and project, after it, as the tab bar's + does.
+private struct NewTabMenuItem: View {
+    @FocusedValue(\.workspace) private var workspace
+
+    var body: some View {
+        Button(String(localized: "New Tab", bundle: #bundle)) {
+            if let workspace, let content = workspace.selectedTab?.content, content.tool != nil {
+                workspace.add(WorkspaceTab(content: content))
+            }
+        }
+        .keyboardShortcut("t")
+        .disabled(workspace?.selectedTab?.content.tool == nil)
+    }
+}
+
+/// Close Tab, ⌘W, and Close Window, ⇧⌘W. A window's last tab, and a window without tabs (Settings), close
+/// the window.
+private struct CloseMenuItems: View {
+    @FocusedValue(\.workspace) private var workspace
+
+    var body: some View {
+        Button(String(localized: "Close Tab", bundle: #bundle)) {
+            if let workspace, workspace.tabs.count > 1, let id = workspace.selectedTab?.id {
+                workspace.remove(id)
+            } else {
+                NSApp.keyWindow?.performClose(nil)
+            }
+        }
+        .keyboardShortcut("w")
+        Button(String(localized: "Close Window", bundle: #bundle)) {
+            NSApp.keyWindow?.performClose(nil)
+        }
+        .keyboardShortcut("w", modifiers: [.command, .shift])
+    }
+}
+
+/// New <Item>, ⇧⌘N: what the selected tab creates, from its `newItemCommand`. Disabled where it creates
 /// nothing.
 private struct NewItemMenuItem: View {
     @FocusedValue(\.newItem) private var newItem
@@ -575,14 +332,14 @@ nonisolated private struct ActiveToolKey: FocusedValueKey {
 }
 
 nonisolated extension FocusedValues {
-    /// The key window's tool, when it is a tool window.
+    /// The selected tab's tool, when it is a tool's tab.
     var activeTool: ToolKind? {
         get { self[ActiveToolKey.self] }
         set { self[ActiveToolKey.self] = newValue }
     }
 }
 
-/// Window menu items: the Projects window, each tool for the key window's project, the machines.
+/// Window menu items: Projects, each tool for the key window's project, the machines.
 private struct ToolCommands: Commands {
     var body: some Commands {
         CommandGroup(before: .windowList) {
@@ -597,18 +354,16 @@ private struct ToolMenuItems: View {
 
     var body: some View {
         Button(String(localized: "Projects", bundle: #bundle)) {
-            if !WindowDirectory.shared.bringForward(role: .projects, projectID: nil) {
-                openWindow.openNew(id: SceneID.projects)
-            }
+            WindowDirectory.shared.showOrOpen(.projects, openWindow: openWindow)
         }
         .keyboardShortcut("0")
 
         // Only the available tools.
         ForEach(ToolKind.allCases.filter(AppData.availableTools.contains)) { tool in
             Button {
-                // The window already showing the tool for this project, or a new one.
-                if let project, !WindowDirectory.shared.bringForward(role: .tool(tool), projectID: project.id) {
-                    openWindow.openNew(id: tool.windowID, value: ToolWindowValue(projectID: project.id))
+                // The tab already showing the tool for this project, or a new one.
+                if let project {
+                    WindowDirectory.shared.showOrOpen(.tool(tool, project: project.id), openWindow: openWindow)
                 }
             } label: {
                 Text(tool.title)
@@ -619,9 +374,7 @@ private struct ToolMenuItems: View {
 
         if AppData.machinesAvailable {
             Button(String(localized: "Virtual Machines", bundle: #bundle)) {
-                if !WindowDirectory.shared.bringForward(role: .machines, projectID: nil) {
-                    openWindow.openNew(id: SceneID.machines)
-                }
+                WindowDirectory.shared.showOrOpen(.machines, openWindow: openWindow)
             }
             .keyboardShortcut("7")
         }
@@ -630,7 +383,48 @@ private struct ToolMenuItems: View {
     }
 }
 
-/// View ▸ Show Chat Panel: the panel of the key tool window, ⌃⌘C.
+/// Window ▸ Show Previous Tab (⌃⇧⇥), Show Next Tab (⌃⇥), Move Tab to New Window and Merge All Windows, for
+/// the app's own tabs, under the names and shortcuts of macOS's.
+private struct TabCommands: Commands {
+    var body: some Commands {
+        CommandGroup(after: .windowArrangement) {
+            TabMenuItems()
+        }
+    }
+}
+
+private struct TabMenuItems: View {
+    @FocusedValue(\.workspace) private var workspace
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Divider()
+        Button(String(localized: "Show Previous Tab", bundle: #bundle)) {
+            workspace?.selectPrevious()
+        }
+        .keyboardShortcut(.tab, modifiers: [.control, .shift])
+        .disabled((workspace?.tabs.count ?? 0) < 2)
+        Button(String(localized: "Show Next Tab", bundle: #bundle)) {
+            workspace?.selectNext()
+        }
+        .keyboardShortcut(.tab, modifiers: .control)
+        .disabled((workspace?.tabs.count ?? 0) < 2)
+        Button(String(localized: "Move Tab to New Window", bundle: #bundle)) {
+            if let workspace, workspace.tabs.count > 1, let id = workspace.selectedTab?.id, let tab = workspace.remove(id) {
+                openWindow(id: SceneID.workspace, value: WorkspaceValue(tabs: [tab]))
+            }
+        }
+        .disabled((workspace?.tabs.count ?? 0) < 2)
+        Button(String(localized: "Merge All Windows", bundle: #bundle)) {
+            if let workspace {
+                WindowDirectory.shared.mergeAll(into: workspace)
+            }
+        }
+        .disabled(workspace == nil || WindowDirectory.shared.windows().count < 2)
+    }
+}
+
+/// View ▸ Show Chat Panel: the panel of the key window, ⌃⌘C.
 private struct ChatPanelCommands: Commands {
     var body: some Commands {
         CommandGroup(after: .sidebar) {
@@ -660,7 +454,7 @@ nonisolated private struct ChatPanelFocusKey: FocusedValueKey {
 }
 
 nonisolated extension FocusedValues {
-    /// The key tool window's chat panel; nil where there is no panel to show.
+    /// The key window's chat panel; nil where there is no panel to show.
     var chatPanel: ChatPanelControl? {
         get { self[ChatPanelFocusKey.self] }
         set { self[ChatPanelFocusKey.self] = newValue }
@@ -669,7 +463,7 @@ nonisolated extension FocusedValues {
 
 /// What a Dashboard widget shows: each kind is drawn by the tool whose data it shows. Only this target
 /// knows every tool, so it is where the Dashboard meets them.
-private struct DashboardWidgetView: View {
+struct DashboardWidgetView: View {
     let widget: DashboardWidget
     let context: DashboardContext
 

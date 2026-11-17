@@ -1,38 +1,44 @@
 # Navigation
 
-How Hephaestus V3 is put together: its windows, how one window opens another, how an open window is reused,
-and the menus and shortcuts that reach them.
+How Hephaestus V3 is put together: its windows and their tabs, how one tab opens another, how an open tab is
+reused, and the menus and shortcuts that reach them.
 
 ## Windows
 
-| Window | Kind | Opens | Default size | Page |
+The app has one kind of window, which holds **tabs** that the app draws itself (the user's choice): each tab
+shows Projects, one tool for one project, a project's settings, or Virtual Machines. The windows' pages call a
+tab by its old window's name, "the Tickets window", meaning the tab.
+
+| Tab | How many | Opens | Page |
+| --- | --- | --- | --- |
+| **Projects** | One in the app | At launch; ⌘0 | [Projects](projects.md) |
+| **Dashboard** | One per project for routes; more with ⌘T, + or ⌘N | ⌘1, a tile, the menu bar panel, a link | [Dashboard](dashboard.md) |
+| **Tickets** | Same | ⌘2, a tile, the menu bar panel, a link | [Tickets](tickets.md) |
+| **Service Map** | Same | ⌘3, a tile, the menu bar panel, a link | [Service Map](service-map.md) |
+| **Contracts** | Same | ⌘4, a tile, the menu bar panel, a link | [Contracts](contracts.md) |
+| **Builds** | Same | ⌘5, a tile, the menu bar panel, a link | [Builds](builds.md) |
+| **Chat** | Same | ⌘6, a tile, the menu bar panel, the chat panel | [Chat](chat.md) |
+| **Virtual Machines** | One in the app | ⌘7 (Window menu) | [Virtual Machines](virtual-machines.md) |
+| **Project Settings** | One per project | ⇧⌘, (File menu), Projects' More menu | [Project Settings](project-settings.md) |
+
+| Other window | Kind | Opens | Size | Page |
 | --- | --- | --- | --- | --- |
-| **Projects** | One window | At launch; ⌘0 | 1040 × 680 pt | [Projects](projects.md) |
-| **Dashboard** | One per project | ⌘1, a tile, the menu bar panel, a link | 1240 × 820 pt | [Dashboard](dashboard.md) |
-| **Tickets** | One per project | ⌘2, a tile, the menu bar panel, a link | 1180 × 760 pt | [Tickets](tickets.md) |
-| **Service Map** | One per project | ⌘3, a tile, the menu bar panel, a link | 1320 × 840 pt | [Service Map](service-map.md) |
-| **Contracts** | One per project | ⌘4, a tile, the menu bar panel, a link | 1120 × 740 pt | [Contracts](contracts.md) |
-| **Builds** | One per project | ⌘5, a tile, the menu bar panel, a link | 1180 × 720 pt | [Builds](builds.md) |
-| **Chat** | One per project | ⌘6, a tile, the menu bar panel, the chat panel | 1180 × 780 pt | [Chat](chat.md) |
-| **Virtual Machines** | One window | ⌘7 (Window menu) | 1100 × 760 pt | [Virtual Machines](virtual-machines.md) |
-| **Project Settings** | One per project | ⇧⌘, (File menu), the Projects window's More menu | 600 × 720 pt | [Project Settings](project-settings.md) |
 | **Settings** | One window | ⌘, | 520 × 440 pt | Tabs: [General](#settings--general), [Projects](projects.md#settings--projects), [MCP](../mcp.md#settings--mcp), [Virtual Machines](virtual-machines.md#settings--virtual-machines), [Chat](chat.md#settings--chat) |
 | **Menu bar panel** | Menu bar item | The `wrench.and.screwdriver` icon | 360 × 460 pt | [Menu bar](menu-bar.md) |
 
-- Tool windows don't open at launch. macOS restores those that were open when the app quit.
-- Every window but Settings and the menu bar panel can be a tab of any other ([Tabs](#tabs)).
-- The same windows have a [status bar](#status-bar) at the bottom while a feedback project is set.
-- Every window but Settings gets no narrower than 390 pt and no lower than 420 pt, and adapts its layout to
-  its size ([Layout system](foundations.md#layout-system)).
+- A new window is 1320 × 840 pt. The first window, at launch, shows Projects; macOS restores the windows open
+  when the app quit, with their tabs, each tab's selected item and the selected tab.
+- Every window gets no narrower than 390 pt and no lower than 420 pt, and adapts its layout to its size
+  ([Layout system](foundations.md#layout-system)).
 
 ## Available tools
 
-A tool that isn't available is hidden in the running app, so that no window shows sample data next to the
-real projects: its window doesn't open, and its tile, its Window menu item, its New *Tool* Window item, its
-menu bar buttons and ⌘ shortcuts, and its Settings tab don't show. `AppData.availableTools` lists the
+A tool that isn't available is hidden in the running app, so that no tab shows sample data next to the
+real projects: its tab doesn't open, and its tile, its Window menu item, its menu bar buttons and ⌘ shortcuts,
+and its Settings tab don't show. `AppData.availableTools` lists the
 available tools; ToolsScenes gives it to every window as the `availableTools` environment value, and the
 menus read it directly.
-`AppData.machinesAvailable` does the same for the Virtual Machines window.
+`AppData.machinesAvailable` does the same for Virtual Machines.
 
 | Feature | Tools and windows | Available |
 | --- | --- | --- |
@@ -49,9 +55,8 @@ Previews and the screenshots of the spec show every tool: the environment value'
 
 ## Tools per project
 
-What a project is decides which tools apply to it (`Project.tools`). The Projects window shows a tile for
-each, the Window menu enables only those, and the project switcher greys out the projects without the
-window's tool.
+What a project is decides which tools apply to it (`Project.tools`). Projects shows a tile for each, the
+Window menu enables only those, and the project switcher greys out the projects without the tab's tool.
 
 | Project kind | Tools, in menu order |
 | --- | --- |
@@ -59,32 +64,32 @@ window's tool.
 | Service without a contract | Dashboard, Tickets, Service Map, Builds, Chat |
 | App, Library, Other | Dashboard, Tickets, Builds, Chat |
 
-## Anatomy of a tool window
+## Anatomy of a window
 
-![Tickets, a tool window](images/tickets-light.png)
-*A tool window: the project switcher, the tool's own toolbar items, and the chat panel's button at the far right.*
+![A window: the toolbar, the tab bar with Projects, Tickets – Orders, Dashboard – Orders and Builds – Payments, the Tickets tab with its sidebar inside the tab, the chat panel on the right outside the tabs, and the status bar](images/window.png)
+*A window: the toolbar, then the tab bar over the tab area; the Tickets tab's sidebar is inside the tab, and the
+chat panel is on the right, outside the tabs; the status bar runs under both.*
 
 | Part | Contents |
 | --- | --- |
-| **Project switcher** | The toolbar's first item: the project's icon and name. A click opens a popover listing every project as a tree; picking one moves this window to that project, where the tool starts afresh on its default selection; picking the project it already shows changes nothing. See [Components › Project switcher](components.md#project-switcher). |
-| **Title and subtitle** | The tool's name, and the project's path from its top-level project, such as "Shop › Orders". Hidden below 760 pt. |
+| **Toolbar** | The selected tab's: for a tool, the project switcher, the title and subtitle, the tool's own items, and the chat panel button at the far right. |
+| **Project switcher** | A tool's tab's first toolbar item: the project's icon and name. A click opens a popover listing every project as a tree; picking one moves this tab to that project, where the tool starts afresh on its default selection; picking the project it already shows changes nothing. See [Components › Project switcher](components.md#project-switcher). |
+| **Title and subtitle** | The tool's name, and the project's path from its top-level project, such as "Shop › Orders". Hidden below 760 pt of tab width. |
 | **The tool's toolbar items** | Defined by the tool, as each tool's page lists them. |
-| **Chat panel button** | The last toolbar item, `sidebar.right`: shows or hides the chat panel. Absent in the Chat window, and everywhere when Settings ▸ Chat turns the panel off. See [Chat](chat.md). |
-| **Content** | The tool, laid out as a Mac, an iPad or an iPhone would, depending on the window's width. |
-| **Chat panel** | Beside the tool, over it, or as a full page. See [Chat](chat.md). |
-| **Status bar** | Under the content and the chat panel, across the window, while a feedback project is set ([Status bar](#status-bar)). |
+| **Chat panel button** | The last toolbar item, `sidebar.right`: shows or hides the chat panel. Absent in Chat's tab, and everywhere when Settings ▸ Chat turns the panel off. See [Chat](chat.md). |
+| **Tab bar** | Under the toolbar, across the tab area: one tab per tab of the window, then + ([Tabs](#tabs)). |
+| **Tab** | The selected tab's content, sidebar included, laid out as a Mac, an iPad or an iPhone would, depending on the window's width. |
+| **Chat panel** | On the right, outside the tabs, beside them on a Mac, over them on an iPad, the whole window on an iPhone. See [Chat](chat.md). |
+| **Status bar** | Under the tabs and the chat panel, across the window, while a feedback project is set ([Status bar](#status-bar)). |
 
 ## Status bar
 
-![The Tickets window with its status bar: the ladybug at the bottom-right corner](images/status-bar.png)
-*The status bar under the Tickets window, with the ladybug at its right end.*
-
 V2's status bar, with only its ladybug (the user's choice): a bar across the bottom of every window but
-Settings and the menu bar panel (Projects, the tool windows, Project Settings and Virtual Machines), under
-their content and, in a tool window, under the chat panel too.
+Settings and the menu bar panel, under the tabs and the chat panel ([Anatomy of a window](#anatomy-of-a-window)).
+Its feedback is about the selected tab.
 
 - **Shown** while Settings ▸ General has a feedback project that is loaded
-  ([Settings ▸ General](#settings--general)); otherwise no window has the bar, and the content takes its room
+  ([Settings ▸ General](#settings--general)); otherwise no window has the bar, and the tabs take its room
   (the user's choice).
 - **Look.** 26 points high, under a hairline (`Divider`), on `canvas`, in every layout. Nothing at its left.
 - **Ladybug** (`statusBar.feedback`), 10 points from the right edge: a borderless button with `ladybug` in
@@ -95,17 +100,17 @@ their content and, in a tool window, under the chat panel too.
 
 ## Routes
 
-A view never opens a window itself. It asks for a **route** (`Route` in `ToolsFoundation/Routing.swift`),
-and one place in the app (`RouteHost` in `ToolsScenes`) opens it. Links between tools, the Projects window's
-tiles, the menu bar panel and the chat's **Open** buttons all use routes.
+A view never opens a tab itself. It asks for a **route** (`Route` in `ToolsFoundation/Routing.swift`), and one
+place in the app (`RouteHost` in `ToolsScenes`) opens it. Links between tools, Projects' tiles, the menu bar
+panel and the chat's **Open** buttons all use routes.
 
 | Route | Opens |
 | --- | --- |
-| `.project(id)` | The Projects window, with the project selected. |
-| `.projectWindow(id)` | The frontmost window already showing the project, or the Projects window with it selected when none does. Used by the menu bar panel. |
-| `.tool(tool, project:, focus:)` | The tool's window for the project. The focus is selected in it. |
-| `.machine(id)` | The Virtual Machines window, with the machine selected. |
-| `.projectSettings(id)` | The project's Project Settings window: the open one, brought forward and un-minimized, or a new one. |
+| `.project(id)` | Projects, with the project selected. |
+| `.projectWindow(id)` | The tab already showing the project in the frontmost window that has one (its selected tab when that shows the project), or Projects with it selected when none does. Used by the menu bar panel. |
+| `.tool(tool, project:, focus:)` | The tool's tab for the project. The focus is selected in it. |
+| `.machine(id)` | Virtual Machines, with the machine selected. |
+| `.projectSettings(id)` | The project's Project Settings tab. |
 
 **Focus formats**, the item a tool selects when a route opens it:
 
@@ -119,60 +124,70 @@ tiles, the menu bar panel and the chat's **Open** buttons all use routes.
 
 ## Window reuse
 
-A route never opens a second window for what a window already shows (the user's choice).
-`WindowDirectory` keeps every window with what it shows: its role (Projects, Virtual Machines, Project Settings or a tool)
-and its project. Each window reports itself when it appears and whenever its project changes.
+A route never opens a second tab for what a tab already shows (the user's choice). `WindowDirectory` keeps
+every window with its tabs.
 
-- **A tool route** finds the frontmost window of that tool and project. It un-minimizes the window, brings it
-  to the front and activates the app, and the tool selects the route's focus there without starting afresh:
-  its filters, modes and scroll positions stay. A second route to the same item selects it again, even after
-  the user picked another. Only when no window is open does the route open a new one, which starts on the
-  focus.
-- **`.projectWindow`** brings forward the frontmost window of the project, whatever its tool, the Projects
-  window included when it shows the project.
-- **The Projects and Virtual Machines windows** are single. A route to them brings the open one forward, and
-  selects its project or machine there.
+- **A route** finds the first tab that shows what it asks for, in the frontmost window that has one, minimized
+  windows last. It selects the tab, un-minimizes the window, brings it to the front and activates the app, and
+  the tool selects the route's focus there without starting afresh: its filters, modes and scroll positions
+  stay. A second route to the same item selects it again, even after the user picked another.
+- **Otherwise** the route opens a new tab, which starts on the focus: a tab of the frontmost window, or a window
+  of its own, as [Settings ▸ General](#settings--general) says.
+- **Projects, Virtual Machines and each project's Project Settings** are one tab each in the app. A route to them
+  selects that tab, and selects its project or machine there.
 - **The Window menu's items** follow the same rules.
-- **File ▸ New *Tool* Window (⌘N)** is the one way to get a second window of a tool and project: it asks for
-  a new window, as on any Mac. Routes keep bringing forward the frontmost one. The tab bar's + does the same
-  as a new tab ([Tabs](#tabs)).
-- **A window that is a tab** counts as open, behind its tab group's front tab, even when the group is
-  minimized. A route to it un-minimizes the group and selects its tab.
+- **File ▸ New Window (⌘N), New Tab (⌘T) and the tab bar's +** are the ways to get a second tab of a tool and
+  project. Routes keep selecting the first one.
 
-**Switching project.** The project switcher moves a window to another project: the tool starts afresh on it,
-without the old selection, and the chat panel starts a new conversation. Picking the project the window
+**Switching project.** The project switcher moves a tab to another project: the tool starts afresh on it,
+without the old selection; the chat panel shows that project's conversation. Picking the project the tab
 already shows changes nothing.
 
 ## Tabs
 
-Windows can share one window's tabs, as in Safari, and leave them again (the user's request). Every window
-but Settings and the menu bar panel takes part, whatever its tool or project: Projects, the tool windows,
-Project Settings and Virtual Machines (default chosen at design time).
+The app draws its own tabs (the user's choice, 17 November 2026): macOS's window tabs put a sidebar beside the
+tab bar and can't share one chat panel across tabs. macOS's tabbing is off, and so are its tab items.
 
-- **Gathering.** Window ▸ Merge All Windows makes every open window a tab of the key window. Dragging a
-  window's tab bar, or a tab, onto another window's tab bar adds it there.
-- **Leaving.** Window ▸ Move Tab to New Window, or dragging a tab out of the tab bar, gives the tab its own
-  window again, at the tab group's size.
-- **Tab bar.** It shows while a window has two tabs or more; View ▸ Show Tab Bar shows it with one. AppKit
-  draws it, with a close button on each tab and + at its end. A tab group takes one size: a window that joins
-  it takes the group's frame.
-- **Tab title.** A tool window's tab reads the tool, then its project's name ("Tickets – Orders"), so that
-  tabs of one tool for two projects differ; Project Settings reads "Project Settings – Orders". The Projects
-  and Virtual Machines tabs read the window's title. The window's own title and subtitle don't change
-  (default chosen at design time).
-- **+** opens another window of the front tab's tool on its project, as File ▸ New *Tool* Window (⌘N), as a
-  new tab after it. In the Projects, Project Settings and Virtual Machines tabs, which open once each, + only
-  beeps (default chosen at design time).
-- **New windows** become tabs of the frontmost window, or windows of their own, as
-  [Settings ▸ General](#settings--general) says; tabs by default (the user's choice). This covers every window
-  the app opens when asked: a route (a tile, a link, the menu bar panel, `open_in_app`), File ▸ New *Tool*
-  Window, Project Settings…, the Window menu's items. The frontmost window is the one in front of the app's
-  windows, shown and not minimized, Settings and the menu bar panel aside; with none, the window opens on its
-  own. The new tab comes after the front window's selected tab and is selected. The tab bar's + makes a tab in
-  either case.
-- **Windows macOS reopens at launch** keep their places: they aren't opened by the app, so neither setting
-  moves them (default chosen at design time).
-- **Routes** treat each tab as its window ([Window reuse](#window-reuse)).
+**Tab bar.** Under the toolbar, across the tab area (not over the chat panel), 36 pt high on `canvas`, under
+nothing and over a hairline. It shows with one tab too.
+
+- **Tabs** share the bar's width, 120 to 240 pt each, 4 pt apart, 8 pt in from the edges; past that the bar
+  scrolls sideways. Each shows its symbol and title, in `callout`: `textPrimary` and a `surface` capsule when
+  selected, `textSecondary` otherwise, with a faint capsule under the pointer. A click selects it.
+- **Titles.** A tool's tab reads the tool, then its project's name ("Tickets – Orders"); Project Settings reads
+  "Project Settings – Orders"; then "Projects" and "Virtual Machines". Symbols: the tool's, `folder`,
+  `gearshape`, `desktopcomputer`. Long titles are cut in the middle.
+- **Close button** (`xmark`) at a tab's right end, on the selected tab and under the pointer. Closing a window's
+  last tab closes the window.
+- **+** at the bar's right end (`tabs.new`, "New Tab (⌘T)"): a new tab of the selected tab's tool and project,
+  after it. Absent while Projects, Project Settings or Virtual Machines is selected: they open once each.
+- **Context menu** of a tab: Close Tab, Close Other Tabs, Move Tab to New Window (the last two with two tabs or
+  more).
+- **Dragging** a tab sideways moves it among the others. Dragged more than 48 pt up or down out of the bar, it
+  goes into a window of its own, as Move Tab to New Window (with two tabs or more). Tabs don't move between
+  windows by dragging: Window ▸ Merge All Windows gathers them.
+- **Window ▸ Merge All Windows** puts every other window's tabs after the key window's, in window order, and
+  closes those windows. **Move Tab to New Window** gives the selected tab a window of its own.
+- **Show Previous Tab** (⌃⇧⇥) and **Show Next Tab** (⌃⇥) select the tab before or after, wrapping around.
+
+**What a tab keeps.** Only the selected tab is drawn. A tool's tab keeps its tool's model while another tab is
+in front, so its selection, filters, modes and drafts are there when it comes back; its scroll positions and
+open popovers start afresh (default chosen at design time). Projects and Project Settings start from the
+project data each time. A tab moved to another window, or merged, starts afresh on its selected item.
+
+**Chat panel.** One per window, on the right, outside the tabs (the user's choice). It shows the conversation
+of the selected tab's project, one conversation per project in the window, so switching tabs loses none; its
+item chip follows the selected tab's selection (the user's choice). In Projects it is the selected project's;
+in a tab without a project (Virtual Machines), the last project the window showed; with none, "No Project",
+"Select a project to chat about it." (`chatPanel.noProject`). Chat's own tab has no panel. It shows when the
+window opens, and the toolbar button or ⌃⌘C hides it for that window (the user's choice). See
+[Chat › Chat panel](chat.md).
+
+**New tabs** go into the frontmost window, or into a window of their own, as [Settings ▸ General](#settings--general)
+says; the frontmost window by default (the user's choice). This covers every tab the app opens when asked: a
+route (a tile, a link, the menu bar panel, `open_in_app`), Project Settings…, the Window menu's items. The new
+tab comes after the selected one and is selected. With no window open, a window opens. New Tab and + always
+make a tab, and New Window a window.
 
 ### Settings ▸ General
 
@@ -182,9 +197,9 @@ The first tab of Settings (`gearshape`), a grouped form with two sections. **Win
 
 | Element | Identifier | Content |
 | --- | --- | --- |
-| **Open new windows** | `settings.general.newWindows` | Radio buttons: **As tabs of the front window** (`settings.general.newWindows.tabs`, the default) or **As separate windows** (`settings.general.newWindows.windows`). A choice is written to `settings.yml`'s `newWindows` ([Data › Settings file](../data.md#settings-file)) and applies to the next window. |
+| **Open new windows** | `settings.general.newWindows` | Radio buttons: **As tabs of the front window** (`settings.general.newWindows.tabs`, the default) or **As separate windows** (`settings.general.newWindows.windows`), for what routes open ([Tabs](#tabs)). A choice is written to `settings.yml`'s `newWindows` ([Data › Settings file](../data.md#settings-file)) and applies to the next tab. |
 | Message | `settings.general.message` | When `settings.yml` can't be written: the storage error, in `danger`, under the buttons; the choice still holds until the app quits. Cleared by the next choice that is stored. |
-| Footer | — | "Applies to the windows Hephaestus opens: a tool, a project, its settings. Windows macOS reopens at launch keep their places, and Window ▸ Merge All Windows and Move Tab to New Window work either way." In `textSecondary`. |
+| Footer | — | "Applies to what Hephaestus opens: a tool, a project, its settings. Window ▸ Merge All Windows and Move Tab to New Window work either way." In `textSecondary`. |
 
 **Feedback**:
 
@@ -204,26 +219,29 @@ Stored**.
 
 ## Menus and shortcuts
 
-**File menu**, as in any Mac app (the user's choice): ⌘N opens a window, ⇧⌘N creates an item. These
-replace the items SwiftUI adds for each kind of window, which would open a tool window without a project.
+**File menu**, as in any Mac app (the user's choice): ⌘N opens a window, ⌘T a tab, ⇧⌘N creates an item, ⌘W
+closes the tab and ⇧⌘W the window. These replace the items SwiftUI adds for the window, and its Close.
 
 | Item | Shortcut | In | Does |
 | --- | --- | --- | --- |
-| New *Tool* Window, such as **New Tickets Window** | ⌘N | A tool window | Opens another window of the key window's tool, on its project and on no particular item: the tool starts on its default selection, such as the first ticket or the newest run. Disabled, as **New Window**, in the Projects and Virtual Machines windows. |
+| **New Window** | ⌘N | A tool's tab | Opens a window with a new tab of the selected tab's tool, on its project and on no particular item: the tool starts on its default selection, such as the first ticket or the newest run. Disabled in Projects, Project Settings and Virtual Machines. |
+| **New Tab** | ⌘T | A tool's tab | The same, as a new tab after the selected one, as the tab bar's + does. Disabled likewise. |
 | **New Ticket…** | ⇧⌘N | Tickets | Opens the New Ticket sheet. |
-| **New Chat** | ⇧⌘N | The Chat window | Starts a new chat. |
-| **New Project…** | ⇧⌘N | The Projects window | Opens the [New Project](projects.md#new-project) sheet. |
+| **New Chat** | ⇧⌘N | Chat | Starts a new chat. |
+| **New Project…** | ⇧⌘N | Projects | Opens the [New Project](projects.md#new-project) sheet. |
 | **New Machine…** | ⇧⌘N | Virtual Machines | Opens the [New Machine](virtual-machines.md#new-machine) sheet. |
-| **New Item** | ⇧⌘N | Any other window | Disabled: the window creates nothing. |
-| **Add Existing Folder…** | ⌘O | The Projects window | Opens a folder panel ([Add Existing Folder](projects.md#add-existing-folder)). Disabled in other windows. |
-| **Project Settings…** | ⇧⌘, | A window with a project | Opens the key window's project's [Project Settings](project-settings.md), or brings it forward. Disabled without a project. |
+| **New Item** | ⇧⌘N | Any other tab | Disabled: the tab creates nothing. |
+| **Add Existing Folder…** | ⌘O | Projects | Opens a folder panel ([Add Existing Folder](projects.md#add-existing-folder)). Disabled in other tabs. |
+| **Close Tab** | ⌘W | Any window | Closes the selected tab; a window's last tab, and Settings, close the window. |
+| **Close Window** | ⇧⌘W | Any window | Closes the key window, with its tabs. |
+| **Project Settings…** | ⇧⌘, | A tab with a project | Selects the selected tab's project's [Project Settings](project-settings.md) tab, or opens it. Disabled without a project. |
 
 **Window menu**, above the list of open windows:
 
 | Item | Shortcut | Enabled |
 | --- | --- | --- |
 | Projects | ⌘0 | Always |
-| Dashboard | ⌘1 | When the key window's project has the tool |
+| Dashboard | ⌘1 | When the selected tab's project has the tool |
 | Tickets | ⌘2 | Same |
 | Service Map | ⌘3 | Same |
 | Contracts | ⌘4 | Same |
@@ -232,14 +250,13 @@ replace the items SwiftUI adds for each kind of window, which would open a tool 
 | Virtual Machines | ⌘7 | Always |
 
 Only the available tools and windows are listed ([Available tools](#available-tools)): today, all of them.
-The tool items act on the **key window's project**: the selection in the Projects window, or a tool
-window's project.
+The tool items act on the **selected tab's project**: the selection in Projects, or a tab's project.
 
-AppKit adds the tab items to the Window menu, after Bring All to Front ([Tabs](#tabs)):
+The app's tab items follow Bring All to Front, under macOS's names and shortcuts ([Tabs](#tabs)):
 
 | Item | Shortcut | Enabled |
 | --- | --- | --- |
-| Show Previous Tab | ⌃⇧⇥ | When the key window has other tabs |
+| Show Previous Tab | ⌃⇧⇥ | When the key window has two tabs or more |
 | Show Next Tab | ⌃⇥ | Same |
 | Move Tab to New Window | — | Same |
 | Merge All Windows | — | When another window is open |
@@ -248,29 +265,27 @@ AppKit adds the tab items to the Window menu, after Bring All to Front ([Tabs](#
 
 | Item | Shortcut | Enabled |
 | --- | --- | --- |
-| Show Chat Panel / Hide Chat Panel | ⌃⌘C | In a tool window that offers the panel |
-| Show Tab Bar / Hide Tab Bar | — | In any window but Settings; added by AppKit ([Tabs](#tabs)) |
-| Show All Tabs / Exit Tab Overview | ⇧⌘\ | Same |
+| Show Chat Panel / Hide Chat Panel | ⌃⌘C | While the window offers the panel: not in Chat's tab, nor with Settings ▸ Chat's switch off |
 
 **App menu:** Settings… (⌘,) opens Settings, whose Chat pane is described in [Chat](chat.md).
 
 **Help menu:** **Send Feedback…** (⇧⌘B), after the Help search field, starts feedback about the key window,
 as its ladybug does ([Tickets › Feedback](tickets.md#feedback)). It shows only while the key window has a
 status bar: a feedback project is set and loaded, and the key window is one of the app's windows, not
-Settings.
+Settings. Its feedback is about the selected tab.
 
-**Menu bar panel:** ↑ ↓ move, Return opens the highlighted project's window, ⌘1–⌘6 open its tools. See
+**Menu bar panel:** ↑ ↓ move, Return opens the highlighted project's tab, ⌘1–⌘6 open its tools. See
 [Menu bar](menu-bar.md).
 
 **Within the tools:**
 
-| Window | Shortcut | Action |
+| Tab | Shortcut | Action |
 | --- | --- | --- |
 | Contracts | ⌘Return | Send the request (not wired yet) |
 | Service Map | ⌘[ | Back to the graph's view before |
 | Tickets | ⌘Return | Add the comment (not wired yet) |
 | Tickets | ⇧⌘Return | Move the ticket to its next step (not wired yet) |
 | Tickets | ⌃⌘1 – ⌃⌘5 | Set the selected ticket's status: Draft, Created, In Progress, In Review, Done (not wired yet) |
-| Chat window, chat panel | Return | Send the message |
-| Chat window, chat panel | ⌥Return | New line in the message |
+| Chat, chat panel | Return | Send the message |
+| Chat, chat panel | ⌥Return | New line in the message |
 | New Ticket sheet | Esc, Return | Cancel, Create |

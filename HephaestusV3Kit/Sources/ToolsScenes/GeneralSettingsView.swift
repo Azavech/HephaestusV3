@@ -61,7 +61,7 @@ struct GeneralSettingsView: View {
             } header: {
                 Text("Windows", bundle: #bundle)
             } footer: {
-                Text("Applies to the windows Hephaestus opens: a tool, a project, its settings. Windows macOS reopens at launch keep their places, and Window ▸ Merge All Windows and Move Tab to New Window work either way.", bundle: #bundle)
+                Text("Applies to what Hephaestus opens: a tool, a project, its settings. Window ▸ Merge All Windows and Move Tab to New Window work either way.", bundle: #bundle)
                     .font(.callout)
                     .foregroundStyle(.textSecondary)
             }

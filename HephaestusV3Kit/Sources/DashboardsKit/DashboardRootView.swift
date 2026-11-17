@@ -33,6 +33,17 @@ enum DashboardSpace {
 ///
 /// `widgetContent` draws what a widget shows under its title row; each tool provides the widgets of
 /// its own data, and ToolsScenes puts them together.
+/// What a tab keeps of the Dashboard while another tab is in front: its model, so that its selection, filters
+/// and drafts are still there when the tab comes back. The app's window makes one per tab and project.
+@MainActor
+public final class DashboardTabState {
+    let model: DashboardModel
+
+    public init(project: Project, store: LiveDashboardStore) {
+        model = DashboardModel(project: project, store: store)
+    }
+}
+
 public struct DashboardRootView<WidgetContent: View>: View {
     @State private var model: DashboardModel
     /// The project as loaded now, passed on to the model.
@@ -58,6 +69,11 @@ public struct DashboardRootView<WidgetContent: View>: View {
         @ViewBuilder widgetContent: @escaping (DashboardWidget, DashboardContext) -> WidgetContent
     ) {
         self.init(model: DashboardModel(project: project, store: store), widgetContent: widgetContent)
+    }
+
+    /// The Dashboard a tab keeps, with `widgetContent` drawing each widget's content.
+    public init(state: DashboardTabState, @ViewBuilder widgetContent: @escaping (DashboardWidget, DashboardContext) -> WidgetContent) {
+        self.init(model: state.model, widgetContent: widgetContent)
     }
 
     /// The Dashboard of a model: for previews and tests.

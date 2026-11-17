@@ -672,7 +672,7 @@ defaults to the main actor.
 | `Project.swift` | `Project`, `ProjectTint`, `DeploymentEnvironment`, `ProjectActivity`, `SampleClock`, `ProjectTree` |
 | `SampleProjects.swift` | `Project.samples`, `Project.tree`, `Project.sample(_:)`, `deploymentEnvironments` |
 | `Vocabulary.swift` | `TicketStatus`, `TimeWindow` |
-| `Routing.swift` | `ToolKind`, `ToolWindowValue`, `Route` (with `.projectSettings(id)`), `OpenRouteAction`, `FocusRequest`, `onFocusRequest(_:)`, the `activeProject` focused value |
+| `Routing.swift` | `ToolKind`, `Route` (with `.projectSettings(id)`), `OpenRouteAction`, `FocusRequest`, `onFocusRequest(_:)`, the `activeProject` focused value |
 | `ProjectDirectory.swift` | `ProjectDirectory` (`state`, `tree`, `projects`, `unavailable`, `project(_:)`, `update(projects:state:unavailable:)`, `samples()`), `ProjectDirectory.State`, `ProjectDirectory.Unavailable`, the `projectDirectory` and `availableTools` environment values |
 | `NewItemCommand.swift` | `NewItemCommand`, the `newItem` focused value, `newItemCommand(_:action:)` |
 | `ChatVocabulary.swift` | `ChatReference`, `ToolReading`, `ToolReader`, `ReportChatSubjectAction`, `ChatPanelControl`, `ChatPanelToolbarItem` |
@@ -781,8 +781,8 @@ sample project, else its own `environments`: the environments every tool reads.
 
 ### Tools
 
-`ToolKind: String, CaseIterable, Identifiable, Codable, Sendable` names the tools that have a window per
-project. `windowID` is its raw value, the id of its `WindowGroup`.
+`ToolKind: String, CaseIterable, Identifiable, Codable, Sendable` names the tools, each shown in a tab for one
+project at a time.
 
 | Case | `title` | `symbol` | `shortcut` (with ⌘) |
 | --- | --- | --- | --- |
@@ -793,28 +793,27 @@ project. `windowID` is its raw value, the id of its `WindowGroup`.
 | `builds` | Builds | `hammer` | 5 |
 | `chat` | Chat | `bubble.left.and.text.bubble.right` | 6 |
 
-The Projects and Virtual Machines windows aren't tools: they have no `ToolKind`.
+Projects and Virtual Machines aren't tools: they have no `ToolKind`.
 
-### Windows and routes
+### Routes
 
 | Type | Definition |
 | --- | --- |
-| `ToolWindowValue` | `Codable, Hashable`: `projectID: Project.ID`, `focus: String?`, `instance: UUID?`. The value of a tool's `WindowGroup`. `instance` is set only by File ▸ New *Tool* Window, so that SwiftUI opens a new window instead of bringing forward one with an equal value. |
-| `Route` | `.project(Project.ID)`, `.projectWindow(Project.ID)`, `.tool(ToolKind, project: Project.ID, focus: String? = nil)`, `.machine(String? = nil)`. `Hashable, Sendable`. |
+| `Route` | `.project(Project.ID)`, `.projectWindow(Project.ID)`, `.tool(ToolKind, project: Project.ID, focus: String? = nil)`, `.machine(String? = nil)`, `.projectSettings(Project.ID)`. `Hashable, Sendable`. |
 | `OpenRouteAction` | Wraps `@MainActor @Sendable (Route) -> Void`; called as `openRoute(route)`. |
 | `EnvironmentValues.openRoute` | The action. Its default does nothing, so previews open nothing. |
-| `FocusedValues.activeProject` | `Project?`: the key window's project, for the menu commands. |
+| `FocusedValues.activeProject` | `Project?`: the key window's selected tab's project, for the menu commands. |
 | `FocusRequest` | `Equatable, Sendable`: `focus: String` plus a private `UUID`, so every request is a new value, even for the same item. |
-| `EnvironmentValues.focusRequest` | `FocusRequest?`: the latest route's request for this window. Default nil. |
+| `EnvironmentValues.focusRequest` | `FocusRequest?`: the latest route's request for this tab. Default nil. |
 | `View.onFocusRequest(_ select: @escaping (String) -> Void)` | Runs `select(request.focus)` on each change of `focusRequest` (through a private `FocusRequestModifier`). |
 
 A route's focus reaches a tool in one of two ways:
 
-1. **A window that opens** gets the focus in its `ToolWindowValue`. The tool's root view passes it to its
+1. **A tab that opens** gets the focus in its `WorkspaceTab.focus`. The tool's tab state passes it to its
    model's initializer, which selects it.
-2. **A window already open** gets a new `FocusRequest` in its environment. The root view applies
-   `onFocusRequest { model.select(focus: $0) }`, which selects the item without starting afresh: filters,
-   modes and scroll positions stay.
+2. **A tab already open** gets a new `FocusRequest` in its environment (`Workspace.focusRequests`). The root
+   view applies `onFocusRequest { model.select(focus: $0) }`, which selects the item without starting afresh:
+   filters, modes and scroll positions stay.
 
 The focus formats are listed in [Navigation › Routes](ui/navigation.md#routes) and under each kit below.
 
@@ -917,26 +916,27 @@ component comes from AZDesign.
 
 ## ToolsScenes
 
-`ToolsScenes.swift` (scenes, `RouteHost`, `ToolWindowRoot`, commands, the tool reader, the widget mapping, Mac
-widths, `OpenWindowAction.openNew`), `WindowDirectory.swift` (window reuse and tabs), `AppData.swift` (the
-app's data), `AppTools.swift` (the MCP server's tools), `MCPSettingsView.swift` (Settings ▸ MCP),
-`GeneralSettingsView.swift` (Settings ▸ General), `StatusBar.swift` (the status bar and feedback) and
-`WindowCapture.swift` (a window's PNG). Its only public type is
-`public struct ToolsScenes: Scene` with `public init()`.
+`ToolsScenes.swift` (the scenes, `RouteHost`, the commands, the tool reader, the widget mapping, Mac widths),
+`Workspace.swift` (a window's tabs), `WorkspaceView.swift` (the window: tab bar, tabs, chat panel),
+`WindowDirectory.swift` (the windows and their tabs, for routes), `AppData.swift` (the app's data),
+`AppTools.swift` (the MCP server's tools), `MCPSettingsView.swift` (Settings ▸ MCP), `GeneralSettingsView.swift`
+(Settings ▸ General), `StatusBar.swift` (the status bar and feedback) and `WindowCapture.swift` (a window's
+PNG). Its only public type is `public struct ToolsScenes: Scene` with `public init()`, which sets
+`NSWindow.allowsAutomaticWindowTabbing = false`: the app draws its own tabs, and macOS adds neither its tab
+items nor its tabs ([Navigation › Tabs](ui/navigation.md#tabs)).
 
 ### Scenes
 
-`SceneID.projects = "projects"`, `SceneID.machines = "machines"`. Every scene's content is wrapped in
-`RouteHost`.
+`SceneID.workspace = "workspace"`. Every scene's content is wrapped in `RouteHost`.
 
 | Scene | Type | Id | Content | Default size | At launch |
 | --- | --- | --- | --- | --- | --- |
-| Projects | `Window(Text("Projects", bundle: #bundle), id:)` | `projects` | `ProjectsRootView(directory: appData.directory, session: appData.session, selection: $selectedProjectID)`, with `focusedSceneValue(\.activeProject, …)` and `registersWindow(.projects, projectID: selectedProjectID)` | 1040 × 680 | Opens |
-| Dashboard, Tickets, Service Map, Contracts, Builds, Chat | `WindowGroup(Text(tool.title), id: tool.windowID, for: ToolWindowValue.self)` | the tool's `windowID` | `ToolWindowRoot(tool:value:)` | 1240 × 820, 1180 × 760, 1320 × 840, 1120 × 740, 1180 × 720, 1180 × 780 | `.defaultLaunchBehavior(.suppressed)` |
-| Project Settings | `WindowGroup(Text("Project Settings", bundle: #bundle), id:, for: Project.ID.self)` | `projectSettings` | `ProjectSettingsWindow(session: appData.session, projectID:)`, with `registersWindow(.projectSettings, projectID:, tabTitle:)`, the tab title `WindowDirectory.tabTitle("Project Settings", project: name)` while the directory has the project | 600 × 720 | Suppressed |
-| Virtual Machines | `Window(Text("Virtual Machines", bundle: #bundle), id:)` | `machines` | `MachinesRootView(focus: machineFocus, store: appData.machineStore)`, with `.environment(\.focusRequest, machineFocusRequest)` and `registersWindow(.machines, projectID: nil)` | 1100 × 760 | Suppressed |
+| Window | `WindowGroup(Text(verbatim: "Hephaestus V3"), id:, for: WorkspaceValue.self)`, `.commands { NewItemCommands(); ToolCommands(); TabCommands(); ChatPanelCommands(); FeedbackCommands() }` | `workspace` | `WorkspaceRoot(value: $value, appData:, selectedProjectID: $selectedProjectID, machineFocus:, machineFocusRequest:)` | 1320 × 840 | Opens, with no value: Projects |
 | Menu bar | `MenuBarExtra(String(localized: "Open Project"), systemImage: "wrench.and.screwdriver")`, `.menuBarExtraStyle(.window)` | — | `ProjectLauncher(projects: appData.directory.projects)` | 360 × 460 (the panel's own) | Always present |
-| Settings | `Settings` | — | `TabView`: `GeneralSettingsPane(appData:)` labeled General (`gearshape`), `ProjectsSettingsPane(session: appData.session)` labeled Projects (`folder`), `MCPSettingsPane(appData:)` labeled MCP, `MachineSettingsView(store: appData.machineStore)` labeled Virtual Machines (`desktopcomputer`) while the window is available, then `ChatSettingsView()` labeled with Chat's title and symbol while Chat is available; `.frame(width: 520, height: 440)`, `.tint(.accent)` | 520 × 440 | — |
+| Settings | `Settings` | — | `TabView`: `GeneralSettingsPane(appData:)` labeled General (`gearshape`), `ProjectsSettingsPane(session: appData.session)` labeled Projects (`folder`), `MCPSettingsPane(appData:)` labeled MCP, `MachineSettingsView(store: appData.machineStore)` labeled Virtual Machines (`desktopcomputer`) while it is available, then `ChatSettingsView()` labeled with Chat's title and symbol while Chat is available; `.frame(width: 520, height: 440)`, `.tint(.accent)` | 520 × 440 | — |
+
+macOS restores the windows open at quit with their `WorkspaceValue`: their tabs, each tab's focus, and the
+selected tab.
 
 **`AppData`** (`AppData.swift`, `@MainActor @Observable`) is the app's data, created once as ToolsScenes'
 `@State`: `session = ProjectSession(dataFolder: DataFolder.resolve())` and `directory =
@@ -944,43 +944,39 @@ ProjectDirectory(projects: [], state: .loading)`. `start()` runs once, from the 
 it starts following the session (`withObservationTracking { directory.update(from: session) }`, registered
 again after each change), adds an observer of `NSApplication.willTerminateNotification` that calls
 `SystemProcessRunner.shared.terminateAll()`, the chats' `stopAll()` and the machine host's `stopAll()`, awaits
-`session.start()`, then loads the machine host (`machineHost.load()`). `AppData` also holds `machineHost =
-MachineHost(dataFolder: DataFolder.resolve())` and `machineStore = LiveMachineStore(host:)`, and gives the host to
-the MCP registry's `vm_` tools. `AppData.availableTools` (every tool) and `AppData.machinesAvailable` (true) say
-which tools and windows the app shows, all of them
+`session.start()`, reads `settings.yml`, then loads the machine host (`machineHost.load()`). `AppData` also holds
+`machineHost = MachineHost(dataFolder: DataFolder.resolve())` and `machineStore = LiveMachineStore(host:)`, and
+gives the host to the MCP registry's `vm_` tools. `AppData.availableTools` (every tool) and
+`AppData.machinesAvailable` (true) say which tools the app shows, all of them
 ([Navigation › Available tools](ui/navigation.md#available-tools)): the Window menu lists only those, and
 `RouteHost` gives every view `\.availableTools`, `\.projectDirectory` and `\.dashboardWidgetRenderer` (each tool's
-widgets, as the Dashboard draws them). The tool windows read their project
-from the directory (`directory.project(value.projectID)`, `directory.tree.path(of:)`, the switcher's
-`directory.projects`). The File menu gains **Add Existing Folder…** (⌘O, `AddFolderMenuItem`), which calls
-the `addFolder` focused value the Projects window publishes. `.projectSettings(id)` brings forward the
-window registered with the role `.projectSettings` for the project, or opens the scene `projectSettings` with
-the project's identifier. The File menu's **Project Settings…** (⇧⌘,, `ProjectSettingsMenuItem`) does the same
-for the `activeProject` focused value.
+widgets, as the Dashboard draws them).
 
-The Projects window carries `.commands { NewItemCommands(); ToolCommands(); ChatPanelCommands() }`, which
-apply to the whole app. macOS restores the tool windows open at quit, with their `ToolWindowValue`.
-
-`ToolsScenes` keeps three `@State` values that every `RouteHost` gets as bindings:
+`ToolsScenes` keeps three `@State` values that every `RouteHost` gets as bindings, and every window's
+`WorkspaceRoot`:
 
 | State | Initial | Role |
 | --- | --- | --- |
-| `selectedProjectID: Project.ID?` | `Project.samples.first?.id` (`ORD`) | The Projects window's selection; routes set it. |
-| `machineFocus: String?` | nil | The machine the Virtual Machines window opens on. |
-| `machineFocusRequest: FocusRequest?` | nil | A route's request for the open Virtual Machines window. |
+| `selectedProjectID: Project.ID?` | nil | Projects' selection; routes set it. Projects is one tab in the whole app. |
+| `machineFocus: String?` | nil | The machine the Virtual Machines tab opens on. |
+| `machineFocusRequest: FocusRequest?` | nil | A route's request for the open Virtual Machines tab. |
 
 ### RouteHost and route handling
 
-`private struct RouteHost<Content: View>` reads `@Environment(\.openWindow)` and gives its content three
-things: `.environment(\.openRoute, …)`, `.environment(\.toolReader, appToolReader(…))`, `.environment(\.buildStore, …)` and `.tint(.accent)`.
-Its `OpenRouteAction` is the one place where routes are opened:
+`private struct RouteHost<Content: View>` reads `@Environment(\.openWindow)` and gives its content
+`.environment(\.openRoute, …)`, `.environment(\.toolReader, appToolReader(…))`, the stores
+(`\.serviceMapStore`, `\.contractStore`, `\.buildStore`, `\.ticketStore`, `\.dashboardStore`, `\.chatStore`),
+`\.projectDirectory`, `\.availableTools`, `\.dashboardWidgetRenderer`, `\.feedbackTarget`, and `.tint(.accent)`;
+its `.task` stores the first `OpenRouteAction` in `appData.openRoute` (for `open_in_app`) and runs
+`appData.start()`. Its `OpenRouteAction` is the one place where routes are opened, through `WindowDirectory`:
 
 | Route | Handling |
 | --- | --- |
-| `.project(id)` | Sets `selectedProjectID = id`. Brings forward the Projects window (`bringForward(role: .projects, projectID: nil)`); if none is open, `openWindow(id: "projects")` and `WindowDirectory.activate()`. |
-| `.projectWindow(id)` | `bringForward(role: nil, projectID: id)`: the frontmost window of the project, whatever its role. If none, as `.project(id)`. |
-| `.tool(tool, project, focus)` | `bringForward(role: .tool(tool), projectID: project, focus: focus)`. If none, `openWindow(id: tool.windowID, value: ToolWindowValue(projectID: project, focus: focus))` and `activate()`. |
-| `.machine(id)` | Sets `machineFocus = id`. If `bringForward(role: .machines, projectID: nil)` succeeds and `id` isn't nil, sets `machineFocusRequest = FocusRequest(id)`. Otherwise `openWindow(id: "machines")` and `activate()`. |
+| `.project(id)` | Sets `selectedProjectID = id`, then `showOrOpen(.projects)`. |
+| `.projectWindow(id)` | `show(where: { $0.tab(showingProject: id) })`: in the frontmost window that has one, its selected tab when it shows the project, else its first tab that does. If none, as `.project(id)`. |
+| `.tool(tool, project, focus)` | `showOrOpen(.tool(tool, project:), focus: focus)`. |
+| `.projectSettings(id)` | `showOrOpen(.projectSettings(id))`. |
+| `.machine(id)` | Sets `machineFocus = id`. If `show(.machines)` succeeds and `id` isn't nil, sets `machineFocusRequest = FocusRequest(id)`. Otherwise `open(WorkspaceTab(content: .machines))`. |
 
 Behavior is specified in [Navigation › Routes and Window reuse](ui/navigation.md#routes).
 
@@ -998,67 +994,142 @@ Behavior is specified in [Navigation › Routes and Window reuse](ui/navigation.
 | `.builds` | `BuildsReader.read(reference.focus, project: project, store: appData.buildStore)` |
 | `.dashboard`, `.chat` | nil |
 
+### Tabs: Workspace
+
+`Workspace.swift` holds a window's tabs ([Navigation › Tabs](ui/navigation.md#tabs)).
+
+- **`WorkspaceContent`** (`Codable, Hashable, Sendable`): `.projects`, `.tool(ToolKind, project: Project.ID)`,
+  `.projectSettings(Project.ID)`, `.machines`. `projectID` is the tool's or the settings' project; `tool` the
+  tool; `isSingle` is true for all but a tool (Projects, a project's settings and Virtual Machines are each one
+  tab in the app, which routes select; New Tab and New Window make none).
+- **`WorkspaceTab`** (`Codable, Hashable, Identifiable, Sendable`): `id: UUID`, `content`, `focus: String?` (the
+  item the tab has selected, which its tool starts on when the window is restored).
+- **`WorkspaceValue`** (`Codable, Hashable, Sendable`): `tabs`, `selection: UUID?` (the first tab when nil).
+  `init(_ content:focus:)` makes a window of one tab; `.initial` is Projects. It is the window's scene value.
+- **`Workspace`** (`@MainActor @Observable`), one per window, made by `WorkspaceRoot` from its value (an empty
+  list gives Projects; an unknown selection, the first tab):
+  - `tabs`, `selection`, `selectedTab` (the selected tab, else the first), `subjects: [UUID: ChatReference]`
+    (each tab's reported item), `focusRequests: [UUID: FocusRequest]` (a route's focus for an open tab),
+    `lastProjectID` (the project of the last selected tab that showed one), and `value`.
+  - `select(_:)` (and `lastProjectID`), `selectNext()` and `selectPrevious()` (wrapping), `add(_:)` (after the
+    selected tab, then selected), `remove(_:) -> WorkspaceTab?` (drops what the tab keeps; selects the next tab,
+    else the one before), `move(_:to:)` (clamped), `switchProject(of:to:)` (a tool tab's project: the focus,
+    the kept state, the subject and the request go), `report(_:in:)` (sets the subject, and the focus when
+    there is a subject), `request(_:in:)`, `tab(_:)`, `tab(showing:)` (the first tab of that content),
+    `tab(showingProject:)` (the selected tab when it shows the project, else the first that does).
+  - `state(for:make:)`: the kept tool state of a tab on its current content, else a new one from `make`,
+    kept (not observed). `keepsState(of:)` is for tests.
+  - `panel(for:make:)`: the chat panel's `ChatPanelModel` for a project, kept for the window's life.
+
+Each tool kit has a public tab state that owns its model (`DashboardTabState(project:store:)`,
+`TicketsTabState(project:focus:store:directory:)`, `ServiceMapTabState(project:focus:store:)`,
+`ContractsTabState(project:focus:store:)`, `BuildsTabState(project:focus:store:)`,
+`ChatTabState(project:focus:store:directory:)`, `MachinesTabState(focus:store:)`), and a root view
+`init(state:)` (`DashboardRootView(state:widgetContent:)`) that starts from that model. Only the selected tab
+is drawn: a tab that comes back gets its kept model, with its selection, filters and drafts; its views' own
+`@State` (scroll positions, open popovers) starts afresh. Projects and Project Settings start from the
+project data each time.
+
+### The window: WorkspaceView
+
+`WorkspaceRoot` (`WorkspaceView.swift`) takes the scene's `@Binding value: WorkspaceValue?`, `appData`, the
+Projects selection and the machine focus, keeps a `@State Workspace` made from the value (or `.initial`), and
+writes `workspace.value` back to the binding on every change (`onChange(of:initial: true)`), for restoration.
+`WorkspaceWindow` draws it:
+
+| State | Type | Role |
+| --- | --- | --- |
+| `@SceneStorage("chatPanelShown") chatPanelShown` | `Bool`, true | Whether this window shows the chat panel; per window, across launches. |
+| `@AppStorage(ChatPreferences.showsPanelKey) chatPanelEnabled` | `Bool`, true | Settings ▸ Chat: whether windows offer the panel. |
+| `@State adaptiveWindow` | `AdaptiveWindowState()` | The window's measured size and size classes. |
+
+Constants: `panelWidth = 341` (the panel with its divider), `minimumWidth = 390`; the minimum height is 420.
+For the selected tab: `offersChatPanel = chatPanelEnabled && tool != .chat`; `showsChatPanel = offersChatPanel
+&& chatPanelShown`; `layout = adaptiveWindow.layout(macWidth: tool?.macLayoutWidth ?? 760, sidePanelWidth:
+showsChatPanel ? 341 : 0)`.
+
+1. An `HStack(spacing: 0)`: a `VStack(spacing: 0)` of `TabBar`, a `Divider` and the selected tab's
+   `TabContentView` (`.id(tab.id)`, filling); then, in the `.mac` layout with the panel shown, a `Divider` and the
+   panel, 341 wide, with `.motionTransition(.panel, edge: .trailing)`.
+2. In `.pad` and `.phone`, the panel is an overlay at the trailing edge instead: after a `Divider` (not in
+   `.phone`), 341 wide (the window's width in `.phone`), with a shadow of radius 14 in `.pad`.
+3. `.adaptiveWindow($adaptiveWindow, layout:)`, `.frame(minWidth: 390, minHeight: 420)`, then
+   `.statusBar(FeedbackSource(…))` under everything.
+4. `.environment(\.chatPanel, offersChatPanel ? ChatPanelControl(isShown: $chatPanelShown) : nil)`, and
+   `focusedSceneValue` for `chatPanel`, `workspace`, `activeProject` (the tab's project; for Projects, its
+   selection) and `activeTool`.
+5. A `WindowReader` registers the window with `WindowDirectory.shared.register(_:workspace:)`.
+
+**The panel**: `ChatPanel(project:origin: tab.content.tool ?? .dashboard, subject: workspace.subjects[tab.id],
+model: workspace.panel(for: project.id) { ChatPanelModel(store: appData.chatStore) })`, whose hide closure
+toggles `chatPanelShown`, on `.canvas`. Its project is the tab's (Projects: the selection), else
+`workspace.lastProjectID`'s. Without any, a `ContentUnavailableView` "No Project", "Select a project to chat
+about it." (`chatPanel.noProject`).
+
+**`TabContentView`** draws the selected tab, with `.scrollEdgeEffectHidden(true, for: .top)`: the tab bar sits
+between the toolbar and the content, and the toolbar's edge effect would blur the content's first rows.
+
+| Content | View |
+| --- | --- |
+| `.projects` | `ProjectsRootView(directory:session:selection: $selectedProjectID)`, `.toolbar { ChatPanelToolbarItem() }` |
+| `.tool(tool, project)` | `ToolTab`; "No Project", "This tab's project isn't loaded. Pick another one in Projects." (`window.noProject`) when the directory doesn't have it |
+| `.projectSettings(project)` | `ProjectSettingsWindow(session:projectID:)`, `.toolbar { ChatPanelToolbarItem() }` |
+| `.machines` | `MachinesRootView(state: workspace.state(for:) { MachinesTabState(focus: machineFocus, store:) })`, `.environment(\.focusRequest, machineFocusRequest)`, `.toolbar { ChatPanelToolbarItem() }` |
+
+**`ToolTab`** builds the tool's root view from its kept state (`TicketsRootView(state: workspace.state(for: tab)
+{ TicketsTabState(project:focus: tab.focus, …) })`, and so for each tool; the Dashboard's widgets through
+`DashboardWidgetView`), with `.environment(\.focusRequest, workspace.focusRequests[tab.id])` and a
+`ReportChatSubjectAction` calling `workspace.report(_:in:)`. It sets `.navigationTitle(Text(tool.title))`,
+`.navigationSubtitle` (the project's path), `.toolbar(removing: .title)` below 760 points of width, and a
+`.navigation` toolbar item `ProjectSwitcher(projects: directory.projects, selection:, tool:)` whose binding
+calls `workspace.switchProject(of:to:)`. Each tool adds its own items and puts `ChatPanelToolbarItem()` last.
+
+**`TabBar`** (`workspace`, `title`, `symbol`, `newTab: (() -> Void)?`, `moveToNewWindow`), 36 points high on
+`canvas`: a horizontal `ScrollView` (indicators hidden, 8 points of padding) of `TabButton`s, 4 points apart,
+each `min(240, max(120, (width − 16 − 4 × (count − 1)) / count))` wide; then, when `newTab` is set, a borderless
+`plus` button (`tabs.new`, "New Tab (⌘T)"). A `DragGesture(minimumDistance: 6)` on each tab offsets it while
+dragging; on release, a vertical move over 48 points gives it a window of its own (`moveToNewWindow`, with two
+tabs or more), otherwise it moves by `round(dx / (width + 4))` places. `newTab` adds a tab of the selected tab's
+content, for a tool's tab only. Closing the last tab closes the window (`performClose`). Identifiers:
+`tabs`, `tabs.tab.<projects | tool.PROJECT | projectSettings.PROJECT | machines>`.
+
+**`TabButton`**: the symbol (16 points), the title (one line, truncated in the middle) and a borderless `xmark`
+close button, shown while hovered or selected ("Close Tab (⌘W)", "Close <title>"); `callout`, `textPrimary`
+when selected else `textSecondary`; 10 points of horizontal padding, 28 high, in a capsule of `.surface` when
+selected, `textSecondary` at 8 % when hovered. A tap selects it. Its context menu: Close Tab, Close Other Tabs,
+Move Tab to New Window (the last two with two tabs or more). For VoiceOver it is one button with its title, the
+Selected trait when selected, and the actions Close Tab and Move Tab to New Window.
+
+Titles: a tool's tab `WindowDirectory.tabTitle(tool.title, project: name)` ("Tickets – Orders"), Project
+Settings' `tabTitle("Project Settings", project: name)`, then "Projects" and "Virtual Machines". Symbols: the
+tool's, `folder`, `gearshape`, `desktopcomputer`.
+
 ### WindowDirectory
 
-`final class WindowDirectory`, a singleton (`static let shared`), keeps every window with what it shows, so
-that a route brings forward a window instead of opening a second one, and lets every window it keeps be a tab
-of any other ([Navigation › Tabs](ui/navigation.md#tabs)).
+`final class WindowDirectory`, a singleton (`static let shared`), keeps every window with its `Workspace`, so
+that a route selects a tab already showing what it asks for instead of opening a second one.
 
-- `enum Role: Hashable { case projects, machines, tool(ToolKind), projectSettings }`.
-- Entries are keyed by `ObjectIdentifier(window)`: a `weak var window: NSWindow?`, the `role`, the
-  `projectID: Project.ID?`, an optional `select: ((String) -> Void)?`, and `newTab: NewTabResponder`, kept
-  for as long as the window lives because a responder chain holds its responders weakly.
-- `register(_:role:projectID:tabTitle:newTab:select:)` adds or replaces a window's entry, reusing its
-  `NewTabResponder` and setting the responder's `open` to `newTab`, then calls `joinTabs(_:title:newTab:)`.
-- `static let tabbingIdentifier = "fr.azavech.hephaestusv3.windows"`. SwiftUI gives each scene its own
-  identifier (`SwiftUI-WindowGroup-<id>`, `SwiftUI-SingleWindow-<id>`), which lets only windows of one scene
-  merge, and makes its single windows' `tabbingMode` `.disallowed`.
-- `static func joinTabs(_ window:title:newTab:)`, on every report: sets the window's `tabbingIdentifier` to
-  `tabbingIdentifier` and its `tabbingMode` to `.automatic` when they differ; sets `window.tab.title` to
-  `title`, or to nil (following the window's title) when `title` is nil and the tab's title differs from the
-  window's; and, unless `newTab` is already somewhere in the window's responder chain (looked for over at most
-  32 responders), puts it just after the window: `newTab.nextResponder = window.nextResponder`,
-  `window.nextResponder = newTab`.
-- `var opensWindowsAsTabs = true`, which `AppData.opensWindowsAsTabs` sets: whether a window the app opens
-  becomes a tab of the frontmost window.
-- `func willOpenWindow(now: Date = .now)` records the app's ask for a window: the keys of the windows open
-  then (`isOpen`) and a deadline `newWindowDelay` (3 s) later. `isExpectingWindow` says whether an ask waits.
-  In `register`, a window not open at the ask and shown now (`isVisible`; a closed window SwiftUI still
-  updates isn't the new one) takes the ask, which ends; before the deadline and with `opensWindowsAsTabs`,
-  `addAsTab(_:)` makes it a tab. An entry whose window is gone, at the same address, counts as a new window's.
-- `private func addAsTab(_:)`, for a window not already in a tab group of two or more: the first of
-  `NSApp.orderedWindows` that is another window of the directory, visible and not minimized, gets it with
-  `addTabbedWindow(window, ordered: .above)`, and `tabGroup.selectedWindow = window`; nothing when there is
-  none. It runs after `joinTabs`, which gave the window the shared identifier and `.automatic`. SwiftUI shows a
-  window before it reports, too late for AppKit's own `.preferred` mode, so the directory makes the tab itself.
-- `static func tabTitle(_ window: String, project: String) -> String`: `String(localized: "\(window) –
-  \(project)")`, key `%@ – %@`, such as "Tickets – Orders".
-- `bringForward(role: Role?, projectID: Project.ID?, focus: String? = nil) -> Bool` drops entries whose window
-  is gone, keeps those that are open and match (`role` nil matches any role; `projectID` nil matches any
-  project), and picks the frontmost. Open: visible, minimized, or in the windows of a tab group whose
-  selected window is minimized; a tab behind another is visible to AppKit. Frontmost: the lowest rank, twice
-  the window's index in `NSApp.orderedWindows`, or, for a window not in that list, twice its tab group's
-  selected window's index plus one; `Int.max` otherwise, so minimized windows come last. It calls
-  `select(focus)` when there is a focus, then `show(_:)`. False when nothing matches.
-- `static func show(_:)`: for a window in its tab group's windows, deminiaturizes the group's selected window
-  when it is another and minimized, and selects the window's tab (`tabGroup.selectedWindow = window`); then
-  deminiaturizes the window if needed, calls `makeKeyAndOrderFront(nil)` and `NSApp.activate()`.
-- `static func activate()` calls `NSApp.activate()`, for windows SwiftUI opens from the menu bar while
-  another app is in front.
+- Entries are keyed by `ObjectIdentifier(window)`: `weak var window: NSWindow?`, `weak var workspace:
+  Workspace?`. `register(_:workspace:)` adds or replaces one, and sets the window's `tabbingMode` to
+  `.disallowed`.
+- `windows()` drops entries whose window or workspace is gone, keeps the visible or minimized windows, and
+  orders them by their index in `NSApp.orderedWindows` (minimized ones last). `frontmost()` is the first that
+  isn't minimized, else the first. `window(of:)` finds a workspace's window.
+- `show(where:focus:)`: in the frontmost window whose workspace `find` gives a tab, selects the tab, calls
+  `request(focus, in:)` when there is a focus, and `show(_:)` the window; false when none. `show(_ content:focus:)`
+  uses `tab(showing:)`.
+- `opensWindowsAsTabs` (true; `AppData.opensWindowsAsTabs` sets it). `open(_ tab:newWindow:)` adds the tab to
+  `frontmost()` and shows its window when `opensWindowsAsTabs` and a window is open; otherwise it calls
+  `newWindow(WorkspaceValue(tabs: [tab]))` and `activate()`. `open(_:openWindow:)` passes
+  `openWindow(id: "workspace", value:)`. `showOrOpen(_:focus:openWindow:)` shows, else opens.
+- `mergeAll(into:)`: every other window's tabs, in window order, are added to the workspace, and those windows
+  close; the selected tab stays selected.
+- `static func show(_:)` deminiaturizes the window if needed, `makeKeyAndOrderFront(nil)`, `NSApp.activate()`;
+  `static func activate()` calls `NSApp.activate()`; `static func tabTitle(_:project:)` is
+  `String(localized: "\(window) – \(project)")`, key `%@ – %@`.
 
-**`NewTabResponder: NSResponder`** takes the tab bar's + (`newWindowForTab(_:)`), which AppKit shows and
-enables whenever the responder chain answers it. SwiftUI's window controller (`AppKitWindowController`, the
-window's `nextResponder`) answers it by opening the window's scene without a value: a tool window without a
-project, an empty Project Settings window, or a second Projects window that takes over the scene. The
-responder sits ahead of it, and answers for every window: `var open: (() -> Void)?` is called when set, and
-`NSSound.beep()` is played otherwise. AppKit makes the window opened while it handles + a tab after the
-selected one, and selects it. Merge All Windows, Move Tab to New Window, Show Previous Tab, Show Next Tab,
-Show Tab Bar and Show All Tabs are AppKit's own menu items, added as the Window and View menus open.
-
-**`OpenWindowAction.openNew(id:)`** and **`openNew(id:value:)`** (in `ToolsScenes.swift`) call
-`WindowDirectory.shared.willOpenWindow()`, then the action. Every window the app opens when asked goes through
-them: `RouteHost`'s routes (the Projects window, a tool, Project Settings, Virtual Machines), New *Tool* Window,
-Project Settings…, and the Window menu's items. The tab bar's + calls `openWindow` itself.
+`WindowReader: NSViewRepresentable` reports its `NSWindow` from `viewDidMoveToWindow()` and from every
+`updateNSView`.
 
 **Status bar and feedback** (`StatusBar.swift`, [Navigation › Status bar](ui/navigation.md#status-bar),
 [Tickets › Feedback](ui/tickets.md#feedback)).
@@ -1070,14 +1141,15 @@ Project Settings…, and the Window menu's items. The tab bar's + calls `openWin
   `contextLine(version:build:system:)` makes the ticket's context line, by default from the main bundle's
   `CFBundleShortVersionString` and `CFBundleVersion` and `ProcessInfo.operatingSystemVersion`.
 - `View.statusBar(_ source:)` puts the window's content (`frame(maxWidth: .infinity, maxHeight: .infinity)`)
-  above `StatusBar` in a `VStack(spacing: 0)` while `\.feedbackTarget` is set. Its modifier keeps a
+  above `StatusBar` in a `VStack(spacing: 0)` while `\.feedbackTarget` is set: under the tab area and the chat
+  panel together. Its modifier keeps a
   `FeedbackStarter` in `@State`, gives it its window through a `WindowReader`, publishes
   `focusedSceneValue(\.sendFeedback, SendFeedbackAction)` while there is a target, and shows
   `FeedbackTicketView` in a `.sheet(item:)` on `FeedbackStarter.request`. The sheet's finish calls
   `FeedbackStarter.finish(_:)`, then, with a ticket id, `openRoute(.tool(.tickets, project:, focus: id))`.
-- Applied in `ToolsScenes`: the Projects window (`Projects`, the selected project), `ToolWindowRoot`
-  (`tool.title`, its project, `chatSubject?.title`), Project Settings (`Project Settings`, its project) and
-  Virtual Machines (`Virtual Machines`, no project).
+- Applied once per window, by `WorkspaceWindow`, for the selected tab: `windowName(of:)` (the tool's title,
+  Projects, Project Settings or Virtual Machines), the tab's project (for Projects, its selection) and the
+  tab's reported item (`workspace.subjects[tab.id]?.title`).
 - `FeedbackStarter` (`@MainActor @Observable`): `request: FeedbackRequest?`, `weak window` (ignored by
   observation). `start(_ source:isOn:)` does nothing when off, while a request is open, without a window, or
   while the window has an attached sheet or is one; otherwise it captures the window
@@ -1107,115 +1179,41 @@ from `settings.yml` at the same time; `setFeedbackProject(_:) throws(StorageErro
 (nil removes the key). The view's Feedback section takes `feedbackProjectID`, `projects: [ProjectChoice]`
 (`id`, and `title` from `ProjectTree.path(of:)`, in the directory's order) and `changeFeedbackProject`.
 
-`WindowReader: NSViewRepresentable` reports its `NSWindow` from `viewDidMoveToWindow()` and from every
-`updateNSView`. `View.registersWindow(_ role:projectID:tabTitle:newTab:select:)` puts a zero-size,
-accessibility-hidden `WindowReader` in the view's background that calls `WindowDirectory.shared.register`.
-Because it reports on every update, a window that switches project registers again with its new project and
-its new tab title.
-
-| Window | `tabTitle` | `newTab` |
-| --- | --- | --- |
-| Projects, Virtual Machines | nil | nil |
-| Project Settings | `tabTitle("Project Settings", project: name)` | nil |
-| A tool window | `tabTitle(tool.title, project: name)`, nil without a project | `openWindow(id: tool.windowID, value: ToolWindowValue(projectID:, instance: UUID()))`, as ⌘N; nil without a project |
-
-### ToolWindowRoot
-
-`private struct ToolWindowRoot: View` is every tool window. It takes `tool: ToolKind` and
-`@Binding value: ToolWindowValue?`.
-
-| State | Type | Role |
-| --- | --- | --- |
-| `@SceneStorage("chatPanelShown") chatPanelShown` | `Bool`, false | Whether this window shows the chat panel; per window, across launches. |
-| `@AppStorage(ChatPreferences.showsPanelKey) chatPanelEnabled` | `Bool`, true | Settings ▸ Chat: whether tool windows offer the panel. |
-| `@State chatSubject` | `ChatReference?` | The item the tool reports, for the panel. |
-| `@State chatPanelModel` | `ChatPanelModel()` | The panel's conversation and draft, kept while it is hidden. |
-| `@State focusRequest` | `FocusRequest?` | A route's request for this open window. |
-| `@State adaptiveWindow` | `AdaptiveWindowState()` | The window's measured size and size classes. |
-
-Constants: `panelWidth = 341` (the panel with its divider), `titleWidth = 760`, `minimumWidth = 390`; the
-minimum height is 420.
-
-Derived values:
-
-- `offersChatPanel = chatPanelEnabled && tool != .chat`; `showsChatPanel = offersChatPanel && chatPanelShown`.
-- `chatPanelControl = ChatPanelControl(isShown: $chatPanelShown)`.
-- `layout = adaptiveWindow.layout(macWidth: tool.macLayoutWidth, sidePanelWidth: showsChatPanel ? 341 : 0)`.
-
-The body, when `value` names a sample project:
-
-1. A `ZStack(alignment: .trailing)` holds the tool's content and, when `showsChatPanel`, the panel.
-   - The content is `content(for: project, focus: value.focus)` with `.id(value.projectID)`, so a new
-     project rebuilds the tool and its `@State` model. It gets `.environment(\.focusRequest, focusRequest)`
-     and a `ReportChatSubjectAction` that writes `chatSubject`. It fills the window, with a trailing padding
-     of 341 when the panel shows in the `.mac` layout.
-   - The panel is an `HStack` of a `Divider` (except in `.phone`) and
-     `ChatPanel(project:origin: tool, subject: chatSubject, model: chatPanelModel) { chatPanelControl.toggle() }`,
-     341 wide (the window's width in `.phone`), full height, on `.canvas`, with a shadow of radius 14 in
-     `.pad`, and `.motionTransition(.panel, edge: .trailing)`.
-2. `.adaptiveWindow($adaptiveWindow, layout: layout)` measures the window and hands the layout, size classes
-   and `collapsedFromRegularWidth` to everything inside, the panel included.
-3. `.frame(minWidth: 390, minHeight: 420)`; `.environment(\.chatPanel, offersChatPanel ? chatPanelControl : nil)`.
-4. `.navigationTitle(Text(tool.title))`, `.navigationSubtitle(Text(verbatim: Project.tree.path(of: project.id)))`,
-   and `.toolbar(removing: .title)` while the window is narrower than 760.
-5. A `.navigation` toolbar item: `ProjectSwitcher(projects: Project.samples, selection: projectBinding, tool: tool)`.
-   Each tool adds its own items and puts `ChatPanelToolbarItem()` last.
-6. `focusedSceneValue(\.activeProject, project)`, `focusedSceneValue(\.activeTool, tool)` and
-   `focusedSceneValue(\.chatPanel, offersChatPanel ? chatPanelControl : nil)`.
-
-Around it, `registersWindow(.tool(tool), projectID: value?.projectID)` lists the window. Its `select` closure
-sets `focusRequest = FocusRequest(focus)` and `value?.focus = focus`, so a restored window reopens on the last
-routed item. The tool's initializer runs again with the new focus, but its `@State` model keeps its first
-value: the request does the selecting.
-
-`projectBinding` reads `value?.projectID ?? ""`. Setting a different project replaces the value with
-`ToolWindowValue(projectID:)`, without focus or instance; the same project changes nothing.
-`.onChange(of: value?.projectID)` then replaces `chatPanelModel` with a new one and clears `chatSubject`.
-
-Without a value or with an unknown project, the window shows `ContentUnavailableView` "No Project", "Open
-this window from the Projects window.", identifier `window.noProject`, at least 600 × 400, on `.canvas`.
-
-`content(for:focus:)` builds each tool's root view:
-
-| Tool | Root view |
-| --- | --- |
-| `.dashboard` | `DashboardRootView(project:) { widget, context in DashboardWidgetView(widget:context:) }` |
-| `.tickets` | `TicketsRootView(project:focus:)` |
-| `.serviceMap` | `ServiceMapRootView(project:focus:)` |
-| `.contracts` | `ContractsRootView(project:focus:)` |
-| `.builds` | `BuildsRootView(project:focus:)` |
-| `.chat` | `ChatRootView(project:focus:)` |
-
-The panel's behavior in each layout is specified in [Chat › Chat panel](ui/chat.md).
-
 ### Menu commands and focused values
 
 | Command group | Placement | Items |
 | --- | --- | --- |
-| `NewItemCommands` | `CommandGroup(replacing: .newItem)` (File) | `NewWindowMenuItem`, then `NewItemMenuItem`. They replace SwiftUI's items, which would open a tool window without a project. |
-| `ToolCommands` | `CommandGroup(before: .windowList)` (Window) | `ToolMenuItems`: Projects (⌘0), one item per `ToolKind` (`tool.shortcut`), Virtual Machines (⌘7), a divider. |
+| `NewItemCommands` | `CommandGroup(replacing: .newItem)` (File), and `CommandGroup(replacing: .saveItem) {}`, which takes out SwiftUI's Close | New Window (⌘N), New Tab (⌘T), `NewItemMenuItem` (⇧⌘N), Add Existing Folder… (⌘O), a divider, Close Tab (⌘W) and Close Window (⇧⌘W), a divider, Project Settings… (⇧⌘,). |
+| `ToolCommands` | `CommandGroup(before: .windowList)` (Window) | `ToolMenuItems`: Projects (⌘0), one item per available `ToolKind` (`tool.shortcut`), Virtual Machines (⌘7), a divider. |
+| `TabCommands` | `CommandGroup(after: .windowArrangement)` (Window) | A divider, Show Previous Tab (⌃⇧⇥), Show Next Tab (⌃⇥), both with two tabs or more; Move Tab to New Window (two tabs or more); Merge All Windows (two windows or more). |
 | `ChatPanelCommands` | `CommandGroup(after: .sidebar)` (View) | `ChatPanelMenuItem`: Show Chat Panel / Hide Chat Panel, ⌃⌘C. |
+| `FeedbackCommands` | `CommandGroup(after: .help)` (Help) | Send Feedback… (⇧⌘B). |
 
-- **`NewWindowMenuItem`** reads `activeTool` and `activeProject`. It calls
-  `openWindow(id: tool.windowID, value: ToolWindowValue(projectID: project.id, instance: UUID()))`, ⌘N. Its
-  title is "New Dashboard Window", "New Tickets Window", "New Service Map Window", "New Contracts Window",
-  "New Builds Window", "New Chat Window", or "New Window" without a tool, when it is disabled.
-- **`NewItemMenuItem`** reads `newItem`: its title (or "New Item", disabled, without one), ⇧⌘N, calls
-  `newItem?()`.
-- **`ToolMenuItems`**: Projects brings the Projects window forward or opens it. Each tool item brings forward
-  the window of that tool and the key window's project, or opens one; it is disabled unless
-  `project?.tools.contains(tool)`. Virtual Machines brings its window forward or opens it.
+- **New Window** (`workspace` focused value): `openWindow(id: "workspace", value: WorkspaceValue(content))` with
+  the selected tab's content, for a tool's tab; disabled otherwise.
+- **New Tab**: `workspace.add(WorkspaceTab(content:))` with the selected tab's content, for a tool's tab.
+- **Close Tab**: removes the selected tab when the key window has two tabs or more; otherwise
+  `NSApp.keyWindow?.performClose(nil)`, which also closes Settings. **Close Window**: `performClose`.
+- **Project Settings…**: `showOrOpen(.projectSettings(project.id))` for `activeProject`.
+- **`ToolMenuItems`**: Projects `showOrOpen(.projects)`; each tool `showOrOpen(.tool(tool, project:))` for
+  `activeProject`, disabled unless `project?.tools.contains(tool)`; Virtual Machines `showOrOpen(.machines)`.
+- **Move Tab to New Window**: removes the selected tab and opens a window with it. **Merge All Windows**:
+  `WindowDirectory.shared.mergeAll(into:)`.
+- **`NewItemMenuItem`** reads `newItem`: its title (or "New Item", disabled, without one), ⇧⌘N.
 - **`ChatPanelMenuItem`** reads `FocusedValues.chatPanel`, calls `toggle()`, and is disabled when nil.
 
 | Focused value | Declared in | Set by |
 | --- | --- | --- |
-| `activeProject: Project?` | ToolsFoundation (public) | The Projects window (its selection) and every tool window (its project). |
+| `activeProject: Project?` | ToolsFoundation (public) | `WorkspaceWindow`: the selected tab's project; for Projects, its selection. |
 | `newItem: NewItemCommand?` | ToolsFoundation (public) | Views that call `newItemCommand(_:action:)`. |
-| `activeTool: ToolKind?` | ToolsScenes (internal) | Tool windows. |
-| `chatPanel: ChatPanelControl?` | ToolsScenes (internal, `ChatPanelFocusKey`) | Tool windows that offer the panel. |
+| `addFolder` | ProjectsKit (public) | Projects. |
+| `activeTool: ToolKind?` | ToolsScenes (internal) | `WorkspaceWindow`, for a tool's tab. |
+| `workspace: Workspace?` | ToolsScenes (internal) | `WorkspaceWindow`. |
+| `chatPanel: ChatPanelControl?` | ToolsScenes (internal, `ChatPanelFocusKey`) | `WorkspaceWindow`, while it offers the panel. |
+| `sendFeedback: SendFeedbackAction?` | ToolsScenes (internal) | The status bar, while there is a feedback project. |
 
-All are set with `focusedSceneValue`. The menus are specified in [Navigation › Menus and
-shortcuts](ui/navigation.md#menus-and-shortcuts).
+All are set with `focusedSceneValue`; only the selected tab is drawn, so its values are the window's. The menus
+are specified in [Navigation › Menus and shortcuts](ui/navigation.md#menus-and-shortcuts).
 
 ### Dashboard widgets
 
@@ -1232,8 +1230,9 @@ the title rows; this view draws a widget's content by its kind:
 ### Mac widths
 
 The width a window's columns need side by side. Below it, a regular-width window takes the iPad layout. With
-the chat panel open, a tool window needs 341 more. `ToolKind.macLayoutWidth` is an internal extension in
-ToolsScenes; the two other windows keep their own.
+the chat panel open beside it, a window needs 341 more. `ToolKind.macLayoutWidth` is an internal extension in
+ToolsScenes; Projects and Virtual Machines keep their own, and the window uses 760 for their tabs and Project
+Settings'.
 
 | Window | Mac width | Where |
 | --- | --- | --- |
@@ -1604,7 +1603,7 @@ the app's `\.ticketStore` (the samples without one).
 (`.doubleColumn` in `.pad`), or a `PhoneStack` in `.phone`. It presents the New Ticket, Add Link and bundle
 sheets, the failure alert and the confirmation alert; the list's context menu (`contextMenu(forSelectionType:)`)
 and ⌘⌫ (`onDeleteCommand`); `TicketActions` call `setStatus` and `nextStep`, disabled while `isWorking`.
-ToolsScenes' `ToolWindowRoot` builds it with `\.ticketStore` and its directory.
+ToolsScenes' `ToolTab` builds it from a `TicketsTabState` with the app's ticket store and directory.
 
 ### ServiceMapKit
 
@@ -1849,7 +1848,7 @@ wasn't sent, `activity`, `stop` (nil when the store can't stop) and `openSelecti
 (called by the views' `.task(id:)`). The window model gives the inspector `replySettings` and
 `setReplySettings(_:)`.
 
-**Data flow.** The tool reports its selection with `reportChatSubject` → `ToolWindowRoot.chatSubject` →
+**Data flow.** The tool reports its selection with `reportChatSubject` → `Workspace.subjects[tab]` →
 `ChatPanel(subject:)` → `ChatPanelModel.attachment(for:)` → `LiveChatStore.send` → `ChatSession.send` → the
 CLI → `mcp__hephaestus__<tool>` over HTTP → `ChatGate.check` → the tool's operation → a `toolUse` item → a
 `.call` block worded by the operation's `describe`, its detail from `appToolReader`.
@@ -1927,7 +1926,8 @@ described under [ToolsScenes](#routehost-and-route-handling).
   `DashboardModel`, `TicketsModel`, `ServiceMapModel`, `ContractsModel`, `BuildsModel`, `ChatWindowModel`,
   `ChatPanelModel`, `MachinesModel`. Shared observable stores: `ChatStore` and the Dashboard layout stores.
 - A root view keeps its model in `@State private var model`, set once with `State(initialValue:)` in its
-  initializer. In a tool window, `.id(projectID)` gives it a new identity when the project changes.
+  initializer. A tab keeps its tool's model in a public tab state (`TicketsTabState`…), so the model outlives
+  the view while another tab is in front; another project makes a new one.
 - A model's dependencies are protocols (`…Store`, `ChatEngine`), held as `any …` and often
   `@ObservationIgnored`. The app uses the `Sample…Store`s; tests use `Mock…Store`s defined in the test files.
 - Views render the model and forward actions. Navigation goes out as routes (`openRoute`), or as closures for
@@ -1954,7 +1954,9 @@ page lists its identifiers. The screens:
 | `launcher.` | Menu bar panel |
 | `projectSwitcher.`, `toolbar.projectSwitcher` | Project switcher |
 | `toolbar.chatPanel` | Chat panel button |
-| `window.noProject` | A tool window without a project |
+| `window.noProject` | A tool's tab whose project isn't loaded |
+| `tabs`, `tabs.tab.`, `tabs.new` | The tab bar, a tab, New Tab |
+| `chatPanel.noProject` | The chat panel without a project |
 | `dashboard.` | Dashboard |
 | `tickets.`, `ticket.`, `newTicket.` | Tickets: list and sidebar, a ticket's page, the New Ticket sheet |
 | `serviceMap.` | Service Map |
@@ -2011,8 +2013,8 @@ identifiers from it (`chat.composer.field`, `chat.composer.send`).
 | Chat panel offered | `UserDefaults.standard` (`@AppStorage`) | `chat.showsPanel` | `Bool`, default true |
 | Claude's permissions | same | `chat.ticketChanges`, `chat.projectChanges`, `chat.apiCalls`, `chat.clusterChanges`, `chat.machineChanges` | `ChangePermission` raw value, default `askFirst` |
 | Build starts permission | same | `chat.buildStarts` | `ChangePermission` raw value, default `never` |
-| Chat panel shown | Scene storage of each tool window | `chatPanelShown` | `Bool`, default false |
-| A tool window's project and focus | Window restoration | — | `ToolWindowValue` (`Codable`) |
+| Chat panel shown | Scene storage of each window | `chatPanelShown` | `Bool`, default true |
+| A window's tabs, each tab's focus and the selected tab | Window restoration | — | `WorkspaceValue` (`Codable`) |
 
 Everything else lasts as long as the app runs: selections, filters, folded parents, drafts. Chats are files
 of their projects ([Data › Chats](data.md#chats)). The Projects window's selection starts on `ORD` at each launch.
@@ -2085,7 +2087,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ChatDataTests | Chat files, Transcripts, Stream mapping, Chats on the Claude CLI, Launching the CLI | A complete chat file written back byte for byte, the `origin` key, the kinds' rules; replay (add, update, lines skipped), lines written by the app, the LF after a line cut short; captures of Claude Code 2.1.309 mapped to items and their ids, streamed text, the CLI's permission request, compaction lines, results after Stop; the CLI located in order, its version and models; a first message (arguments without prompt, hooks or the CLI's tools, the MCP configuration and its chat token, the attached line), a turn replayed to idle, the app's card and the CLI's request answered, Stop, an exit in error, a missing session started again, model and effort. A `FakeLauncher` replays the captures; nothing starts Claude. |
 | TicketDataTests | Ticket and bundle files, Ticket library | A complete ticket and bundle written back byte for byte; defaults, the creation entry and unknown keys; numbers from the counters, skipping existing files; provisional titles and the title, description and status messages; Claude's descriptions taken as written; drafts; link rules 1–7 with their messages and inverse links; history entries in order and changes that write nothing; Claude's status limits; the Complete and Reopened rules, Claude's bundle limits and the Complete rule at load; deletion order and the Trash; comments and their files; attachment copies, names, limits and paths; outside changes, invalid files and removals. Fixtures: example ticket and bundle files. Uses a test Trash folder. |
 | TextFormatsTests | Language detection, Token kinds, Word lists, Highlighter fixtures, Tokenizer edge cases, Markdown block model, Links, Heading anchors, Ticket and bundle ids, Linked ids, Soft line breaks | Every tokenizer against its fixtures and the word lists of [Text](text.md); the block model of every Markdown feature; links, images and path resolution read from [Text](text.md); ids. Fixtures: highlighting examples. |
-| ToolsScenesTests | MCP documentation, Window tabs, Feedback | docs/mcp.md's tools, descriptions and input schemas equal the registry's; window tabs and the asked-for window; the context line, a window's PNG at its backing scale, overlay placement, the feedback request's temporary folder and screenshot, and starts that do nothing. Windows are never shown, or ordered far off screen. |
+| ToolsScenesTests | MCP documentation, Tabs, Window directory, Feedback | docs/mcp.md's tools, descriptions and input schemas equal the registry's; a window's tabs (the initial tab, adding, closing, moving, Next and Previous, kept tool states, reported items, one chat conversation per project, a project's tab, the restored value); routes over windows ordered far off screen (no macOS tabs, selecting the tab that shows a route with its focus, a new tab in the frontmost window or a window of its own, Merge All Windows); the feedback context line, a window's PNG, overlay placement, the feedback request's temporary folder. Windows are never shown, or ordered far off screen. |
 | ToolsFoundationTests | Routes, Strings, Inherited settings | Each `FocusRequest` is new; `ChatReference.route` and ids per environment; shared titles from the catalog; unique tool shortcuts; inherited environments. |
 | ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker, Projects from the app's data, New Project, Projects window on the app's data, Project Settings, Project tools | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`.; the mapping of kinds, tints and environments; New Project's following fields, rules, type and parent from the folder, sub project folders and default location; the loading, empty and unavailable states; the selection after a removal and at load.; Project Settings' fields, rules and messages, environments added, renamed and removed, pending fields applied together, and inherited environments changed in the sub project's changes.; the five project tools through JSON-RPC on a real session, their refusals and `~/` expansion. |
 | DashboardsKitTests | What the Dashboard shows, Edit mode, Steps of the keyboard and VoiceOver, Settings, The Dashboard on the project files, Widgets of unavailable tools | Sample, default and saved lists; hidden service widgets; toolbar environment and time window; a change in every window of a project; list order; titles; Done, remove, add, first save, drags; every step and its limits; title, checkbox and Number rules. The live store on a real session in a temporary folder: the default list whatever the identifier, stored widgets read and written back in their layout with Recent Chats and unknown keys kept, the first change storing the default ids, the time window, a failed change and its message, a change made elsewhere, the mapping. Widgets shown by available tool; hidden widgets keep their places. Uses `MockDashboardLayoutStore`. |
@@ -2099,13 +2101,9 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ChatKitTests | Chat store, Sample engine, Chat panel, Chat window, Chat wording | Starting and continuing conversations, empty messages, ordering, decisions; mentions and reads; attachments, sending, New Chat, the Chat window route, suggestions; window selection, grouping, new chat, sending; approval sentences, suggestion wording and identifiers, references, unique sample ids; the live store's turns from a transcript (users' items, calls worded by their tools, failed calls, cards and their channels, notices, streamed text); the gate's rules. Uses `MockChatEngine`, and a chat session without projects. |
 
 ToolsScenesTests check that docs/mcp.md lists exactly the registered tools, in order, with their
-descriptions and input schemas (MCP documentation), and the tabs of `WindowDirectory` on windows that are
-never shown (Window tabs): the shared identifier and automatic mode, tab titles, the + reaching the window's
-last `newTab` once in the chain and ahead of what followed the window, a + with nothing to open, the
-directory keeping the responder, the ask for a window taken by the next window shown (not a closed one, not
-one open at the ask), and that window made a tab of the frontmost window or left on its own by the setting
-(windows ordered far off screen). Scenes, routes, window reuse, merging and the menus are checked by running
-the app.
+descriptions and input schemas (MCP documentation), a window's tabs (Tabs), routes over the windows' tabs
+(Window directory), and the feedback (Feedback). Scenes, the tab bar's drawing, its drags and the menus are
+checked by running the app.
 
 ## Open issues
 

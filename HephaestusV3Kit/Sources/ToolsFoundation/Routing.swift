@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A tool that has its own window, opened for one project at a time.
+/// A tool, shown in a tab for one project at a time.
 nonisolated public enum ToolKind: String, CaseIterable, Identifiable, Codable, Sendable {
     /// The project on one screen, in widgets the user places on a grid.
     case dashboard
@@ -13,40 +13,21 @@ nonisolated public enum ToolKind: String, CaseIterable, Identifiable, Codable, S
     case chat
 
     public var id: Self { self }
-
-    /// The id of the tool's window scene.
-    public var windowID: String { rawValue }
-}
-
-/// What a tool window shows: a project, and optionally something to select in it when it opens.
-nonisolated public struct ToolWindowValue: Codable, Hashable, Sendable {
-    public var projectID: Project.ID
-    /// A tool-specific id: a service name, an operation id, a run number…
-    public var focus: String?
-    /// Set by File ▸ New Window (⌘N), so that SwiftUI opens another window rather than bringing
-    /// forward one that shows the same project.
-    public var instance: UUID?
-
-    public init(projectID: Project.ID, focus: String? = nil, instance: UUID? = nil) {
-        self.projectID = projectID
-        self.focus = focus
-        self.instance = instance
-    }
 }
 
 /// A place in the app. Tools ask for a route; only ToolsScenes knows how to open it.
 nonisolated public enum Route: Hashable, Sendable {
-    /// The Projects window, with this project selected.
+    /// Projects, with this project selected.
     case project(Project.ID)
-    /// The project's own window: the frontmost window already showing it, brought forward and out of
-    /// the Dock, or the Projects window with it selected when none shows it.
+    /// The project's own tab: the first tab already showing it in the frontmost window that has one,
+    /// selected and brought forward, or Projects with it selected when none shows it.
     case projectWindow(Project.ID)
-    /// A tool's window for a project: the one already showing it, brought forward and out of the
-    /// Dock, or a new one. A `focus` is selected in either.
+    /// A tool's tab for a project: the one already showing it, selected and brought forward, or a new
+    /// one. A `focus` is selected in either.
     case tool(ToolKind, project: Project.ID, focus: String? = nil)
-    /// The Virtual Machines window, with this machine selected.
+    /// The Virtual Machines tab, with this machine selected.
     case machine(String? = nil)
-    /// A project's Project Settings window.
+    /// A project's Project Settings tab.
     case projectSettings(Project.ID)
 }
 

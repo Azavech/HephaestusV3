@@ -5,6 +5,17 @@ import ToolsFoundation
 
 /// The Contracts window for one project: the operations of its OpenAPI contract, and a request
 /// builder to call one on an environment.
+/// What a tab keeps of Contracts while another tab is in front: its model, so that its selection, filters
+/// and drafts are still there when the tab comes back. The app's window makes one per tab and project.
+@MainActor
+public final class ContractsTabState {
+    let model: ContractsModel
+
+    public init(project: Project, focus: String? = nil, store: LiveContractStore) {
+        model = ContractsModel(project: project, focus: focus, store: store)
+    }
+}
+
 public struct ContractsRootView: View {
     @State private var model: ContractsModel
 
@@ -18,6 +29,11 @@ public struct ContractsRootView: View {
 
     init(model: ContractsModel) {
         _model = State(initialValue: model)
+    }
+
+    /// The contract a tab keeps.
+    public init(state: ContractsTabState) {
+        self.init(model: state.model)
     }
 
     /// The operations column: shown on a Mac, folded behind the sidebar button on an iPad.

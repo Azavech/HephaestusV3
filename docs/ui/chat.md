@@ -255,14 +255,14 @@ Below 760 pt the toolbar also drops the window's title; the project switcher nam
 
 ## Chat panel
 
-The Chat window has no panel of its own. This section specifies the panel that every other tool window (Dashboard, Tickets, Service Map, Contracts, Builds) can show beside its tool. The panel asks about the item the tool has selected. Its conversations are the Chat window's too: they appear in its list, "from *Tool*".
+Every window has one chat panel, on the right, outside its tabs ([Navigation › Tabs](navigation.md#tabs)); Chat's own tab has none. The panel asks about the item the selected tab has selected. It holds one conversation per project in the window and shows the selected tab's project's (the user's choice): switching tabs loses none. In Projects it is the selected project's; in a tab without a project (Virtual Machines), the last project the window showed; with none, "No Project", "Select a project to chat about it." (`chatPanel.noProject`). Its conversations are the Chat window's too: they appear in its list, "from *Tool*".
 
 ![Tickets with the chat panel beside it, asking about ORD-142](images/panel-mac.png)
 *Tickets in the Mac layout, with the panel beside the ticket. The panel's button is the toolbar's last item.*
 
 ### What it asks about
 
-The panel's subject is the item the tool window reports as selected. It shows as a chip in the composer, and the next message carries it.
+The panel's subject is the item the selected tab reports as selected. It shows as a chip in the composer, and the next message carries it.
 
 **Suggestions** come from the item's tool: its read function proposes the questions worth asking about the item in its current state, so they change with it. A failed run offers "Why did run 641 fail?", a passed one doesn't. Each tool's page lists its own. When the tool proposes none, the panel offers general questions that suit any item of the kind, whatever its state.
 
@@ -274,7 +274,7 @@ The panel's subject is the item the tool window reports as selected. It shows as
 | Contracts | The selected operation | createOrder | Last call failed: Why did createOrder answer 504? · Show an example request for createOrder. Otherwise: Show an example request for createOrder · What does createOrder return? | Show an example request for createOrder |
 | Builds, Runs | The selected run | Run 1288 | Failed: Why did run 641 fail? · What changed in run 641? Passed: What changed in run 640? · Was run 640 slower than usual? See [Builds](builds.md). | What changed in run 1288? · Summarize run 1288 |
 | Builds, Releases | The selected release | Release v1.4.0 | See [Builds](builds.md) | What changed in release v1.4.0? · Summarize release v1.4.0 |
-| Dashboard; or no selection; or the Service Map's whole namespace | None | The project's chip | — | What changed this week? · What needs my attention? |
+| Dashboard, Projects, Project Settings, Virtual Machines; or no selection; or the Service Map's whole namespace | None | The project's chip | — | What changed this week? · What needs my attention? |
 
 With the subject taken off, the panel offers the project's suggestions, as with no subject.
 
@@ -304,40 +304,40 @@ A divider separates the header from the conversation.
 - **Empty state.** Before the first message: "Ask about *ORD-142*" (or the project's name when nothing is attached), title 3, semibold, a heading for VoiceOver. Then, with an item attached, "Claude reads it through *Tickets*, and asks before it changes anything." (the item's tool); with nothing attached, the Chat window's sentence: "Claude reads through the tools, and asks before it changes anything. Name a ticket, a run or a request to point at it." Then the suggestions for the subject. A suggestion sends at once, with the chip; the draft stays as it is. When the largest text sizes need more room than the panel has, the empty state scrolls.
 - **Transcript.** The same turns, rows and cards as the Chat window, tighter: 14 pt of padding and less space between turns. A tool-call row shows the action only, on one line; its detail is in the tooltip.
 - **Composer.** The same composer, with 12 pt of padding. Prompt: "Ask about *ORD-142*…", or the project's name when nothing is attached. **Return** sends, **⌥Return** starts a new line.
-- **Sending.** The first message starts a conversation with the window's project and the window's tool as its origin. Later messages go to the same conversation, each with whatever the chip shows at that moment.
+- **Sending.** The first message starts a conversation with the panel's project and the selected tab's tool as its origin (the Dashboard for Projects, Project Settings and Virtual Machines). Later messages go to the same conversation, each with whatever the chip shows at that moment.
 
 ![The panel after a question sent with Return](images/panel-sent.png)
 *"Is run 1288 enough to close it?" sent with Return from Tickets: the sample reply reads ORD-142, the attached ticket, and run 1288, which the message names.*
 
 ### Showing and hiding
 
-The panel shows or hides per window (the user's choice). Each window remembers its own choice across launches; a new window starts with the panel hidden.
+The panel shows or hides per window, for all its tabs (the user's choice). Each window remembers its own choice across launches; a new window starts with the panel shown (the user's choice, 17 November 2026).
 
 | Item | Control | Symbol | Shortcut | Behavior | Layouts |
 |---|---|---|---|---|---|
-| **Chat** | Toolbar button, `ChatPanelToolbarItem` (see [components.md](components.md)) | `sidebar.right` | ⌃⌘C (View menu) | Shows or hides the panel. Always the toolbar's last item, at its right end (the user's choice). Help: "Show the Chat Panel (⌃⌘C)" or "Hide the Chat Panel (⌃⌘C)". | Mac, iPad, iPhone |
-| **Show Chat Panel** / **Hide Chat Panel** | View menu item, after the sidebar items | — | ⌃⌘C | Shows or hides the panel of the key window. Disabled when the key window has no panel: the Chat window, the Projects window, Virtual Machines, or when Settings turns the panel off. See [navigation.md](navigation.md). | Mac, iPad, iPhone |
+| **Chat** | Toolbar button, `ChatPanelToolbarItem` (see [components.md](components.md)) | `sidebar.right` | ⌃⌘C (View menu) | Shows or hides the panel. Always the toolbar's last item, at its right end (the user's choice), in every tab but Chat's. Help: "Show the Chat Panel (⌃⌘C)" or "Hide the Chat Panel (⌃⌘C)". | Mac, iPad, iPhone |
+| **Show Chat Panel** / **Hide Chat Panel** | View menu item, after the sidebar items | — | ⌃⌘C | Shows or hides the panel of the key window. Disabled when the window has no panel: Chat's tab is selected, or Settings turns the panel off. See [navigation.md](navigation.md). | Mac, iPad, iPhone |
 | **Hide Chat** | Header button | `xmark` | — | Hides the panel. | Mac, iPad, iPhone |
 
 In Tickets, on the Mac and iPad layouts, the button sits at the right end of the ticket's column; the list's column doesn't repeat it. In the iPhone layout it ends both the list's toolbar and the ticket page's.
 
 ### Placement in each layout
 
-The window keeps one panel in every layout, so its conversation survives a resize. With the panel open, the window takes the Mac layout only when it is as wide as the tool's columns plus the panel.
+The window keeps one panel in every layout, so its conversation survives a resize. With the panel open, the window takes the Mac layout only when it is as wide as the selected tool's columns plus the panel (760 pt for Projects, Project Settings and Virtual Machines).
 
 | Layout | When | What changes |
 |---|---|---|
-| Mac | At least the tool's Mac width + 341 pt | The panel sits beside the tool, 341 pt wide with its leading divider. The tool narrows by 341 pt to make room. |
-| iPad | 640 pt up to the tool's Mac width + 341 pt | The panel slides over the tool's trailing edge, 341 pt wide, with its divider and a shadow (radius 14 pt). The tool keeps its full width and takes its own iPad layout. |
-| iPhone | Narrower than 640 pt | The panel fills the window as a full page, without a divider, over the tool. The toolbar stays, with the panel's button last. |
+| Mac | At least the tool's Mac width + 341 pt | The panel sits beside the tabs, from under the toolbar to the status bar, 341 pt wide with its leading divider. The tab bar and the tab narrow by 341 pt to make room. |
+| iPad | 640 pt up to the tool's Mac width + 341 pt | The panel slides over the tabs' trailing edge, 341 pt wide, with its divider and a shadow (radius 14 pt). The tab keeps its full width and takes its own iPad layout. |
+| iPhone | Narrower than 640 pt | The panel fills the window as a full page, without a divider, over the tabs. The toolbar stays, with the panel's button last. |
 
-| Tool | Mac layout without the panel | With the panel | Default window width | With the panel open at that width |
-|---|---|---|---|---|
-| Dashboard | 900 pt | 1241 pt | 1240 pt | Over the tool |
-| Tickets | 900 pt | 1241 pt | 1180 pt | Over the tool |
-| Service Map | 880 pt | 1221 pt | 1320 pt | Beside the tool |
-| Contracts | 760 pt | 1101 pt | 1120 pt | Beside the tool |
-| Builds | 900 pt | 1241 pt | 1180 pt | Over the tool |
+| Tool | Mac layout without the panel | With the panel | At a new window's 1320 pt, panel open |
+|---|---|---|---|
+| Dashboard | 900 pt | 1241 pt | Beside the tabs |
+| Tickets | 900 pt | 1241 pt | Beside the tabs |
+| Service Map | 880 pt | 1221 pt | Beside the tabs |
+| Contracts | 760 pt | 1101 pt | Beside the tabs |
+| Builds | 900 pt | 1241 pt | Beside the tabs |
 
 ![The Service Map in the iPad layout, dark, with the panel over it](images/panel-pad.png)
 *The Service Map at 1000 pt, dark: the panel slides over the map and asks about payments-api.*
@@ -353,15 +353,16 @@ The panel slides in from the window's right edge and back out (the user's choice
 
 | State | When | What shows |
 |---|---|---|
-| Hidden | The window's panel is off. | The tool alone; the toolbar button's help reads "Show the Chat Panel (⌃⌘C)". |
+| Hidden | The window's panel is off. | The tabs alone; the toolbar button's help reads "Show the Chat Panel (⌃⌘C)". |
 | New chat | No conversation yet, or after **New Chat**. | The empty state with suggestions. |
 | Conversation | After the first message. | The compact transcript; the title in the header. |
 | Waiting for a reply | After sending, while Claude works. | The activity row with **Stop**; **Send** disabled. |
 | Subject taken off | The user removed the chip. | **Attach *item*** in place of the chip; the project's suggestions. |
-| No subject | The tool has nothing selected, or is the Dashboard. | The project's chip; "Claude reads through the tools…"; the project's suggestions. |
+| No subject | The tab has nothing selected, or is the Dashboard, Projects, Project Settings or Virtual Machines. | The project's chip; "Claude reads through the tools…"; the project's suggestions. |
+| No project | No tab of the window has shown a project. | "No Project", "Select a project to chat about it." |
 | Turned off | Settings ▸ Chat switch off. | No panel, no toolbar button; the View menu item is disabled. |
 
-Hiding the panel keeps its open conversation, its draft and a subject the user took off: shown again, the panel is as the user left it (the user's choice). The window keeps them, not the panel. **New Chat** leaves them. Switching the window to another project starts a new conversation, with an empty draft and no subject until the tool reports one; the old conversation stays in the Chat window's list.
+Hiding the panel keeps its open conversations, their drafts and a subject the user took off: shown again, the panel is as the user left it (the user's choice). The window keeps them, one per project, for as long as it is open, not the panel. **New Chat** leaves the current one. Selecting a tab of another project, or switching a tab to another project, shows that project's conversation, a new one the first time; the others stay, and stay in the Chat window's list.
 
 ## Settings ▸ Chat
 

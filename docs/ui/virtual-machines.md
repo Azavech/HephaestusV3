@@ -19,7 +19,7 @@ The Virtual Machines window manages the virtual machines on this Mac. People use
 - **No route callers yet.** No tool or window sends `Route.machine` yet: a chat's `vm_` tool-call rows have no item to open, machines not being a `ToolKind`.
 - **No project entry points.** The Projects window, the menu bar panel and the project switcher do not open this window. They are project-based, and this window is not.
 - **One window.** The scene is a single `Window` (`id` `machines`), so there is never more than one Virtual Machines window. It registers with `WindowDirectory` as `.machines` with no project. This is how routes and the menu find it instead of opening a second one. See [navigation.md](navigation.md) › window reuse.
-- **Launch and size.** The window does not open at launch (`.defaultLaunchBehavior(.suppressed)`). Its default size is 1100 × 760 points. Like the tool windows, it gets no narrower than 390 points and no lower than 420 points.
+- **Launch and size.** It is a tab ([Navigation › Tabs](navigation.md#tabs)), which doesn't open at launch: ⌘7 or a route opens it, once in the app. Like every window, its window gets no narrower than 390 points and no lower than 420 points.
 
 ## Anatomy
 
@@ -281,10 +281,10 @@ The window measures its width and picks a layout, as the tool windows do; see [f
 - **The screen.** In every layout, the machine screen takes all the width and height the other panes leave (the user's choice: every window fills the room it gets, with no capped widths).
 - **Smallest window.** 390 × 420 pt.
 
-It is not a tool window: it is a `Window` scene rather than a `ToolWindowRoot`, and it measures its own width. As a result:
+It is not a tool: it is one tab in the whole app ([Navigation › Tabs](navigation.md#tabs)) rather than a tool's tab, and it measures its own width. As a result:
 
-- **No project switcher.** The window is one for the whole Mac. It reports no active project, so while it is key, the tool items ⌘1 to ⌘6 in the Window menu are disabled. With nothing else naming the window, the toolbar keeps its title at every width, where the tool windows drop it below 760 points.
-- **No chat panel.** The window offers no chat panel, so **View ▸ Show Chat Panel** (⌃⌘C) is disabled while it is key. Chat cannot read a machine either: machines are not a `ToolKind`, and the app's `ToolReader` has no case for them.
+- **No project switcher.** The tab is one for the whole Mac. It reports no active project, so while it is selected, the tool items ⌘1 to ⌘6 in the Window menu are disabled. With nothing else naming the tab, the toolbar keeps its title at every width, where the tools' tabs drop it below 760 points.
+- **The window's chat panel** stays beside it, on the last project the window showed ([Chat › Chat panel](chat.md#chat-panel)). Chat cannot read a machine: machines are not a `ToolKind`, and the app's `ToolReader` has no case for them.
 
 ## Accessibility
 

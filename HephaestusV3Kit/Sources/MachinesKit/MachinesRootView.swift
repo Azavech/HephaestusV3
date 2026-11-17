@@ -7,6 +7,17 @@ import ToolsFoundation
 ///
 /// It adapts to its width as the tool windows do: a Mac's sidebar, screen and inspector side by side;
 /// an iPad's with the inspector folded behind its button; an iPhone's one pane at a time.
+/// What a tab keeps of Virtual Machines while another tab is in front: its model, so that its selection, filters
+/// and drafts are still there when the tab comes back. The app's window makes one per tab and project.
+@MainActor
+public final class MachinesTabState {
+    let model: MachinesModel
+
+    public init(focus: String? = nil, store: LiveMachineStore) {
+        model = MachinesModel(focus: focus, store: store)
+    }
+}
+
 public struct MachinesRootView: View {
     /// The window's size, size classes and whether it narrowed from a regular width (AZDesign), which
     /// pick the Mac's, an iPad's or an iPhone's layout.
@@ -24,6 +35,11 @@ public struct MachinesRootView: View {
 
     init(model: MachinesModel) {
         _model = State(initialValue: model)
+    }
+
+    /// The machines a tab keeps.
+    public init(state: MachinesTabState) {
+        self.init(model: state.model)
     }
 
     public var body: some View {

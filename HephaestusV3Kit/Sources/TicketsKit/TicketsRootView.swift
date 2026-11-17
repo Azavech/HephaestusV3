@@ -5,6 +5,17 @@ import ToolsFoundation
 /// The Tickets window for one project: sidebar of statuses, projects and bundles, ticket list, ticket
 /// detail. `TicketsModel` holds the tickets, the filter, the selection and what a route selects; the
 /// view holds only how the panes are laid out.
+/// What a tab keeps of Tickets while another tab is in front: its model, so that its selection, filters
+/// and drafts are still there when the tab comes back. The app's window makes one per tab and project.
+@MainActor
+public final class TicketsTabState {
+    let model: TicketsModel
+
+    public init(project: Project, focus: String? = nil, store: LiveTicketStore, directory: ProjectDirectory) {
+        model = TicketsModel(project: project, focus: focus, store: store, directory: directory)
+    }
+}
+
 public struct TicketsRootView: View {
     @State private var model: TicketsModel
 
@@ -24,6 +35,11 @@ public struct TicketsRootView: View {
 
     init(model: TicketsModel) {
         _model = State(initialValue: model)
+    }
+
+    /// The Tickets a tab keeps.
+    public init(state: TicketsTabState) {
+        self.init(model: state.model)
     }
 
     public var body: some View {

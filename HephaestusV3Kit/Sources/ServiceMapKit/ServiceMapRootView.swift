@@ -9,6 +9,17 @@ import ToolsFoundation
 /// queues on a ring around their service, groups of services apart. A click on a service focuses on it
 /// and its neighbours, a request shows only its path from a Client node, and a right-click, the Back
 /// button or ⌘[ goes back. `ServiceMapModel` holds what the window shows.
+/// What a tab keeps of the Service Map while another tab is in front: its model, so that its selection, filters
+/// and drafts are still there when the tab comes back. The app's window makes one per tab and project.
+@MainActor
+public final class ServiceMapTabState {
+    let model: ServiceMapModel
+
+    public init(project: Project, focus: String? = nil, store: LiveServiceMapStore) {
+        model = ServiceMapModel(project: project, focus: focus, store: store)
+    }
+}
+
 public struct ServiceMapRootView: View {
     @State private var model: ServiceMapModel
 
@@ -34,6 +45,11 @@ public struct ServiceMapRootView: View {
 
     init(model: ServiceMapModel) {
         _model = State(initialValue: model)
+    }
+
+    /// The map a tab keeps.
+    public init(state: ServiceMapTabState) {
+        self.init(model: state.model)
     }
 
     public var body: some View {

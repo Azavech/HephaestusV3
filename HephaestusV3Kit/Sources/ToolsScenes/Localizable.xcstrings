@@ -18,7 +18,7 @@
     "Add Existing Folder…" : {
       "comment" : "File menu item, ⌘O"
     },
-    "Applies to the windows Hephaestus opens: a tool, a project, its settings. Windows macOS reopens at launch keep their places, and Window ▸ Merge All Windows and Move Tab to New Window work either way." : {
+    "Applies to what Hephaestus opens: a tool, a project, its settings. Window ▸ Merge All Windows and Move Tab to New Window work either way." : {
 
     },
     "As separate windows" : {
@@ -28,6 +28,21 @@
 
     },
     "Claude Code in Terminal" : {
+
+    },
+    "Close %@" : {
+
+    },
+    "Close Other Tabs" : {
+
+    },
+    "Close Tab" : {
+
+    },
+    "Close Tab (⌘W)" : {
+
+    },
+    "Close Window" : {
 
     },
     "Command" : {
@@ -66,25 +81,19 @@
     "MCP" : {
       "comment" : "The Settings tab of the MCP server"
     },
-    "New Builds Window" : {
+    "Merge All Windows" : {
 
     },
-    "New Chat Window" : {
-
-    },
-    "New Contracts Window" : {
-
-    },
-    "New Dashboard Window" : {
+    "Move Tab to New Window" : {
 
     },
     "New Item" : {
       "comment" : "File menu item, disabled: the key window creates nothing"
     },
-    "New Service Map Window" : {
+    "New Tab" : {
 
     },
-    "New Tickets Window" : {
+    "New Tab (⌘T)" : {
 
     },
     "New Window" : {
@@ -106,9 +115,6 @@
 
     },
     "Open new windows" : {
-
-    },
-    "Open this window from the Projects window." : {
 
     },
     "Opened a window of Hephaestus" : {
@@ -141,6 +147,9 @@
     "Run the command in Terminal to give Claude Code the tools of Hephaestus V3. After Regenerate or a new port, run “claude mcp remove hephaestus” first." : {
 
     },
+    "Select a project to chat about it." : {
+
+    },
     "Send Feedback" : {
 
     },
@@ -156,6 +165,12 @@
     "Show Chat Panel" : {
 
     },
+    "Show Next Tab" : {
+
+    },
+    "Show Previous Tab" : {
+
+    },
     "Status" : {
 
     },
@@ -163,6 +178,9 @@
 
     },
     "The ladybug at the bottom of every window, and Help ▸ Send Feedback… (⇧⌘B), make a ticket in this project with a screenshot of the window. With None, neither shows." : {
+
+    },
+    "This tab's project isn't loaded. Pick another one in Projects." : {
 
     },
     "Virtual Machines" : {

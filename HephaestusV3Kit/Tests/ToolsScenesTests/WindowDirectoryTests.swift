@@ -1,172 +1,207 @@
 import AppKit
+@testable import ChatKit
+import Foundation
 import Testing
+import ToolsFoundation
 @testable import ToolsScenes
 
-/// Window tabs: every window the directory lists can be a tab of any other, names its project in its tab,
-/// and takes the tab bar's + itself. Windows are created and never shown.
+private let orders = WorkspaceContent.tool(.tickets, project: "ORD")
+private let payments = WorkspaceContent.tool(.builds, project: "PAY")
+
+/// A window's tabs: their order, selection and what each keeps (docs/ui/navigation.md › Tabs).
 @MainActor
-@Suite("Window tabs")
+@Suite("Tabs")
+struct WorkspaceTests {
+    @Test("A window without tabs shows Projects; a selection it doesn't have falls back on the first tab")
+    func initial() {
+        #expect(Workspace(WorkspaceValue(tabs: [])).tabs.map(\.content) == [.projects])
+        let tab = WorkspaceTab(content: orders)
+        let workspace = Workspace(WorkspaceValue(tabs: [tab], selection: UUID()))
+        #expect(workspace.selectedTab?.id == tab.id)
+        #expect(workspace.lastProjectID == "ORD")
+    }
+
+    @Test("A new tab goes after the selected one and is selected; closing selects the next, else the one before")
+    func addAndRemove() {
+        let first = WorkspaceTab(content: .projects)
+        let last = WorkspaceTab(content: payments)
+        let workspace = Workspace(WorkspaceValue(tabs: [first, last]))
+        let added = WorkspaceTab(content: orders)
+        workspace.add(added)
+        #expect(workspace.tabs.map(\.id) == [first.id, added.id, last.id])
+        #expect(workspace.selectedTab?.id == added.id)
+        #expect(workspace.remove(added.id)?.id == added.id)
+        #expect(workspace.selectedTab?.id == last.id)
+        workspace.remove(last.id)
+        #expect(workspace.selectedTab?.id == first.id)
+        #expect(workspace.remove(UUID()) == nil)
+    }
+
+    @Test("Tabs move within bounds, and Next and Previous wrap around")
+    func moveAndStep() {
+        let tabs = [WorkspaceTab(content: .projects), WorkspaceTab(content: orders), WorkspaceTab(content: payments)]
+        let workspace = Workspace(WorkspaceValue(tabs: tabs))
+        workspace.move(tabs[0].id, to: 10)
+        #expect(workspace.tabs.map(\.id) == [tabs[1].id, tabs[2].id, tabs[0].id])
+        workspace.move(tabs[0].id, to: -3)
+        #expect(workspace.tabs.map(\.id) == tabs.map(\.id))
+        workspace.selectPrevious()
+        #expect(workspace.selectedTab?.id == tabs[2].id)
+        workspace.selectNext()
+        #expect(workspace.selectedTab?.id == tabs[0].id)
+    }
+
+    @Test("A tab keeps its tool state while another is in front, until it shows another project or closes")
+    func keptState() {
+        let tab = WorkspaceTab(content: orders)
+        let other = WorkspaceTab(content: payments)
+        let workspace = Workspace(WorkspaceValue(tabs: [tab, other]))
+        let state = workspace.state(for: tab) { NSObject() }
+        workspace.select(other.id)
+        workspace.select(tab.id)
+        #expect(workspace.state(for: tab) { NSObject() } === state)
+        workspace.switchProject(of: tab.id, to: "SHOP")
+        let moved = workspace.tab(tab.id)!
+        #expect(moved.content == .tool(.tickets, project: "SHOP"))
+        #expect(workspace.state(for: moved) { NSObject() } !== state)
+        #expect(workspace.lastProjectID == "SHOP")
+        workspace.remove(tab.id)
+        #expect(!workspace.keepsState(of: tab.id))
+    }
+
+    @Test("A tab's reported item is the chat panel's subject and its focus for restoration")
+    func reportedItem() {
+        let tab = WorkspaceTab(content: orders)
+        let workspace = Workspace(WorkspaceValue(tabs: [tab]))
+        let subject = ChatReference(tool: .tickets, projectID: "ORD", focus: "ORD-142", title: "ORD-142")
+        workspace.report(subject, in: tab.id)
+        #expect(workspace.subjects[tab.id] == subject)
+        #expect(workspace.selectedTab?.focus == "ORD-142")
+        workspace.switchProject(of: tab.id, to: "PAY")
+        #expect(workspace.subjects[tab.id] == nil)
+        #expect(workspace.selectedTab?.focus == nil)
+    }
+
+    @Test("The chat panel keeps one conversation per project")
+    func panels() {
+        let workspace = Workspace(WorkspaceValue(tabs: [WorkspaceTab(content: orders)]))
+        let store = SampleChatStore.transient()
+        let first = workspace.panel(for: "ORD") { ChatPanelModel(chats: store) }
+        #expect(workspace.panel(for: "ORD") { ChatPanelModel(chats: store) } === first)
+        #expect(workspace.panel(for: "PAY") { ChatPanelModel(chats: store) } !== first)
+    }
+
+    @Test("A project's tab is the selected one when it shows it, else the first that does")
+    func projectTab() {
+        let settings = WorkspaceTab(content: .projectSettings("ORD"))
+        let tickets = WorkspaceTab(content: orders)
+        let workspace = Workspace(WorkspaceValue(tabs: [settings, tickets], selection: tickets.id))
+        #expect(workspace.tab(showingProject: "ORD")?.id == tickets.id)
+        workspace.select(settings.id)
+        #expect(workspace.tab(showingProject: "ORD")?.id == settings.id)
+        #expect(workspace.tab(showing: orders)?.id == tickets.id)
+        #expect(workspace.tab(showingProject: "PAY") == nil)
+    }
+
+    @Test("The window's value round-trips through its restoration, tabs, focus and selection included")
+    func value() throws {
+        let tabs = [WorkspaceTab(content: .projects), WorkspaceTab(content: orders, focus: "ORD-142"),
+                    WorkspaceTab(content: .projectSettings("ORD")), WorkspaceTab(content: .machines)]
+        let value = WorkspaceValue(tabs: tabs, selection: tabs[1].id)
+        let decoded = try JSONDecoder().decode(WorkspaceValue.self, from: JSONEncoder().encode(value))
+        #expect(decoded == value)
+        #expect(Workspace(decoded).value == value)
+        #expect(WorkspaceContent.projects.isSingle && WorkspaceContent.machines.isSingle && WorkspaceContent.projectSettings("ORD").isSingle)
+        #expect(!orders.isSingle)
+    }
+}
+
+/// Routes and the Window menu over the windows' tabs (docs/ui/navigation.md › Window reuse). Windows are
+/// ordered far off screen.
+@MainActor
+@Suite("Window directory")
 struct WindowDirectoryTests {
-    private func window(title: String = "Tickets") -> NSWindow {
+    private func window(_ x: CGFloat) -> NSWindow {
         _ = NSApplication.shared
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 300), styleMask: [.titled, .closable],
-                              backing: .buffered, defer: true)
+                              backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
-        window.title = title
+        window.tabbingMode = .automatic
+        window.setFrame(NSRect(x: x, y: -20_000, width: 400, height: 300), display: false)
+        window.orderBack(nil)
         return window
     }
 
-    /// The `NewTabResponder`s in the window's responder chain.
-    private func newTabResponders(of window: NSWindow) -> [NewTabResponder] {
-        var found: [NewTabResponder] = []
-        var next = window.nextResponder
-        var steps = 0
-        while let responder = next, steps < 32 {
-            if let newTab = responder as? NewTabResponder {
-                found.append(newTab)
-            }
-            next = responder.nextResponder
-            steps += 1
-        }
-        return found
+    @Test("A registered window takes no macOS tabs")
+    func noSystemTabs() {
+        let window = window(-20_000)
+        defer { window.orderOut(nil) }
+        WindowDirectory().register(window, workspace: Workspace(.initial))
+        #expect(window.tabbingMode == .disallowed)
     }
 
-    @Test("A window, even one SwiftUI made single, joins the app's tabs")
-    func joins() {
-        let window = window(title: "Projects")
-        window.tabbingIdentifier = "SwiftUI-SingleWindow-projects"
-        window.tabbingMode = .disallowed
-        WindowDirectory().register(window, role: .projects, projectID: nil)
-        #expect(window.tabbingIdentifier == WindowDirectory.tabbingIdentifier)
-        #expect(window.tabbingMode == .automatic)
-    }
-
-    @Test("A tab names the window and its project, or follows the window's title")
-    func titles() {
-        #expect(WindowDirectory.tabTitle("Tickets", project: "Orders") == "Tickets – Orders")
+    @Test("A route selects the tab that shows it and asks it for the focus; nothing shows what no tab does")
+    func show() {
         let directory = WindowDirectory()
-        let window = window()
-        directory.register(window, role: .tool(.tickets), projectID: "ORD", tabTitle: "Tickets – Orders")
-        #expect(window.tab.title == "Tickets – Orders")
-        directory.register(window, role: .tool(.tickets), projectID: "PAY", tabTitle: "Tickets – Payments")
-        #expect(window.tab.title == "Tickets – Payments")
-        directory.register(window, role: .tool(.tickets), projectID: nil)
-        #expect(window.tab.title == "Tickets")
-    }
-
-    @Test("The tab bar's + opens what the window's last report gives, ahead of the rest of the chain")
-    func newTab() {
-        let directory = WindowDirectory()
-        let window = window()
-        let controller = NSResponder()
-        window.nextResponder = controller
-        var opened: [String] = []
-        directory.register(window, role: .tool(.tickets), projectID: "ORD", newTab: { opened.append("ORD") })
-        #expect(window.tryToPerform(#selector(NSResponder.newWindowForTab(_:)), with: nil))
-        directory.register(window, role: .tool(.tickets), projectID: "PAY", newTab: { opened.append("PAY") })
-        #expect(window.tryToPerform(#selector(NSResponder.newWindowForTab(_:)), with: nil))
-        #expect(opened == ["ORD", "PAY"])
-        // One responder, just after the window, followed by what followed the window.
-        withExtendedLifetime(directory) {
-            let responders = newTabResponders(of: window)
-            #expect(responders.count == 1)
-            #expect(window.nextResponder === responders.first)
-            #expect(responders.first?.nextResponder === controller)
-        }
-    }
-
-    @Test("A window whose + has nothing to open still takes it, so SwiftUI opens no empty window")
-    func nothingToOpen() {
-        let directory = WindowDirectory()
-        let window = window(title: "Projects")
-        directory.register(window, role: .projects, projectID: nil)
-        withExtendedLifetime(directory) {
-            let responder = newTabResponders(of: window).first
-            #expect(responder != nil)
-            #expect(responder?.open == nil)
-            #expect(responder?.responds(to: #selector(NSResponder.newWindowForTab(_:))) == true)
-        }
-    }
-
-    @Test("The directory keeps the responder while the window lives; the chain doesn't")
-    func keptByTheDirectory() {
-        let window = window()
-        WindowDirectory().register(window, role: .tool(.tickets), projectID: "ORD")
-        // A responder chain holds its responders weakly: without the directory, nothing is left to call.
-        #expect(newTabResponders(of: window).isEmpty)
-    }
-
-    @Test("The app's ask for a window is taken by the next window shown, once; a window not shown leaves it")
-    func askedWindow() {
-        let directory = WindowDirectory()
-        let hidden = window(title: "Closed")
-        directory.register(hidden, role: .tool(.tickets), projectID: "ORD")
-        directory.willOpenWindow()
-        #expect(directory.isExpectingWindow)
-        // A closed window SwiftUI still updates isn't the new one.
-        directory.register(hidden, role: .tool(.tickets), projectID: "ORD")
-        #expect(directory.isExpectingWindow)
-        let shown = window(title: "Builds")
-        shown.setFrame(NSRect(x: -20_000, y: -20_000, width: 400, height: 300), display: false)
-        shown.orderBack(nil)
-        defer { shown.orderOut(nil) }
-        directory.register(shown, role: .tool(.builds), projectID: "ORD")
-        #expect(!directory.isExpectingWindow)
-        // With no other window shown, it stays a window of its own.
-        #expect((shown.tabGroup?.windows.count ?? 1) == 1)
-    }
-
-    @Test("The window asked for becomes a tab of the frontmost window, or a window of its own when the setting says so",
-          arguments: [true, false])
-    func asTab(opensWindowsAsTabs: Bool) {
-        let directory = WindowDirectory()
-        directory.opensWindowsAsTabs = opensWindowsAsTabs
-        let front = window(title: "Projects")
-        front.setFrame(NSRect(x: -20_000, y: -20_000, width: 700, height: 500), display: false)
-        front.orderBack(nil)
-        let new = window(title: "Tickets")
+        let one = window(-20_000)
+        let two = window(-19_000)
         defer {
-            new.orderOut(nil)
-            front.orderOut(nil)
+            one.orderOut(nil)
+            two.orderOut(nil)
         }
-        directory.register(front, role: .projects, projectID: nil)
-        directory.willOpenWindow()
-        new.setFrame(NSRect(x: -19_000, y: -19_000, width: 400, height: 300), display: false)
-        new.orderBack(nil)
-        directory.register(new, role: .tool(.tickets), projectID: "ORD", tabTitle: "Tickets – Orders")
-        if opensWindowsAsTabs {
-            #expect(front.tabGroup?.windows == [front, new])
-            #expect(front.tabGroup?.selectedWindow === new)
-        } else {
-            #expect((new.tabGroup?.windows.count ?? 1) == 1)
-        }
+        let tickets = WorkspaceTab(content: orders)
+        let first = Workspace(WorkspaceValue(tabs: [WorkspaceTab(content: .projects)]))
+        let second = Workspace(WorkspaceValue(tabs: [WorkspaceTab(content: payments), tickets]))
+        directory.register(one, workspace: first)
+        directory.register(two, workspace: second)
+        #expect(directory.show(orders, focus: "ORD-142"))
+        #expect(second.selectedTab?.id == tickets.id)
+        #expect(second.focusRequests[tickets.id] != nil)
+        #expect(!directory.show(.tool(.serviceMap, project: "ORD")))
+        #expect(directory.window(of: second) === two)
     }
 
-    @Test("A window shown when the app asks isn't the new one")
-    func openWindowsAreNotNew() {
+    @Test("A new tab goes into the frontmost window, or into a window of its own when the setting says so")
+    func open() {
         let directory = WindowDirectory()
-        let front = window(title: "Projects")
-        front.setFrame(NSRect(x: -20_000, y: -20_000, width: 400, height: 300), display: false)
-        front.orderBack(nil)
-        defer { front.orderOut(nil) }
-        directory.register(front, role: .projects, projectID: nil)
-        directory.willOpenWindow()
-        directory.register(front, role: .projects, projectID: "ORD")
-        #expect(directory.isExpectingWindow)
+        let window = window(-20_000)
+        defer { window.orderOut(nil) }
+        let workspace = Workspace(.initial)
+        directory.register(window, workspace: workspace)
+        var opened: [WorkspaceValue] = []
+        directory.open(WorkspaceTab(content: orders)) { opened.append($0) }
+        #expect(workspace.tabs.map(\.content) == [.projects, orders])
+        #expect(opened.isEmpty)
+        directory.opensWindowsAsTabs = false
+        directory.open(WorkspaceTab(content: payments)) { opened.append($0) }
+        #expect(opened.map { $0.tabs.map(\.content) } == [[payments]])
+        #expect(workspace.tabs.count == 2)
     }
 
-    @Test("A responder something else moved further along the chain isn't added a second time")
-    func onceInTheChain() {
+    @Test("Without a window, a new tab opens one")
+    func openWithoutWindow() {
+        var opened: [WorkspaceValue] = []
+        WindowDirectory().open(WorkspaceTab(content: orders)) { opened.append($0) }
+        #expect(opened.count == 1)
+    }
+
+    @Test("Merge All Windows brings every other window's tabs after the key window's, and closes those windows")
+    func merge() {
         let directory = WindowDirectory()
-        let window = window()
-        directory.register(window, role: .tool(.tickets), projectID: "ORD")
-        let other = NSResponder()
-        other.nextResponder = window.nextResponder
-        window.nextResponder = other
-        directory.register(window, role: .tool(.tickets), projectID: "ORD")
-        withExtendedLifetime(directory) {
-            #expect(window.nextResponder === other)
-            #expect(newTabResponders(of: window).count == 1)
+        let one = window(-20_000)
+        let two = window(-19_000)
+        defer {
+            one.orderOut(nil)
+            two.orderOut(nil)
         }
+        let kept = WorkspaceTab(content: .projects)
+        let first = Workspace(WorkspaceValue(tabs: [kept]))
+        let second = Workspace(WorkspaceValue(tabs: [WorkspaceTab(content: orders), WorkspaceTab(content: payments)]))
+        directory.register(one, workspace: first)
+        directory.register(two, workspace: second)
+        directory.mergeAll(into: first)
+        #expect(first.tabs.map(\.content) == [.projects, orders, payments])
+        #expect(first.selectedTab?.id == kept.id)
+        #expect(!two.isVisible)
     }
 }
