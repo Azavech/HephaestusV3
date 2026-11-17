@@ -71,6 +71,25 @@ final class AppData {
     /// The port the server listens on.
     var mcpPort: Int { environmentPort ?? settingsPort }
 
+    // MARK: Windows (docs/ui/navigation.md › Settings ▸ General)
+
+    /// Whether the windows the app opens become tabs of the frontmost window: `settings.yml`'s `newWindows`,
+    /// tabs until it is read.
+    private(set) var opensWindowsAsTabs = true {
+        didSet { WindowDirectory.shared.opensWindowsAsTabs = opensWindowsAsTabs }
+    }
+
+    /// Stores how new windows open. Throws the storage error when it can't be stored; without a data folder it
+    /// holds until the app quits.
+    func setOpensWindowsAsTabs(_ value: Bool) throws(StorageError) {
+        if let folder = session.dataFolder {
+            var settings = folder.readSettings()
+            settings.opensWindowsAsTabs = value
+            try folder.writeSettings(settings)
+        }
+        opensWindowsAsTabs = value
+    }
+
     init() {
         // The data of earlier builds, kept in the App Group container, is copied once before anything reads the folder.
         DataFolder.resolve()?.migrateFromAppGroup()
@@ -124,6 +143,9 @@ final class AppData {
             Task { await forwards.stopAll() }
         }
         await session.start()
+        if let folder = session.dataFolder {
+            opensWindowsAsTabs = folder.readSettings().opensWindowsAsTabs
+        }
         machineHost.load()
         await tickets.start()
         followTickets()

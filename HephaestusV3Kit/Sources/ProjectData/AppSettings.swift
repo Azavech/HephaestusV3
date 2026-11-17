@@ -19,6 +19,9 @@ public struct SettingsFile: Codable, Sendable, Hashable {
     public var defaultVMCores: Int?
     public var defaultVMMemoryGB: Int?
     public var defaultVMDiskGB: Int?
+    /// How the windows the app opens appear: `tabs`, as tabs of the frontmost window, or `windows`, each on its
+    /// own; nil, or another value, for `tabs` (Settings ▸ General).
+    public var newWindows: String?
     public var unknownKeys: YAMLMapping
 
     public init(schema: Int = 1, mcpPort: Int = SettingsFile.defaultMCPPort, claudePath: String? = nil, chatModel: String? = nil,
@@ -32,7 +35,13 @@ public struct SettingsFile: Codable, Sendable, Hashable {
     }
 
     static let knownKeys: Set<String> = ["schema", "mcpPort", "claudePath", "chatModel", "chatEffort", "defaultVMCores", "defaultVMMemoryGB",
-                                         "defaultVMDiskGB"]
+                                         "defaultVMDiskGB", "newWindows"]
+
+    /// Whether the windows the app opens become tabs of the frontmost window: unless `newWindows` is `windows`.
+    public var opensWindowsAsTabs: Bool {
+        get { newWindows != "windows" }
+        set { newWindows = newValue ? "tabs" : "windows" }
+    }
 
     public init(from decoder: any Decoder) throws {
         let c = try MappingReader(decoder)
@@ -44,6 +53,7 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         defaultVMCores = try c.optional("defaultVMCores")
         defaultVMMemoryGB = try c.optional("defaultVMMemoryGB")
         defaultVMDiskGB = try c.optional("defaultVMDiskGB")
+        newWindows = try c.optional("newWindows")
         unknownKeys = try c.unknownKeys(known: Self.knownKeys)
     }
 
@@ -57,6 +67,7 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         try c.encodeIfPresent(defaultVMCores, "defaultVMCores")
         try c.encodeIfPresent(defaultVMMemoryGB, "defaultVMMemoryGB")
         try c.encodeIfPresent(defaultVMDiskGB, "defaultVMDiskGB")
+        try c.encodeIfPresent(newWindows, "newWindows")
         try c.encodeUnknownKeys(unknownKeys, known: Self.knownKeys)
     }
 

@@ -58,6 +58,24 @@ struct DataFolderTests {
         }
     }
 
+    @Test("settings.yml's newWindows: tabs unless it says windows, written after the machines' defaults, other keys kept")
+    func newWindows() throws {
+        try withTemporaryFolder { root in
+            let folder = DataFolder(url: root)
+            #expect(folder.readSettings().opensWindowsAsTabs)
+            try Data("schema: 1\nmcpPort: 47830\nnewWindows: windows\nlater: kept\n".utf8).write(to: folder.settingsFile)
+            var settings = folder.readSettings()
+            #expect(!settings.opensWindowsAsTabs)
+            settings.defaultVMCores = 4
+            settings.opensWindowsAsTabs = true
+            try folder.writeSettings(settings)
+            #expect(try String(contentsOf: folder.settingsFile, encoding: .utf8)
+                == "schema: 1\nmcpPort: 47830\ndefaultVMCores: 4\nnewWindows: tabs\nlater: kept\n")
+            try Data("schema: 1\nmcpPort: 47830\nnewWindows: sideways\n".utf8).write(to: folder.settingsFile)
+            #expect(folder.readSettings().opensWindowsAsTabs)
+        }
+    }
+
     @Test(".hephaestus/.gitignore holds the line chats/")
     func gitignore() throws {
         try withTemporaryFolder { root in

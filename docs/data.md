@@ -1377,6 +1377,7 @@ and gives the defaults (`DataFolder.readSettings()`).
 | defaultVMCores | `defaultVMCores` | `Int?` | no | absent (2) | New machines' cores, 2 to this Mac's ([Virtual machines › Defaults](#defaults)). Written only when not the default. |
 | defaultVMMemoryGB | `defaultVMMemoryGB` | `Int?` | no | absent (4) | New machines' memory in GB, 4 to this Mac's. |
 | defaultVMDiskGB | `defaultVMDiskGB` | `Int?` | no | absent (64) | New machines' disk in GB, 32 to 2048. |
+| newWindows | `newWindows` | `String?` | no | absent (`tabs`) | How the windows the app opens appear: `tabs`, as tabs of the frontmost window, or `windows`, each on its own; absent or another value reads as `tabs` (`SettingsFile.opensWindowsAsTabs`). Written when Settings ▸ General changes it ([Navigation › Settings ▸ General](ui/navigation.md#settings--general)). A V3 key. |
 | unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
 
 ```yaml

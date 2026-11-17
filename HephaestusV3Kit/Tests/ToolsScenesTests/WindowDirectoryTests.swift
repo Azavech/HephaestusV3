@@ -96,6 +96,65 @@ struct WindowDirectoryTests {
         #expect(newTabResponders(of: window).isEmpty)
     }
 
+    @Test("The app's ask for a window is taken by the next window shown, once; a window not shown leaves it")
+    func askedWindow() {
+        let directory = WindowDirectory()
+        let hidden = window(title: "Closed")
+        directory.register(hidden, role: .tool(.tickets), projectID: "ORD")
+        directory.willOpenWindow()
+        #expect(directory.isExpectingWindow)
+        // A closed window SwiftUI still updates isn't the new one.
+        directory.register(hidden, role: .tool(.tickets), projectID: "ORD")
+        #expect(directory.isExpectingWindow)
+        let shown = window(title: "Builds")
+        shown.setFrame(NSRect(x: -20_000, y: -20_000, width: 400, height: 300), display: false)
+        shown.orderBack(nil)
+        defer { shown.orderOut(nil) }
+        directory.register(shown, role: .tool(.builds), projectID: "ORD")
+        #expect(!directory.isExpectingWindow)
+        // With no other window shown, it stays a window of its own.
+        #expect((shown.tabGroup?.windows.count ?? 1) == 1)
+    }
+
+    @Test("The window asked for becomes a tab of the frontmost window, or a window of its own when the setting says so",
+          arguments: [true, false])
+    func asTab(opensWindowsAsTabs: Bool) {
+        let directory = WindowDirectory()
+        directory.opensWindowsAsTabs = opensWindowsAsTabs
+        let front = window(title: "Projects")
+        front.setFrame(NSRect(x: -20_000, y: -20_000, width: 700, height: 500), display: false)
+        front.orderBack(nil)
+        let new = window(title: "Tickets")
+        defer {
+            new.orderOut(nil)
+            front.orderOut(nil)
+        }
+        directory.register(front, role: .projects, projectID: nil)
+        directory.willOpenWindow()
+        new.setFrame(NSRect(x: -19_000, y: -19_000, width: 400, height: 300), display: false)
+        new.orderBack(nil)
+        directory.register(new, role: .tool(.tickets), projectID: "ORD", tabTitle: "Tickets – Orders")
+        if opensWindowsAsTabs {
+            #expect(front.tabGroup?.windows == [front, new])
+            #expect(front.tabGroup?.selectedWindow === new)
+        } else {
+            #expect((new.tabGroup?.windows.count ?? 1) == 1)
+        }
+    }
+
+    @Test("A window shown when the app asks isn't the new one")
+    func openWindowsAreNotNew() {
+        let directory = WindowDirectory()
+        let front = window(title: "Projects")
+        front.setFrame(NSRect(x: -20_000, y: -20_000, width: 400, height: 300), display: false)
+        front.orderBack(nil)
+        defer { front.orderOut(nil) }
+        directory.register(front, role: .projects, projectID: nil)
+        directory.willOpenWindow()
+        directory.register(front, role: .projects, projectID: "ORD")
+        #expect(directory.isExpectingWindow)
+    }
+
     @Test("A responder something else moved further along the chain isn't added a second time")
     func onceInTheChain() {
         let directory = WindowDirectory()

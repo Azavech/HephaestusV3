@@ -19,6 +19,20 @@ final class WindowDirectory {
     /// SwiftUI gives each scene its own, which only lets windows of one tool merge.
     static let tabbingIdentifier = "fr.azavech.hephaestusv3.windows"
 
+    /// Whether a window the app opens becomes a tab of the frontmost window rather than a window of its own
+    /// (Settings ▸ General, `AppData.opensWindowsAsTabs`).
+    var opensWindowsAsTabs = true
+
+    /// How long after `willOpenWindow()` a new window is taken as the one asked for.
+    static let newWindowDelay: TimeInterval = 3
+
+    /// The app's ask for a window: the windows open when it asked, which aren't the new one, and until when
+    /// it holds.
+    private var newWindowRequest: (open: Set<ObjectIdentifier>, until: Date)?
+
+    /// Whether the app has asked for a window that hasn't appeared yet.
+    var isExpectingWindow: Bool { newWindowRequest != nil }
+
     /// What a window is.
     enum Role: Hashable {
         case projects
@@ -54,10 +68,40 @@ final class WindowDirectory {
         newTab: (() -> Void)? = nil, select: ((String) -> Void)? = nil
     ) {
         let key = ObjectIdentifier(window)
-        let responder = entries[key]?.newTab ?? NewTabResponder()
+        // An entry left by a window gone since, at the same address, isn't this window's.
+        let known = entries[key].flatMap { $0.window === window ? $0 : nil }
+        let responder = known?.newTab ?? NewTabResponder()
         responder.open = newTab
         entries[key] = Entry(window: window, role: role, projectID: projectID, select: select, newTab: responder)
         Self.joinTabs(window, title: tabTitle, newTab: responder)
+        // The new window is shown by the time it reports; a closed window SwiftUI still updates isn't it.
+        if let request = newWindowRequest, !request.open.contains(key), window.isVisible {
+            newWindowRequest = nil
+            if opensWindowsAsTabs, Date.now < request.until {
+                addAsTab(window)
+            }
+        }
+    }
+
+    /// Called just before the app opens a window the user asked for (a route, ⌘N, the Window menu), so that
+    /// the next window to appear becomes a tab of the frontmost one when `opensWindowsAsTabs`. Windows macOS
+    /// restores at launch aren't asked for, and keep their places. The tab bar's + doesn't ask either: AppKit
+    /// makes its window a tab.
+    func willOpenWindow(now: Date = .now) {
+        let open = entries.filter { $0.value.window.map(Self.isOpen) ?? false }.keys
+        newWindowRequest = (Set(open), now.addingTimeInterval(Self.newWindowDelay))
+    }
+
+    /// Makes `window` a tab of the frontmost other window of the directory, and selects it; nothing when it
+    /// is a tab already or no other window is shown.
+    private func addAsTab(_ window: NSWindow) {
+        guard (window.tabGroup?.windows.count ?? 1) <= 1 else { return }
+        let front = NSApp.orderedWindows.first { other in
+            other !== window && other.isVisible && !other.isMiniaturized && entries[ObjectIdentifier(other)]?.window === other
+        }
+        guard let front else { return }
+        front.addTabbedWindow(window, ordered: .above)
+        window.tabGroup?.selectedWindow = window
     }
 
     /// Lets `window` be a tab of any other window of the app, names its tab, and puts `newTab` in its

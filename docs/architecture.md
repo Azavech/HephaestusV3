@@ -917,8 +917,10 @@ component comes from AZDesign.
 
 ## ToolsScenes
 
-Two files: `ToolsScenes.swift` (scenes, `RouteHost`, `ToolWindowRoot`, commands, the tool reader, the widget
-mapping, Mac widths) and `WindowDirectory.swift` (window reuse and tabs). Its only public type is
+`ToolsScenes.swift` (scenes, `RouteHost`, `ToolWindowRoot`, commands, the tool reader, the widget mapping, Mac
+widths, `OpenWindowAction.openNew`), `WindowDirectory.swift` (window reuse and tabs), `AppData.swift` (the
+app's data), `AppTools.swift` (the MCP server's tools), `MCPSettingsView.swift` (Settings ▸ MCP) and
+`GeneralSettingsView.swift` (Settings ▸ General). Its only public type is
 `public struct ToolsScenes: Scene` with `public init()`.
 
 ### Scenes
@@ -933,7 +935,7 @@ mapping, Mac widths) and `WindowDirectory.swift` (window reuse and tabs). Its on
 | Project Settings | `WindowGroup(Text("Project Settings", bundle: #bundle), id:, for: Project.ID.self)` | `projectSettings` | `ProjectSettingsWindow(session: appData.session, projectID:)`, with `registersWindow(.projectSettings, projectID:, tabTitle:)`, the tab title `WindowDirectory.tabTitle("Project Settings", project: name)` while the directory has the project | 600 × 720 | Suppressed |
 | Virtual Machines | `Window(Text("Virtual Machines", bundle: #bundle), id:)` | `machines` | `MachinesRootView(focus: machineFocus, store: appData.machineStore)`, with `.environment(\.focusRequest, machineFocusRequest)` and `registersWindow(.machines, projectID: nil)` | 1100 × 760 | Suppressed |
 | Menu bar | `MenuBarExtra(String(localized: "Open Project"), systemImage: "wrench.and.screwdriver")`, `.menuBarExtraStyle(.window)` | — | `ProjectLauncher(projects: appData.directory.projects)` | 360 × 460 (the panel's own) | Always present |
-| Settings | `Settings` | — | `TabView`: `ProjectsSettingsPane(session: appData.session)` labeled Projects (`folder`), `MCPSettingsPane(appData:)` labeled MCP, `MachineSettingsView(store: appData.machineStore)` labeled Virtual Machines (`desktopcomputer`) while the window is available, then `ChatSettingsView()` labeled with Chat's title and symbol while Chat is available; `.frame(width: 520, height: 440)`, `.tint(.accent)` | 520 × 440 | — |
+| Settings | `Settings` | — | `TabView`: `GeneralSettingsPane(appData:)` labeled General (`gearshape`), `ProjectsSettingsPane(session: appData.session)` labeled Projects (`folder`), `MCPSettingsPane(appData:)` labeled MCP, `MachineSettingsView(store: appData.machineStore)` labeled Virtual Machines (`desktopcomputer`) while the window is available, then `ChatSettingsView()` labeled with Chat's title and symbol while Chat is available; `.frame(width: 520, height: 440)`, `.tint(.accent)` | 520 × 440 | — |
 
 **`AppData`** (`AppData.swift`, `@MainActor @Observable`) is the app's data, created once as ToolsScenes'
 `@State`: `session = ProjectSession(dataFolder: DataFolder.resolve())` and `directory =
@@ -1016,6 +1018,18 @@ of any other ([Navigation › Tabs](ui/navigation.md#tabs)).
   window's; and, unless `newTab` is already somewhere in the window's responder chain (looked for over at most
   32 responders), puts it just after the window: `newTab.nextResponder = window.nextResponder`,
   `window.nextResponder = newTab`.
+- `var opensWindowsAsTabs = true`, which `AppData.opensWindowsAsTabs` sets: whether a window the app opens
+  becomes a tab of the frontmost window.
+- `func willOpenWindow(now: Date = .now)` records the app's ask for a window: the keys of the windows open
+  then (`isOpen`) and a deadline `newWindowDelay` (3 s) later. `isExpectingWindow` says whether an ask waits.
+  In `register`, a window not open at the ask and shown now (`isVisible`; a closed window SwiftUI still
+  updates isn't the new one) takes the ask, which ends; before the deadline and with `opensWindowsAsTabs`,
+  `addAsTab(_:)` makes it a tab. An entry whose window is gone, at the same address, counts as a new window's.
+- `private func addAsTab(_:)`, for a window not already in a tab group of two or more: the first of
+  `NSApp.orderedWindows` that is another window of the directory, visible and not minimized, gets it with
+  `addTabbedWindow(window, ordered: .above)`, and `tabGroup.selectedWindow = window`; nothing when there is
+  none. It runs after `joinTabs`, which gave the window the shared identifier and `.automatic`. SwiftUI shows a
+  window before it reports, too late for AppKit's own `.preferred` mode, so the directory makes the tab itself.
 - `static func tabTitle(_ window: String, project: String) -> String`: `String(localized: "\(window) –
   \(project)")`, key `%@ – %@`, such as "Tickets – Orders".
 - `bringForward(role: Role?, projectID: Project.ID?, focus: String? = nil) -> Bool` drops entries whose window
@@ -1039,6 +1053,19 @@ responder sits ahead of it, and answers for every window: `var open: (() -> Void
 `NSSound.beep()` is played otherwise. AppKit makes the window opened while it handles + a tab after the
 selected one, and selects it. Merge All Windows, Move Tab to New Window, Show Previous Tab, Show Next Tab,
 Show Tab Bar and Show All Tabs are AppKit's own menu items, added as the Window and View menus open.
+
+**`OpenWindowAction.openNew(id:)`** and **`openNew(id:value:)`** (in `ToolsScenes.swift`) call
+`WindowDirectory.shared.willOpenWindow()`, then the action. Every window the app opens when asked goes through
+them: `RouteHost`'s routes (the Projects window, a tool, Project Settings, Virtual Machines), New *Tool* Window,
+Project Settings…, and the Window menu's items. The tab bar's + calls `openWindow` itself.
+
+**Settings ▸ General.** `AppData.opensWindowsAsTabs` (`private(set)`, true until read) is read from
+`settings.yml` (`SettingsFile.opensWindowsAsTabs`) once the session has started, and its `didSet` sets
+`WindowDirectory.shared.opensWindowsAsTabs`. `setOpensWindowsAsTabs(_:) throws(StorageError)` reads the file,
+sets the value, writes it, then sets the property; without a data folder it only sets the property.
+`GeneralSettingsPane(appData:)` gives `GeneralSettingsView(opensWindowsAsTabs:change:)` the value and that
+function; the view's radio group calls it on a new choice and shows the error's `description` when it throws
+([Navigation › Settings ▸ General](ui/navigation.md#settings--general)).
 
 `WindowReader: NSViewRepresentable` reports its `NSWindow` from `viewDidMoveToWindow()` and from every
 `updateNSView`. `View.registersWindow(_ role:projectID:tabTitle:newTab:select:)` puts a zero-size,
@@ -2023,7 +2050,9 @@ ToolsScenesTests check that docs/mcp.md lists exactly the registered tools, in o
 descriptions and input schemas (MCP documentation), and the tabs of `WindowDirectory` on windows that are
 never shown (Window tabs): the shared identifier and automatic mode, tab titles, the + reaching the window's
 last `newTab` once in the chain and ahead of what followed the window, a + with nothing to open, the
-directory keeping the responder. Scenes, routes, window reuse, merging and the menus are checked by running
+directory keeping the responder, the ask for a window taken by the next window shown (not a closed one, not
+one open at the ask), and that window made a tab of the frontmost window or left on its own by the setting
+(windows ordered far off screen). Scenes, routes, window reuse, merging and the menus are checked by running
 the app.
 
 ## Open issues

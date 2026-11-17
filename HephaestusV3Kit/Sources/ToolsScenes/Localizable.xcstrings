@@ -15,6 +15,15 @@
     "Add Existing Folder…" : {
       "comment" : "File menu item, ⌘O"
     },
+    "Applies to the windows Hephaestus opens: a tool, a project, its settings. Windows macOS reopens at launch keep their places, and Window ▸ Merge All Windows and Move Tab to New Window work either way." : {
+
+    },
+    "As separate windows" : {
+
+    },
+    "As tabs of the front window" : {
+
+    },
     "Claude Code in Terminal" : {
 
     },
@@ -32,6 +41,9 @@
     },
     "External Token" : {
 
+    },
+    "General" : {
+      "comment" : "The Settings tab of the app's general settings"
     },
     "HEPHAESTUS_MCP_PORT sets the port to %@ while the app runs." : {
 
@@ -81,6 +93,9 @@
     "Open Project" : {
 
     },
+    "Open new windows" : {
+
+    },
     "Open this window from the Projects window." : {
 
     },
@@ -127,6 +142,9 @@
 
     },
     "Virtual Machines" : {
+
+    },
+    "Windows" : {
 
     }
   },

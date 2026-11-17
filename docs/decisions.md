@@ -206,6 +206,8 @@ Window menu as in Safari, and leave them again.
 | Which windows can be tabs of one another? | Every window but Settings and the menu bar panel, whatever its tool or project: Projects, the tool windows, Project Settings and Virtual Machines. | [UI › Navigation › Tabs](ui/navigation.md#tabs) |
 | What does a tab read? | The tool, then the project's name ("Tickets – Orders"), and "Project Settings – Orders"; Projects and Virtual Machines their title. The windows' own titles don't change. | same |
 | What does the tab bar's + do? | What ⌘N does: another window of the front tab's tool on its project, as a new tab. In Projects, Project Settings and Virtual Machines, which open once each, it beeps. | same |
+| Do new windows open as tabs? | Yes by default (the user's choice): Settings ▸ General ▸ **Open new windows**, stored in `settings.yml`'s `newWindows`. It covers the windows the app opens when asked; windows macOS reopens at launch keep their places. | [UI › Navigation › Settings ▸ General](ui/navigation.md#settings--general) |
+| Where is that setting? | A General tab, first in Settings, since it concerns every window. | same |
 | Where are the tab items? | AppKit's own: Show Previous Tab, Show Next Tab, Move Tab to New Window and Merge All Windows in the Window menu; Show Tab Bar and Show All Tabs in the View menu. | [UI › Navigation › Menus and shortcuts](ui/navigation.md#menus-and-shortcuts) |
 
 ## App icon

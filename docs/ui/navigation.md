@@ -16,7 +16,7 @@ and the menus and shortcuts that reach them.
 | **Chat** | One per project | ⌘6, a tile, the menu bar panel, the chat panel | 1180 × 780 pt | [Chat](chat.md) |
 | **Virtual Machines** | One window | ⌘7 (Window menu) | 1100 × 760 pt | [Virtual Machines](virtual-machines.md) |
 | **Project Settings** | One per project | ⇧⌘, (File menu), the Projects window's More menu | 600 × 720 pt | [Project Settings](project-settings.md) |
-| **Settings** | One window | ⌘, | 520 × 440 pt | Tabs: [Projects](projects.md#settings--projects), [MCP](../mcp.md#settings--mcp), [Chat](chat.md#settings--chat) |
+| **Settings** | One window | ⌘, | 520 × 440 pt | Tabs: [General](#settings--general), [Projects](projects.md#settings--projects), [MCP](../mcp.md#settings--mcp), [Virtual Machines](virtual-machines.md#settings--virtual-machines), [Chat](chat.md#settings--chat) |
 | **Menu bar panel** | Menu bar item | The `wrench.and.screwdriver` icon | 360 × 460 pt | [Menu bar](menu-bar.md) |
 
 - Tool windows don't open at launch. macOS restores those that were open when the app quit.
@@ -142,9 +142,30 @@ Project Settings and Virtual Machines (default chosen at design time).
 - **+** opens another window of the front tab's tool on its project, as File ▸ New *Tool* Window (⌘N), as a
   new tab after it. In the Projects, Project Settings and Virtual Machines tabs, which open once each, + only
   beeps (default chosen at design time).
-- **New windows** open as tabs when the Mac's Desktop & Dock ▸ "Prefer tabs when opening documents" says so,
-  as in any Mac app; by default only in full screen.
+- **New windows** become tabs of the frontmost window, or windows of their own, as
+  [Settings ▸ General](#settings--general) says; tabs by default (the user's choice). This covers every window
+  the app opens when asked: a route (a tile, a link, the menu bar panel, `open_in_app`), File ▸ New *Tool*
+  Window, Project Settings…, the Window menu's items. The frontmost window is the one in front of the app's
+  windows, shown and not minimized, Settings and the menu bar panel aside; with none, the window opens on its
+  own. The new tab comes after the front window's selected tab and is selected. The tab bar's + makes a tab in
+  either case.
+- **Windows macOS reopens at launch** keep their places: they aren't opened by the app, so neither setting
+  moves them (default chosen at design time).
 - **Routes** treat each tab as its window ([Window reuse](#window-reuse)).
+
+### Settings ▸ General
+
+![Settings ▸ General: Open new windows, As tabs of the front window selected](images/settings-general.png)
+
+The first tab of Settings (`gearshape`), a grouped form with one section, **Windows**:
+
+| Element | Identifier | Content |
+| --- | --- | --- |
+| **Open new windows** | `settings.general.newWindows` | Radio buttons: **As tabs of the front window** (`settings.general.newWindows.tabs`, the default) or **As separate windows** (`settings.general.newWindows.windows`). A choice is written to `settings.yml`'s `newWindows` ([Data › Settings file](../data.md#settings-file)) and applies to the next window. |
+| Message | `settings.general.message` | When `settings.yml` can't be written: the storage error, in `danger`, under the buttons; the choice still holds until the app quits. Cleared by the next choice that is stored. |
+| Footer | — | "Applies to the windows Hephaestus opens: a tool, a project, its settings. Windows macOS reopens at launch keep their places, and Window ▸ Merge All Windows and Move Tab to New Window work either way." In `textSecondary`. |
+
+Previews: **Tabs**, **Separate Windows, Dark**, **Not Stored**.
 
 ## Menus and shortcuts
 

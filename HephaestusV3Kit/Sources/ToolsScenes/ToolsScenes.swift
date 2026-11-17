@@ -108,6 +108,10 @@ public struct ToolsScenes: Scene {
 
         Settings {
             TabView {
+                GeneralSettingsPane(appData: appData)
+                    .tabItem {
+                        Label(String(localized: "General", bundle: #bundle, comment: "The Settings tab of the app's general settings"), systemImage: "gearshape")
+                    }
                 ProjectsSettingsPane(session: appData.session)
                     .tabItem {
                         Label(String(localized: "Projects", bundle: #bundle), systemImage: "folder")
@@ -150,6 +154,22 @@ public struct ToolsScenes: Scene {
             appData: appData, selectedProjectID: $selectedProjectID, machineFocus: $machineFocus,
             machineFocusRequest: $machineFocusRequest, content: content
         )
+    }
+}
+
+extension OpenWindowAction {
+    /// Opens a window the user asked for: a tab of the frontmost window when Settings ▸ General says so
+    /// (`WindowDirectory.willOpenWindow()`).
+    func openNew(id: String) {
+        WindowDirectory.shared.willOpenWindow()
+        self(id: id)
+    }
+
+    /// Opens a window the user asked for, on `value`: a tab of the frontmost window when Settings ▸ General
+    /// says so.
+    func openNew<Value: Codable & Hashable>(id: String, value: Value) {
+        WindowDirectory.shared.willOpenWindow()
+        self(id: id, value: value)
     }
 }
 
@@ -199,7 +219,7 @@ private struct RouteHost<Content: View>: View {
             @MainActor func showProjects(_ id: Project.ID) {
                 $selectedProjectID.wrappedValue = id
                 if !windows.bringForward(role: .projects, projectID: nil) {
-                    openWindow(id: SceneID.projects)
+                    openWindow.openNew(id: SceneID.projects)
                     WindowDirectory.activate()
                 }
             }
@@ -212,12 +232,12 @@ private struct RouteHost<Content: View>: View {
                 }
             case .tool(let tool, let projectID, let focus):
                 if !windows.bringForward(role: .tool(tool), projectID: projectID, focus: focus) {
-                    openWindow(id: tool.windowID, value: ToolWindowValue(projectID: projectID, focus: focus))
+                    openWindow.openNew(id: tool.windowID, value: ToolWindowValue(projectID: projectID, focus: focus))
                     WindowDirectory.activate()
                 }
             case .projectSettings(let id):
                 if !windows.bringForward(role: .projectSettings, projectID: id) {
-                    openWindow(id: SceneID.projectSettings, value: id)
+                    openWindow.openNew(id: SceneID.projectSettings, value: id)
                     WindowDirectory.activate()
                 }
             case .machine(let id):
@@ -228,7 +248,7 @@ private struct RouteHost<Content: View>: View {
                         $machineFocusRequest.wrappedValue = FocusRequest(id)
                     }
                 } else {
-                    openWindow(id: SceneID.machines)
+                    openWindow.openNew(id: SceneID.machines)
                     WindowDirectory.activate()
                 }
             }
@@ -476,7 +496,7 @@ private struct ProjectSettingsMenuItem: View {
     var body: some View {
         Button(String(localized: "Project Settings…", bundle: #bundle, comment: "File menu item, ⇧⌘,")) {
             if let project, !WindowDirectory.shared.bringForward(role: .projectSettings, projectID: project.id) {
-                openWindow(id: SceneID.projectSettings, value: project.id)
+                openWindow.openNew(id: SceneID.projectSettings, value: project.id)
             }
         }
         .keyboardShortcut(",", modifiers: [.command, .shift])
@@ -507,7 +527,7 @@ private struct NewWindowMenuItem: View {
     var body: some View {
         Button(title) {
             if let tool, let project {
-                openWindow(id: tool.windowID, value: ToolWindowValue(projectID: project.id, instance: UUID()))
+                openWindow.openNew(id: tool.windowID, value: ToolWindowValue(projectID: project.id, instance: UUID()))
             }
         }
         .keyboardShortcut("n")
@@ -569,7 +589,7 @@ private struct ToolMenuItems: View {
     var body: some View {
         Button(String(localized: "Projects", bundle: #bundle)) {
             if !WindowDirectory.shared.bringForward(role: .projects, projectID: nil) {
-                openWindow(id: SceneID.projects)
+                openWindow.openNew(id: SceneID.projects)
             }
         }
         .keyboardShortcut("0")
@@ -579,7 +599,7 @@ private struct ToolMenuItems: View {
             Button {
                 // The window already showing the tool for this project, or a new one.
                 if let project, !WindowDirectory.shared.bringForward(role: .tool(tool), projectID: project.id) {
-                    openWindow(id: tool.windowID, value: ToolWindowValue(projectID: project.id))
+                    openWindow.openNew(id: tool.windowID, value: ToolWindowValue(projectID: project.id))
                 }
             } label: {
                 Text(tool.title)
@@ -591,7 +611,7 @@ private struct ToolMenuItems: View {
         if AppData.machinesAvailable {
             Button(String(localized: "Virtual Machines", bundle: #bundle)) {
                 if !WindowDirectory.shared.bringForward(role: .machines, projectID: nil) {
-                    openWindow(id: SceneID.machines)
+                    openWindow.openNew(id: SceneID.machines)
                 }
             }
             .keyboardShortcut("7")
