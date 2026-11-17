@@ -207,7 +207,8 @@ be selected and copied. An empty description reads "No description." in `textSec
 ![ORD-142 being edited: the title field, the description in a monospaced editor, Priority, Labels, Cancel and Save](images/tickets-editing.png)
 *ORD-142 in the editor, in place of its header and description.*
 
-**Edit** replaces the header and the description with a form: the **Title** field (`title2`, semibold), the
+**Edit** replaces the header and the description with a form: the **Title** field (`title2`, semibold), with
+**Generate Title** at its trailing edge as in New Ticket ([Generate Title](#generate-title)), the
 description in a monospaced `TextEditor` on `surfaceSunken`, at least 160 pt high, the **Priority** pop-up
 (None, Low, Medium, High, Urgent), the **Labels** field ("Labels, separated by commas"), then **Cancel**
 (Escape) and **Save** (⌘S, `borderedProminent`, disabled while the title is empty). Save applies the title,
@@ -388,18 +389,24 @@ list, on the `canvas` background.
 ![New Ticket with a description: Generate Title, the wand at the Title field's end, enabled](images/new-ticket-generate.png)
 *With a description, **Generate Title** is enabled; it writes the title from the description.*
 
-- **Generate Title** (`newTicket.generateTitle`): a borderless icon button with `wand.and.stars`, at the Title
-  field's trailing edge (the user's request). Help: "Generate a Title from the Description".
+In New Ticket and in the [editor](#editor) (the user's requests), the same button, `GeneratedTitleField`
+around each form's own Title field:
+
+- **Generate Title** (`newTicket.generateTitle`, `ticket.edit.generateTitle`): a borderless icon button with
+  `wand.and.stars`, at the Title field's trailing edge. Help: "Generate a Title from the Description".
 - **Disabled** while the description holds only spaces and line breaks (the user's request), and while a title
   is being written. A small progress indicator shows before it meanwhile.
 - **A click** runs the internal skill `set-ticket-title` on the description ([System
   Prompts](system-prompts.md)) and puts its answer's title in the Title field, replacing what was there: the
   answer's first line that isn't empty, without a heading's `#`s or one pair of quotes around it, cut to 200
-  characters ([Titles written by Claude](#titles-written-by-claude)). The user can change it before **Create**.
+  characters ([Titles written by Claude](#titles-written-by-claude)). The user can change it before **Create**
+  or **Save**; the editor's **Cancel** drops it with the rest. An answer that comes after the editor closed is
+  dropped.
 - **A failure** leaves the title as it was and shows the reason under the field in `danger`
-  (`newTicket.generateTitle.message`): the CLI's own words ("Claude CLI not found…", "Claude didn't answer
+  (`newTicket.generateTitle.message`, `ticket.edit.generateTitle.message`): the CLI's own words ("Claude CLI not found…", "Claude didn't answer
   within 2 minutes."), or "Claude's answer has no title." The next click clears it.
-- Previews show it only when they give the sheet a generator ("Generate Title"): the app always has one.
+- Previews show it only when they give the form a generator (New Ticket's "Generate Title", the detail's
+  "Editing"): the app always has one.
 
 ### Titles written by Claude
 
@@ -723,7 +730,7 @@ See [Chat](chat.md) for the panel itself.
 | Comment field | `ticket.comment` | Placeholder "Add a comment". |
 | **Comment** | `ticket.comment.send` | Help "Add the Comment (⌘↩)". |
 | **Attach Files**, a waiting file | `ticket.comment.attach`, `ticket.comment.file` | Label "Attach Files"; the file's name and Remove. |
-| **Edit**, the editor and its fields | `ticket.edit`, `ticket.editor`, `ticket.edit.title`, `.description`, `.priority`, `.labels`, `.cancel`, `.save` | Help "Edit the Ticket (⌘E)". |
+| **Edit**, the editor and its fields | `ticket.edit`, `ticket.editor`, `ticket.edit.title`, `.generateTitle`, `.generateTitle.message`, `.description`, `.priority`, `.labels`, `.cancel`, `.save` | Help "Edit the Ticket (⌘E)"; Generate Title's label "Generate Title", help "Generate a Title from the Description". |
 | Priority property | `ticket.priority` | A menu: the priority's name or "None". |
 | **Blocked** | `ticket.blocked` | Help "It depends on a ticket that isn't done." |
 | Attachments, **Add Files…**, a file | `ticket.attachments`, `ticket.attachments.add`, `ticket.attachment.<uuid>` | A file is one button: its name (and size). |
@@ -804,7 +811,7 @@ pointed at, such as "TicketsRootView, iPhone, Filtered".
 - "Loaded, Dark": ORD-142 at 640 × 720 pt, in Dark Mode.
 - "Draft": ORD-141 at 640 × 720 pt.
 - "Done": ORD-130 at 640 × 720 pt.
-- "Editing": ORD-142 in the editor, 980 × 760 pt.
+- "Editing": ORD-142 in the editor, 980 × 760 pt, with a stand-in title generator, so **Generate Title** shows.
 - "Comment Draft": ORD-142 with a comment typed and a file waiting, **Comment** enabled.
 - "iPhone": ORD-142 in the iPhone layout, 420 × 800 pt, with the compact actions.
 - "Largest Text": ORD-142 at the largest Dynamic Type size, 640 × 800 pt.
@@ -821,6 +828,10 @@ pointed at, such as "TicketsRootView, iPhone, Filtered".
 - "Parent Project": Shop, with the Project field.
 - "iPhone": Shop, 366 pt wide, as in a 390 pt window.
 - "Largest Text": Shop at the largest Dynamic Type size.
+
+`GeneratedTitleField` (size that fits, 420 pt wide, a plain Title field): "Generator", whose stand-in writes a
+title; "Failure", whose stand-in fails, the reason showing once the wand is clicked in the live preview; "Empty
+Description", the wand disabled.
 
 `FeedbackTicketView` (size that fits, on `FeedbackTicketModel` over `SampleTicketStore`, with a gradient
 as screenshot): "Empty", "Filled, Dark" (a description of two paragraphs), "Screenshot Left Out", "Not

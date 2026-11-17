@@ -54,7 +54,7 @@ answer, the answer is what the model makes of the input alone.
 
 | Name | Default content | Default model and effort | Used by |
 | --- | --- | --- | --- |
-| `set-ticket-title` | Empty | Haiku, Low: a short answer (default chosen at design time) | A ticket created without a title (feedback, Claude's `create_ticket`), and New Ticket's **Generate Title** ([Tickets › Titles written by Claude](tickets.md#titles-written-by-claude)). Its input is the ticket's description. |
+| `set-ticket-title` | Empty | Haiku, Low: a short answer (default chosen at design time) | A ticket created without a title (feedback, Claude's `create_ticket`), and **Generate Title**, in New Ticket and in the ticket editor ([Tickets › Titles written by Claude](tickets.md#titles-written-by-claude)). Its input is the ticket's description. |
 
 A skill the code adds without its own defaults runs on the CLI's `default` model at High effort, as a new chat
 does.

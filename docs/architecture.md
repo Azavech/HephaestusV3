@@ -1189,8 +1189,8 @@ After `tickets.start()`, `AppData.start()` gives the ticket library an `onUntitl
 titles are written one after the other; each runs `titleUntitled(_:)`: `chats.run(.setTicketTitle, input:
 description)`, `TicketRules.title(fromAnswer:)`, then `library.setGeneratedTitle(_:of:replacing:)` and
 `tickets.refresh()` when it renamed; any failure leaves the provisional title. `AppData.generateTitle` is the
-`GenerateTitleAction` of New Ticket: the same run and rule, a `ChatError`'s description or "Claude's answer has no
-title." as its error.
+`GenerateTitleAction` of **Generate Title**, in New Ticket and the ticket editor: the same run and rule, a
+`ChatError`'s description or "Claude's answer has no title." as its error.
 
 **Settings ▸ General.** `AppData.opensWindowsAsTabs` (`private(set)`, true until read) is read from
 `settings.yml` (`SettingsFile.opensWindowsAsTabs`) once the session has started, and its `didSet` sets
@@ -1561,6 +1561,7 @@ Spec: [Tickets](ui/tickets.md). Data: `TicketData` ([TicketData](#ticketdata)) a
 | `MarkdownView.swift` | `MarkdownView`, `MarkdownInlines` (attributed inlines, highlighted code, token colors) |
 | `TicketActions.swift` | `TicketActions: ToolbarContent` |
 | `NewTicketView.swift` | `NewTicketView` |
+| `GeneratedTitleField.swift` | `GeneratedTitleField`: a Title field given as content, **Generate Title** after it (from `\.generateTitle`, absent without one) and the failure's reason under it, as two views; used by `NewTicketView` and `TicketEditor` |
 | `FeedbackTicketView.swift` | `FeedbackTicketModel`, `FeedbackTicketView` (public) |
 | `TicketAppearance.swift` | `TicketWords` (shared labels and the activity sentences, one per author); symbols, colors, shortcuts, next steps and `next` of statuses; priorities, bundle statuses, links and events |
 | `TicketsDashboardWidget.swift` | `TicketsDashboardWidget` |

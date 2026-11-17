@@ -10,7 +10,8 @@ nonisolated public struct GenerateTitleError: Error, Sendable, Hashable {
 }
 
 /// Writes a ticket's title from its description with the internal skill `set-ticket-title`
-/// (docs/ui/system-prompts.md). ToolsScenes gives it to every window; New Ticket's **Generate Title** calls it.
+/// (docs/ui/system-prompts.md). ToolsScenes gives it to every window; **Generate Title**, in New Ticket and in the
+/// ticket editor, calls it.
 nonisolated public struct GenerateTitleAction: Sendable {
     private let generate: @MainActor @Sendable (String) async throws(GenerateTitleError) -> String
 

@@ -378,9 +378,11 @@ private struct TicketEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            TextField(String(localized: "Title", bundle: #bundle), text: $edit.title, prompt: Text("Title", bundle: #bundle))
-                .font(.title2.weight(.semibold))
-                .accessibilityIdentifier("ticket.edit.title")
+            GeneratedTitleField(title: $edit.title, description: edit.details, identifier: "ticket.edit") {
+                TextField(String(localized: "Title", bundle: #bundle), text: $edit.title, prompt: Text("Title", bundle: #bundle))
+                    .font(.title2.weight(.semibold))
+                    .accessibilityIdentifier("ticket.edit.title")
+            }
             TextEditor(text: $edit.details)
                 .font(.body.monospaced())
                 .frame(minHeight: 160)
@@ -852,6 +854,7 @@ struct TicketNotFoundView: View {
             .toolbar { TicketActions(ticket: model.selectedTicket) }
     }
     .frame(width: 980, height: 760)
+    .environment(\.generateTitle, GenerateTitleAction { _ in "Retry storm between checkout and payments" })
 }
 
 #Preview("Comment Draft", traits: .appChrome) {
