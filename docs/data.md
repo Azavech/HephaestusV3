@@ -586,7 +586,7 @@ declaring ticket).
 | `date` | When the change was made. |
 | `from` | The previous status (`status`) or title (`title`); required for those two, `null` for the others. |
 | `to` | The new status (`created`: the status it was created with), the new title, or the link as `<kind> <ticket id>`; not written for `description`. |
-| `author` | `user`, `claude` or `automatic`; V3 writes `user` and `claude` only. |
+| `author` | `user`, `claude` or `automatic`; V3 writes `automatic` for the title `set-ticket-title` gives a ticket created without one ([UI › Tickets › Titles written by Claude](ui/tickets.md#titles-written-by-claude)), with no `device` or `chat`. |
 | `device` | For `user`: the Mac's computer name at the time (`TicketSession.computerName()`). |
 | `chat` | For `claude`: the chat's id, or `external` for a terminal session. |
 
@@ -1433,8 +1433,20 @@ effort: low
   replace the defaults, and any other value of theirs leaves the default; every other line is kept as written
   (`InternalSkillValues.otherLines`) and written back. The content is the text after the closing `---` line; a
   file without front matter is all content, with the default model and effort; without a file, or one that can't
-  be read as UTF-8, the skill's defaults. The front matter has no `description` of the app's: nothing hands these
-  skills to the CLI yet (default chosen at design time).
+  be read as UTF-8, the skill's defaults. The front matter has no `description` of the app's: the app runs these
+  skills itself rather than handing them to the CLI as skills (default chosen at design time).
+- **Running a skill** (`ChatSession.run(_:input:)`, `InternalSkillRun`): the CLI found for the chats, in
+  `Runtime/claude-cwd` (empty), with the login shell's environment, as
+
+```text
+claude -p --output-format json --no-session-persistence --model <model> --effort <effort> --tools "" \
+  --strict-mcp-config --mcp-config '{"mcpServers":{}}' [--system-prompt <content>]
+```
+
+  `--system-prompt` only while the content isn't blank; the input on standard input; stopped after 2 minutes.
+  The answer is the JSON's `result` when `subtype` is `success` and `is_error` isn't true; otherwise the run fails
+  with the `result`, standard error or standard output, in that order of availability. Before the CLI is checked,
+  or without one, the run fails at once and starts nothing.
 
 ## Unknown keys
 

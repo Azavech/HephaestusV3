@@ -9,10 +9,18 @@ public enum TicketActor: Sendable, Hashable {
     case user(device: String)
     /// Claude: `chat` is the chat's id, or `external` for a terminal session.
     case claude(chat: String)
+    /// The app on its own: the title `set-ticket-title` gives a ticket created without one (V2's `automatic`).
+    case automatic
 
     public var isClaude: Bool { if case .claude = self { true } else { false } }
     var author: Author { isClaude ? .claude : .user }
-    var historyAuthor: HistoryEntry.HistoryAuthor { isClaude ? .claude : .user }
+    var historyAuthor: HistoryEntry.HistoryAuthor {
+        switch self {
+        case .user: .user
+        case .claude: .claude
+        case .automatic: .automatic
+        }
+    }
     var device: String? { if case .user(let device) = self { device } else { nil } }
     var chat: String? { if case .claude(let chat) = self { chat } else { nil } }
 }
@@ -53,6 +61,26 @@ public enum TicketRules {
             throw .invalid("Title must be 1 to 200 characters on one line.")
         }
         return trimmed
+    }
+
+    /// A title from Claude's answer to `set-ticket-title`: its first line that isn't empty, trimmed, without a
+    /// heading's `#`s or one pair of quotes around it, cut to 200 characters; nil when nothing is left. The app
+    /// takes the answer as it comes: what Claude writes is the skill's to say.
+    public static func title(fromAnswer answer: String) -> String? {
+        for line in lines(answer) {
+            var text = line.trimmingCharacters(in: .whitespaces)
+            while text.hasPrefix("#") {
+                text.removeFirst()
+            }
+            text = text.trimmingCharacters(in: .whitespaces)
+            for (open, close) in [("\"", "\""), ("“", "”"), ("'", "'"), ("‘", "’"), ("«", "»")] where text.count >= 2 && text.hasPrefix(open) && text.hasSuffix(close) {
+                text = String(text.dropFirst().dropLast()).trimmingCharacters(in: .whitespaces)
+                break
+            }
+            let cut = String(text.prefix(200)).trimmingCharacters(in: .whitespaces)
+            if !cut.isEmpty { return cut }
+        }
+        return nil
     }
 
     /// The title of a ticket created without one: the description's first line that is neither empty nor a

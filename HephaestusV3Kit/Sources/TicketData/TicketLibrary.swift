@@ -76,6 +76,8 @@ public actor TicketLibrary {
     private var invalidFiles: [String: String] = [:]
     private var revision = 0
     private var last = TicketSnapshot.empty
+    /// Told of each ticket created without a title (`onUntitled(_:)`).
+    private var untitledHandler: (@Sendable (UntitledTicket) -> Void)?
 
     public init(projects: ProjectLibrary, trash: Trash = .system, ownWrites: OwnWrites = OwnWrites(),
                 now: @escaping @Sendable () -> Date = { ISODate.now() }) {
@@ -239,6 +241,27 @@ public actor TicketLibrary {
         }
     }
 
+    /// A ticket created without a title: its provisional title, and the description `set-ticket-title` reads.
+    public struct UntitledTicket: Sendable, Hashable {
+        public let id: String
+        public let provisionalTitle: String
+        public let description: String
+    }
+
+    /// Called with each ticket created without a title, whoever created it (the windows, the feedback, Claude's
+    /// `create_ticket`), once its file is written. The app gives it a title with `set-ticket-title`.
+    public func onUntitled(_ handler: @escaping @Sendable (UntitledTicket) -> Void) {
+        untitledHandler = handler
+    }
+
+    /// Gives a ticket the title `set-ticket-title` wrote, as the app on its own (`automatic`), while it still has
+    /// the title it was created with; a title the user or Claude gave it since stays. Nil when nothing changed.
+    public func setGeneratedTitle(_ title: String, of id: String, replacing provisional: String) throws(TicketError) -> TicketSnapshot? {
+        let (stored, _) = try storedTicket(id)
+        guard stored.title == provisional, title != provisional else { return nil }
+        return try update(id, TicketChange(title: title), by: .automatic)
+    }
+
     /// Creates a ticket: checks everything, takes its number from the project's counter, copies its
     /// attachments, then writes its file (docs/data.md › Changes that touch several files).
     public func create(_ request: NewTicket, by actor: TicketActor) async throws(TicketError) -> (id: String, snapshot: TicketSnapshot) {
@@ -273,7 +296,11 @@ public actor TicketLibrary {
             removeCopies(attachments, in: projectID)
             throw error
         }
-        return (id, publish())
+        let snapshot = publish()
+        if !hasTitle {
+            untitledHandler?(UntitledTicket(id: id, provisionalTitle: title, description: description))
+        }
+        return (id, snapshot)
     }
 
     /// A change of a ticket's fields; each value set replaces the stored one.

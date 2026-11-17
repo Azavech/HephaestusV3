@@ -2,6 +2,7 @@ import ExternalTools
 import FileStorage
 import Foundation
 import ProjectData
+import Synchronization
 import Testing
 @testable import TicketData
 
@@ -118,6 +119,48 @@ struct TicketLibraryTests {
         let missing = await failure { _ = try await world.library.create(.init(projectID: "NOPE", title: "x"), by: World.me) }
         #expect(missing == .notFound("Project NOPE not found."))
         #expect(TicketRules.provisionalTitle(from: "# Heading\n\n## Other\n") == "Untitled Ticket")
+    }
+
+    @Test("A ticket created without a title is told to the untitled handler, whoever creates it; one with a title isn't")
+    func untitledHandler() async throws {
+        let world = try await World()
+        let told = Mutex<[TicketLibrary.UntitledTicket]>([])
+        await world.library.onUntitled { ticket in told.withLock { $0.append(ticket) } }
+        let id = try await world.library.create(.init(projectID: "HEPH", description: "Tabs close when I click\n\nApp: Hephaestus V3"),
+                                                by: World.me).id
+        try await world.create("Has a title")
+        let claude = try await world.library.create(.init(projectID: "HEPH", description: "From a chat"), by: World.claude).id
+        #expect(told.withLock { $0 } == [
+            TicketLibrary.UntitledTicket(id: id, provisionalTitle: "Tabs close when I click", description: "Tabs close when I click\n\nApp: Hephaestus V3"),
+            TicketLibrary.UntitledTicket(id: claude, provisionalTitle: "From a chat", description: "From a chat"),
+        ])
+    }
+
+    @Test("A generated title replaces the provisional one, as the app on its own; one the user gave since stays")
+    func generatedTitle() async throws {
+        let world = try await World()
+        let id = try await world.library.create(.init(projectID: "HEPH", description: "Tabs close when I click"), by: World.me).id
+        #expect(try await world.library.setGeneratedTitle("Tabs close on click", of: id, replacing: "Tabs close when I click") != nil)
+        let ticket = try #require(await world.ticket(id))
+        #expect(ticket.file.title == "Tabs close on click")
+        #expect(ticket.file.history.last == HistoryEntry(kind: .title, date: World.date, from: "Tabs close when I click", to: "Tabs close on click",
+                                                         author: .automatic))
+        // The user renamed it before the answer came: the generated title doesn't overwrite theirs.
+        let other = try await world.library.create(.init(projectID: "HEPH", description: "Second"), by: World.me).id
+        _ = try await world.library.update(other, .init(title: "Mine"), by: World.me)
+        #expect(try await world.library.setGeneratedTitle("Generated", of: other, replacing: "Second") == nil)
+        #expect(await world.ticket(other)?.file.title == "Mine")
+    }
+
+    @Test("A title from Claude's answer: its first line, without a heading's marks or quotes, cut to 200 characters")
+    func titleFromAnswer() {
+        #expect(TicketRules.title(fromAnswer: "\n  Tabs close on click  \nBecause…") == "Tabs close on click")
+        #expect(TicketRules.title(fromAnswer: "## Tabs close on click") == "Tabs close on click")
+        #expect(TicketRules.title(fromAnswer: "\"Tabs close on click\"") == "Tabs close on click")
+        #expect(TicketRules.title(fromAnswer: "“Tabs close on click”") == "Tabs close on click")
+        #expect(TicketRules.title(fromAnswer: String(repeating: "a", count: 250))?.count == 200)
+        #expect(TicketRules.title(fromAnswer: " \n#\n\"\"") == nil)
+        #expect(TicketRules.title(fromAnswer: "") == nil)
     }
 
     @Test("Claude's tickets take any description, start To Do and record the chat")

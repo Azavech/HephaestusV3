@@ -51,6 +51,8 @@ final class AppData {
     let chatStore: LiveChatStore
     /// The internal skills' content, in the data folder (System Prompts).
     let skillStore: LiveInternalSkillStore
+    /// The titling of tickets created without a title, one after the other (`titleUntitled(_:)`).
+    @ObservationIgnored private var titling: Task<Void, Never>?
     /// The MCP server's tools, once it starts: the chats word their calls with them.
     @ObservationIgnored private let operations: Operations
     @ObservationIgnored private var started = false
@@ -172,8 +174,51 @@ final class AppData {
         }
         machineHost.load()
         await tickets.start()
+        // A ticket created without a title, by anyone, gets one from `set-ticket-title` (docs/ui/tickets.md ›
+        // Titles written by Claude).
+        await tickets.library?.onUntitled { [weak self] ticket in
+            Task { @MainActor in self?.queueTitling(ticket) }
+        }
         followTickets()
         await startMCP()
+    }
+
+    // MARK: Titles (docs/ui/tickets.md › Titles written by Claude)
+
+    /// New Ticket's **Generate Title**: a title for a description from `set-ticket-title`.
+    var generateTitle: GenerateTitleAction {
+        GenerateTitleAction { [chats] description throws(GenerateTitleError) in
+            let answer: String
+            do throws(ChatError) {
+                answer = try await chats.run(.setTicketTitle, input: description)
+            } catch {
+                throw GenerateTitleError(error.description)
+            }
+            guard let title = TicketRules.title(fromAnswer: answer) else {
+                throw GenerateTitleError(String(localized: "Claude's answer has no title.", bundle: #bundle))
+            }
+            return title
+        }
+    }
+
+    /// Titles one untitled ticket after the ones before it, so that many at once start one Claude process at a
+    /// time.
+    private func queueTitling(_ ticket: TicketLibrary.UntitledTicket) {
+        let previous = titling
+        titling = Task { [weak self] in
+            await previous?.value
+            await self?.titleUntitled(ticket)
+        }
+    }
+
+    /// Asks `set-ticket-title` for the ticket's title, and gives it to the ticket while it still has its
+    /// provisional title. A failure leaves the provisional title.
+    private func titleUntitled(_ ticket: TicketLibrary.UntitledTicket) async {
+        guard let answer = try? await chats.run(.setTicketTitle, input: ticket.description),
+              let title = TicketRules.title(fromAnswer: answer), let library = tickets.library else { return }
+        if (try? await library.setGeneratedTitle(title, of: ticket.id, replacing: ticket.provisionalTitle)) != nil {
+            await tickets.refresh()
+        }
     }
 
     /// Gives the directory the ticket counts now, and again each time the tickets change.

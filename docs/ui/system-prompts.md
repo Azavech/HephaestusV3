@@ -46,9 +46,15 @@ split view does.
 
 ## Internal skills
 
+**Running a skill.** The app runs a skill as the Claude CLI in print mode, once, without a chat: the skill's
+model and effort, its content as the system prompt (left out while it is blank), the input as the message, and
+nothing else of the app's: no tools, no MCP server, no saved session, in an empty folder. Claude's answer is
+taken as it comes ([Data › Internal skills](../data.md#internal-skills)). So until the content says how to
+answer, the answer is what the model makes of the input alone.
+
 | Name | Default content | Default model and effort | Used by |
 | --- | --- | --- | --- |
-| `set-ticket-title` | Empty | Haiku, Low: a short answer (default chosen at design time) | Nothing yet (the user's request). |
+| `set-ticket-title` | Empty | Haiku, Low: a short answer (default chosen at design time) | A ticket created without a title (feedback, Claude's `create_ticket`), and New Ticket's **Generate Title** ([Tickets › Titles written by Claude](tickets.md#titles-written-by-claude)). Its input is the ticket's description. |
 
 A skill the code adds without its own defaults runs on the CLI's `default` model at High effort, as a new chat
 does.

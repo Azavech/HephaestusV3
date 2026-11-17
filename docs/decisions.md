@@ -17,6 +17,7 @@ which rules the app enforces, and never tells Claude how to work.
 | What do the tool descriptions say? | What each tool does and the rules the app enforces, in the app's own words, with no advice to Claude ("ask the user for the name", "set in_progress when you start", "use add_comment to report work"). | [MCP › What Claude reads](mcp.md#what-claude-reads) |
 | Does the server send instructions? | No: `initialize` has no `instructions` member. | [MCP › Methods](mcp.md#methods) |
 | Is there a ticket template? | No: Claude's descriptions are taken as written, like the user's. | [Data › Ticket rules](data.md#ticket-rules) |
+| What does an internal skill's run send the Claude CLI? | The skill's content as `--system-prompt`, which the user writes in System Prompts, and the input as the message; nothing of the app's: no instruction to answer with a title, no tools, no MCP server. The app takes the answer's first line as the title; until the skill says how to answer, the answer is what the model makes of the description alone. | [Data › Internal skills](data.md#internal-skills) |
 | What does the Chat send the Claude CLI? | No system prompt, skill or hook text: no `--append-system-prompt`, no `--settings` hooks, no plugin. The app's only addition is one line after a message, naming the item its chip carried ("Attached: ticket ORD-142 of project ORD"). No hook is needed for approvals either: the app's MCP server asks the user before a change ([MCP › Permissions](mcp.md#permissions)). | [Data › Launch](data.md#launch), [Data › Messages](data.md#messages) |
 
 ## Foundation
@@ -86,6 +87,8 @@ which rules the app enforces, and never tells Claude how to work.
 | Question | Default chosen | Where |
 | --- | --- | --- |
 | How is a new ticket named? | With a provisional title, kept as the title: the description's first plain line, cut to 60 characters, else `Untitled Ticket`; a bundle with its tickets' titles. Either can be renamed. | [Data › Ticket rules](data.md#ticket-rules) |
+| Who writes the title of a ticket created without one? | `set-ticket-title`, run by the app in the background for any creator (the owner's request); it replaces the provisional title only while that title is unchanged, as author `automatic` (V2's value for its generated titles), and a failure leaves the provisional title without a word. Titles are written one at a time. | [UI › Tickets › Titles written by Claude](ui/tickets.md#titles-written-by-claude) |
+| Where is New Ticket's Generate Title? | A wand at the Title field's trailing edge, disabled without a description (the owner's request); it fills the field, which the user can still change, and New Ticket still needs a title to create. | [UI › Tickets › Generate Title](ui/tickets.md#generate-title) |
 | May Claude give a title? | Yes: otherwise the provisional title would be all Claude could give. | same |
 | Must a description be written? | Only without a title, to make the provisional title; a ticket with a title may have an empty description. | same |
 | Is there a description template? | No (decided on 14 November 2026): it would only steer what Claude writes ([What Claude reads](#what-claude-reads)). Descriptions are free Markdown for the user and Claude alike; the New Ticket sheet has an empty Description field. | same |

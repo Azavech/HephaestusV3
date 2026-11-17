@@ -15,6 +15,12 @@ struct NewTicketView: View {
     var onCancel: () -> Void = {}
     var onCreate: () -> Void = {}
 
+    /// Writes the title from the description with `set-ticket-title`; nil in previews.
+    @Environment(\.generateTitle) private var generateTitle
+    @State private var generating = false
+    /// Why the last generation failed.
+    @State private var titleMessage: String?
+
     var body: some View {
         VStack(spacing: 0) {
             Text("New Ticket", bundle: #bundle)
@@ -26,9 +32,32 @@ struct NewTicketView: View {
 
             Form {
                 Section {
-                    TextField(String(localized: "Title", bundle: #bundle), text: $draft.title, prompt: Text("Title", bundle: #bundle))
-                        .labelsHidden()
-                        .accessibilityIdentifier("newTicket.title")
+                    HStack(spacing: 8) {
+                        TextField(String(localized: "Title", bundle: #bundle), text: $draft.title, prompt: Text("Title", bundle: #bundle))
+                            .labelsHidden()
+                            .accessibilityIdentifier("newTicket.title")
+                        if let generateTitle {
+                            if generating {
+                                ProgressView().controlSize(.small)
+                            }
+                            Button {
+                                generate(with: generateTitle)
+                            } label: {
+                                Label(String(localized: "Generate Title", bundle: #bundle), systemImage: "wand.and.stars")
+                            }
+                            .labelStyle(.iconOnly)
+                            .buttonStyle(.borderless)
+                            .disabled(generating || draft.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .help(String(localized: "Generate a Title from the Description", bundle: #bundle))
+                            .accessibilityIdentifier("newTicket.generateTitle")
+                        }
+                    }
+                    if let titleMessage {
+                        Text(verbatim: titleMessage)
+                            .font(.callout)
+                            .foregroundStyle(.danger)
+                            .accessibilityIdentifier("newTicket.generateTitle.message")
+                    }
                     TextField(
                         String(localized: "Description", bundle: #bundle), text: $draft.details,
                         prompt: Text("Description", bundle: #bundle), axis: .vertical
@@ -85,11 +114,35 @@ struct NewTicketView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("newTicket.sheet")
     }
+
+    /// Replaces the title with the one `set-ticket-title` writes from the description.
+    private func generate(with action: GenerateTitleAction) {
+        let description = draft.details
+        generating = true
+        titleMessage = nil
+        Task {
+            defer { generating = false }
+            do throws(GenerateTitleError) {
+                draft.title = try await action(description)
+            } catch {
+                titleMessage = error.message
+            }
+        }
+    }
 }
 
 #Preview("Empty", traits: .appChrome, .sizeThatFitsLayout) {
     @Previewable @State var draft = NewTicketDraft(projectID: "ORD")
     NewTicketView(draft: $draft)
+}
+
+#Preview("Generate Title", traits: .appChrome, .sizeThatFitsLayout) {
+    @Previewable @State var draft = NewTicketDraft(
+        details: "The search pods fail their readiness probe for a few seconds after each index refresh.",
+        projectID: "ORD"
+    )
+    NewTicketView(draft: $draft)
+        .environment(\.generateTitle, GenerateTitleAction { _ in "Readiness probe flaps after index refreshes" })
 }
 
 #Preview("Filled", traits: .appChrome, .sizeThatFitsLayout) {

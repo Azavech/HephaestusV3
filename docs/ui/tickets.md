@@ -367,7 +367,7 @@ list, on the `canvas` background.
 | Part | Contents |
 | --- | --- |
 | Heading | **New Ticket** (`title3`, semibold), a heading for VoiceOver. |
-| First group | **Title**: a text field with "Title" as placeholder. **Description**: a text field with "Description" as placeholder, four lines high, growing to eight. |
+| First group | **Title**: a text field with "Title" as placeholder, and at its trailing edge **Generate Title** ([below](#generate-title)). **Description**: a text field with "Description" as placeholder, four lines high, growing to eight. |
 | Second group | **Project**: a picker of the window's project and its sub projects, by name, in tree order. Only for a project with sub projects. **Priority**: a picker with None, Low, Medium, High and Urgent, set to Medium. **Save as Draft**: a switch, on. Footer: "A draft stays out of the workflow until you create it." |
 | Bottom bar | Under a divider, at the trailing edge: **Cancel** and **Create**. |
 
@@ -382,6 +382,38 @@ list, on the `canvas` background.
   holds only spaces and line breaks. When the creation fails, an alert shows why and the sheet stays open with
   what was typed.
 - **Fresh each time.** The sheet opens empty every time, with the Project field on its starting project.
+
+### Generate Title
+
+![New Ticket with a description: Generate Title, the wand at the Title field's end, enabled](images/new-ticket-generate.png)
+*With a description, **Generate Title** is enabled; it writes the title from the description.*
+
+- **Generate Title** (`newTicket.generateTitle`): a borderless icon button with `wand.and.stars`, at the Title
+  field's trailing edge (the user's request). Help: "Generate a Title from the Description".
+- **Disabled** while the description holds only spaces and line breaks (the user's request), and while a title
+  is being written. A small progress indicator shows before it meanwhile.
+- **A click** runs the internal skill `set-ticket-title` on the description ([System
+  Prompts](system-prompts.md)) and puts its answer's title in the Title field, replacing what was there: the
+  answer's first line that isn't empty, without a heading's `#`s or one pair of quotes around it, cut to 200
+  characters ([Titles written by Claude](#titles-written-by-claude)). The user can change it before **Create**.
+- **A failure** leaves the title as it was and shows the reason under the field in `danger`
+  (`newTicket.generateTitle.message`): the CLI's own words ("Claude CLI not found…", "Claude didn't answer
+  within 2 minutes."), or "Claude's answer has no title." The next click clears it.
+- Previews show it only when they give the sheet a generator ("Generate Title"): the app always has one.
+
+### Titles written by Claude
+
+A ticket created **without a title** (the user's request): from Send Feedback, which has no title field, or by
+Claude's `create_ticket` without one. It takes the description's first line as its provisional title at once,
+then the app runs `set-ticket-title` on its description, in the background:
+
+- When the answer gives a title ([Generate Title](#generate-title)'s rule), it replaces the provisional one,
+  written by the app on its own: the history entry's author is `automatic`, and the activity reads "It was named
+  “*title*”". A ticket whose title changed in the meantime (the user, or Claude, renamed it) keeps its title.
+- A failure (no CLI, an error, no answer within 2 minutes, an answer without a title) leaves the provisional
+  title, and says nothing.
+- Untitled tickets are titled one after the other, so many created at once start one Claude process at a time.
+- New Ticket still needs a title to **Create**; **Generate Title** writes it there instead.
 
 ## Feedback
 
@@ -427,7 +459,8 @@ without one, it takes the description's first line as its title (the user's choi
   title, in the feedback project, with the priority, the draft choice, and as description what was typed,
   trimmed, a blank line, then the context line. The ticket rules give it the provisional title: the
   description's first line that is neither empty nor a heading, cut to 60 characters
-  ([Data › Tickets](../data.md)). Then the screenshot,
+  ([Data › Tickets](../data.md)); then `set-ticket-title` writes its title
+  ([Titles written by Claude](#titles-written-by-claude)). Then the screenshot,
   unless it is left out, and the added files, in order, are attached in one request. While it runs, the form,
   Attach Files…, the files' remove buttons and Cancel are disabled.
 - **Creation fails**: the sheet stays, with the reason in the message line and what was typed.
@@ -777,8 +810,10 @@ pointed at, such as "TicketsRootView, iPhone, Filtered".
 - "Largest Text": ORD-142 at the largest Dynamic Type size, 640 × 800 pt.
 - "Not Found": **Ticket Not Found** for ORD-999 in Orders, 640 × 480 pt.
 
-`NewTicketView` (size that fits):
+`NewTicketView` (size that fits; previews have no title generator, so **Generate Title** doesn't show but in
+"Generate Title"):
 
+- "Generate Title": Orders with a description, and a stand-in generator.
 - "Empty": Orders, no Project field.
 - "Filled": a high-priority ticket, not a draft.
 - "Filled, Dark".

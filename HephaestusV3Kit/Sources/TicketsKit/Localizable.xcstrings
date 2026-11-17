@@ -305,6 +305,12 @@
     "Folders cannot be attached." : {
 
     },
+    "Generate Title" : {
+
+    },
+    "Generate a Title from the Description" : {
+
+    },
     "High" : {
       "comment" : "A ticket's priority"
     },
