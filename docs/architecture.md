@@ -1588,7 +1588,7 @@ from the store (`tickets`, `bundles`) and the directory (`family`, `indent(of:)`
 | List | `isGrouped`, `filterSections` (Bundles always, for New Bundle), `isFiltered`, `visibleTickets`, `groups`, `listState` (`loading` and `failed` from the store's phase), `lets(_:through:)`, `count(_:)`, `doneCount(of:)`, `showAllTickets()`, `title(of:)`, `symbol(of:)` |
 | Selection | `selectedTicket`, `ticket(_:)`, `missingSelection`, `select(focus:)` (a bundle id selects its bundle in the sidebar), `bundles(of:)`, `chatSubject` |
 | Changes | `perform(_:)` (sets `failure` on error; returns nil then), `setStatus(_:of:)`, `nextStep(of:)`, `confirm(_:)` |
-| Editing | `startEditing(_:)`, `cancelEditing()`, `saveEditing()`, `setPriority(_:of:)` |
+| Editing | `startEditing(_:)`, `cancelEditing()`, `saveEditing()`, `setPriority(_:of:)`; `editBinding(_ opened:)` (in `TicketDetailView.swift`): the editor's `Binding<TicketEdit>`, which reads the open edit of `opened`'s ticket, else `opened`, and writes only while that edit is open. A force-unwrapped `Binding($model.edit)` crashed when Save cleared the edit while SwiftUI updated the closing editor once more. |
 | Links | `declaredLinks(of:)`, `linkCandidates(for:)`, `addLink(_:to:)`, `removeLink(_:from:)` |
 | Comments | `commentDraft(for:)`, `setCommentDraft(_:for:)`, `files(for:)`, `attach(_:to:)`, `detach(_:from:)`, `canComment(on:)`, `sendComment(on:)`, `startEditingComment(_:of:)`, `saveComment()` |
 | Attachments | `addAttachments(_:to:)`, `url(of:in:)` |

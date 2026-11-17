@@ -79,8 +79,8 @@ struct TicketDetailView: View {
     }
 
     @ViewBuilder private func mainParts(properties showsProperties: Bool) -> some View {
-        if let edit = Binding($model.edit), edit.wrappedValue.ticketID == ticket.id {
-            TicketEditor(edit: edit, onCancel: { model.cancelEditing() }, onSave: { Task { await model.saveEditing() } })
+        if let edit = model.edit, edit.ticketID == ticket.id {
+            TicketEditor(edit: model.editBinding(edit), onCancel: { model.cancelEditing() }, onSave: { Task { await model.saveEditing() } })
         } else {
             header
             description
@@ -353,6 +353,24 @@ struct TicketText: View {
 }
 
 /// The editor of a ticket's title, description, priority and labels.
+extension TicketsModel {
+    /// The editor's binding, from the edit it opened with. It reads the open edit of that ticket, or `opened`
+    /// once Save or Cancel cleared it (or another ticket's edit replaced it), since SwiftUI updates the closing
+    /// editor's fields once more; a force-unwrapped binding crashed there. It writes only while that ticket's
+    /// edit is open, so a field that commits its text as the editor closes doesn't open it again.
+    func editBinding(_ opened: TicketEdit) -> Binding<TicketEdit> {
+        Binding {
+            if let edit = self.edit, edit.ticketID == opened.ticketID {
+                return edit
+            }
+            return opened
+        } set: { value in
+            guard self.edit?.ticketID == opened.ticketID else { return }
+            self.edit = value
+        }
+    }
+}
+
 private struct TicketEditor: View {
     @Binding var edit: TicketEdit
     let onCancel: () -> Void

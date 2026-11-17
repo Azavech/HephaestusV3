@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 import ToolsFoundation
 @testable import TicketsKit
@@ -414,6 +415,27 @@ struct TicketChangeTests {
         #expect(model.edit == nil)
         let ticket = store.ticket("ORD-141")!
         #expect(ticket.title == "Cursor pagination" && ticket.labels == ["docs", "api"] && ticket.priority == nil)
+    }
+
+    @Test("The editor's binding outlives Save and Cancel: it reads the last edit and opens nothing again")
+    func editBinding() async {
+        let (model, _) = orders()
+        model.startEditing(model.selectedTicket!)
+        let binding = model.editBinding(model.edit!)
+        binding.wrappedValue.title = "Cursor pagination"
+        #expect(model.edit?.title == "Cursor pagination")
+        await model.saveEditing()
+        #expect(model.edit == nil)
+        // SwiftUI reads and writes the closing editor's fields once more: no crash, and the editor stays closed.
+        #expect(binding.wrappedValue.ticketID == "ORD-141")
+        binding.wrappedValue.title = "Typed as it closed"
+        #expect(model.edit == nil)
+        // A binding of another ticket's edit writes nothing into the open one.
+        model.startEditing(model.selectedTicket!)
+        let opened = model.edit
+        let other = model.editBinding(TicketEdit(ticket("ORD-2", in: "ORD")))
+        other.wrappedValue.title = "Elsewhere"
+        #expect(model.edit == opened)
     }
 
     @Test("Links keep the declared ones and add or remove one at a time")
