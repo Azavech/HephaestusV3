@@ -6,12 +6,12 @@ import ProjectData
 import SwiftUI
 import ToolsFoundation
 
-/// Where System Prompts reads and writes the internal skills' content: the data folder in the app, memory in
+/// Where System Prompts reads and writes the internal skills' values: the data folder in the app, memory in
 /// previews and tests.
 @MainActor
 protocol InternalSkillStore: AnyObject {
-    func content(of skill: InternalSkill) -> String
-    func save(_ content: String, of skill: InternalSkill) throws(StorageError)
+    func values(of skill: InternalSkill) -> InternalSkillValues
+    func save(_ values: InternalSkillValues, of skill: InternalSkill) throws(StorageError)
 }
 
 /// The internal skills of the app's data folder (docs/data.md › Internal skills).
@@ -19,72 +19,85 @@ protocol InternalSkillStore: AnyObject {
 public final class LiveInternalSkillStore: InternalSkillStore {
     private let folder: DataFolder?
 
-    /// `dataFolder` nil, when the app has none, shows the default contents and stores nothing.
+    /// `dataFolder` nil, when the app has none, shows the defaults and stores nothing.
     public init(dataFolder: DataFolder?) {
         folder = dataFolder
     }
 
-    func content(of skill: InternalSkill) -> String {
-        folder?.readContent(of: skill) ?? skill.defaultContent
+    func values(of skill: InternalSkill) -> InternalSkillValues {
+        folder?.readSkill(skill) ?? skill.defaults
     }
 
-    func save(_ content: String, of skill: InternalSkill) throws(StorageError) {
+    func save(_ values: InternalSkillValues, of skill: InternalSkill) throws(StorageError) {
         guard let folder else {
             throw .writeFailed(path: "skills/\(skill.name)/SKILL.md", reason: String(localized: "The app has no data folder.", bundle: #bundle))
         }
-        try folder.writeContent(content, of: skill)
+        try folder.writeSkill(values, of: skill)
     }
 }
 
-/// The skills' contents in memory.
+/// The skills' values in memory.
 @MainActor
 final class SampleInternalSkillStore: InternalSkillStore {
-    private(set) var contents: [String: String]
+    private(set) var saved: [String: InternalSkillValues]
     /// The error every save throws, when set.
     var failure: StorageError?
 
-    init(contents: [String: String] = [:], failure: StorageError? = nil) {
-        self.contents = contents
+    init(saved: [String: InternalSkillValues] = [:], failure: StorageError? = nil) {
+        self.saved = saved
         self.failure = failure
     }
 
-    func content(of skill: InternalSkill) -> String {
-        contents[skill.name] ?? skill.defaultContent
+    /// Skills whose only change is their content.
+    convenience init(contents: [String: String], failure: StorageError? = nil) {
+        var saved: [String: InternalSkillValues] = [:]
+        for skill in InternalSkill.all {
+            if let content = contents[skill.name] {
+                var values = skill.defaults
+                values.content = content
+                saved[skill.name] = values
+            }
+        }
+        self.init(saved: saved, failure: failure)
     }
 
-    func save(_ content: String, of skill: InternalSkill) throws(StorageError) {
+    func values(of skill: InternalSkill) -> InternalSkillValues {
+        saved[skill.name] ?? skill.defaults
+    }
+
+    func save(_ values: InternalSkillValues, of skill: InternalSkill) throws(StorageError) {
         if let failure { throw failure }
-        contents[skill.name] = content
+        saved[skill.name] = values
     }
 }
 
-/// System Prompts: the internal skills the app defines, and the content the user gives each
-/// (docs/ui/system-prompts.md). A change is saved a second after the last keystroke, when another skill is
-/// selected, and when the tab goes away.
+/// System Prompts: the internal skills the app defines, and the content, model and effort the user gives each
+/// (docs/ui/system-prompts.md). A change of content is saved a second after the last keystroke; a change of
+/// model or effort at once; every change when another skill is selected and when the tab goes away.
 @MainActor
 @Observable
 final class SystemPromptsModel {
     let skills: [InternalSkill]
     var selection: InternalSkill.ID?
-    /// The contents as shown, by skill name.
-    private(set) var contents: [String: String]
-    /// The contents as stored.
-    private var stored: [String: String]
+    /// The values as shown, by skill name.
+    private(set) var values: [String: InternalSkillValues]
+    /// The values as stored.
+    private var stored: [String: InternalSkillValues]
     /// Why the last save failed, by skill name.
     private(set) var failures: [String: String] = [:]
 
     @ObservationIgnored private let store: any InternalSkillStore
     @ObservationIgnored private var pending: [String: Task<Void, Never>] = [:]
-    /// How long after the last change a skill is saved.
+    /// How long after the last keystroke a skill's content is saved.
     @ObservationIgnored let saveDelay: Duration
 
     init(skills: [InternalSkill] = InternalSkill.all, store: any InternalSkillStore, saveDelay: Duration = .seconds(1)) {
         self.skills = skills
         self.store = store
         self.saveDelay = saveDelay
-        let contents = Dictionary(uniqueKeysWithValues: skills.map { ($0.name, store.content(of: $0)) })
-        self.contents = contents
-        stored = contents
+        let values = Dictionary(uniqueKeysWithValues: skills.map { ($0.name, store.values(of: $0)) })
+        self.values = values
+        stored = values
         selection = skills.first?.id
     }
 
@@ -92,19 +105,23 @@ final class SystemPromptsModel {
         skills.first { $0.id == selection }
     }
 
+    func values(of skill: InternalSkill) -> InternalSkillValues {
+        values[skill.name] ?? skill.defaults
+    }
+
     func content(of skill: InternalSkill) -> String {
-        contents[skill.name] ?? skill.defaultContent
+        values(of: skill).content
     }
 
     /// Whether what shows is stored.
     func isSaved(_ skill: InternalSkill) -> Bool {
-        contents[skill.name] == stored[skill.name]
+        values[skill.name] == stored[skill.name]
     }
 
-    /// The user's change: shown at once, saved after `saveDelay` without another change.
+    /// The user's typing: shown at once, saved after `saveDelay` without another change.
     func setContent(_ content: String, of skill: InternalSkill) {
-        guard contents[skill.name] != content else { return }
-        contents[skill.name] = content
+        guard values(of: skill).content != content else { return }
+        values[skill.name, default: skill.defaults].content = content
         pending[skill.name]?.cancel()
         pending[skill.name] = Task { [weak self, saveDelay] in
             try? await Task.sleep(for: saveDelay)
@@ -113,14 +130,28 @@ final class SystemPromptsModel {
         }
     }
 
+    /// The model used when the app runs the skill itself: saved at once.
+    func setModel(_ model: String, of skill: InternalSkill) {
+        guard values(of: skill).model != model else { return }
+        values[skill.name, default: skill.defaults].model = model
+        save(skill)
+    }
+
+    /// The effort used when the app runs the skill itself: saved at once.
+    func setEffort(_ effort: Effort, of skill: InternalSkill) {
+        guard values(of: skill).effort != effort else { return }
+        values[skill.name, default: skill.defaults].effort = effort
+        save(skill)
+    }
+
     /// Saves a skill now when it has a change.
     func save(_ skill: InternalSkill) {
         pending[skill.name]?.cancel()
         pending[skill.name] = nil
-        guard let content = contents[skill.name], content != stored[skill.name] else { return }
+        guard let current = values[skill.name], current != stored[skill.name] else { return }
         do throws(StorageError) {
-            try store.save(content, of: skill)
-            stored[skill.name] = content
+            try store.save(current, of: skill)
+            stored[skill.name] = current
             failures[skill.name] = nil
         } catch {
             failures[skill.name] = error.description
@@ -149,6 +180,8 @@ public struct SystemPromptsView: View {
         _model = State(initialValue: model)
     }
 
+    @Environment(\.chatStore) private var chatStore
+
     public var body: some View {
         NavigationSplitView {
             List(model.skills, selection: $model.selection) { skill in
@@ -168,6 +201,12 @@ public struct SystemPromptsView: View {
                 SkillEditor(
                     skill: skill,
                     content: Binding { model.content(of: skill) } set: { model.setContent($0, of: skill) },
+                    models: models,
+                    settings: ChatSettings(model: model.values(of: skill).model, effort: model.values(of: skill).effort),
+                    setSettings: { settings in
+                        model.setModel(settings.model, of: skill)
+                        model.setEffort(settings.effort, of: skill)
+                    },
                     isSaved: model.isSaved(skill),
                     failure: model.failures[skill.name]
                 )
@@ -190,12 +229,22 @@ public struct SystemPromptsView: View {
         }
         .background(.canvas)
     }
+
+    /// The CLI's models, as Settings ▸ Chat lists them; its fallback list until the CLI has answered.
+    private var models: [ClaudeModel] {
+        let models = chatStore?.models ?? []
+        return models.isEmpty ? ClaudeModel.fallback : models
+    }
 }
 
-/// A skill's name, which the app defines, and its content, which the user writes.
+/// A skill's name, which the app defines; the model and effort the app runs it with; its content, which the
+/// user writes.
 private struct SkillEditor: View {
     let skill: InternalSkill
     @Binding var content: String
+    let models: [ClaudeModel]
+    let settings: ChatSettings
+    let setSettings: (ChatSettings) -> Void
     let isSaved: Bool
     let failure: String?
 
@@ -208,6 +257,16 @@ private struct SkillEditor: View {
             }
             .help(String(localized: "The app defines this skill and its name.", bundle: #bundle))
             .accessibilityIdentifier("systemPrompts.name")
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 20) {
+                    ReplySettingsRows(models: models, settings: settings, identifier: "systemPrompts", set: setSettings)
+                        .fixedSize()
+                }
+                Text("Used when the app runs this skill itself; a chat that calls it keeps its own model and effort.", bundle: #bundle)
+                    .font(.caption)
+                    .foregroundStyle(.textSecondary)
+            }
 
             TextEditor(text: $content)
                 .font(.body.monospaced())

@@ -25,9 +25,9 @@ struct SystemPromptsTests {
         model.setContent("Title it.", of: skill)
         #expect(model.content(of: skill) == "Title it.")
         #expect(!model.isSaved(skill))
-        #expect(store.contents["set-ticket-title"] == nil)
+        #expect(store.saved["set-ticket-title"] == nil)
         try await Task.sleep(for: .milliseconds(200))
-        #expect(store.contents["set-ticket-title"] == "Title it.")
+        #expect(store.saved["set-ticket-title"]?.content == "Title it.")
         #expect(model.isSaved(skill))
     }
 
@@ -37,7 +37,20 @@ struct SystemPromptsTests {
         let model = SystemPromptsModel(store: store, saveDelay: .seconds(60))
         model.setContent("Now.", of: skill)
         model.saveAll()
-        #expect(store.contents["set-ticket-title"] == "Now.")
+        #expect(store.saved["set-ticket-title"]?.content == "Now.")
+        #expect(model.isSaved(skill))
+    }
+
+    @Test("The model and the effort are saved at once, with the content as shown")
+    func modelAndEffort() {
+        let store = SampleInternalSkillStore()
+        let model = SystemPromptsModel(store: store, saveDelay: .seconds(60))
+        #expect(model.values(of: skill).model == "haiku")
+        model.setContent("Typed.", of: skill)
+        model.setModel("sonnet", of: skill)
+        #expect(store.saved["set-ticket-title"] == InternalSkillValues(content: "Typed.", model: "sonnet", effort: .low))
+        model.setEffort(.high, of: skill)
+        #expect(store.saved["set-ticket-title"]?.effort == .high)
         #expect(model.isSaved(skill))
     }
 
@@ -53,6 +66,6 @@ struct SystemPromptsTests {
         store.failure = nil
         model.save(skill)
         #expect(model.failures["set-ticket-title"] == nil)
-        #expect(store.contents["set-ticket-title"] == "Kept.")
+        #expect(store.saved["set-ticket-title"]?.content == "Kept.")
     }
 }

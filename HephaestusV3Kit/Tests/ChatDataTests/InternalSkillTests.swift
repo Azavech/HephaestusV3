@@ -14,10 +14,11 @@ struct InternalSkillTests {
         try body(DataFolder(url: url))
     }
 
-    @Test("The app defines set-ticket-title, empty; every name is in Claude's skill format, once")
+    @Test("The app defines set-ticket-title: empty, Haiku at a low effort; every name is in Claude's skill format, once")
     func definitions() {
         #expect(InternalSkill.all.map(\.name) == ["set-ticket-title"])
-        #expect(InternalSkill.setTicketTitle.defaultContent.isEmpty)
+        #expect(InternalSkill.setTicketTitle.defaults == InternalSkillValues(content: "", model: "haiku", effort: .low))
+        #expect(InternalSkill(name: "plain").defaults == InternalSkillValues(content: "", model: "default", effort: .high))
         #expect(InternalSkill.all.allSatisfy { InternalSkill.isValidName($0.name) })
         #expect(Set(InternalSkill.all.map(\.name)).count == InternalSkill.all.count)
     }
@@ -32,28 +33,43 @@ struct InternalSkillTests {
         }
     }
 
-    @Test("A skill without a file has its default content; a written one reads back as written, after its front matter")
+    @Test("A skill without a file has its defaults; a written one reads back as written, its content after the front matter")
     func roundTrip() throws {
         try withFolder { folder in
             let skill = InternalSkill.setTicketTitle
-            #expect(folder.readContent(of: skill) == "")
-            try folder.writeContent("Title it.\n\n---\nKeep the rule above.\n", of: skill)
+            #expect(folder.readSkill(skill) == skill.defaults)
+            let values = InternalSkillValues(content: "Title it.\n\n---\nKeep the rule above.\n", model: "sonnet", effort: .medium)
+            try folder.writeSkill(values, of: skill)
             let file = folder.skillFile(of: skill)
             #expect(file.path.hasSuffix("/skills/set-ticket-title/SKILL.md"))
-            #expect(try String(contentsOf: file, encoding: .utf8) == "---\nname: set-ticket-title\n---\nTitle it.\n\n---\nKeep the rule above.\n")
-            #expect(folder.readContent(of: skill) == "Title it.\n\n---\nKeep the rule above.\n")
-            try folder.writeContent("", of: skill)
-            #expect(folder.readContent(of: skill) == "")
+            #expect(try String(contentsOf: file, encoding: .utf8)
+                == "---\nname: set-ticket-title\nmodel: sonnet\neffort: medium\n---\nTitle it.\n\n---\nKeep the rule above.\n")
+            #expect(folder.readSkill(skill) == values)
         }
     }
 
-    @Test("A file written by hand without front matter is all content")
+    @Test("Front matter lines the app doesn't use are kept and written back after its keys; values it can't use leave the defaults")
+    func otherLines() throws {
+        try withFolder { folder in
+            let skill = InternalSkill.setTicketTitle
+            try FileManager.default.createDirectory(at: folder.skillFile(of: skill).deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data("---\nname: renamed-by-hand\ndescription: Titles tickets.\nmodel:\neffort: extreme\n---\nBody".utf8).write(to: folder.skillFile(of: skill))
+            var values = folder.readSkill(skill)
+            #expect(values == InternalSkillValues(content: "Body", model: "haiku", effort: .low, otherLines: ["description: Titles tickets."]))
+            values.model = "opus"
+            try folder.writeSkill(values, of: skill)
+            #expect(try String(contentsOf: folder.skillFile(of: skill), encoding: .utf8)
+                == "---\nname: set-ticket-title\nmodel: opus\neffort: low\ndescription: Titles tickets.\n---\nBody")
+        }
+    }
+
+    @Test("A file written by hand without front matter is all content, with the default model and effort")
     func handWritten() throws {
         try withFolder { folder in
             let skill = InternalSkill(name: "hand-written", defaultContent: "default")
             try FileManager.default.createDirectory(at: folder.skillFile(of: skill).deletingLastPathComponent(), withIntermediateDirectories: true)
             try Data("Just text.".utf8).write(to: folder.skillFile(of: skill))
-            #expect(folder.readContent(of: skill) == "Just text.")
+            #expect(folder.readSkill(skill) == InternalSkillValues(content: "Just text.", model: "default", effort: .high))
         }
     }
 }

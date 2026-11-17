@@ -322,6 +322,9 @@
     "Used %@" : {
       "comment" : "A call of a tool, by its name"
     },
+    "Used when the app runs this skill itself; a chat that calls it keeps its own model and effort." : {
+
+    },
     "Waiting for your answer" : {
       "comment" : "A card waits for the user"
     },

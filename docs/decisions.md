@@ -251,8 +251,9 @@ skills only, each with a name in Claude's skill format and a content, starting w
 
 | Question | Default chosen | Where |
 | --- | --- | --- |
-| Where is the content kept? | `<data folder>/skills/<name>/SKILL.md`, Claude's skill layout, with only `name` in its front matter; the code keeps the list and each default. | [Data › Internal skills](data.md#internal-skills) |
-| When is a change saved? | One second after the last keystroke, and at once when another skill is selected or the tab goes away; a line says Saved, Editing… or why it wasn't. | [UI › System Prompts › Saving](ui/system-prompts.md#saving) |
+| Where is the content kept? | `<data folder>/skills/<name>/SKILL.md`, Claude's skill layout, with `name`, `model` and `effort` in its front matter, other front matter lines kept; the code keeps the list and each default. | [Data › Internal skills](data.md#internal-skills) |
+| Which model and effort by default? | Each skill's own from the code: `set-ticket-title` Haiku at Low, for a short answer; otherwise the CLI's `default` at High, as a new chat. The owner asked for a model and an effort per skill, used when no chat calls it. | [UI › System Prompts › Internal skills](ui/system-prompts.md#internal-skills) |
+| When is a change saved? | Content one second after the last keystroke; model and effort at once; everything when another skill is selected or the tab goes away. A line says Saved, Editing… or why it wasn't. | [UI › System Prompts › Saving](ui/system-prompts.md#saving) |
 | Which shortcut? | ⌥⌘,, beside Settings' ⌘, and Project Settings' ⇧⌘,. | [UI › System Prompts](ui/system-prompts.md) |
 | Which code owns it? | ChatData (the skills and their files) and ChatKit (the view), since the skills are what Claude is told. | [Architecture › ChatKit](architecture.md#chatkit) |
 

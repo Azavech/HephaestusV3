@@ -1411,20 +1411,30 @@ content the user writes in [System Prompts](ui/system-prompts.md). A V3 addition
   starting or ending with a hyphen, without two in a row (`InternalSkill.isValidName`). Today: `set-ticket-title`,
   empty by default, used by nothing yet.
 - **File**: `<data folder>/skills/<name>/SKILL.md`, Claude's skill layout. Written atomically by
-  `DataFolder.writeContent(_:of:)`, its folder made when missing: a front matter of one key, then the content
-  exactly as typed (no line break added):
+  `DataFolder.writeSkill(_:of:)`, its folder made when missing: a front matter with `name` (the code's),
+  `model` and `effort`, then the other front matter lines read, in their order; then the content exactly as
+  typed (no line break added):
 
 ```text
 ---
 name: set-ticket-title
+model: haiku
+effort: low
 ---
 <content>
 ```
 
-- **Reading** (`DataFolder.readContent(of:)`): the text after the front matter's closing `---` line; a file
-  without front matter is all content; without a file, or one that can't be read as UTF-8, the skill's default
-  content. The front matter has no `description`: nothing hands these skills to the CLI yet (default chosen at
-  design time).
+- **`model`**: what the CLI's `--model` takes (`default`, `haiku`, `opus`, a model id); **`effort`**: `low`,
+  `medium`, `high`, `xhigh` or `max`. They are what the app uses when it runs the skill itself; a chat that calls
+  the skill keeps its own. Each skill's defaults come from the code (`InternalSkill.defaults`): `set-ticket-title`
+  is `haiku` and `low`; a skill without its own is `default` and `high`, as a new chat.
+- **Reading** (`DataFolder.readSkill(_:)`): the front matter is the lines between a first `---` line and the
+  next. `name` is ignored (the code's name stands); `model` with a value, and `effort` with one of the five levels,
+  replace the defaults, and any other value of theirs leaves the default; every other line is kept as written
+  (`InternalSkillValues.otherLines`) and written back. The content is the text after the closing `---` line; a
+  file without front matter is all content, with the default model and effort; without a file, or one that can't
+  be read as UTF-8, the skill's defaults. The front matter has no `description` of the app's: nothing hands these
+  skills to the CLI yet (default chosen at design time).
 
 ## Unknown keys
 

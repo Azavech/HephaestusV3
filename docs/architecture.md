@@ -618,7 +618,7 @@ ExternalTools, ProjectData and MCPKit. Source files in `Sources/ChatData/`:
 | `ClaudeProcess.swift` | `ChatLaunch` (`arguments`, `request`, `logLine`, `mcpConfiguration`), `ClaudeInput` (the lines written: `message`, `control`, `allow`, `deny`, `unsupported`, `text(_:carrying:)`, `attachedLine`), `ClaudeConnection` and `ClaudeLaunching` (protocols), `SystemClaudeLauncher`, `SystemClaudeConnection` |
 | `ChatSession.swift` | `LoadedChat`, `ChatState`, `ChatError`, `StreamingText`, `ChatSession` (state, start, the CLI's check, settings, reading, files, `refreshState`) |
 | `ChatRun.swift` | `ChatRun` (one live process), and `ChatSession`'s `send`, launch, output handling, turns, exit, `stop`, `stopAll`, `answer`, `requestApproval`, `setSettings`, `rename`, `probeModels` |
-| `InternalSkill.swift` | `InternalSkill` (`name`, `defaultContent`, `setTicketTitle`, `all`, `isValidName(_:)`), and on `DataFolder`: `skillsFolder`, `skillFile(of:)`, `readContent(of:)`, `writeContent(_:of:)` ([Data › Internal skills](data.md#internal-skills)) |
+| `InternalSkill.swift` | `InternalSkill` (`name`, `defaults`, `init(name:defaultContent:defaultModel:defaultEffort:)`, `setTicketTitle`, `all`, `isValidName(_:)`), `InternalSkillValues` (`content`, `model`, `effort`, `otherLines`), and on `DataFolder`: `skillsFolder`, `skillFile(of:)`, `readSkill(_:)`, `writeSkill(_:of:)` ([Data › Internal skills](data.md#internal-skills)) |
 
 - **`ChatSession`** (`@MainActor @Observable`, one for the app, made by `AppData`) publishes `chats` (every
   loaded project's, by id), `status`, `models`, `transcripts` (those read: of chats open in a window and of
@@ -1813,13 +1813,16 @@ Depends on ChatData, MCPKit, ProjectData and FileStorage.
 | `ChatTranscript.swift` | `ChatTranscript`, `ChatActivity`, `ChatActivityText`, `ChatAuthorRow`, `ChatTurnView`, `NoticeRow`, `ToolCallRow`, `ApprovalCard`, `ChatFailure`, `ContextChip`, `ProjectChip`, `SuggestionList` |
 | `ChatSettingsView.swift` | `ChatSettingsView`, `ReplySettingsRows`, `ChatPermissionsSection`, `ModelRow` |
 | `ChatSamples.swift` | `ChatConversation.samples` |
-| `SystemPromptsView.swift` | `InternalSkillStore` (protocol: `content(of:)`, `save(_:of:)`), `LiveInternalSkillStore` (public, `init(dataFolder:)`; without a folder it shows the defaults and every save fails), `SampleInternalSkillStore`, `SystemPromptsModel`, `SystemPromptsView` (public, `init(store:)`), `SkillEditor` |
+| `SystemPromptsView.swift` | `InternalSkillStore` (protocol: `values(of:)`, `save(_:of:)`), `LiveInternalSkillStore` (public, `init(dataFolder:)`; without a folder it shows the defaults and every save fails), `SampleInternalSkillStore`, `SystemPromptsModel`, `SystemPromptsView` (public, `init(store:)`), `SkillEditor` |
 
 **System Prompts.** `SystemPromptsModel` (`@MainActor @Observable`) takes the skills (`InternalSkill.all`), a store
-and `saveDelay` (1 s). It reads every content at once; `selection` starts on the first skill. `setContent(_:of:)`
-shows the change and schedules a save after `saveDelay`, cancelling the one before; `save(_:)` writes a changed
-content and records a failure's `description` in `failures`, cleared by the next save that works; `saveAll()` saves
-every change. `isSaved(_:)` compares the shown content with the stored one. The view calls `saveAll()` when the
+and `saveDelay` (1 s). It reads every skill's `InternalSkillValues` at once; `selection` starts on the first
+skill. `setContent(_:of:)` shows the change and schedules a save after `saveDelay`, cancelling the one before;
+`setModel(_:of:)` and `setEffort(_:of:)` save at once; `save(_:)` writes changed values and records a failure's
+`description` in `failures`, cleared by the next save that works; `saveAll()` saves every change. `isSaved(_:)`
+compares the shown values with the stored ones. The editor shows `ReplySettingsRows` (identifier
+`systemPrompts`) on `ChatSettings(model:effort:)`, with `\.chatStore`'s models, or `ClaudeModel.fallback` while
+there are none. The view calls `saveAll()` when the
 selection changes and on disappear. ToolsScenes shows it in the `.systemPrompts` tab with `AppData.skillStore`
 (`LiveInternalSkillStore(dataFolder: DataFolder.resolve())`), and **System Prompts…** (⌥⌘,) is
 `CommandGroup(after: .appSettings)` (`SystemPromptsCommands`), which calls `showOrOpen(.systemPrompts)`.
