@@ -1,0 +1,11 @@
+schema: 1
+id: HV
+name: Hephaestus V3
+created: 2026-11-17T17:52:24Z
+type: swiftApplication
+nextTicketNumber: 1
+nextBundleNumber: 1
+docsPath: docs
+subprojects: []
+environments: []
+environmentOverrides: {}
