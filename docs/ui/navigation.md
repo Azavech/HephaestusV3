@@ -46,7 +46,7 @@ menus read it directly.
 | Projects | The Projects window, Project Settings, Settings ▸ Projects, the menu bar panel | Yes |
 | Dashboard | The Dashboard window, its tile, Window ▸ Dashboard (⌘1), its menu bar button; its widgets show as their tools come ([Dashboard › Which widgets show](dashboard.md#which-widgets-show)) | Yes |
 | Tickets | The Tickets window, its tile, Window ▸ Tickets (⌘2), its menu bar button | Yes |
-| Chat | The Chat window, its tile, Window ▸ Chat (⌘6), its menu bar button, the chat panel of the available tools' windows, Settings ▸ Chat | Yes |
+| Chat | The Chat window, its tile, Window ▸ Chat (⌘6), its menu bar button, the chat panel of the available tools' windows, Settings ▸ Chat and Settings ▸ Notifications | Yes |
 | Builds | The Builds window, its tile, Window ▸ Builds (⌘5), its menu bar button, the Dashboard's Recent Builds widget | Yes |
 | Contracts | The Contracts window, its tile, Window ▸ Contracts (⌘4), its menu bar button, for a service whose folder holds `openapi/contract.yaml` | Yes |
 | Service Map | The Service Map window, its tile, Window ▸ Service Map (⌘3), its menu bar button, the Dashboard's service widgets | Yes |
@@ -85,19 +85,42 @@ chat panel is on the right, outside the tabs; the status bar runs under both.*
 
 ## Status bar
 
-V2's status bar, with only its ladybug (the user's choice): a bar across the bottom of every window but
+V2's status bar, with its ladybug and its chat counts (the user's choices; V2's other items, the device, the
+MCP port, the version, updates, usage and costs, stay out): a bar across the bottom of every window but
 Settings and the menu bar panel, under the tabs and the chat panel ([Anatomy of a window](#anatomy-of-a-window)).
 Its feedback is about the selected tab.
 
+![The status bar: 1 chat running and 1 chat waiting in its middle, the ladybug at its right](images/status-bar-chats.png)
+
 - **Shown** while Settings ▸ General has a feedback project that is loaded
-  ([Settings ▸ General](#settings--general)); otherwise no window has the bar, and the tabs take its room
-  (the user's choice).
-- **Look.** 26 points high, under a hairline (`Divider`), on `canvas`, in every layout. Nothing at its left.
-- **Ladybug** (`statusBar.feedback`), 10 points from the right edge: a borderless button with `ladybug` in
-  `textSecondary`, the tooltip "Send Feedback (⇧⌘B)" and the label "Send Feedback". A click captures the
-  window, then opens the Send Feedback sheet on it ([Chat › Feedback](chat.md#feedback)). It does
-  nothing while the window shows a sheet, or while its feedback is open.
-- The bar is one element, `statusBar`. Previews: "Status Bar", "Status Bar, Dark".
+  ([Settings ▸ General](#settings--general)), or while chats are counted; otherwise no window has the bar,
+  and the tabs take its room (the user's choice for the ladybug; the counts showing it too is a default
+  chosen at design time).
+- **Look.** 26 points high, under a hairline (`Divider`), on `canvas`, in every layout. Its texts are
+  `caption`, in `textSecondary`, on one line.
+- **Running chats** (`statusBar.runningChats`), in the middle: a mini spinner and "1 chat running" or
+  "<n> chats running", the chats starting or at work. Shown when the count isn't 0. A click opens the chats
+  popover.
+- **Waiting chats** (`statusBar.waitingChats`), after it: a 7-point dot in `warning` and "1 chat waiting" or
+  "<n> chats waiting", the chats waiting for a card's answer or for answers to questions. Shown when the
+  count isn't 0. A click opens the chats popover.
+- **Chats popover** (`statusBar.chats`), under the bar's middle: the counted chats, waiting first, then at work,
+  each group the latest updated first. A row (`statusBar.chats.<chat id>`): the dot or the spinner, the
+  chat's title, then "<project identifier> · <state>" in `caption` and `textSecondary`, the state being
+  Starting, Running, Waiting for permission or Waiting for answers. A click closes the popover and opens the
+  chat in its project's Chat window. The popover closes when no chat is counted any more. 260 to 360 points
+  wide.
+
+  ![The chats popover: Refund rules, ORD · Waiting for permission, then Fix the totals, ORD · Running](images/status-bar-chats-popover.png)
+- **Ladybug** (`statusBar.feedback`), 10 points from the right edge, while there is a feedback project: a
+  borderless button with `ladybug` in `textSecondary`, the tooltip "Send Feedback (⇧⌘B)" and the label "Send
+  Feedback". A click captures the window, then opens the Send Feedback sheet on it
+  ([Chat › Feedback](chat.md#feedback)). It does nothing while the window shows a sheet, or while its
+  feedback is open.
+- The counts are those of every project: the session's chats, whatever the window shows (V2 counted the
+  chats of the window's Mac). The Dock badge counts the waiting ones ([Chat › Notifications](chat.md#notifications)).
+- The bar is one element, `statusBar`. Previews: "Status Bar", "Status Bar, Dark", "Status Bar, Chats",
+  "Status Bar, Chats Without Feedback", "Chats Popover".
 
 ## Routes
 
@@ -221,6 +244,26 @@ The first tab of Settings (`gearshape`), a grouped form with two sections. **Win
 
 Previews: **Tabs**, **Separate Windows, Feedback to Orders, Dark**, **Feedback Project Not Loaded**, **Not
 Stored**.
+
+### Settings ▸ Notifications
+
+![Settings ▸ Notifications: the three toggles on](images/settings-notifications.png)
+
+The last tab of Settings (`bell.badge`), after Chat, shown while the Chat tool is: a grouped form with one
+section, **Chats**. The toggles choose the chats' notifications ([Chat › Notifications](chat.md#notifications)).
+
+| Element | Identifier | Content |
+| --- | --- | --- |
+| **Notify when a chat needs you** | `settings.notifications.needsYou` | On by default. Off, no "needs you" notification. Stored as `notifyNeedsYou`. |
+| **Notify when Claude finishes replying** | `settings.notifications.finished` | On by default. Off, no "finished" notification. Stored as `notifyFinished`. |
+| **AI-generated summary** | `settings.notifications.aiSummary` | On by default. Off, each notification is posted at once with its detail, and `notification-summary` doesn't run. Stored as `notifyAISummary`. |
+| Message | `settings.notifications.message` | When `settings.yml` can't be written: the storage error, in `danger`; the choice still holds until the app quits. |
+| Footer | — | "A chat needs you when Claude asks for a permission or asks you questions. With the summary on, the internal skill notification-summary writes each notification's line; off, the line is the first line of Claude's reply. The Dock's badge counts the chats waiting for you either way." |
+
+A toggle writes the three keys of `settings.yml` ([Data › Settings file](../data.md#settings-file)). The Dock
+badge and bounce don't depend on them.
+
+Previews: **All On**, **Summary Off, Dark**, **Not Stored**.
 
 ## Menus and shortcuts
 

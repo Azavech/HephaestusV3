@@ -125,6 +125,7 @@ public struct ChatPanel: View {
         .task(id: model.conversationID) {
             await model.openConversation()
         }
+        .reportsShownChat(model.conversationID, store: model.store)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.panel")
     }

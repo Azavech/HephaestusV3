@@ -99,6 +99,10 @@ public struct ToolsScenes: Scene {
                         .tabItem {
                             Label(ToolKind.chat.title, systemImage: ToolKind.chat.symbol)
                         }
+                    NotificationSettingsPane(appData: appData)
+                        .tabItem {
+                            Label(String(localized: "Notifications", bundle: #bundle, comment: "The Settings tab of the chats' notifications"), systemImage: "bell.badge")
+                        }
                 }
             }
             .frame(width: 520, height: 440)
@@ -199,6 +203,7 @@ private struct RouteHost<Content: View>: View {
             .environment(\.chatStore, appData.chatStore)
             .environment(\.availableTools, AppData.availableTools)
             .environment(\.feedbackTarget, appData.feedbackTarget)
+            .environment(\.chatSession, appData.chats)
             .environment(\.generateTitle, appData.generateTitle)
             .task {
                 if appData.openRoute == nil { appData.openRoute = openRouteAction }

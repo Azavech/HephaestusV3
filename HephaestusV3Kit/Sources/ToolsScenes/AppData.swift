@@ -113,6 +113,28 @@ final class AppData {
         opensWindowsAsTabs = value
     }
 
+    // MARK: Notifications (docs/ui/navigation.md › Settings ▸ Notifications)
+
+    /// The three toggles of Settings ▸ Notifications, all on until read.
+    private(set) var notificationChoices = NotificationChoices()
+    /// The chats' notifications, the Dock's badge and bounce.
+    @ObservationIgnored private(set) lazy var notifier = ChatNotifier(chats: chats, posts: ChatNotifier.posts) { [weak self] in
+        self?.notificationChoices ?? NotificationChoices()
+    }
+
+    /// Stores the toggles. Throws the storage error when they can't be stored; without a data folder they hold
+    /// until the app quits.
+    func setNotificationChoices(_ choices: NotificationChoices) throws(StorageError) {
+        if let folder = session.dataFolder {
+            var settings = folder.readSettings()
+            settings.notifyNeedsYou = choices.needsYou
+            settings.notifyFinished = choices.finished
+            settings.notifyAISummary = choices.aiSummary
+            try folder.writeSettings(settings)
+        }
+        notificationChoices = choices
+    }
+
     init() {
         // The data of earlier builds, kept in the App Group container, is copied once before anything reads the folder.
         DataFolder.resolve()?.migrateFromAppGroup()
@@ -173,7 +195,10 @@ final class AppData {
             let settings = folder.readSettings()
             opensWindowsAsTabs = settings.opensWindowsAsTabs
             feedbackProjectID = settings.feedbackProjectID
+            notificationChoices = NotificationChoices(settings)
         }
+        notifier.open = { [weak self] route in self?.openRoute?(route) }
+        notifier.start()
         machineHost.load()
         await tickets.start()
         // A ticket created without a title, by anyone, gets one from `set-ticket-title` (docs/ui/tickets.md ›

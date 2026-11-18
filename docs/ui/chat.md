@@ -730,6 +730,48 @@ needed:
   for web views is left out: V3 has none. A virtual machine's screen, drawn by Virtualization, may show blank.
 - When no bitmap can be made, the sheet shows "The window could not be captured.", and Send sends no screenshot.
 
+## Notifications
+
+V2's chat notifications, Dock badge and bounce. The chat session reports two events
+([Data › Chat events](../data.md#chat-events)); `ChatNotifier` (ToolsScenes) turns them into macOS
+notifications, as [Settings ▸ Notifications](navigation.md#settings--notifications) allows.
+
+| Event | When | Detail without a summary |
+| --- | --- | --- |
+| **Needs you** | A chat starts to wait for the user: a card (Waiting for your answer) or questions (Waiting for your answers), from another state. | The first line of Claude's last reply of the turn; without one, "Waiting for your permission" or "Waiting for your answers". |
+| **Finished** | A turn ends and the chat is idle, unless Stop ended it. | The first line of Claude's last reply of the turn; without one, "Claude finished replying". |
+
+- **No event** for a chat's first state (loading, a new chat), so a relaunch posts nothing for the chats
+  that already wait; nor for the error state, nor a turn ended with Stop.
+- **The notification.** Title "<project identifier> · <chat title>", such as "ORD · Fix the totals"; body the
+  detail, or the summary below; the default sound. Its identifier is `chat/<chat id>`: a chat has one
+  notification at most, a newer one replaces it. It shows as a banner also while the app is in front, but
+  is not posted while the app is active and its key window shows the chat (the Chat window's selected chat,
+  or a panel's conversation).
+- **Summary.** With **AI-generated summary** on, the app runs the internal skill `notification-summary`
+  ([System Prompts](system-prompts.md)) on what happened, then posts its answer: at most 30 s, two runs at a
+  time, the others waiting in order. Its message is "Claude's reply:" and the reply (finished), "Permission
+  request:", "Tool: <name>", "Input: <the input as JSON, keys sorted>" (a card), or "Questions:" and one
+  "<label>: <question>" line each (questions), each part cut at 4,000 characters. The answer is made one
+  line: runs of white space become one space, a leading "Summary:" and surrounding quotes go, and it is cut
+  at the last space before 150 characters. A failure, a timeout or an empty answer gives the detail. A
+  finished turn without reply text runs nothing. The summary is dropped when, by its end, a newer event of
+  the chat came, the chat was deleted, or a chat that needed you no longer waits. With the toggle off,
+  nothing runs and the detail is posted at once (V2 ran the summary whatever the toggle said: here one Mac
+  reads it, default chosen at design time).
+- **Click.** Brings the app forward and opens the chat: its project's Chat window, on the chat
+  (`.tool(.chat, project:, focus: <chat id>)`), as a route would ([navigation.md](navigation.md#routes)).
+- **Removed** when a window opens the chat, and when a window showing it becomes the key window.
+- **Dock.** While chats wait for the user, the Dock icon shows their number (nothing at 0). When a chat starts
+  to wait while the app isn't active, the Dock icon bounces once (`requestUserAttention(.informationalRequest)`).
+  Both happen whatever the toggles say, as in V2.
+- **Permission.** At launch the app asks macOS for alerts, sounds and badges when it hasn't asked yet, or when
+  its earlier answer didn't cover the badge. System Settings ▸ Notifications then changes the answers.
+- **Development.** A process started with `HEPHAESTUS_DATA_DIR` neither asks nor posts: it shares the
+  installed app's bundle identifier. Its Dock badge and bounce still work.
+- The status bar counts the chats at work and waiting, and lists them in a popover
+  ([navigation.md › Status bar](navigation.md#status-bar)).
+
 ## Settings ▸ Chat
 
 The Settings window's **Chat** tab (`bubble.left.and.text.bubble.right`), at 520 × 440 pt; its form scrolls. It opens from the app menu's Settings item (⌘,); see [navigation.md](navigation.md).

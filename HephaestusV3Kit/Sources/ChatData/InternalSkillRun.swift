@@ -73,7 +73,8 @@ extension ChatSession {
     /// ends with the run. `references` are the items the run links, such as the ticket a title is for: the
     /// message carries their `Attached:` lines. Throws when the CLI isn't there, can't run, or answers with an
     /// error.
-    public func run(_ skill: InternalSkill, input: String, attaching references: [ChatItemReference] = []) async throws(ChatError) -> String {
+    public func run(_ skill: InternalSkill, input: String, attaching references: [ChatItemReference] = [],
+                    timeout: Duration = InternalSkillRun.timeout) async throws(ChatError) -> String {
         guard let path = status.path, status.isAvailable else {
             throw .unavailable(status.error ?? "The Claude CLI isn't checked yet. Try again in a moment.")
         }
@@ -100,7 +101,7 @@ extension ChatSession {
         let message = InternalSkillRun.message(input, attaching: references)
         let result: ProcessResult
         do {
-            result = try await runner.run(request, input: Data(message.utf8), timeout: InternalSkillRun.timeout)
+            result = try await runner.run(request, input: Data(message.utf8), timeout: timeout)
         } catch {
             throw .unavailable(String(describing: error))
         }

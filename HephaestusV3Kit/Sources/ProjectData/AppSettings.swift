@@ -25,6 +25,11 @@ public struct SettingsFile: Codable, Sendable, Hashable {
     /// The project that receives feedback tickets (Settings ▸ General); nil hides the status bar's ladybug
     /// and Help ▸ Send Feedback….
     public var feedbackProjectID: String?
+    /// Settings ▸ Notifications, as V2's: a notification when a chat needs the user, when Claude finishes, and
+    /// with an AI-generated summary; nil for on.
+    public var notifyNeedsYou: Bool?
+    public var notifyFinished: Bool?
+    public var notifyAISummary: Bool?
     public var unknownKeys: YAMLMapping
 
     public init(schema: Int = 1, mcpPort: Int = SettingsFile.defaultMCPPort, claudePath: String? = nil, chatModel: String? = nil,
@@ -38,7 +43,7 @@ public struct SettingsFile: Codable, Sendable, Hashable {
     }
 
     static let knownKeys: Set<String> = ["schema", "mcpPort", "claudePath", "chatModel", "chatEffort", "defaultVMCores", "defaultVMMemoryGB",
-                                         "defaultVMDiskGB", "newWindows", "feedbackProjectID"]
+                                         "defaultVMDiskGB", "newWindows", "feedbackProjectID", "notifyNeedsYou", "notifyFinished", "notifyAISummary"]
 
     /// Whether the windows the app opens become tabs of the frontmost window: unless `newWindows` is `windows`.
     public var opensWindowsAsTabs: Bool {
@@ -58,6 +63,9 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         defaultVMDiskGB = try c.optional("defaultVMDiskGB")
         newWindows = try c.optional("newWindows")
         feedbackProjectID = try c.optional("feedbackProjectID")
+        notifyNeedsYou = try c.optional("notifyNeedsYou")
+        notifyFinished = try c.optional("notifyFinished")
+        notifyAISummary = try c.optional("notifyAISummary")
         unknownKeys = try c.unknownKeys(known: Self.knownKeys)
     }
 
@@ -73,6 +81,9 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         try c.encodeIfPresent(defaultVMDiskGB, "defaultVMDiskGB")
         try c.encodeIfPresent(newWindows, "newWindows")
         try c.encodeIfPresent(feedbackProjectID, "feedbackProjectID")
+        try c.encodeIfPresent(notifyNeedsYou, "notifyNeedsYou")
+        try c.encodeIfPresent(notifyFinished, "notifyFinished")
+        try c.encodeIfPresent(notifyAISummary, "notifyAISummary")
         try c.encodeUnknownKeys(unknownKeys, known: Self.knownKeys)
     }
 

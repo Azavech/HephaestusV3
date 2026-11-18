@@ -98,6 +98,15 @@ public final class ChatSession {
     @ObservationIgnored let runner: any ProcessRunning
     @ObservationIgnored let tokens: MCPTokens
     @ObservationIgnored let processEnvironment: [String: String]
+    /// Called with each chat event, for the app's notifications (docs/data.md › Chat events).
+    @ObservationIgnored public var onEvent: (@MainActor (ChatEvent) -> Void)?
+    /// Called when a window shows a chat: its notification goes.
+    @ObservationIgnored public var onOpen: (@MainActor (String) -> Void)?
+    /// The summaries running, and those waiting their turn.
+    @ObservationIgnored var summaryRuns = 0
+    @ObservationIgnored var summaryWaiters: [CheckedContinuation<Void, Never>] = []
+    /// The chat each view of the key window shows, by view: no notification for them.
+    @ObservationIgnored var keyViews: [UUID: String] = [:]
     /// Where a deleted chat's files go.
     @ObservationIgnored let trash: Trash
     @ObservationIgnored let now: @Sendable () -> Date
@@ -268,6 +277,7 @@ public final class ChatSession {
     /// is gone is cancelled.
     public func open(_ chatID: String) async {
         touch(chatID)
+        onOpen?(chatID)
         guard transcripts[chatID] == nil, let url = transcriptURL(chatID) else { return }
         let items = await Task.detached { Transcript.replay((try? Data(contentsOf: url)) ?? Data()) }.value
         guard transcripts[chatID] == nil else { return }
@@ -390,7 +400,11 @@ public final class ChatSession {
         } else {
             state = .idle
         }
-        if states[chatID] != state { states[chatID] = state }
+        let old = states[chatID]
+        if old != state {
+            states[chatID] = state
+            noticeTransition(chatID, from: old, to: state)
+        }
         if state.isRunning {
             if turnStarts[chatID] == nil { turnStarts[chatID] = now() }
         } else if turnStarts[chatID] != nil {

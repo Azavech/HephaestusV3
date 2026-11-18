@@ -45,6 +45,8 @@ protocol ChatStore: AnyObject {
     func delete(_ id: ChatConversation.ID) throws(ChatSendError)
     /// Goes on after an error, through the internal skill `resume-chat`.
     func resume(_ id: ChatConversation.ID) async throws(ChatSendError)
+    /// What a view shows, and whether its window is the key window: a chat shown there gets no notification.
+    func showing(_ id: ChatConversation.ID?, inKeyWindow: Bool, view: UUID)
 }
 
 /// Why a message wasn't sent, or a setting not changed: the sentence the composer shows.
@@ -215,6 +217,9 @@ final class SampleChatStore: ChatStore {
 }
 
 extension ChatStore {
+    /// The samples post no notification.
+    func showing(_ id: ChatConversation.ID?, inKeyWindow: Bool, view: UUID) {}
+
     /// A message without files.
     func send(_ text: String, to id: ChatConversation.ID?, project: Project, origin: ToolKind?, attachments: [ChatReference],
               reader: ToolReader) async throws(ChatSendError) -> ChatConversation.ID {

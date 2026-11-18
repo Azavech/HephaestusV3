@@ -84,6 +84,10 @@ public final class LiveChatStore: ChatStore {
         }
     }
 
+    func showing(_ id: ChatConversation.ID?, inKeyWindow: Bool, view: UUID) {
+        session.showing(id, inKeyWindow: inKeyWindow, view: view)
+    }
+
     func stop(_ id: ChatConversation.ID) {
         session.stop(id)
     }

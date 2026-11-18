@@ -37,8 +37,16 @@ public struct InternalSkill: Hashable, Sendable, Identifiable {
         done, then finish what is left of the user's last request. Don't redo what is done.
         """, isCalledFromChats: true)
 
+    /// The line of a chat's notification, as V2's `notification-summary`: the app runs it on what happened when
+    /// Settings ▸ Notifications › AI-generated summary is on. A short answer, so a quick model at a low effort.
+    public static let notificationSummary = InternalSkill(name: "notification-summary", defaultContent: """
+        The message tells what just happened in a chat between the user and Claude: Claude's last reply, or what
+        Claude waits for the user to answer. Write the line of a notification about it: one plain sentence of at
+        most 150 characters that says what it is about. Answer with the sentence alone, without quotes or Markdown.
+        """, defaultModel: "haiku", defaultEffort: .low)
+
     /// Every internal skill, in the order System Prompts lists them.
-    public static let all: [InternalSkill] = [.setTicketTitle, .reportFeedback, .resumeChat]
+    public static let all: [InternalSkill] = [.setTicketTitle, .reportFeedback, .resumeChat, .notificationSummary]
 
     /// The plugin that gives chats the skills they call, as V2 named it.
     public static let pluginName = "hephaestus-skills"

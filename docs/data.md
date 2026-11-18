@@ -1200,6 +1200,43 @@ setting **Edit the project's files** (`chat.fileEdits` in the user defaults: `ne
 | Any exit | Open blocks finish as items; the cards still waiting are cancelled; the token and the MCP configuration go. |
 | `set_model`, `apply_flag_settings` | A model or effort change of a chat whose process runs: `{"subtype":"set_model","model":<model>}`, `{"subtype":"apply_flag_settings","settings":{"effortLevel":<effort>}}`. |
 
+### Chat events
+
+What the session reports for the notifications (`ChatEvent`, `ChatSession.onEvent`, in ChatNotifications.swift),
+as V2's `chat.notification` events. `refreshState` computes a chat's state after each change; a change from a
+state the session had already computed reports:
+
+| Kind | `ChatEvent.Kind` | When |
+| --- | --- | --- |
+| needs you | `needsYou` | The state becomes `waitingPermission` or `waitingAnswers` from another one. |
+| finished | `finished` | The state becomes `idle` from `starting`, `running` or `waitingPermission`, and the last turn (the items after the user's last message) has no `Stopped by the user.` line or result. |
+
+- A chat's first state (loading, a new chat) reports nothing, so a relaunch doesn't report the chats already
+  waiting; nor does `error`.
+- **Fields.** `chatID`, `projectID`, `title` (the chat's), `kind`, `detail` and `summaryInput`.
+- **Claude's last reply of the turn**: the text of the last turn's last `assistant` item without
+  `parentToolUseID`.
+- **`detail`**: the reply's first line that isn't empty, trimmed and cut to 200 characters; without a reply,
+  `Claude finished replying`, `Waiting for your permission` or `Waiting for your answers`.
+- **`summaryInput`**, nil when there is nothing to sum up (a finished turn without a reply):
+  - finished: `Claude's reply:` + `\n` + the reply;
+  - a card: `Permission request:` + `\n` + `Tool: <tool name without its mcp__ prefix>` + `\n` + `Input: <input>`,
+    the oldest pending request's input as JSON without indentation, keys sorted;
+  - questions: `Questions:` + `\n` + one `<label>: <question>` line per question of the set waiting, in order.
+
+  The part after the label is cut at 4,000 characters.
+- **Summary** (`ChatSession.summary(of:)`): runs `notification-summary` ([Internal skills](#internal-skills)) on
+  `summaryInput`, stopped after 30 s; at most two at once, the others waiting first in, first out. The answer is
+  cleaned (`ChatEvent.cleanSummary`): each run of white space, line breaks included, becomes one space; a leading
+  `Summary:` (any case) goes; quote characters (`"`, `'`, `“`, `”`, `‘`, `’`, `«`, `»`, `` ` ``) around it go,
+  again and again; longer than 150 characters, it is cut at the last space at or before the 150th (at 150 without
+  one). A failure, a timeout or an empty text gives `detail`.
+- **Shown chats** (`showing(_:inKeyWindow:view:)`): each view showing a chat says so, and whether its window is
+  the key window; `isInKeyWindow(_:)` tells the notifier, and a chat that starts to show in the key window calls
+  `onOpen`, as `open(_:)` does when a window opens a chat.
+- `waitingChats` (`waitingPermission`, `waitingAnswers`) and `runningChats` (`starting`, `running`) feed the Dock's
+  badge and the status bar.
+
 ### Feedback chats
 
 Send Feedback's chat (`ChatSession.createFeedback`, [UI › Chat › Feedback](ui/chat.md#feedback)), as V2's
@@ -1672,6 +1709,9 @@ and gives the defaults (`DataFolder.readSettings()`).
 | defaultVMDiskGB | `defaultVMDiskGB` | `Int?` | no | absent (64) | New machines' disk in GB, 32 to 2048. |
 | newWindows | `newWindows` | `String?` | no | absent (`tabs`) | How the windows the app opens appear: `tabs`, as tabs of the frontmost window, or `windows`, each on its own; absent or another value reads as `tabs` (`SettingsFile.opensWindowsAsTabs`). Written when Settings ▸ General changes it ([Navigation › Settings ▸ General](ui/navigation.md#settings--general)). A V3 key. |
 | feedbackProjectID | `feedbackProjectID` | `String?` | no | absent | The project that receives feedback chats ([Navigation › Settings ▸ General](ui/navigation.md#settings--general)); absent for none, which hides the status bar and Help ▸ Send Feedback…. Written after `newWindows`, and removed by None. A V3 key, named as an earlier V2 setting was, which V2 no longer read. |
+| notifyNeedsYou | `notifyNeedsYou` | `Bool?` | no | absent (true) | Whether a chat that starts to wait for the user posts a notification ([UI › Chat › Notifications](ui/chat.md#notifications)). Written, with the next two, when Settings ▸ Notifications changes a toggle ([Navigation › Settings ▸ Notifications](ui/navigation.md#settings--notifications)), after `feedbackProjectID`. V2's key. |
+| notifyFinished | `notifyFinished` | `Bool?` | no | absent (true) | Whether a turn that ends well posts a notification. V2's key. |
+| notifyAISummary | `notifyAISummary` | `Bool?` | no | absent (true) | Whether a notification's line is written by `notification-summary` ([Internal skills](#internal-skills)); false posts the detail at once. V2's key. |
 | unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
 
 ```yaml
@@ -1701,11 +1741,12 @@ content the user writes in [System Prompts](ui/system-prompts.md). A V3 addition
 
 - **Names**: Claude's skill name format, 1 to 64 characters of lowercase ASCII letters, digits and hyphens, not
   starting or ending with a hyphen, without two in a row (`InternalSkill.isValidName`). Today:
-  `set-ticket-title`, which the app runs itself ([Running a skill](#internal-skills), below), and
+  `set-ticket-title` and `notification-summary`, which the app runs itself ([Running a skill](#internal-skills),
+  below, and [Chat events](#chat-events)), and
   `report-feedback` and `resume-chat`, which chats call (`isCalledFromChats`), through the [chat plugin](#chat-plugin):
   a feedback chat's first message calls `report-feedback` ([Feedback chats](#feedback-chats)), Resume calls
   `resume-chat` ([Closing and deleting chats](#closing-and-deleting-chats)). The first two are empty by default;
-  `resume-chat` holds V3's own text, which the user's saved file replaces. Every text the app has Claude act on
+  `resume-chat` and `notification-summary` hold V3's own text, which the user's saved file replaces. Every text the app has Claude act on
   is an internal skill, never written in the code (the user's rule, 17 November 2026).
 - **File**: `<data folder>/skills/<name>/SKILL.md`, Claude's skill layout. Written atomically by
   `DataFolder.writeSkill(_:of:)`, its folder made when missing: a front matter with `name` (the code's),
@@ -1724,7 +1765,7 @@ effort: low
 - **`model`**: what the CLI's `--model` takes (`default`, `haiku`, `opus`, a model id); **`effort`**: `low`,
   `medium`, `high`, `xhigh` or `max`. They are what the app uses when it runs the skill itself; a chat that calls
   the skill keeps its own. Each skill's defaults come from the code (`InternalSkill.defaults`): `set-ticket-title`
-  is `haiku` and `low`; a skill without its own is `default` and `high`, as a new chat.
+  and `notification-summary` are `haiku` and `low`; a skill without its own is `default` and `high`, as a new chat.
 - **Reading** (`DataFolder.readSkill(_:)`): the front matter is the lines between a first `---` line and the
   next. `name` is ignored (the code's name stands); `model` with a value, and `effort` with one of the five levels,
   replace the defaults, and any other value of theirs leaves the default; every other line is kept as written
@@ -1741,7 +1782,8 @@ claude -p --output-format json --no-session-persistence --model <model> --effort
   --allowedTools mcp__hephaestus__<tool>,… [--system-prompt <content>]
 ```
 
-  `--system-prompt` only while the content isn't blank; stopped after 2 minutes.
+  `--system-prompt` only while the content isn't blank; stopped after 2 minutes, or the time the caller gives
+  (30 s for `notification-summary`).
 - **MCP access** (the user's request): every run gets the app's MCP server, as a chat does. Its configuration
   file is a chat's ([Chat processes](#chat-processes)), with a token made for the run
   (`MCPTokens.issue(forSkill:)`), written mode 0600 before the run and deleted after it; the token ends with the

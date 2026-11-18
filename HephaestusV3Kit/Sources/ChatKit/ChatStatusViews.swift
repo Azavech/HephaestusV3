@@ -134,3 +134,31 @@ struct ChatMarkView: View {
         }
     }
 }
+
+extension View {
+    /// Tells the store which conversation the view shows, and whether its window is the key window: a chat
+    /// shown in the key window gets no notification, and loses the one it had (docs/ui/chat.md › Notifications).
+    func reportsShownChat(_ id: ChatConversation.ID?, store: any ChatStore) -> some View {
+        modifier(ShownChatReporter(id: id, store: store))
+    }
+}
+
+private struct ShownChatReporter: ViewModifier {
+    let id: ChatConversation.ID?
+    let store: any ChatStore
+
+    @Environment(\.controlActiveState) private var activeState
+    @State private var view = UUID()
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear { report() }
+            .onChange(of: id) { report() }
+            .onChange(of: activeState) { report() }
+            .onDisappear { store.showing(nil, inKeyWindow: false, view: view) }
+    }
+
+    private func report() {
+        store.showing(id, inKeyWindow: activeState == .key, view: view)
+    }
+}

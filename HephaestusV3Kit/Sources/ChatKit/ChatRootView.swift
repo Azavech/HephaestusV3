@@ -307,6 +307,7 @@ public struct ChatRootView: View {
         .task(id: model.selection) {
             await model.openSelection()
         }
+        .reportsShownChat(model.selection, store: model.store)
     }
 }
 

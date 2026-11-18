@@ -4,6 +4,17 @@
     "%@ (not loaded)" : {
 
     },
+    "%@ · %@" : {
+      "comment" : "A chat notification's title: the project's identifier, then the chat's title",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
     "%@ – %@" : {
       "comment" : "A window's tab title: the window, then its project, such as Tickets – Orders",
       "localizations" : {
@@ -14,6 +25,12 @@
           }
         }
       }
+    },
+    "A chat needs you when Claude asks for a permission or asks you questions. With the summary on, the internal skill notification-summary writes each notification's line; off, the line is the first line of Claude's reply. The Dock's badge counts the chats waiting for you either way." : {
+
+    },
+    "AI-generated summary" : {
+
     },
     "Add Existing Folder…" : {
       "comment" : "File menu item, ⌘O"
@@ -26,6 +43,9 @@
     },
     "As tabs of the front window" : {
 
+    },
+    "Chats" : {
+      "comment" : "Settings ▸ Notifications, the section of the chats' notifications"
     },
     "Claude Code in Terminal" : {
 
@@ -114,6 +134,15 @@
     "Not running" : {
 
     },
+    "Notifications" : {
+      "comment" : "The Settings tab of the chats' notifications"
+    },
+    "Notify when Claude finishes replying" : {
+
+    },
+    "Notify when a chat needs you" : {
+
+    },
     "Open Project" : {
 
     },
@@ -150,6 +179,9 @@
     "Run the command in Terminal to give Claude Code the tools of Hephaestus V3. After Regenerate or a new port, run “claude mcp remove hephaestus” first." : {
 
     },
+    "Running" : {
+      "comment" : "A chat's state in the status bar's popover"
+    },
     "Select a project to chat about it." : {
 
     },
@@ -174,6 +206,9 @@
     "Show Previous Tab" : {
 
     },
+    "Starting" : {
+      "comment" : "A chat's state in the status bar's popover"
+    },
     "Status" : {
 
     },
@@ -195,8 +230,20 @@
     "Virtual Machines" : {
 
     },
+    "Waiting for answers" : {
+      "comment" : "A chat's state in the status bar's popover"
+    },
+    "Waiting for permission" : {
+      "comment" : "A chat's state in the status bar's popover"
+    },
     "Windows" : {
 
+    },
+    "^[%lld chat](inflect: true) running" : {
+      "comment" : "The status bar's count of the chats at work"
+    },
+    "^[%lld chat](inflect: true) waiting" : {
+      "comment" : "The status bar's count of the chats waiting for the user"
     }
   },
   "version" : "1.0"

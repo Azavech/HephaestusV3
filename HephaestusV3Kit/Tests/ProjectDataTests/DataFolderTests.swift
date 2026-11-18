@@ -95,6 +95,24 @@ struct DataFolderTests {
         }
     }
 
+    @Test("settings.yml's notification toggles: absent for on, written after feedbackProjectID, read back")
+    func notifications() throws {
+        try withTemporaryFolder { root in
+            let folder = DataFolder(url: root)
+            var settings = folder.readSettings()
+            #expect(settings.notifyNeedsYou == nil && settings.notifyFinished == nil && settings.notifyAISummary == nil)
+            settings.feedbackProjectID = "HV3"
+            settings.notifyNeedsYou = true
+            settings.notifyFinished = false
+            settings.notifyAISummary = false
+            try folder.writeSettings(settings)
+            #expect(try String(contentsOf: folder.settingsFile, encoding: .utf8)
+                == "schema: 1\nmcpPort: 47830\nfeedbackProjectID: HV3\nnotifyNeedsYou: true\nnotifyFinished: false\nnotifyAISummary: false\n")
+            settings = folder.readSettings()
+            #expect(settings.notifyNeedsYou == true && settings.notifyFinished == false && settings.notifyAISummary == false)
+        }
+    }
+
     @Test(".hephaestus/.gitignore holds the line chats/")
     func gitignore() throws {
         try withTemporaryFolder { root in

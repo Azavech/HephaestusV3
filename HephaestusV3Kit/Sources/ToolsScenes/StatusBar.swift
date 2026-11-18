@@ -1,5 +1,6 @@
 import AppKit
 import AZDesign
+import ChatData
 import ChatKit
 import SwiftUI
 import ToolsFoundation
@@ -14,6 +15,53 @@ nonisolated struct FeedbackTarget: Sendable {
 nonisolated extension EnvironmentValues {
     /// The feedback project of every window, from `RouteHost`.
     @Entry var feedbackTarget: FeedbackTarget? = nil
+    /// The chats the status bar counts, from `RouteHost`; nil counts none.
+    @Entry var chatSession: ChatSession? = nil
+}
+
+/// A chat the status bar counts: at work, or waiting for the user (docs/ui/navigation.md › Status bar).
+struct StatusChat: Identifiable, Hashable {
+    enum State: Hashable {
+        case starting, running, waitingPermission, waitingAnswers
+
+        var isWaiting: Bool { self == .waitingPermission || self == .waitingAnswers }
+
+        var label: String {
+            switch self {
+            case .starting: String(localized: "Starting", bundle: #bundle, comment: "A chat's state in the status bar's popover")
+            case .running: String(localized: "Running", bundle: #bundle, comment: "A chat's state in the status bar's popover")
+            case .waitingPermission: String(localized: "Waiting for permission", bundle: #bundle, comment: "A chat's state in the status bar's popover")
+            case .waitingAnswers: String(localized: "Waiting for answers", bundle: #bundle, comment: "A chat's state in the status bar's popover")
+            }
+        }
+    }
+
+    let id: String
+    let title: String
+    let projectID: String
+    let state: State
+    let updated: Date
+
+    /// The chats of the session at work or waiting: waiting first, then at work, each the latest first.
+    @MainActor
+    static func list(_ session: ChatSession?) -> [StatusChat] {
+        guard let session else { return [] }
+        let chats = session.states.compactMap { id, state -> StatusChat? in
+            let shown: State
+            switch state {
+            case .starting: shown = .starting
+            case .running: shown = .running
+            case .waitingPermission: shown = .waitingPermission
+            case .waitingAnswers: shown = .waitingAnswers
+            default: return nil
+            }
+            guard let chat = session.chats[id] else { return nil }
+            return StatusChat(id: id, title: chat.file.title, projectID: chat.projectID, state: shown, updated: chat.file.updated)
+        }
+        return chats.sorted {
+            $0.state.isWaiting != $1.state.isWaiting ? $0.state.isWaiting : ($0.updated, $0.id) > ($1.updated, $1.id)
+        }
+    }
 }
 
 /// What a window shows, for the line that says where feedback comes from.
@@ -77,15 +125,17 @@ extension View {
 private struct StatusBarModifier: ViewModifier {
     let source: FeedbackSource
     @Environment(\.feedbackTarget) private var target
+    @Environment(\.chatSession) private var chatSession
     @Environment(\.openRoute) private var openRoute
     @State private var feedback = FeedbackStarter()
 
     func body(content: Content) -> some View {
+        let chats = StatusChat.list(chatSession)
         VStack(spacing: 0) {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            if target != nil {
-                StatusBar(start: startAction.start)
+            if target != nil || !chats.isEmpty {
+                StatusBar(chats: chats, start: feedbackStart, openChat: openChat)
             }
         }
         .background {
@@ -105,6 +155,16 @@ private struct StatusBarModifier: ViewModifier {
                 }
             }
         }
+    }
+
+    private var feedbackStart: (() -> Void)? {
+        guard target != nil else { return nil }
+        let action = startAction
+        return { action() }
+    }
+
+    private func openChat(_ chat: StatusChat) {
+        openRoute(.tool(.chat, project: chat.projectID, focus: chat.id))
     }
 
     private var startAction: SendFeedbackAction {
@@ -156,30 +216,126 @@ struct FeedbackRequest: Identifiable {
     let context: [String]
 }
 
-/// The bar at the bottom of a window: 26 points high under a hairline, with the ladybug at its right end.
+/// The bar at the bottom of a window: 26 points high under a hairline, the chats at work and waiting in its
+/// middle, the ladybug at its right end.
 struct StatusBar: View {
-    let start: () -> Void
+    let chats: [StatusChat]
+    /// Starts feedback; nil hides the ladybug.
+    let start: (() -> Void)?
+    let openChat: (StatusChat) -> Void
+
+    @State private var showsChats = false
+
+    init(chats: [StatusChat] = [], start: (() -> Void)?, openChat: @escaping (StatusChat) -> Void = { _ in }) {
+        self.chats = chats
+        self.start = start
+        self.openChat = openChat
+    }
 
     var body: some View {
+        let running = chats.filter { !$0.state.isWaiting }.count
+        let waiting = chats.count - running
         VStack(spacing: 0) {
             Divider()
-            HStack(spacing: 0) {
+            HStack(spacing: 12) {
                 Spacer(minLength: 0)
-                Button(action: start) {
-                    Image(systemName: "ladybug")
-                        .foregroundStyle(.textSecondary)
+                if running > 0 {
+                    Button { showsChats = true } label: {
+                        HStack(spacing: 5) {
+                            ProgressView()
+                                .controlSize(.mini)
+                            Text("^[\(running) chat](inflect: true) running", bundle: #bundle, comment: "The status bar's count of the chats at work")
+                        }
+                    }
+                    .accessibilityIdentifier("statusBar.runningChats")
                 }
-                .buttonStyle(.borderless)
-                .help(Text("Send Feedback (⇧⌘B)", bundle: #bundle))
-                .accessibilityLabel(Text("Send Feedback", bundle: #bundle))
-                .accessibilityIdentifier("statusBar.feedback")
+                if waiting > 0 {
+                    Button { showsChats = true } label: {
+                        HStack(spacing: 5) {
+                            Circle()
+                                .fill(.warning)
+                                .frame(width: 7, height: 7)
+                                .accessibilityHidden(true)
+                            Text("^[\(waiting) chat](inflect: true) waiting", bundle: #bundle, comment: "The status bar's count of the chats waiting for the user")
+                        }
+                    }
+                    .accessibilityIdentifier("statusBar.waitingChats")
+                }
+                Spacer(minLength: 0)
+                if let start {
+                    Button(action: start) {
+                        Image(systemName: "ladybug")
+                            .foregroundStyle(.textSecondary)
+                    }
+                    .help(Text("Send Feedback (⇧⌘B)", bundle: #bundle))
+                    .accessibilityLabel(Text("Send Feedback", bundle: #bundle))
+                    .accessibilityIdentifier("statusBar.feedback")
+                }
             }
+            .buttonStyle(.borderless)
+            .font(.caption)
+            .foregroundStyle(.textSecondary)
+            .lineLimit(1)
             .padding(.horizontal, 10)
             .frame(height: 26)
+            .popover(isPresented: $showsChats, arrowEdge: .top) {
+                StatusChatsPopover(chats: chats) { chat in
+                    showsChats = false
+                    openChat(chat)
+                }
+            }
         }
         .background(.canvas)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("statusBar")
+        .onChange(of: chats.isEmpty) { if chats.isEmpty { showsChats = false } }
+    }
+}
+
+/// The status bar's chats: waiting first, then at work, each the latest first; a click opens the chat.
+struct StatusChatsPopover: View {
+    let chats: [StatusChat]
+    let open: (StatusChat) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(chats) { chat in
+                Button { open(chat) } label: {
+                    HStack(spacing: 8) {
+                        Group {
+                            if chat.state.isWaiting {
+                                Circle()
+                                    .fill(.warning)
+                                    .frame(width: 7, height: 7)
+                            } else {
+                                ProgressView()
+                                    .controlSize(.mini)
+                            }
+                        }
+                        .frame(width: 14)
+                        .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(verbatim: chat.title)
+                                .foregroundStyle(.textPrimary)
+                                .lineLimit(1)
+                            Text(verbatim: "\(chat.projectID) · \(chat.state.label)")
+                                .font(.caption)
+                                .foregroundStyle(.textSecondary)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("statusBar.chats.\(chat.id)")
+            }
+        }
+        .padding(6)
+        .frame(minWidth: 260, maxWidth: 360, alignment: .leading)
+        .accessibilityIdentifier("statusBar.chats")
     }
 }
 
@@ -205,17 +361,41 @@ private struct SendFeedbackMenuItem: View {
     }
 }
 
+private let previewChats = [
+    StatusChat(id: "C2", title: "Refund rules", projectID: "ORD", state: .waitingPermission, updated: Date(timeIntervalSince1970: 1_800_000_200)),
+    StatusChat(id: "C1", title: "Fix the totals", projectID: "ORD", state: .running, updated: Date(timeIntervalSince1970: 1_800_000_100)),
+    StatusChat(id: "C3", title: "Retry the payment", projectID: "PAY", state: .starting, updated: Date(timeIntervalSince1970: 1_800_000_000)),
+]
+
 #Preview("Status Bar", traits: .fixedLayout(width: 600, height: 60)) {
     VStack(spacing: 0) {
         Color.clear
-        StatusBar {}
+        StatusBar(start: {})
     }
 }
 
 #Preview("Status Bar, Dark", traits: .fixedLayout(width: 600, height: 60)) {
     VStack(spacing: 0) {
         Color.clear
-        StatusBar {}
+        StatusBar(start: {})
     }
     .preferredColorScheme(.dark)
+}
+
+#Preview("Status Bar, Chats", traits: .fixedLayout(width: 600, height: 60)) {
+    VStack(spacing: 0) {
+        Color.clear
+        StatusBar(chats: previewChats, start: {})
+    }
+}
+
+#Preview("Status Bar, Chats Without Feedback", traits: .fixedLayout(width: 600, height: 60)) {
+    VStack(spacing: 0) {
+        Color.clear
+        StatusBar(chats: Array(previewChats.prefix(1)), start: nil)
+    }
+}
+
+#Preview("Chats Popover", traits: .sizeThatFitsLayout) {
+    StatusChatsPopover(chats: previewChats) { _ in }
 }
