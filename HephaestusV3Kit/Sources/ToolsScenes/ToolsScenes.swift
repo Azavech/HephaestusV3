@@ -237,6 +237,7 @@ private struct RouteHost<Content: View>: View {
             .environment(\.availableTools, AppData.availableTools)
             .environment(\.feedbackTarget, appData.feedbackTarget)
             .environment(\.chatSession, appData.chats)
+            .environment(\.playSound, ChatSounds.player(appData.chats))
             .environment(\.chatMentions, appData.chatMentions)
             .environment(\.generateTitle, appData.generateTitle)
             .task {

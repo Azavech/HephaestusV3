@@ -272,10 +272,19 @@ public struct ChatRootView: View {
                     .padding(.top, 8)
             }
             if let questions = model.conversation?.waitingQuestions {
-                QuestionsCard(questionSet: questions, compact: layout == .phone, allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { label, text in
+                QuestionsCard(questionSet: questions, projectID: model.conversation?.projectID, compact: layout == .phone, allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { label, text in
                     await model.answer(text, to: label, inSet: questions.id)
                 }
                 .id(questions.id)
+                .padding(.horizontal, layout == .phone ? 12 : 16)
+                .padding(.top, 8)
+            }
+            if let request = model.conversation?.waitingPicker, let catalogs = model.pickerCatalogs {
+                PickerCard(request: request, projectID: model.conversation?.projectID ?? model.project.id, catalogs: catalogs, compact: layout == .phone,
+                           allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { answer in
+                    await model.answerPicker(answer, request: request.requestID)
+                }
+                .id(request.requestID)
                 .padding(.horizontal, layout == .phone ? 12 : 16)
                 .padding(.top, 8)
             }

@@ -17,6 +17,8 @@ struct ChatConversation: Identifiable, Hashable {
     var updated: Date?
     /// Claude's questions waiting for the user's answers, which the card over the composer asks.
     var waitingQuestions: ChatQuestionSet?
+    /// Claude's picker request waiting for the user's answer, which its card over the composer asks.
+    var waitingPicker: PickerItem?
     /// Closed, as V2's Close left it: listed only while closed chats show, its composer replaced.
     var closed = false
     /// What the list's row marks: work, a wait for the user, or an error; nil when idle.
@@ -54,6 +56,7 @@ struct ChatConversation: Identifiable, Hashable {
                 case .questions(let set): set.questions.map { "\($0.label). \($0.question)" }.joined(separator: "\n")
                 case .thinking: nil
                 case .images(let caption, let files): ([caption].compactMap { $0 } + files.map { "· " + $0.name }).joined(separator: "\n")
+                case .picker(let request): request.question
                 }
             }
             return ([author] + lines).joined(separator: "\n")
@@ -81,7 +84,7 @@ struct ChatConversation: Identifiable, Hashable {
 enum ChatMark: Hashable {
     /// Claude starts or works.
     case working
-    /// A card or questions wait for the user.
+    /// A card, questions or a picker request wait for the user.
     case waiting
     case error
 }
@@ -147,6 +150,8 @@ struct ChatBlock: Identifiable, Hashable {
         case thinking(String)
         /// Images Claude showed with `show_image`, under their Markdown caption.
         case images(caption: String?, files: [ChatMessageFile])
+        /// A symbol, color, sound, shortcut, font or animation Claude asked the user to choose, with its answer.
+        case picker(PickerItem)
 
         /// An item Claude read through its tool, and what the tool said.
         static func toolCall(_ reference: ChatReference, _ reading: ToolReading) -> Content {

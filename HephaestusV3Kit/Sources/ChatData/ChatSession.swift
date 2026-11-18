@@ -23,7 +23,7 @@ public enum ChatState: Sendable, Hashable {
     case running
     /// A card waits for the user's answer.
     case waitingPermission
-    /// No turn, and questions wait for the user's answers.
+    /// No turn, and questions or a picker request wait for the user's answers.
     case waitingAnswers
     /// The CLI failed: the transcript says why. The next message tries again.
     case error
@@ -109,6 +109,8 @@ public final class ChatSession {
 
     /// The Mac's name, recorded with the user's answers.
     public let device: String
+    /// The SF Symbols, sounds and fonts that picker requests check and the cards search.
+    public let catalogs: PickerCatalogs
     @ObservationIgnored let projects: ProjectSession
     @ObservationIgnored let launcher: any ClaudeLaunching
     @ObservationIgnored let runner: any ProcessRunning
@@ -156,7 +158,8 @@ public final class ChatSession {
     public init(projects: ProjectSession, tokens: MCPTokens, launcher: any ClaudeLaunching = SystemClaudeLauncher(),
                 runner: any ProcessRunning = SystemProcessRunner.shared, device: String,
                 processEnvironment: [String: String] = ProcessInfo.processInfo.environment, trash: Trash = .system,
-                now: @escaping @Sendable () -> Date = { ISODate.now() }) {
+                catalogs: PickerCatalogs.Sources? = nil, now: @escaping @Sendable () -> Date = { ISODate.now() }) {
+        self.catalogs = PickerCatalogs(sources: catalogs ?? .system(runner: runner, environment: processEnvironment))
         self.projects = projects
         self.tokens = tokens
         self.launcher = launcher
@@ -414,7 +417,7 @@ public final class ChatSession {
             state = .waitingPermission
         } else if let run = runs[chatID], run.inTurn {
             state = run.initialized ? .running : .starting
-        } else if waitingQuestions(in: chatID) != nil {
+        } else if waitingQuestions(in: chatID) != nil || waitingPicker(in: chatID) != nil {
             state = .waitingAnswers
         } else {
             state = .idle

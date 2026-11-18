@@ -12,8 +12,11 @@ final class ChatDrafts {
         texts[id] ?? ""
     }
 
+    /// A text that doesn't change notifies no view: a field writing back what it shows would draw again forever.
     func setText(_ text: String, of id: ChatConversation.ID) {
-        texts[id] = text.isEmpty ? nil : text
+        let new: String? = text.isEmpty ? nil : text
+        guard texts[id] != new else { return }
+        texts[id] = new
     }
 
     func files(of id: ChatConversation.ID) -> [URL] {
@@ -21,7 +24,9 @@ final class ChatDrafts {
     }
 
     func setFiles(_ urls: [URL], of id: ChatConversation.ID) {
-        files[id] = urls.isEmpty ? nil : urls
+        let new: [URL]? = urls.isEmpty ? nil : urls
+        guard files[id] != new else { return }
+        files[id] = new
     }
 }
 

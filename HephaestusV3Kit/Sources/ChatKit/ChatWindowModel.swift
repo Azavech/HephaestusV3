@@ -51,12 +51,18 @@ final class ChatWindowModel {
     /// The message being written: the shown chat's, as V2 kept one per chat.
     var draft: String {
         get { composer.text(of: draftID, in: store.drafts) }
-        set { composer.setText(newValue, of: draftID, in: store.drafts) }
+        set {
+            guard newValue != draft else { return }
+            composer.setText(newValue, of: draftID, in: store.drafts)
+        }
     }
     /// The files going with the next message.
     var files: [URL] {
         get { composer.files(of: draftID, in: store.drafts) }
-        set { composer.setFiles(newValue, of: draftID, in: store.drafts) }
+        set {
+            guard newValue != files else { return }
+            composer.setFiles(newValue, of: draftID, in: store.drafts)
+        }
     }
     /// What Find looks for in the shown conversation; empty for nothing.
     var findQuery = ""
@@ -316,6 +322,24 @@ final class ChatWindowModel {
             failure = error.message
             return false
         }
+    }
+
+    /// The user's answer to Claude's picker request; false, with the reason shown, when it wasn't taken.
+    func answerPicker(_ answer: String, request requestID: String) async -> Bool {
+        guard let id = selection else { return false }
+        do throws(ChatSendError) {
+            try await store.answerPicker(answer, request: requestID, of: id)
+            failure = nil
+            return true
+        } catch {
+            failure = error.message
+            return false
+        }
+    }
+
+    /// The catalogues of the shown conversation's picker card.
+    var pickerCatalogs: PickerCatalogAccess? {
+        selection.map(store.pickerCatalogs(of:))
     }
 
     /// The user's answer to a change Claude asked to make in the shown conversation.

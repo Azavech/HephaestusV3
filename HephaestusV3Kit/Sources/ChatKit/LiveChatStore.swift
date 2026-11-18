@@ -94,6 +94,7 @@ public final class LiveChatStore: ChatStore {
         conversation.turns = turns(session.transcripts[id] ?? [], streaming: session.streaming[id], root: session.root(ofChat: id), chatID: id,
                                    isRunning: session.state(of: id).isRunning)
         conversation.waitingQuestions = session.waitingQuestions(in: id).map(ChatQuestionSet.init)
+        conversation.waitingPicker = session.waitingPicker(in: id)
         conversation.compactions = session.compactions(in: id)
         conversation.isCompacting = session.compacting.contains(id)
         conversation.needsResume = session.needsResume(id)
@@ -192,6 +193,23 @@ public final class LiveChatStore: ChatStore {
         } catch {
             throw ChatSendError(message: error.description)
         }
+    }
+
+    func answerPicker(_ answer: String, request requestID: String, of id: ChatConversation.ID) async throws(ChatSendError) {
+        do throws(ChatError) {
+            try await session.answerPicker(id, requestID: requestID, answer: answer)
+        } catch {
+            throw ChatSendError(message: error.description)
+        }
+    }
+
+    func pickerCatalogs(of id: ChatConversation.ID) -> PickerCatalogAccess {
+        let session = session
+        return PickerCatalogAccess(
+            symbols: { await session.catalogs.symbols() },
+            sounds: { await session.pickerCatalogs(.sound, for: id).sounds },
+            fonts: { await session.pickerCatalogs(.font, for: id).fonts }
+        )
     }
 
     // MARK: Turns
@@ -310,6 +328,8 @@ public final class LiveChatStore: ChatStore {
                 add(ChatBlock(id: request.id, .approval(approval(request, root: root))), id: request.id, date: request.created)
             case .questions(let set):
                 add(ChatBlock(id: set.id, .questions(ChatQuestionSet(set))), id: set.id, date: set.created)
+            case .picker(let request):
+                add(ChatBlock(id: request.id, .picker(request)), id: request.id, date: request.created)
             case .images(let shown):
                 // At the place of the call, in the main conversation whatever agent made it, as V2.
                 let files = shown.images.map { image in

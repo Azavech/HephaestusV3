@@ -13,14 +13,18 @@ public struct MarkdownRenderOptions: Sendable {
     public var projectIdentifiers: Set<String>
     /// Writes each soft line break as a hard line break (docs/documentation-viewer.md › Renderer).
     public var softBreaksAsLineBreaks: Bool
+    /// Reads the markers `![](sf:…)`, `![](color:…)`, `![](sound:…)`, `![](shortcut:…)`, `![](font:…)` and
+    /// `![](animation:…)` (docs/text.md › Markers); nil leaves them images, refused as any other.
+    public var markers: MarkdownMarkerOptions?
 
     public init(baseDirectory: String = "", projectRootPath: String? = nil, stripFrontMatter: Bool = false,
-                projectIdentifiers: Set<String> = [], softBreaksAsLineBreaks: Bool = false) {
+                projectIdentifiers: Set<String> = [], softBreaksAsLineBreaks: Bool = false, markers: MarkdownMarkerOptions? = nil) {
         self.baseDirectory = baseDirectory
         self.projectRootPath = projectRootPath
         self.stripFrontMatter = stripFrontMatter
         self.projectIdentifiers = projectIdentifiers
         self.softBreaksAsLineBreaks = softBreaksAsLineBreaks
+        self.markers = markers
     }
 }
 

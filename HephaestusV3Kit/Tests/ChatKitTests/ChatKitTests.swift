@@ -1,6 +1,7 @@
 import ChatData
 import MCPKit
 import Foundation
+import Synchronization
 import Testing
 import ToolsFoundation
 @testable import ChatKit
@@ -527,5 +528,27 @@ struct AgentRowsTests {
         model.select(rows[1])
         #expect(model.selectedAgent == rows[1] && model.conversation == nil)
         #expect(store.agentConversation(rows[1]).turns.count == 2)
+    }
+}
+
+/// The Chat window drew forever in 1.0.36 and 1.0.37: the composer's field wrote back the draft it showed, and
+/// each write notified the views again.
+@MainActor
+@Suite("Drafts written again")
+struct DraftRewriteTests {
+    @Test("Writing a chat's draft as it is notifies no view")
+    func sameValue() {
+        let store = SampleChatStore.transient()
+        let id = store.conversations(of: ["ORD"]).first!.id
+        let model = ChatWindowModel(project: Project.sample("ORD")!, focus: id, store: store)
+        model.draft = "Half a thought"
+        let notified = Mutex(false)
+        withObservationTracking { _ = model.draft; _ = model.files } onChange: { notified.withLock { $0 = true } }
+        model.draft = "Half a thought"
+        model.files = []
+        store.drafts.setText("Half a thought", of: id)
+        #expect(!notified.withLock { $0 })
+        model.draft = "More"
+        #expect(notified.withLock { $0 })
     }
 }

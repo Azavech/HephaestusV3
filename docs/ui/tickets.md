@@ -504,6 +504,10 @@ Code). The text can be selected.
 - **Links.** A ticket or bundle id of a loaded project, such as ORD-139 or ORD-B3, is a link to it in its
   Tickets window; a web link opens in the browser; a relative link, such as `docs/runbook.md`, opens the
   project's file in its default app. An image shows its alt text, linked when it is on the web.
+- **Markers.** V2's markers draw as in the chats ([Text › Markers](../text.md#markers)): `![](sf:<name>)` the
+  symbol and its name, `![](color:<color>)` a swatch and the color, `![](sound:<name>)` ▶ (which plays it) and its
+  name, `![](shortcut:<shortcut>)` key caps, `![](font:<font>)` its label in its font, `![](animation:<expression>)`
+  the expression; one that isn't valid shows its source.
 - **Code colors.** Code blocks are highlighted for Go, Swift, Markdown, JSON, YAML and Shell, with AZDesign's
   colors: keywords `accentSecondary`; types, properties and headings `info`; builtins and numbers `accent`;
   functions `success`; strings `warning`; comments `textSecondary` (doc comments italic); attributes and

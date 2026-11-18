@@ -31,7 +31,8 @@ public enum ToolPermission: String, Sendable, Hashable, CaseIterable {
     case removeProjects
     /// Renames a chat: always allowed.
     case renameChats
-    /// Asks the user in the calling chat (`ask_questions`): always allowed, to a chat's own Claude only.
+    /// Asks the user in the calling chat (`ask_questions`, the picker requests `ask_symbol`…) or shows images there:
+    /// always allowed, to a chat's own Claude only.
     case askUser
     /// Closes chats (`close_chat`): a chat's own runs; another chat asks first.
     case closeChats

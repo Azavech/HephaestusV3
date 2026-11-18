@@ -98,7 +98,7 @@ Turns have no bubbles. Each turn starts with an author row: a circular badge, 24
 Under the name, in order:
 
 1. **Attachments.** The items the user's message carried, as chips (tool symbol and title; tooltip "*Tool*: *title*").
-2. **Blocks.** Text, Claude's thinking, tool-call rows, approval cards, Claude's questions ([Questions](#questions)) and the app's lines, in the order Claude produced them. Text is selectable. Thinking shows folded under **Thinking** (`brain`, `textSecondary`, `chat.thinking`); unfolded, its Markdown in `textSecondary`. A turn that went well ends with "Done · 34 s" (`checkmark.circle`, `textSecondary`), V2's footer without its cost.
+2. **Blocks.** Text, Claude's thinking, tool-call rows, approval cards, Claude's questions ([Questions](#questions)), its picker requests ([Picker cards](#picker-cards)) and the app's lines, in the order Claude produced them. Text is selectable, and draws V2's markers: SF Symbols, color swatches, sounds with ▶, key caps, fonts and animations ([Text › Markers](../text.md#markers)). Thinking shows folded under **Thinking** (`brain`, `textSecondary`, `chat.thinking`); unfolded, its Markdown in `textSecondary`. A turn that went well ends with "Done · 34 s" (`checkmark.circle`, `textSecondary`), V2's footer without its cost.
 3. **Files.** The files the user's message carried, such as a feedback's screenshot ([Message files](#message-files)).
 
 ### Message files
@@ -430,8 +430,9 @@ the Chat window and of the panel, under the reason a message wasn't sent. It sho
 - **Header.** "Question *A* (*1* of *3*)" in `headline`, selectable, a heading for VoiceOver; at its trailing edge
   **Previous Question** (`chevron.left`), **Next Question** (`chevron.right`), disabled on the first and the last
   question, which step through the questions, answered or not, and **Minimize** (`chevron.down`).
-- **Question.** Its Markdown, inline, selectable.
-- **Single question.** One row per option, the recommended ones first: a radio button, the label in semibold,
+- **Question.** Its Markdown, selectable, its markers drawn and its ids linked ([Text › Markers](../text.md#markers)).
+- **Single question.** One row per option, the recommended ones first: a radio button, the label in semibold (its
+  markers drawn, a sound's ▶ and the ids as text, so that a click anywhere chooses the option: `MarkerText`),
   a **Recommended** tag (`caption`, `accent` on `accent` at 14 %, in a capsule) for the recommended one, and the
   description under it in `callout`, `textSecondary`. A click anywhere in a row chooses it. A last row
   **Answer another way**: its radio button, then a field of one to six lines; typing in it chooses the row.
@@ -460,8 +461,174 @@ the Chat window and of the panel, under the reason a message wasn't sent. It sho
 
 In the transcript, the turn that asked shows the set as a card titled **Questions** (`questionmark.bubble`):
 each question as "*A*. *question*", its options in `textSecondary` ("*label* — *description*", the recommended
-ones tagged), then "Answer: *answer*" or "Not answered yet" (`QuestionsSummary`). The Answers message shows as
+ones tagged), then "Answer: *answer*" or "Not answered yet" (`QuestionsSummary`); the question, the options and
+the answers draw their markers. The Answers message shows as
 the user's turn. The activity line shows nothing while the set waits: the card is the cue.
+
+## Picker cards
+
+V2's picker requests, brought over on the user's request (18 November 2026): Claude asks the user to choose an
+SF Symbol, a color, a sound, a keyboard shortcut, a font or an animation with `ask_symbol`, `ask_color`,
+`ask_sound`, `ask_shortcut`, `ask_font` and `ask_animation` ([MCP › ask_symbol](../mcp.md#ask_symbol); the
+sound, shortcut and animation ones only in an App project). While a request waits for its answer, its card shows
+over the composer of the Chat window and of the panel, under the reason a message wasn't sent and the permission
+card, as the questions card does (`PickerCard`, ChatPickerCard.swift). A chat has one request waiting at most,
+questions included, so the questions card and a picker card never show together ([Data › Picker
+requests](../data.md#picker-requests)).
+
+Every card shares its frame (`PickerCardChrome`), as the questions card's:
+
+- **Header.** The kind, "Symbol", "Color", "Sound", "Shortcut", "Font" or "Animation", in `headline`, selectable,
+  a heading for VoiceOver; at its trailing edge **Minimize** (`chevron.down`).
+- **Question.** Its Markdown (`MarkdownView`), its markers drawn and its ids linked ([Text ›
+  Markers](../text.md#markers)), selectable.
+- **The card's rows**, below.
+- **Answer another way** (`OtherAnswerRow`): a radio button, then a field of one to six lines; a click on the
+  button, or typing in the field, chooses it and leaves the card's own choice.
+- **Buttons.** At the trailing edge **Skip**, which answers `Skipped`, then **Submit**, prominent, ⌘Return (not while
+  a permission card shows, nor while the shortcut recorder records). Submit answers with the card's marker, or the
+  field's text trimmed; it is disabled while "Answer another way" is chosen with an empty field, and in each card's
+  cases below. Once answered, the card goes and Claude gets `<Kind>: <answer>`; an answer not taken shows why over
+  the composer. The animation card puts **Play All** at the leading edge.
+- **Size.** The question and the rows scroll inside the card past 460 pt (340 pt in the panel and the iPhone
+  layout). Card: 12 pt of padding, `surface`, `CardShape(minimum: 10)`, a 1 pt outline in `accent` at 50 %.
+- **Selection.** A chosen cell or row has `accent` at 20 % behind it and a 1.5 pt `accent` outline
+  (`pickerSelection`), so its content keeps its own colors; the recommended suggestion carries a star (`star.fill`,
+  8 pt, `accent`) at its top trailing corner, or at a row's trailing end.
+- **Minimized.** One line: the title and `chevron.up`; a click opens the card again. It lasts while the
+  conversation stays shown, as the questions card's.
+- **When the card appears** the recommended suggestion is chosen, and the fields are empty.
+
+In the transcript, the turn that asked shows the request as a card titled with its kind and a symbol
+(`square.grid.3x3`, `paintpalette`, `speaker.wave.2`, `command`, `textformat`,
+`point.forward.to.point.capsulepath`) in `accent`: the question as Markdown, one line per suggestion in `callout`,
+`textSecondary`, drawn as its marker (a pair `Light ![](color:…), Dark ![](color:…)`; `MarkerText`), the
+recommended one tagged **Recommended**, then "Answer:" and the answer with its markers drawn, or "Not answered
+yet" (`PickerSummary`). Find searches the question, the suggestions' lines and the answer; Copy Conversation lists
+the question. The answer's message shows as the user's turn, its marker drawn.
+
+![The transcript's picker cards: Symbol with its four suggestions drawn as icons, Color with its pairs drawn as swatches, Shortcut with its key caps, each answered; the answer message "Shortcut: ⌥⌘F" as key caps; Claude's reply drawing a symbol, two swatches, key caps, a font, an animation's expression and a sound's ▶](images/chat-picker-markers.png)
+*Picker requests in the transcript: their suggestions and answers drawn as markers.*
+
+### Symbol card
+
+![The symbol card: its question, the search field "Search symbols", a grid of four icons, the first selected and starred, its name and Recommended under the grid, Answer another way, Skip and Submit](images/chat-picker-symbol.png)
+
+- **Search symbols**, a field: the Mac's symbols as the user types ([Data › Picker
+  catalogues](../data.md#picker-catalogues)), read once, off the main actor.
+- **The grid**: the suggestions in Claude's order, then the search's results; the suggestions alone while the field
+  is empty. Cells 36 × 36 pt, 4 pt apart, as many columns as fit, at most 4 rows, then the grid scrolls inside
+  itself. A cell shows the symbol (`title3`, `textPrimary`), or `questionmark.square.dashed` for a name this Mac
+  can't draw, with the name as tooltip and label; a click chooses it.
+- Under the grid, the chosen symbol's name, with **Recommended** when it is the recommended one; empty while
+  "Answer another way" is chosen.
+- Answers `![](sf:<name>)`.
+
+### Color card
+
+![The color card: a grid of swatches, the three pair suggestions split by their diagonal, the first outlined and starred, then the system colors; the Light and dark switch on, the Light row selected with its color well and #FFFFFF, the Dark row with #1C1C1E](images/chat-picker-color.png)
+
+- **The grid** of swatches: the suggestions, then every system color name ([Text › System
+  colors](../text.md#system-colors)) that isn't a suggestion, laid out as the symbol grid. A swatch is 28 × 28 pt,
+  `CardShape(minimum: 6)`, a 1 pt border of `textSecondary` at 30 %, drawn as the Mac draws the color in the
+  window's appearance; tooltip the color. A pair suggestion is split by the diagonal from its bottom leading corner
+  to its top trailing one, its light color above, tooltip "Light <color>, Dark <color>"; while the switch is off it
+  shows and gives its light color only.
+- A cell is outlined when its color is the card's, or the selected row's while the switch is on; a pair when its
+  two colors are the two rows'; none while "Answer another way" is chosen. Colors compare as [Text › System
+  colors](../text.md#system-colors) says.
+- **Light and dark**, a switch: on when Claude asked for a pair. Turning it on gives both rows the card's color and
+  selects Light; off gives the card the Light row's.
+- **The rows**: switch off, one row: the color well, then the hex field. On, **Light** and **Dark**, each with its
+  label, its well and its field; the selected row has `accent` at 15 % behind it; a click on a row, its well or its
+  field selects it.
+- **The color well** is AppKit's in its expanded style (`ColorWell`, `NSColorWell(style: .expanded)`, no opacity):
+  its swatch shows the row's color, its button opens the color panel; a color picked is made sRGB and given as
+  `#RRGGBB` in uppercase.
+- **The hex field**, system monospaced: the row's hex color, or its system color's name; the row takes the trimmed
+  text once it is a hex color or a name; a hex color is written in uppercase when the field loses the focus.
+- A click on a color sets the card's color, or the selected row's; a pair sets both rows, or the card to its light
+  color while the switch is off.
+- Answers `![](color:<color>)` or `Light ![](color:<light>), Dark ![](color:<dark>)`, a hex color in uppercase;
+  Submit is disabled while a field shown holds neither a hex color nor a system color name.
+
+### Sound card
+
+![The sound card: the search field "Search sounds", three rows "Glass.aiff · macOS" (selected and starred), "Ping.aiff · macOS", "Pop.aiff · macOS", Answer another way, Skip and Submit](images/chat-picker-sound.png)
+
+- **Search sounds**: the project's sound catalogue ([Data › Picker catalogues](../data.md#picker-catalogues)), read
+  when the card appears; until it arrives the search lists nothing.
+- **The list**: the suggestions, then the search's results, the suggestions alone while the field is empty; one
+  line each, 24 pt, "<file> · <source>" (`textPrimary`, then `textSecondary`), such as "sms-received1.caf · iOS
+  26.1", tooltip the name; at most 8 rows, then it scrolls inside itself.
+- A click on a row chooses it and plays its sound, also when it is already chosen ([Text ›
+  Markers › Sounds](../text.md#sounds)); the recommended one is chosen without playing when the card appears. A
+  failure shows **Play Sound failed** with its message.
+- Answers `![](sound:<name>)`.
+
+### Shortcut card
+
+![The shortcut card: four suggestions drawn as key caps, ⇧⌘F outlined and starred, the recorder field "Record Shortcut", Answer another way, Skip and Submit](images/chat-picker-shortcut.png)
+
+- **The suggestions**, buttons that show their key caps (`KeyCaps`: each cap `callout` medium on `surfaceSunken`,
+  `CardShape(minimum: 4)`, a 1 pt border of `textSecondary` at 50 %), tooltip the shortcut, wrapping onto as many
+  rows as needed (`FlowStack`); a click chooses one.
+- **The recorder field**: the recorded shortcut's key caps, or "Record Shortcut" in `textSecondary`; at least
+  160 pt wide. A click chooses it and starts recording: it then has `surfaceSunken` behind it and a 2 pt `accent`
+  border. While it records, every key press of the app goes to it (`ShortcutRecording`, an `NSEvent` local monitor),
+  menus and ⌘Return included: a modifier alone records nothing; another key records the shortcut of that key and
+  the modifiers held among ⌃ ⌥ ⇧ ⌘ ([Text › Shortcut notation](../text.md#shortcut-notation)) and stops; a key the
+  notation can't write records nothing and recording goes on. A click anywhere, or a window losing its key status,
+  stops it; the field keeps its shortcut. The combinations macOS takes first, such as ⌘⇥, never reach it.
+- **Warnings** under the recorder, for the chosen shortcut: "Used by macOS: <action>" for a standard macOS shortcut
+  ([Text › Standard macOS shortcuts](../text.md#standard-macos-shortcuts)), then "Used by the app: <command>" for
+  one of the request's `inUse`, each with `exclamationmark.triangle.fill`, in `warning`. They don't block Submit.
+- Answers `![](shortcut:<shortcut>)`, a key `(`, `)` or `\` written with a `\` before it; Submit is disabled while
+  the recorder is chosen without a shortcut.
+
+![Dark: the shortcut card with ⌘L chosen, the warning "Used by the app: Copy Link" under the recorder](images/chat-picker-shortcut-warning.png)
+
+### Font card
+
+![The font card: the search field "Search fonts", the suggestions drawn in their fonts, "System Rounded · Semibold · 17 pt" outlined and starred, then the families and text styles, the Weight menu on Semibold, Size 17 pt, the sample in the chosen font, Answer another way, Skip and Submit](images/chat-picker-font.png)
+
+- **Search fonts**: the project's font catalogue ([Data › Picker catalogues](../data.md#picker-catalogues)), read
+  when the card appears; it registers the project's faces so that every view can draw them.
+- **The list**: the suggestions, then the search's results, an empty query listing every family and text style;
+  one line each. A family suggestion reads "<family> · <weight> · <size> pt" in its family and weight at the
+  card's text size; a text style its notation in that style; a family of the results its name, in its `Regular`
+  face or the one nearest 0; a font the Mac can't draw in the card's font. At most 8 rows, then it scrolls.
+- **Weight**, a menu of the chosen family's weights, then **Size**, a field, and "pt": a family suggestion sets
+  them to its own; a family of the results keeps the size and takes the nearest weight ([Data › Picker
+  catalogues](../data.md#picker-catalogues)); before a family suggestion sets them they hold `Regular` and `17`.
+  Both are disabled while a text style or "Answer another way" is chosen.
+- **The sample**: the request's sample in the chosen font, a family at the field's size, wrapping, at most 200 pt
+  high then scrolling, on `surfaceSunken`; empty while "Answer another way" is chosen and while the size isn't one.
+- Answers `![](font:<family>/<weight>/<size>)` with the menu's weight and the field's size (`17`, `15.5`), or
+  `![](font:<style>)`; Submit is disabled while a family is chosen and the size isn't a size.
+
+### Animation card
+
+![The animation card: three suggestions with their expressions in monospaced text and their lanes, .snappy chosen and starred; the Custom row with its preset menu, its expression and lane, the Duration and Extra Bounce sliders; Play All, Skip and Submit](images/chat-picker-animation.png)
+
+- **One row per suggestion**: a radio button, the expression as Claude wrote it in the system monospaced font, a
+  star after the recommended one, and at the trailing end its lane. A click anywhere in the row chooses it and
+  plays its lane.
+- **Custom**: a radio button, "Custom", a menu of the presets `.smooth`, `.snappy`, `.bouncy`, `.spring`,
+  `.easeIn`, `.easeOut`, `.easeInOut`, `.linear`, the row's expression (every parameter of its preset,
+  `fullExpression`), and its lane. Under it, one slider per parameter of the preset, with its label and its value
+  (two decimals, then " s" for the duration): **Duration** 0.1 to 2 s, **Bounce** -1 to 1 for `.spring`, **Extra
+  Bounce** 0 to 1 for `.smooth`, `.snappy` and `.bouncy`, each value rounded to two decimals ([Text › Animation
+  expressions](../text.md#animation-expressions)). Choosing a preset or moving a slider chooses the row; choosing a
+  preset, a click on the row and releasing a slider play its lane. Changing the preset keeps the three values.
+  When the card appears, the row holds the recommended suggestion's preset and parameters, SwiftUI's defaults for
+  those it leaves out.
+- **A lane** (`AnimationLane`): a capsule track 160 × 14 pt in `textSecondary` at 20 %, a circle 14 pt across in `accent` resting at
+  its left end; playing puts it back at the left end, then animates it to the right end with SwiftUI's animation of
+  the expression, where it stays (a spring with bounce passes the end before it settles). The user starts each
+  play, so it plays under Reduce Motion too.
+- **Play All** (`play.fill`), at the leading edge of the buttons: plays every lane together.
+- Answers `![](animation:<expression>)`: the suggestion as Claude wrote it, or the Custom row's expression.
 
 ## New chat
 
@@ -854,7 +1021,7 @@ notifications, as [Settings ▸ Notifications](navigation.md#settings--notificat
 
 | Event | When | Detail without a summary |
 | --- | --- | --- |
-| **Needs you** | A chat starts to wait for the user: a card (Waiting for your answer) or questions (Waiting for your answers), from another state. | The first line of Claude's last reply of the turn; without one, "Waiting for your permission" or "Waiting for your answers". |
+| **Needs you** | A chat starts to wait for the user: a card (Waiting for your answer), questions or a picker request (Waiting for your answers), from another state. | The first line of Claude's last reply of the turn; without one, "Waiting for your permission" or "Waiting for your answers". |
 | **Finished** | A turn ends and the chat is idle, unless Stop ended it. | The first line of Claude's last reply of the turn; without one, "Claude finished replying". |
 
 - **No event** for a chat's first state (loading, a new chat), so a relaunch posts nothing for the chats
@@ -867,8 +1034,10 @@ notifications, as [Settings ▸ Notifications](navigation.md#settings--notificat
 - **Summary.** With **AI-generated summary** on, the app runs the internal skill `notification-summary`
   ([System Prompts](system-prompts.md)) on what happened, then posts its answer: at most 30 s, two runs at a
   time, the others waiting in order. Its message is "Claude's reply:" and the reply (finished), "Permission
-  request:", "Tool: <name>", "Input: <the input as JSON, keys sorted>" (a card), or "Questions:" and one
-  "<label>: <question>" line each (questions), each part cut at 4,000 characters. The answer is made one
+  request:", "Tool: <name>", "Input: <the input as JSON, keys sorted>" (a card), "Questions:" and one
+  "<label>: <question>" line each (questions), or V2's "Symbol request:", "Color request:", "Sound request:",
+  "Shortcut request:", "Font request:" or "Animation request:" and the question (a picker request), each part cut
+  at 4,000 characters. The answer is made one
   line: runs of white space become one space, a leading "Summary:" and surrounding quotes go, and it is cut
   at the last space before 150 characters. A failure, a timeout or an empty answer gives the detail. A
   finished turn without reply text runs nothing. The summary is dropped when, by its end, a newer event of
@@ -962,6 +1131,18 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 | Answer another way | `chat.questions.other`, `chat.questions.other.field`; `chat.questions.own.<index>` | The radio button and the field; a multiple question's fields |
 | Skip, Next or Submit | `chat.questions.skip`, `chat.questions.submit` | Buttons |
 | Minimized card | `chat.questions.expand` | A button with the header's text |
+| Picker card | `chat.<kind>`: `chat.symbol`, `chat.color`, `chat.sound`, `chat.shortcut`, `chat.font`, `chat.animation` | A container over the composer |
+| Its header, minimize, question | `chat.<kind>.header`, `chat.<kind>.minimize`, `chat.<kind>.text` | "Symbol"…; a button; the Markdown |
+| Answer another way | `chat.<kind>.other`, `chat.<kind>.other.field` | The radio button and the field |
+| Skip, Submit | `chat.<kind>.skip`, `chat.<kind>.submit` | Buttons |
+| Minimized picker card | `chat.<kind>.expand` | A button with the title |
+| Symbol card | `chat.symbol.search`, `chat.symbol.cell.<name>`, `chat.symbol.selected` | The field; a cell, labelled with the name, the chosen one selected; the chosen name |
+| Color card | `chat.color.cell.<index>`, `chat.color.lightAndDark`, `chat.color.well`, `chat.color.hex`; `chat.color.row.light`, `chat.color.row.dark`, `chat.color.well.light`, `chat.color.hex.light` (and `dark`) | A swatch, labelled with its color or pair; the switch; the well and field of one color, or of each row |
+| Sound card | `chat.sound.search`, `chat.sound.row.<index>` | The field; a row, labelled with the sound's name |
+| Shortcut card | `chat.shortcut.suggestion.<index>`, `chat.shortcut.recorder`, `chat.shortcut.warning.<index>` | A suggestion, labelled with its shortcut; the recorder, a button labelled with its shortcut or "Record Shortcut"; a warning |
+| Font card | `chat.font.search`, `chat.font.row.<index>`, `chat.font.family.<name>`, `chat.font.style.<style>`, `chat.font.weight`, `chat.font.size`, `chat.font.preview` | The field; a suggestion, a family or a text style of the results; the menu, the field, the sample |
+| Animation card | `chat.animation.row.<index>`, `chat.animation.custom`, `chat.animation.preset`, `chat.animation.duration`, `chat.animation.bounce`, `chat.animation.extraBounce`, `chat.animation.playAll` | A suggestion's row; the Custom row's button, its menu and sliders; Play All |
+| Transcript's picker card | `chat.picker.<request id>` | A container: title, question, suggestions, answer |
 | Questions in the transcript | `chat.questionSet.<set id>` | A container: each question, its options and its answer |
 | Add Files… | `chat.composer.addFiles` | A button, "Add Files…" |
 | A file waiting | `chat.composer.file.<name>`, its remove button `chat.composer.file.<name>.remove` | The file's name and size; "Remove *name*" |
@@ -1048,6 +1229,8 @@ Previews use the windows' models with the sample conversations, and with the sam
 - `ChatWindowView.swift`: "Chat Window" (`chat-checkout`, 720 × 820 pt), "Chat Window, Dark" (`chat-release-notes`), "Chat Not Found".
 - `ChatStatusViews.swift`: "Claude CLI Line, Checking", "Claude CLI Line, Not Found".
 - `ChatTranscript.swift`: "Approval, Waiting", "Approval, Allowed", "Approval, Not Allowed, Dark", "Approval, Narrow, Largest Text" (the note and the answer stacked).
+- `ChatPickerCard.swift`: "Picker Requests in the Transcript" (Symbol waiting, Color and Shortcut answered, 560 × 900 pt), "Picker Requests in the Transcript, Dark" (Font answered, Animation waiting).
+- `ChatSymbolCard.swift`, `ChatColorCard.swift`, `ChatSoundCard.swift`, `ChatShortcutCard.swift`, `ChatFontCard.swift`, `ChatAnimationCard.swift`: each card waiting ("Symbol Card, Waiting"…), dark ("Symbol Card, Dark", "Color Card, One Color, Dark", "Shortcut Card, Warning, Dark"…) and "…, Narrow, Largest Text" (340 to 360 pt), on the requests of `PickerItem.preview(_:)` and the Mac's catalogues (`PickerCatalogAccess.samples`).
 - `ChatSettingsView.swift`: "Settings" (the CLI found, 520 × 440 pt), "Settings, CLI Not Found", "Settings, Looking", "Settings, Dark", "Settings, Largest Text".
 - `FeedbackView.swift` (size that fits, on a `FeedbackModel` with a stand-in sender, the screenshot a gradient, the feedback project Shop): "Empty", "Filled, Dark" (a comment of two paragraphs), "Screenshot Left Out", "Not Captured", "No Claude CLI" (Send disabled, "Claude CLI is not available: Claude CLI not found.").
 

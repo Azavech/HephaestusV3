@@ -60,6 +60,13 @@ public indirect enum MarkdownInline: Sendable, Equatable {
     case itemID(String, code: Bool)      // a ticket or bundle id of a loaded project; code: written as a code span
     case softBreak
     case lineBreak
+    // Markers (docs/text.md › Markers), read when the options have `markers`:
+    case symbol(String)                  // an SF Symbol the Mac has, by name
+    case color(String)                   // a hex color #RRGGBB or a system color name, as written
+    case sound(String)                   // a sound's name, unchecked
+    case shortcut(String, keyCaps: [String]) // a shortcut of the notation and its key caps
+    case font(String, label: String)     // a font of the notation and how it reads
+    case animation(String)               // a valid SwiftUI animation expression, as written
 }
 
 public enum MarkdownImageSource: Sendable, Equatable {

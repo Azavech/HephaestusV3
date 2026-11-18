@@ -234,7 +234,9 @@ struct ChatTurnView: View {
         case .notice(let notice):
             NoticeRow(notice: notice)
         case .questions(let set):
-            QuestionsSummary(questionSet: set)
+            QuestionsSummary(questionSet: set, projectID: projectID)
+        case .picker(let request):
+            PickerSummary(request: request, projectID: projectID)
         case .thinking(let text):
             ThinkingRow(text: text)
         case .images(let caption, let files):

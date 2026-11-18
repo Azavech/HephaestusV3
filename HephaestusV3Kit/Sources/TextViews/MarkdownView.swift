@@ -8,24 +8,44 @@ import ToolsFoundation
 /// Markdown as the tools show it (docs/text.md): a ticket's description or comment, Claude's reply. Headings,
 /// paragraphs, quotes, lists with task boxes, highlighted code blocks with a Copy button, tables and rules.
 /// Ticket and bundle ids of the loaded projects become links that open them in their Tickets window; other
-/// links open in the browser. The text can be selected.
+/// links open in the browser. V2's markers draw as symbols, swatches, key caps, fonts, sounds and animations
+/// (docs/text.md › Markers). The text can be selected.
 public struct MarkdownView: View {
     let blocks: [MarkdownBlock]
     let options: MarkdownRenderOptions
-
-    @Environment(\.openRoute) private var openRoute
 
     /// `markdown` rendered with the identifiers of `projects` linked. With `keepsLineBreaks`, each line break is
     /// kept, as people type them in tickets; without, Markdown's own rules join a paragraph's lines. Relative
     /// links open the files of the project at `root`.
     public init(_ markdown: String, projects: Set<Project.ID> = [], root: String? = nil, keepsLineBreaks: Bool = true) {
-        options = MarkdownRenderOptions(projectRootPath: root, projectIdentifiers: projects, softBreaksAsLineBreaks: keepsLineBreaks)
+        options = MarkdownRenderOptions(projectRootPath: root, projectIdentifiers: projects, softBreaksAsLineBreaks: keepsLineBreaks,
+                                        markers: Self.markerOptions)
         blocks = MarkdownBlockRenderer.render(markdown, options: options)
     }
+
+    /// Every Markdown view reads the six kinds of markers; a symbol marker draws when this Mac has the symbol.
+    public static let markerOptions = MarkdownMarkerOptions(isSymbolAvailable: { NSImage(systemSymbolName: $0, accessibilityDescription: nil) != nil })
 
     public var body: some View {
         MarkdownBlocks(blocks: blocks)
             .textSelection(.enabled)
+            .modifier(MarkdownLinkActions(root: options.projectRootPath, options: options))
+    }
+}
+
+/// What a click on a link of rendered text does: an id opens its ticket or bundle in its Tickets window; a sound
+/// marker's ▶ plays the sound of the view's project, a failure shown in the alert "Play Sound failed"; a relative
+/// link opens the project's file in its default app; other links open in the browser.
+struct MarkdownLinkActions: ViewModifier {
+    let root: String?
+    let options: MarkdownRenderOptions
+
+    @Environment(\.openRoute) private var openRoute
+    @Environment(\.playSound) private var playSound
+    @State private var soundFailure: String?
+
+    func body(content: Content) -> some View {
+        content
             .environment(\.openURL, OpenURLAction { url in
                 if let id = MarkdownItemIDs.id(fromHref: url.absoluteString) {
                     // `ORD-142` and the bundle `ORD-B2` belong to the project `ORD`.
@@ -33,14 +53,30 @@ public struct MarkdownView: View {
                     openRoute(.tool(.tickets, project: project, focus: id))
                     return .handled
                 }
+                if let name = SoundLinks.name(from: url) {
+                    Task {
+                        guard let playSound else {
+                            soundFailure = String(localized: "This window can't play sounds.", bundle: #bundle)
+                            return
+                        }
+                        soundFailure = await playSound(name, projectRoot: root)
+                    }
+                    return .handled
+                }
                 // A relative link names a file of the project: it opens in its default app.
-                if MarkdownLinks.scheme(of: url.absoluteString) == nil, let root = options.projectRootPath,
+                if MarkdownLinks.scheme(of: url.absoluteString) == nil, let root,
                    let reference = MarkdownLinks.resolve(url.absoluteString, options: options) {
                     NSWorkspace.shared.open(URL(fileURLWithPath: root).appendingPathComponent(reference.path))
                     return .handled
                 }
                 return .systemAction
             })
+            .alert(String(localized: "Play Sound failed", bundle: #bundle, comment: "A sound of a marker couldn't be played"),
+                   isPresented: Binding(get: { soundFailure != nil }, set: { if !$0 { soundFailure = nil } })) {
+                Button(String(localized: "OK", bundle: #bundle)) { soundFailure = nil }
+            } message: {
+                Text(verbatim: soundFailure ?? "")
+            }
     }
 }
 
@@ -61,16 +97,18 @@ private struct MarkdownBlocks: View {
 private struct MarkdownBlockView: View {
     let block: MarkdownBlock
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         switch block {
         case let .heading(level, _, content):
-            Text(MarkdownInlines.attributed(content))
+            MarkdownInlines.text(content, dark: colorScheme == .dark)
                 .font(MarkdownInlines.headingFont(level))
                 .foregroundStyle(.textPrimary)
                 .padding(.top, level <= 2 ? 4 : 0)
                 .accessibilityAddTraits(.isHeader)
         case .paragraph(let content):
-            Text(MarkdownInlines.attributed(content))
+            MarkdownInlines.text(content, dark: colorScheme == .dark)
                 .fixedSize(horizontal: false, vertical: true)
         case .blockQuote(let blocks):
             MarkdownBlocks(blocks: blocks)
@@ -136,14 +174,14 @@ private struct MarkdownBlockView: View {
                 Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 6) {
                     GridRow {
                         ForEach(Array(table.header.enumerated()), id: \.offset) { _, cell in
-                            Text(MarkdownInlines.attributed(cell)).fontWeight(.semibold)
+                            MarkdownInlines.text(cell, dark: colorScheme == .dark).fontWeight(.semibold)
                         }
                     }
                     Divider()
                     ForEach(Array(table.rows.enumerated()), id: \.offset) { _, row in
                         GridRow {
                             ForEach(Array(row.enumerated()), id: \.offset) { _, cell in
-                                Text(MarkdownInlines.attributed(cell))
+                                MarkdownInlines.text(cell, dark: colorScheme == .dark)
                             }
                         }
                     }
@@ -164,6 +202,62 @@ private struct MarkdownBlockView: View {
 enum MarkdownInlines {
     static func attributed(_ inlines: [MarkdownInline]) -> AttributedString {
         inlines.reduce(into: AttributedString()) { $0 += piece($1) }
+    }
+
+    /// The inlines as one text: an attributed string, joined with the images of the symbol and color markers
+    /// when there are some (docs/text.md › Markers). `dark` draws the swatches for the dark appearance.
+    static func text(_ inlines: [MarkdownInline], dark: Bool) -> Text {
+        guard inlines.contains(where: drawsImage) else { return Text(attributed(inlines)) }
+        var pieces: [Text] = []
+        var pending = AttributedString()
+        func flush() {
+            guard !pending.characters.isEmpty else { return }
+            pieces.append(Text(pending))
+            pending = AttributedString()
+        }
+        func walk(_ inlines: [MarkdownInline], intent: InlinePresentationIntent) {
+            for inline in inlines {
+                switch inline {
+                case .emphasis(let content): walk(content, intent: intent.union(.emphasized))
+                case .strong(let content): walk(content, intent: intent.union(.stronglyEmphasized))
+                case .strikethrough(let content): walk(content, intent: intent.union(.strikethrough))
+                case .symbol(let name):
+                    flush()
+                    pieces.append(styled(Text(Image(systemName: name)), intent: intent))
+                    pending += adding(intent, to: AttributedString(" " + name))
+                case .color(let value):
+                    flush()
+                    if let swatch = ColorSwatches.swatchImage(value, dark: dark) {
+                        pieces.append(Text(Image(nsImage: swatch)).baselineOffset(-1))
+                    }
+                    pending += adding(intent, to: AttributedString(" " + value))
+                default:
+                    pending += intent.isEmpty ? piece(inline) : adding(intent, to: piece(inline))
+                }
+            }
+        }
+        walk(inlines, intent: [])
+        flush()
+        return pieces.dropFirst().reduce(pieces.first ?? Text(verbatim: "")) { joined, next in
+            Text("\(joined)\(next)", bundle: #bundle, comment: "Two pieces of a line of Markdown, one after the other: never translated")
+        }
+    }
+
+    /// Whether an inline, or one inside it, draws an image: a symbol or a color marker.
+    private static func drawsImage(_ inline: MarkdownInline) -> Bool {
+        switch inline {
+        case .symbol, .color: true
+        case .emphasis(let content), .strong(let content), .strikethrough(let content): content.contains(where: drawsImage)
+        default: false
+        }
+    }
+
+    private static func styled(_ text: Text, intent: InlinePresentationIntent) -> Text {
+        var text = text
+        if intent.contains(.stronglyEmphasized) { text = text.bold() }
+        if intent.contains(.emphasized) { text = text.italic() }
+        if intent.contains(.strikethrough) { text = text.strikethrough() }
+        return text
     }
 
     private static func piece(_ inline: MarkdownInline) -> AttributedString {
@@ -199,6 +293,35 @@ enum MarkdownInlines {
             return AttributedString(" ")
         case .lineBreak:
             return AttributedString("\n")
+        case .symbol(let name):
+            // Drawn with its image by `text(_:dark:)`; its name alone here.
+            return AttributedString(name)
+        case .color(let value):
+            return AttributedString(value)
+        case .sound(let name):
+            // ▶ plays the sound (docs/text.md › Markers › Sounds).
+            var play = AttributedString("▶")
+            play.link = SoundLinks.href(for: name)
+            return play + AttributedString(" " + name)
+        case .shortcut(_, let keyCaps):
+            // Key caps as text: each on the sunken surface, a thin space apart.
+            var caps = AttributedString()
+            for (index, cap) in keyCaps.enumerated() {
+                if index > 0 { caps += AttributedString("\u{2009}") }
+                var key = AttributedString("\u{2009}" + cap + "\u{2009}")
+                key.backgroundColor = .surfaceSunken
+                key.font = .body.weight(.medium)
+                caps += key
+            }
+            return caps
+        case let .font(value, label):
+            var text = AttributedString(label)
+            if let notation = FontNotation(value), let font = FontFaces.markerFont(notation) { text.font = font }
+            return text
+        case .animation(let expression):
+            var text = AttributedString(expression)
+            text.font = .code(.body)
+            return text
         }
     }
 

@@ -4,6 +4,9 @@
     "%@ is larger than 20 MB." : {
 
     },
+    "%@ is not a sound of this Mac or of the project." : {
+
+    },
     "%@ of %@ tokens used · %@ left before compaction" : {
       "comment" : "The context indicator's tooltip: tokens used, the window, tokens left",
       "localizations" : {
@@ -111,14 +114,17 @@
     "Always allowed by %@" : {
       "comment" : "The user allowed it and its kind, on the Mac named"
     },
+    "Animation" : {
+      "comment" : "The title of Claude's request to choose an animation"
+    },
     "Answer (⌘↩)" : {
 
     },
     "Answer another way" : {
 
     },
-    "Answer: %@" : {
-      "comment" : "The user's answer to one of Claude's questions"
+    "Answer:" : {
+      "comment" : "Before the user's answer to Claude's picker request"
     },
     "Anything not pre-approved is denied without asking." : {
 
@@ -144,6 +150,24 @@
     "Asked a question" : {
       "comment" : "Claude asked the user one question"
     },
+    "Asked for a color" : {
+      "comment" : "Claude asked the user to choose a color"
+    },
+    "Asked for a font" : {
+      "comment" : "Claude asked the user to choose a font"
+    },
+    "Asked for a shortcut" : {
+      "comment" : "Claude asked the user to choose a keyboard shortcut"
+    },
+    "Asked for a sound" : {
+      "comment" : "Claude asked the user to choose a sound"
+    },
+    "Asked for a symbol" : {
+      "comment" : "Claude asked the user to choose an SF Symbol"
+    },
+    "Asked for an animation" : {
+      "comment" : "Claude asked the user to choose an animation"
+    },
     "Attach %@" : {
 
     },
@@ -152,6 +176,9 @@
     },
     "Auto" : {
       "comment" : "A permission mode\nThe model's own context window"
+    },
+    "Bounce" : {
+      "comment" : "A spring animation's bounce"
     },
     "Call APIs that change data" : {
 
@@ -305,6 +332,9 @@
     "Closed chats are hidden." : {
 
     },
+    "Color" : {
+      "comment" : "The title of Claude's request to choose a color"
+    },
     "Comment" : {
 
     },
@@ -332,6 +362,12 @@
     "Copy Conversation" : {
 
     },
+    "Custom" : {
+      "comment" : "The animation card's row of an animation of the user's own"
+    },
+    "Dark" : {
+      "comment" : "The color of the dark appearance"
+    },
     "Delete" : {
 
     },
@@ -355,6 +391,9 @@
     },
     "Done · %@" : {
       "comment" : "The end of Claude's turn and how long it took"
+    },
+    "Duration" : {
+      "comment" : "An animation's duration, in seconds"
     },
     "Edit the project's files" : {
 
@@ -380,6 +419,9 @@
     "Exclude Screenshot" : {
 
     },
+    "Extra Bounce" : {
+      "comment" : "The extra bounce of a smooth, snappy or bouncy animation"
+    },
     "Extra High" : {
       "comment" : "An effort level"
     },
@@ -398,8 +440,14 @@
     "Folders cannot be attached." : {
 
     },
+    "Font" : {
+      "comment" : "The title of Claude's request to choose a font"
+    },
     "Found automatically" : {
 
+    },
+    "Hex Color" : {
+      "comment" : "The field of a color's hex value or system name"
     },
     "Hide Chat" : {
 
@@ -442,6 +490,23 @@
     },
     "Jump to Latest" : {
 
+    },
+    "Light" : {
+      "comment" : "The color of the light appearance"
+    },
+    "Light %@, Dark %@" : {
+      "comment" : "A light and dark pair's tooltip",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Light %1$@, Dark %2$@"
+          }
+        }
+      }
+    },
+    "Light and dark" : {
+      "comment" : "Switches the color card between one color and a light and dark pair"
     },
     "Listed the chats of %@" : {
 
@@ -559,6 +624,9 @@
     "Not saved: %@" : {
 
     },
+    "OK" : {
+
+    },
     "Off, tool windows have no Chat button and no panel. The Chat window stays in the Window menu." : {
 
     },
@@ -615,8 +683,17 @@
     "Plan Only" : {
       "comment" : "A permission mode"
     },
+    "Play All" : {
+      "comment" : "Plays every lane of the animation card"
+    },
+    "Play Sound failed" : {
+      "comment" : "A sound of a marker couldn't be played"
+    },
     "Presented a plan" : {
       "comment" : "A chat's call"
+    },
+    "Preset" : {
+      "comment" : "The menu of SwiftUI's animation presets"
     },
     "Previous Match" : {
 
@@ -668,6 +745,9 @@
     "Recommended" : {
       "comment" : "Marks the option Claude recommends"
     },
+    "Record Shortcut" : {
+      "comment" : "The placeholder of the field that records a key combination"
+    },
     "Remove %@" : {
 
     },
@@ -713,6 +793,15 @@
     "Screenshot of the window" : {
 
     },
+    "Search fonts" : {
+
+    },
+    "Search sounds" : {
+
+    },
+    "Search symbols" : {
+
+    },
     "Searched for “%@”" : {
       "comment" : "A chat's call: Claude searched the project's files"
     },
@@ -745,6 +834,9 @@
     "Sent a message to an agent" : {
       "comment" : "A chat's call"
     },
+    "Shortcut" : {
+      "comment" : "The title of Claude's request to choose a keyboard shortcut"
+    },
     "Show All" : {
       "comment" : "Shows a call's whole result\nShows a card's whole preview"
     },
@@ -766,6 +858,9 @@
     "Show the Questions" : {
 
     },
+    "Show the Request" : {
+      "comment" : "Opens a minimized picker card"
+    },
     "Show the chat panel in tool windows" : {
 
     },
@@ -775,8 +870,14 @@
     "Showed an image" : {
       "comment" : "Claude showed the user one image"
     },
+    "Size" : {
+      "comment" : "The label of the font card's size field"
+    },
     "Skip" : {
       "comment" : "Skips one of Claude's questions"
+    },
+    "Sound" : {
+      "comment" : "The title of Claude's request to choose a sound"
     },
     "Standing dynamic-workflow orchestration for this chat, at any effort level." : {
 
@@ -835,6 +936,9 @@
     "Summarize run %@" : {
 
     },
+    "Symbol" : {
+      "comment" : "The title of Claude's request to choose an SF Symbol"
+    },
     "System Prompts" : {
 
     },
@@ -874,6 +978,12 @@
     "Used %@" : {
       "comment" : "A call of a tool, by its name"
     },
+    "Used by macOS: %@" : {
+      "comment" : "A shortcut macOS already uses, then its action"
+    },
+    "Used by the app: %@" : {
+      "comment" : "A shortcut the app already uses, then its command"
+    },
     "Used the skill %@" : {
       "comment" : "A chat's call"
     },
@@ -885,6 +995,9 @@
     },
     "Waiting for your answer" : {
       "comment" : "A card waits for the user"
+    },
+    "Weight" : {
+      "comment" : "The menu of the font card's weights"
     },
     "What calls %@?" : {
       "comment" : "A suggestion; the value is a service, such as payments-api"
@@ -933,6 +1046,9 @@
     },
     "Your answer" : {
 
+    },
+    "pt" : {
+      "comment" : "After the font card's size: points"
     }
   },
   "version" : "1.0"

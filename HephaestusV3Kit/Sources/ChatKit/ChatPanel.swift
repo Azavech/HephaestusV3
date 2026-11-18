@@ -70,10 +70,19 @@ public struct ChatPanel: View {
                     .padding(.top, 8)
             }
             if let questions = model.conversation?.waitingQuestions {
-                QuestionsCard(questionSet: questions, compact: true, allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { label, text in
+                QuestionsCard(questionSet: questions, projectID: model.conversation?.projectID, compact: true, allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { label, text in
                     await model.answer(text, to: label, inSet: questions.id)
                 }
                 .id(questions.id)
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+            }
+            if let request = model.conversation?.waitingPicker, let catalogs = model.pickerCatalogs {
+                PickerCard(request: request, projectID: model.conversation?.projectID ?? project.id, catalogs: catalogs, compact: true,
+                           allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { answer in
+                    await model.answerPicker(answer, request: request.requestID)
+                }
+                .id(request.requestID)
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
             }
@@ -290,12 +299,18 @@ public final class ChatPanelModel {
     /// The message being written: the shown chat's.
     var draft: String {
         get { composer.text(of: conversationID, in: store.drafts) }
-        set { composer.setText(newValue, of: conversationID, in: store.drafts) }
+        set {
+            guard newValue != draft else { return }
+            composer.setText(newValue, of: conversationID, in: store.drafts)
+        }
     }
     /// The files going with the next message.
     var files: [URL] {
         get { composer.files(of: conversationID, in: store.drafts) }
-        set { composer.setFiles(newValue, of: conversationID, in: store.drafts) }
+        set {
+            guard newValue != files else { return }
+            composer.setFiles(newValue, of: conversationID, in: store.drafts)
+        }
     }
     /// The subject the user took off the next message; it comes back when the selection changes.
     var leftOut: ChatReference.ID?
@@ -430,6 +445,24 @@ public final class ChatPanelModel {
             failure = error.message
             return false
         }
+    }
+
+    /// The user's answer to Claude's picker request; false, with the reason shown, when it wasn't taken.
+    func answerPicker(_ answer: String, request requestID: String) async -> Bool {
+        guard let id = conversationID else { return false }
+        do throws(ChatSendError) {
+            try await store.answerPicker(answer, request: requestID, of: id)
+            failure = nil
+            return true
+        } catch {
+            failure = error.message
+            return false
+        }
+    }
+
+    /// The catalogues of the open conversation's picker card.
+    var pickerCatalogs: PickerCatalogAccess? {
+        conversationID.map(store.pickerCatalogs(of:))
     }
 
     /// The user's answer to a change Claude asked to make in the open conversation.

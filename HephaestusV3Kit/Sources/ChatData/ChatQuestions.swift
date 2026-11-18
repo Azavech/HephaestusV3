@@ -223,7 +223,8 @@ extension ChatSession {
     public func postQuestions(_ chatID: String, questions: [ChatQuestion]) async throws(ChatError) -> QuestionsItem {
         guard chats[chatID] != nil else { throw .notFound("Chat \(chatID) not found.") }
         await open(chatID)
-        guard waitingQuestions(in: chatID) == nil else { throw .conflict("Questions already wait for the user's answers in this chat.") }
+        // One request waits at most: questions or a picker request (docs/data.md › Picker requests).
+        if let conflict = waitingConflict(in: chatID) { throw .conflict(conflict) }
         let id = UUID().uuidString
         let item = QuestionsItem(id: id, created: now(), questionSetID: id, questions: questions)
         record(.questions(item), in: chatID)

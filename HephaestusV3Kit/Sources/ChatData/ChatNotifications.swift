@@ -5,7 +5,7 @@ import MCPKit
 /// Something a chat's user should hear about, as V2's chat notifications (docs/data.md › Chat events).
 public struct ChatEvent: Sendable, Hashable {
     public enum Kind: String, Sendable, Hashable {
-        /// A card or questions now wait for the user.
+        /// A card, questions or a picker request now wait for the user.
         case needsYou
         /// A turn ended well, and the chat is idle.
         case finished
@@ -106,6 +106,10 @@ extension ChatSession {
             if state == .waitingAnswers, let set = waitingQuestions(in: chatID) {
                 if detail.isEmpty { detail = "Waiting for your answers" }
                 input = "Questions:\n" + String(set.questions.map { "\($0.label): \($0.question)" }.joined(separator: "\n").prefix(ChatEvent.inputLimit))
+            } else if state == .waitingAnswers, let request = waitingPicker(in: chatID) {
+                // V2's: "Symbol request:", then the question.
+                if detail.isEmpty { detail = "Waiting for your answers" }
+                input = "\(request.kind.title) request:\n" + String(request.question.prefix(ChatEvent.inputLimit))
             } else {
                 if detail.isEmpty { detail = "Waiting for your permission" }
                 let request = items.lazy.compactMap { item -> PermissionRequestItem? in

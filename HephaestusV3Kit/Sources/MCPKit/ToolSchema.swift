@@ -2,10 +2,12 @@ import Foundation
 
 /// A tool's input schema, with only the keywords the server checks (docs/mcp.md › Argument validation):
 /// `type`, `properties`, `required`, `additionalProperties`, `items`, `enum`, `minimum`, `maximum` and
-/// `description`.
+/// `description`. A value of any type has no `type`.
 public struct ToolSchema: Sendable, Hashable {
     public enum Kind: String, Sendable, Hashable {
         case object, array, string, boolean, integer
+        /// Any JSON value, which the tool reads itself: the schema has no `type`.
+        case any
     }
 
     public var kind: Kind
@@ -64,6 +66,11 @@ public struct ToolSchema: Sendable, Hashable {
         ToolSchema(kind: .boolean, description: description)
     }
 
+    /// A value of any type, such as a string or an object, that the tool reads itself.
+    public static func anyValue(_ description: String? = nil) -> ToolSchema {
+        ToolSchema(kind: .any, description: description)
+    }
+
     public static func array(_ description: String? = nil, of items: ToolSchema) -> ToolSchema {
         var schema = ToolSchema(kind: .array, description: description)
         schema.items = [items]
@@ -72,7 +79,7 @@ public struct ToolSchema: Sendable, Hashable {
 
     /// The schema as `tools/list` gives it.
     public var json: JSONValue {
-        var object: [String: JSONValue] = ["type": .string(kind.rawValue)]
+        var object: [String: JSONValue] = kind == .any ? [:] : ["type": .string(kind.rawValue)]
         if let description { object["description"] = .string(description) }
         switch kind {
         case .object:
@@ -90,7 +97,7 @@ public struct ToolSchema: Sendable, Hashable {
         case .integer:
             if let minimum { object["minimum"] = .int(minimum) }
             if let maximum { object["maximum"] = .int(maximum) }
-        case .boolean:
+        case .boolean, .any:
             break
         }
         return .object(object)
@@ -138,7 +145,7 @@ public struct ToolSchema: Sendable, Hashable {
             if let minimum, number < minimum { return fail("must be at least \(minimum)") }
             if let maximum, number > maximum { return fail("must be at most \(maximum)") }
             return nil
-        case (.boolean, .bool):
+        case (.boolean, .bool), (.any, _):
             return nil
         default:
             let name = switch kind {
@@ -147,6 +154,7 @@ public struct ToolSchema: Sendable, Hashable {
             case .string: "a string"
             case .boolean: "a boolean"
             case .integer: "an integer"
+            case .any: "a value"
             }
             return fail("must be \(name)")
         }

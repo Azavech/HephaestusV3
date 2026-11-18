@@ -65,8 +65,13 @@ struct MarkdownConverter {
     /// Highlights the code blocks; finding the ids of a text needs no tokens.
     var highlightsCode = true
     private var anchors = HeadingAnchors()
+    /// The parsed text, kept only when markers are read: a marker whose value isn't accepted shows its source as
+    /// written.
+    private let sourceLines: MarkdownSourceLines?
+
     init(options: MarkdownRenderOptions, source: String) {
         self.options = options
+        sourceLines = options.markers == nil ? nil : MarkdownSourceLines(source)
     }
 
     mutating func blocks<S: Sequence>(_ children: S) -> [MarkdownBlock] where S.Element == Markup {
@@ -173,6 +178,18 @@ struct MarkdownConverter {
             guard !pendingText.isEmpty else { return }
             if inLink {
                 result.append(.text(pendingText))
+            } else if let markers = options.markers {
+                // A sound, font or animation marker whose value holds a space is text for CommonMark: the markers
+                // are read in the text, joined first, before the autolinks and the ids, and their text is never
+                // searched for them (docs/text.md › Markers).
+                for piece in MarkdownMarkers.pieces(in: pendingText, kinds: [.sound, .font, .animation]) {
+                    switch piece {
+                    case .text(let text):
+                        appendText(text)
+                    case .marker(let kind, let value, let source):
+                        result.append(MarkdownMarkers.inline(kind, value: value, options: markers) ?? .text(source))
+                    }
+                }
             } else {
                 appendText(pendingText)
             }
@@ -209,6 +226,12 @@ struct MarkdownConverter {
                 result.append(contentsOf: self.link(destination: link.destination ?? "", title: link.title,
                                                     content: inlines(link.children, inLink: true)))
             case let image as Image:
+                if let markers = options.markers, let marker = MarkdownMarkers.marker(ofSource: image.source ?? "") {
+                    // Inside a link a marker stays its source.
+                    let inline = inLink ? nil : MarkdownMarkers.inline(marker.kind, value: marker.value, options: markers)
+                    result.append(inline ?? sourceText(image))
+                    continue
+                }
                 let source = MarkdownLinks.imageSource(image.source ?? "", options: options)
                 result.append(.image(source: source, alt: Self.altText(image.children), title: Self.nonEmpty(image.title)))
             case is SoftBreak:
@@ -228,6 +251,14 @@ struct MarkdownConverter {
         }
         flush()
         return Self.mergingTexts(result)
+    }
+
+    /// An image as its Markdown source as written.
+    private func sourceText(_ image: Image) -> MarkdownInline {
+        if let range = image.range, let text = sourceLines?.text(in: range) {
+            return .text(text)
+        }
+        return .text(image.format())
     }
 
     /// A link with an accepted destination; a refused one becomes its content.

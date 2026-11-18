@@ -99,8 +99,11 @@ enum ChatFind {
         case .notice(let notice):
             return [notice.text]
         case .questions(let set):
-            return set.questions.flatMap { [$0.question] + $0.options.map(\.label) } + Array(set.answers.values)        case .images(let caption, let files):
+            return set.questions.flatMap { [$0.question] + $0.options.map(\.label) } + Array(set.answers.values)
+        case .images(let caption, let files):
             return [caption ?? ""] + files.map(\.name)
+        case .picker(let request):
+            return [request.question] + request.suggestions.map(request.line) + [request.answer ?? ""]
         }
     }
 }

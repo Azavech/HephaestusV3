@@ -3,7 +3,7 @@ import Foundation
 import MCPKit
 
 /// One item of a chat's transcript (docs/data.md › Chat items): the items the app reads and writes. Other
-/// items (V2's pickers) are skipped when a transcript is read.
+/// items are skipped when a transcript is read.
 public enum ChatItem: Sendable, Hashable, Identifiable {
     case user(UserItem)
     case assistant(AssistantItem)
@@ -16,6 +16,8 @@ public enum ChatItem: Sendable, Hashable, Identifiable {
     case result(ResultItem)
     /// The images Claude showed with `show_image`.
     case images(ImagesItem)
+    /// A symbol, color, sound, shortcut, font or animation Claude asked the user to choose.
+    case picker(PickerItem)
 
     public var id: String {
         switch self {
@@ -29,6 +31,7 @@ public enum ChatItem: Sendable, Hashable, Identifiable {
         case .system(let item): item.id
         case .result(let item): item.id
         case .images(let item): item.id
+        case .picker(let item): item.id
         }
     }
 
@@ -44,6 +47,7 @@ public enum ChatItem: Sendable, Hashable, Identifiable {
         case .system(let item): item.created
         case .result(let item): item.created
         case .images(let item): item.created
+        case .picker(let item): item.created
         }
     }
 }
@@ -314,6 +318,8 @@ extension ChatItem {
         case .images(let item):
             return ["type": "images", "id": .string(item.id), "created": date(item.created), "caption": optional(item.caption),
                     "images": .array(item.images.map(\.json))]
+        case .picker(let item):
+            return item.json
         }
     }
 
@@ -374,7 +380,8 @@ extension ChatItem {
             guard !images.isEmpty else { return nil }
             self = .images(ImagesItem(id: id, created: created, caption: string("caption"), images: images))
         default:
-            return nil
+            guard let kind = PickerKind(rawValue: type), let item = PickerItem(kind: kind, id: id, created: created, object: object) else { return nil }
+            self = .picker(item)
         }
     }
 }

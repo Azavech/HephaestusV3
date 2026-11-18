@@ -1,8 +1,8 @@
 # Text: Markdown and syntax highlighting
 
 `TextFormats` turns text into what the windows draw: Markdown into a block model, and code into highlight
-tokens. It has no UI and no default isolation. It has no Markdown markers (SF Symbols, colors, sounds,
-shortcuts, fonts, animations) and writes no HTML. The conformance tests read the examples and word lists of the
+tokens. It has no UI and no default isolation. It reads V2's Markdown markers (SF Symbols, colors, sounds,
+shortcuts, fonts, animations: [Markers](#markers)) and writes no HTML. The conformance tests read the examples and word lists of the
 sections below; where those sections name a documentation viewer or a code editor, the same rules serve the
 descriptions and comments of tickets and the chats' messages.
 
@@ -39,9 +39,11 @@ public struct MarkdownRenderOptions: Sendable {
     public var projectIdentifiers: Set<String>
     /// Writes each soft line break as a hard line break.
     public var softBreaksAsLineBreaks: Bool
+    /// Reads the markers (Markers); nil leaves them images, refused as any other.
+    public var markers: MarkdownMarkerOptions?
 
     public init(baseDirectory: String = "", projectRootPath: String? = nil, stripFrontMatter: Bool = false,
-                projectIdentifiers: Set<String> = [], softBreaksAsLineBreaks: Bool = false)
+                projectIdentifiers: Set<String> = [], softBreaksAsLineBreaks: Bool = false, markers: MarkdownMarkerOptions? = nil)
 }
 
 public enum MarkdownBlockRenderer {
@@ -52,6 +54,8 @@ public enum MarkdownBlockRenderer {
 | Caller | `baseDirectory` | `projectRootPath` | `stripFrontMatter` | `projectIdentifiers` | `softBreaksAsLineBreaks` |
 | --- | --- | --- | --- | --- | --- |
 | Ticket descriptions and comments ([UI › Tickets](ui/tickets.md#markdown)) | `""` | the project's folder | false | the identifiers of the loaded projects, sub projects included | true: people type lines, headings included, without blank lines between them |
+
+Every `MarkdownView` also sets `markers` to `MarkdownView.markerOptions` ([Markers](#markers)).
 
 The output depends only on the text and the options: the same input always gives the same blocks.
 
@@ -72,6 +76,7 @@ With `stripFrontMatter`, when the first line of the text is exactly `---` and a 
 | GFM task list items, `[ ]`, `[x]`, `[X]`                                                                                                                                                                                                                                                                               | Rendered as disabled checkboxes; clicking them changes nothing.                                                                                     |
 | GFM extended autolinks: `http://…`, `https://…`, `www.…`, e-mail addresses                                                                                                                                                                                                                                             | URLs become links; e-mail addresses stay text.                                                                                                      |
 | Ticket and bundle ids, such as `HEPH-12` and `HEPH-B2`                                                                                                                                                                                                                                                                 | Links when `projectIdentifiers` holds their identifier ([Ticket and bundle ids](#ticket-and-bundle-ids)); text otherwise.                           |
+| V2's markers, such as `![](sf:star)` and `![](color:#FF9500)`                                                                                                                                                                                                                                                          | Drawn when `markers` is set ([Markers](#markers)); images otherwise.                                                                                |
 | Raw HTML: HTML blocks and inline HTML                                                                                                                                                                                                                                                                                  | Escaped and shown as text .                                                                                          |
 | HTML comments                                                                                                                                                                                                                                                                                                          | Omitted.                                                                                                                                            |
 | YAML front matter                                                                                                                                                                                                                                                                                                      | Omitted with `stripFrontMatter`, otherwise parsed as Markdown.                                                                                      |
@@ -271,6 +276,13 @@ public indirect enum MarkdownInline: Sendable, Equatable {
     case itemID(String, code: Bool)      // a ticket or bundle id of a project of the device; code: written as a code span
     case softBreak
     case lineBreak
+    // Markers (Markers), read when the options have `markers`:
+    case symbol(String)                  // an SF Symbol the Mac has, by name
+    case color(String)                   // a hex color #RRGGBB or a system color name, as written
+    case sound(String)                   // a sound's name, unchecked
+    case shortcut(String, keyCaps: [String]) // a shortcut of the notation and its key caps
+    case font(String, label: String)     // a font of the notation and how it reads
+    case animation(String)               // a valid SwiftUI animation expression, as written
 }
 
 public enum MarkdownImageSource: Sendable, Equatable {
@@ -282,6 +294,197 @@ public enum MarkdownImageSource: Sendable, Equatable {
 
 A refused link becomes its content; inline HTML becomes `.text` with its source; HTML comments are left out; e-mail autolinks are `.text`; a linked ticket or bundle id is `.itemID` ([Ticket and bundle ids](#ticket-and-bundle-ids)). Code block tokens are empty for plain code and for blocks longer than 200,000 characters.
 
+
+## Markers
+
+Files: `Sources/TextFormats/Markers/`: `MarkdownMarkers.swift` (`MarkdownMarkerOptions`, `MarkdownMarkers`,
+`MarkdownSourceLines`), `ShortcutNotation.swift` (`KeyShortcut`, `StandardShortcuts`), `FontNotation.swift`
+(`FontTextStyle`, `FontNotation`), `AnimationExpression.swift` (`AnimationPreset`, `AnimationParameter`,
+`AnimationExpressionError`, `AnimationExpression`) and `SystemColors.swift` (`SystemColorValues`, `SystemColors`);
+the renderer reads markers in `MarkdownBlockRenderer.swift`.
+
+V2's Markdown markers, brought over with its picker requests (18 November 2026): images whose source names a
+symbol, a color, a sound, a shortcut, a font or an animation, which the views draw in place of the image. The
+chats' picker cards answer with them ([Data › Picker requests](data.md#picker-requests)), and Claude may write
+them. Every Markdown view of the app reads all six kinds the same way: `MarkdownView` (the chat transcript, the
+caption of shown images, the tool rows' text, the cards' questions, the ticket descriptions and comments) sets
+`markers` to `MarkdownView.markerOptions`; `MarkerText` reads them in plain text (the suggestion lines and answers
+of the transcript's cards, the option labels and descriptions of the questions card).
+
+| Kind | Marker | Accepted when | Block model | Drawn as |
+| --- | --- | --- | --- | --- |
+| SF Symbol | `![](sf:<name>)` | the Mac has the symbol (`NSImage(systemSymbolName:)`, `MarkdownMarkerOptions.isSymbolAvailable`) | `.symbol(name)` | the symbol's image (`Text(Image(systemName:))`), a space, the name |
+| Color | `![](color:<color>)` | a hex color `#RRGGBB` or a system color name ([System colors](#system-colors)) | `.color(color)` | a swatch, 11 pt, a rounded square of the color with a hairline border of `textSecondary` at 40 %, drawn for the window's appearance, a space, the color as written |
+| Sound | `![](sound:<name>)` | always: the name isn't checked | `.sound(name)` | `▶` as a link, a space, the name; a click plays the sound ([Sounds](#sounds)) |
+| Shortcut | `![](shortcut:<shortcut>)` | it follows the [shortcut notation](#shortcut-notation) | `.shortcut(shortcut, keyCaps:)` | its key caps as text: each cap between thin spaces on `surfaceSunken`, medium weight, a thin space apart |
+| Font | `![](font:<font>)` | it follows the [font notation](#font-notation) | `.font(font, label:)` | its label (`System Rounded · Semibold · 17 pt`, `.headline`) in its family and weight at the size of the body text; a text style in the body size, bold for `.headline`, medium for `.caption2` ([Fonts](#fonts)) |
+| Animation | `![](animation:<expression>)` | it follows the [animation expressions](#animation-expressions) | `.animation(expression)` | its expression in the code font |
+
+- The scheme is read in any letter case; the value is the source after its first `:`, as Markdown reads it, so a
+  backslash escape such as `\(` gives `(` (`![](shortcut:⌘\()` is ⌘ and `(`).
+- A sound name, a font or an animation with a space isn't an image for CommonMark, so the renderer also finds
+  these three kinds in the text outside links, code spans and code blocks, the text split by the parser joined
+  first, before the extended autolinks and the ids; a marker's text is never searched for them. In text, a marker
+  is `![`, an alt text without `[`, `]` or line break, `](`, the scheme and `:`, the value, and `)`. A sound's or an
+  animation's value runs to the first `)` that closes no `(` of its own (a sound's has one character at least); a
+  font's is one or more characters other than `(`, `)` and line breaks; a symbol's, a color's or a shortcut's
+  (in plain text) one or more characters other than `(`, `)` and white space, in a shortcut `\` and a character
+  standing for that character.
+- A marker whose value isn't accepted shows its Markdown source as written, such as `![](sf:no.such.symbol)`; a
+  marker inside a link, a code span, a code block or HTML stays text. Without `markers`, such an image is refused
+  as any other ([Images](#images)).
+- `MarkdownMarkers.inlines(in:options:projectIdentifiers:)` reads plain text: each marker its inline or its source,
+  the text outside markers with its ids ([Ticket and bundle ids](#ticket-and-bundle-ids)). `MarkdownItemIDs.linkedIDs`
+  reads markers too, so an id inside one doesn't count.
+- A paragraph without symbol or color markers is one attributed string, as before; one with them is drawn as one
+  `Text` made of the attributed runs and the images, joined with string interpolation (`Text("%@%@")`, which the
+  catalog keeps untranslated), so that the text still wraps and can be selected.
+
+```swift
+public struct MarkdownMarkerOptions: Sendable {
+    /// Whether the Mac that draws the text has an SF Symbol of this name; an unavailable one shows its source.
+    public var isSymbolAvailable: @Sendable (String) -> Bool
+    public init(isSymbolAvailable: @escaping @Sendable (String) -> Bool = { _ in true })
+}
+
+public enum MarkdownMarkers {
+    public enum Kind: String, Sendable, CaseIterable { case symbol = "sf", color, sound, shortcut, font, animation }
+    public static func inlines(in text: String, options: MarkdownMarkerOptions, projectIdentifiers: Set<String> = []) -> [MarkdownInline]
+}
+```
+
+The marker syntax and the drawings come from V2; the native drawing of an animation as its expression (V2's web
+transcript drew a replay button and a lane) is Default chosen at design time: V3's transcript is native, and the
+lanes play in the animation card.
+
+### Sounds
+
+A click on a marker's `▶` (`hephaestus-sound:<percent-encoded name>`) calls the window's `playSound` action
+(`PlaySoundAction`, ToolsFoundation; ToolsScenes gives every window `ChatSounds.player`): the sound's file is the
+Mac's sound of that name, or for `Project/<path>` the file at that path in the view's project folder
+([Data › Picker catalogues](data.md#picker-catalogues)); `SoundPlayer` plays it with `NSSound`, one sound at a time
+in the app, a new one stopping the one that plays. A failure shows the alert **Play Sound failed** with its
+message: `<name> is not a sound of this Mac or of the project.`, `The sound cannot be played.`, or, without a
+player (previews), `This window can't play sounds.`. In the questions card's option rows, `▶` is text: a click
+chooses the option.
+
+### Fonts
+
+`FontFaces` (TextViews) draws a font of the notation: a system design as the system font of its design (`.default`,
+`.rounded`, `.serif`, `.monospaced`) and SwiftUI weight; an installed family's face by its family and style name
+(CoreText); a project's face once the app read the project's font files (the font card registers them with
+`FontFaces.register`), from its file. Until then, and for a font the Mac can't draw, the label is in the body
+font. A text style's font is SwiftUI's style of the same name.
+
+### Shortcut notation
+
+A shortcut is written as macOS menus write it (`KeyShortcut`): its modifiers, then its key, nothing between them,
+such as `⇧⌘K`, `⌃⌥K`, `⌘↩`, `⎋` or `⌃Space`.
+
+- The modifiers are `⌃` (Control), `⌥` (Option), `⇧` (Shift) and `⌘` (Command), each at most once, in this order:
+  `⇧⌘K` is a shortcut, `⌘⇧K` isn't. A shortcut may have none, such as `⎋` or `F5`.
+- The key is one of: a letter in uppercase (a lowercase one is refused); the character a digit, punctuation or any
+  other character key types without Shift or Option (Shift-Command-/ is `⇧⌘/`, never `⌘?`); `↩` Return, `⌤`
+  keypad Enter, `⎋` Escape, `⇥` Tab, `Space`, `⌫` Delete, `⌦` Forward Delete, `←` `→` `↑` `↓`, `↖` Home, `↘` End,
+  `⇞` Page Up, `⇟` Page Down; `F1` to `F20`.
+- A character key is one character that isn't white space, a control or private-use character or a modifier glyph,
+  and that stays the same in uppercase. Two shortcuts are the same when they are written the same.
+- Its key caps are one per modifier and one for the key, in the order written: `⇧⌘K` gives `⇧`, `⌘`, `K`.
+- **Recording** (`KeyShortcut.recordedKey(keyCode:unmodifiedCharacters:)`): the named key of the key code (Return
+  0x24, keypad Enter 0x4C, Escape 0x35, Tab 0x30, Space 0x31, Delete 0x33, Forward Delete 0x75, the arrows
+  0x7B–0x7E, Home 0x73, End 0x77, Page Up 0x74, Page Down 0x79, F1–F20), else the character the key types without
+  modifiers, uppercased; Help (0x72) and the keypad Clear key (0x47) can't be written.
+
+### Standard macOS shortcuts
+
+The shortcut card warns when the chosen shortcut is one of these (`StandardShortcuts`), V2's list from Apple's
+article "Mac keyboard shortcuts":
+
+| Shortcut | Action | Shortcut | Action | Shortcut | Action |
+| --- | --- | --- | --- | --- | --- |
+| `⌘X` | Cut | `⌘C` | Copy | `⌘V` | Paste |
+| `⌘Z` | Undo | `⇧⌘Z` | Redo | `⌘A` | Select All |
+| `⌘F` | Find | `⌘G` | Find Again | `⇧⌘G` | Find Previous |
+| `⌘H` | Hide | `⌥⌘H` | Hide Others | `⌘M` | Minimize |
+| `⌥⌘M` | Minimize All | `⌘O` | Open | `⌘P` | Print |
+| `⌘Q` | Quit | `⌘S` | Save | `⌘T` | New Tab |
+| `⌘W` | Close Window | `⌥⌘W` | Close All Windows | `⌥⌘⎋` | Force Quit |
+| `⌘Space` | Spotlight | `⌥⌘Space` | Spotlight in Finder | `⌃⌘Space` | Character Viewer |
+| `⌃⌘F` | Full Screen | `Space` | Quick Look | `⌘⇥` | Switch Apps |
+| ⌘&#96; | Switch Windows | `⇧⌘3` | Screenshot | `⇧⌘4` | Screenshot |
+| `⇧⌘5` | Screenshot or Recording | `⇧⌘N` | New Folder | `⌃⌘N` | New Folder with Selection |
+| `⌘,` | Settings | `⌃⌘Q` | Lock Screen | `⇧⌘Q` | Log Out |
+| `⌥⇧⌘Q` | Log Out Immediately | `⌥⌘D` | Show or Hide Dock | `⌃↑` | Mission Control |
+| `⌃↓` | Application Windows | `⇧⌘6` | Ask Siri About Selection | `⇧⌘Space` | Ask Siri About Window |
+| `⌃Space` | Previous Input Source | `⌃⌥Space` | Next Input Source | `⌃⌥⌘8` | Invert Colors |
+| `⌃⌥⌘,` | Reduce Contrast | `⌃⌥⌘.` | Increase Contrast | `⌃F2` | Focus Menu Bar |
+| `⌃F3` | Focus Dock | `⌃F4` | Focus Window | `⌃F5` | Focus Toolbar |
+| `⌃F6` | Focus Floating Window | `⌃⇧F6` | Focus Previous Panel | `⌃F7` | Tab Focus Mode |
+| `⌃F8` | Focus Status Menu | ⇧⌘&#96; | Previous Window | ⌥⌘&#96; | Focus Window Drawer |
+| `⇥` | Next Control | `⇧⇥` | Previous Control | `⌃⇥` | Next Control |
+| `⌃⇧⇥` | Previous Control Group | `←` | Move to Adjacent Item | `→` | Move to Adjacent Item |
+| `↑` | Move to Adjacent Item | `↓` | Move to Adjacent Item | `⌃←` | Move to Adjacent Control |
+| `⌃→` | Move to Adjacent Control | `⌥⌘F5` | Accessibility Shortcuts | | |
+
+### Font notation
+
+A font is a text style or a family font (`FontNotation`, `FontTextStyle`):
+
+| Form | Examples | Meaning |
+| --- | --- | --- |
+| Text style | `.headline` | A Dynamic Type text style: `.largeTitle`, `.title`, `.title2`, `.title3`, `.headline`, `.subheadline`, `.body`, `.callout`, `.footnote`, `.caption` or `.caption2`. |
+| Family font | `System Rounded/Semibold/17`, `Avenir Next/Demi Bold/15` | `<family>/<weight>/<size>`: a family, one of its weights as the font catalogue names it, and a size in points. |
+
+- A text that starts with `.` is a text style and must be one of the eleven; any other is a family font of exactly
+  three parts separated by `/`, the family and the weight not empty, written with their spaces and case.
+- The size is 1 to 999 points with at most one decimal: digits without a leading zero, then optionally `.` and one
+  digit. `17`, `15.5` and `17.0` are sizes; `0.5`, `1000`, `15.25`, `15,5` and `017` aren't. The card writes a size
+  `17` when its decimal is 0, else `15.5` (`FontNotation.sizeText`).
+- A font reads `<family> · <weight> · <size> pt`, its size as written, or a text style's notation.
+
+### Animation expressions
+
+An animation is a SwiftUI preset written as its expression (`AnimationExpression`, `AnimationPreset`,
+`AnimationParameter`): `.` and the preset's name, alone or followed by its parameters in parentheses, such as
+`.spring`, `.snappy(duration: 0.3, extraBounce: 0.1)`, `.spring(duration: 0.4, bounce: 0.2)`, `.easeInOut(duration: 0.25)`.
+
+| Presets | Parameters, in this order | SwiftUI's defaults |
+| --- | --- | --- |
+| `.smooth`, `.snappy`, `.bouncy` | `duration`, `extraBounce` | `duration` 0.5, `extraBounce` 0 |
+| `.spring` | `duration`, `bounce` | `duration` 0.5, `bounce` 0 |
+| `.easeIn`, `.easeOut`, `.easeInOut`, `.linear` | `duration` | `duration` 0.35 |
+
+`duration` is 0.1 to 2 seconds, `bounce` -1 to 1, `extraBounce` 0 to 1, both ends included. Parameters are written
+`<label>: <number>`, separated by `,`; those left out take SwiftUI's default; those written keep the table's order,
+each at most once; `()` without one is refused. A number is an optional `-`, digits, and optionally `.` and digits.
+Spaces may follow `(`, `:` and `,` and precede `)`, `:` and `,`; no other white space, never a line break. The Custom
+row writes every parameter of its preset, each value with at most two decimals and no trailing zeros
+(`fullExpression`): `.spring(duration: 0.5, bounce: 0)`.
+
+### System colors
+
+The system color names, in the color card's order (`SystemColors`); names are compared with their case, hex colors
+ignoring it:
+
+| Group | Names |
+| --- | --- |
+| SwiftUI standard colors | `red`, `orange`, `yellow`, `green`, `mint`, `teal`, `cyan`, `blue`, `indigo`, `purple`, `pink`, `brown`, `gray`, `black`, `white`, `primary`, `secondary`, `accentColor` |
+| UIKit and AppKit standard colors | `systemRed`, `systemOrange`, `systemYellow`, `systemGreen`, `systemMint`, `systemTeal`, `systemCyan`, `systemBlue`, `systemIndigo`, `systemPurple`, `systemPink`, `systemBrown`, `systemGray`, `systemGray2`, `systemGray3`, `systemGray4`, `systemGray5`, `systemGray6` |
+| UIKit semantic colors | `label`, `secondaryLabel`, `tertiaryLabel`, `quaternaryLabel`, `placeholderText`, `link`, `separator`, `opaqueSeparator`, `systemFill`, `secondarySystemFill`, `tertiarySystemFill`, `quaternarySystemFill`, `systemBackground`, `secondarySystemBackground`, `tertiarySystemBackground`, `systemGroupedBackground`, `secondarySystemGroupedBackground`, `tertiarySystemGroupedBackground`, `tintColor`, `darkText`, `lightText` |
+| AppKit semantic colors UIKit lacks, with their `Color` suffix | `quinaryLabelColor`, `quinarySystemFillColor`, `textColor`, `textBackgroundColor`, `textInsertionPointColor`, `selectedTextColor`, `selectedTextBackgroundColor`, `unemphasizedSelectedTextColor`, `unemphasizedSelectedTextBackgroundColor`, `keyboardFocusIndicatorColor`, `windowBackgroundColor`, `windowFrameTextColor`, `underPageBackgroundColor`, `controlBackgroundColor`, `controlAccentColor`, `controlColor`, `controlTextColor`, `selectedControlColor`, `selectedControlTextColor`, `disabledControlTextColor`, `alternateSelectedControlTextColor`, `selectedContentBackgroundColor`, `unemphasizedSelectedContentBackgroundColor`, `selectedMenuItemTextColor`, `headerTextColor`, `gridColor`, `findHighlightColor`, `highlightColor`, `shadowColor` |
+
+How the Mac draws them (`ColorSwatches`, TextViews), in the window's appearance: a hex color as itself, in sRGB; a
+SwiftUI name as AppKit's color that SwiftUI draws (`NSColor.systemRed` for `red`, `systemGray` for `gray`,
+`labelColor` for `primary`, `secondaryLabelColor` for `secondary`, `controlAccentColor` for `accentColor`; `black`
+and `white` fixed); a UIKit name as AppKit's color of that name (`label` is `labelColor`), `tintColor` as
+`controlAccentColor`; an AppKit name as itself. The UIKit names AppKit lacks take UIKit's values (light, dark):
+`systemGray2` (`#AEAEB2`, `#636366`), `systemGray3` (`#C7C7CC`, `#48484A`), `systemGray4` (`#D1D1D6`, `#3A3A3C`),
+`systemGray5` (`#E5E5EA`, `#2C2C2E`), `systemGray6` (`#F2F2F7`, `#1C1C1E`), `opaqueSeparator` (`#C6C6C8`, `#38383A`),
+`systemBackground` (`#FFFFFF`, `#000000`), `secondarySystemBackground` (`#F2F2F7`, `#1C1C1E`),
+`tertiarySystemBackground` (`#FFFFFF`, `#2C2C2E`), `systemGroupedBackground` (`#F2F2F7`, `#000000`),
+`secondarySystemGroupedBackground` (`#FFFFFF`, `#1C1C1E`), `tertiarySystemGroupedBackground` (`#F2F2F7`, `#2C2C2E`),
+`darkText` (`#000000` both), `lightText` (`#FFFFFF` at 60 % both). These are the user's colors, drawn as data; the
+app's own colors stay AZDesign's semantic names.
 
 ## Resource URL schemes
 

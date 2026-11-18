@@ -107,11 +107,14 @@ final class ChatWorld {
     let launcher = FakeLauncher()
     let session: ChatSession
 
-    init() async throws {
+    /// `projectType` is the `type` of the project file, such as `swiftApplication`; none when nil. The picker
+    /// catalogues read fixtures of the world's folder (`PickerCatalogs.Sources.fixtures`).
+    init(projectType: String? = nil) async throws {
         root = FileManager.default.temporaryDirectory.appendingPathComponent("ChatSessionTests-\(UUID().uuidString)").resolvingSymlinksInPath()
         repo = root.appendingPathComponent("Repo")
         try FileManager.default.createDirectory(at: repo.appendingPathComponent(".hephaestus"), withIntermediateDirectories: true)
-        try Data("schema: 1\nid: ORD\nname: Orders\ncreated: 2026-10-31T09:30:00Z\n".utf8)
+        let type = projectType.map { "type: \($0)\n" } ?? ""
+        try Data("schema: 1\nid: ORD\nname: Orders\ncreated: 2026-10-31T09:30:00Z\n\(type)".utf8)
             .write(to: repo.appendingPathComponent(".hephaestus/project.yml"))
         let cli = root.appendingPathComponent("claude")
         FileManager.default.createFile(atPath: cli.path, contents: Data("#!/bin/sh\nexit 1\n".utf8), attributes: [.posixPermissions: 0o755])
@@ -122,7 +125,8 @@ final class ChatWorld {
         projects = ProjectSession(dataFolder: data, runner: ChatRunner(), processEnvironment: [:])
         await projects.start()
         session = ChatSession(projects: projects, tokens: tokens, launcher: launcher, runner: ChatRunner(), device: "Studio",
-                              processEnvironment: [:], trash: .folder(root.appendingPathComponent("Trash")))
+                              processEnvironment: [:], trash: .folder(root.appendingPathComponent("Trash")),
+                              catalogs: try .fixtures(in: root.appendingPathComponent("Catalogs")))
         await session.start(tools: ["list_tickets", "add_comment"], port: 47999)
         try await until { !self.session.status.checking && self.session.models != ClaudeModel.fallback }
     }

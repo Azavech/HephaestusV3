@@ -832,9 +832,9 @@ with `null` written for an absent optional:
 | `system` | `text` (in English), `level` (`info`, `warning`, `error`) | a new uppercase UUID |
 | `result` | `durationMs`, `costUSD` (kept; not shown), `isError`, `summary` | a new uppercase UUID |
 | `images` | `caption`, `images` ([Images item](#images-item)) | a new uppercase UUID |
+| `symbol`, `color`, `sound`, `shortcut`, `font`, `animation` | `requestID`, `question`, `suggestions`, `recommended`, `answer`; `lightAndDark` for a color, `sample` for a font, `inUse` for a shortcut, and the keys V3 doesn't read, kept ([Picker requests](#picker-requests)) | the request's id, a new uppercase UUID |
 
-The items `symbol`, `color`, `sound`, `shortcut`, `font` and `animation` are skipped
-when a transcript is read, and stay in the file. A string
+A string
 longer than 100,000 characters in a call's input or a result's text is cut, followed by `… [truncated <n>
 characters]`.
 
@@ -918,6 +918,152 @@ C:
 
 A multiple question's answer, unless skipped, follows `<label>:` on its own lines. A set stays waiting across
 the CLI's exits and the app's restarts; messages typed meanwhile go to Claude as usual and change nothing in it.
+
+#### Picker requests
+
+V2's six requests, brought over on the user's request (18 November 2026): Claude asks the user to choose an SF
+Symbol, a color, a sound, a keyboard shortcut, a font or an animation with the MCP tools `ask_symbol`,
+`ask_color`, `ask_sound`, `ask_shortcut`, `ask_font` and `ask_animation` ([MCP](mcp.md#ask_symbol)); the chat
+shows the request in its card over the composer ([UI › Chat › Picker cards](ui/chat.md#picker-cards)). Each is a
+transcript item whose `type` is its kind (`PickerItem`, `PickerKind`, ChatPickers.swift), with V2's keys:
+
+| Key | Type | Kinds | Rules |
+| --- | --- | --- | --- |
+| `requestID` | `String` | all | The request's id, a new uppercase UUID; the item's `id` too. |
+| `question` | `String` | all | Markdown, trimmed, not empty. |
+| `suggestions` | `[String]`, or `[{light, dark}]` | all | 2 to 10, distinct, trimmed, in Claude's order. A color request asked with `lightAndDark` has pairs `{"light": <color>, "dark": <color>}`; every other suggestion is a string. |
+| `recommended` | `String`, or `{light, dark}` | all | One of `suggestions`, as Claude wrote it. |
+| `answer` | `String?` | all | `null` until the user answers, then set once: the card's marker, the user's own text, or `Skipped`. |
+| `lightAndDark` | `Bool` | `color` | Claude asked for a light and dark pair; written for a color request only, `false` when absent. |
+| `sample` | `String` | `font` | The text the card draws in the chosen font, trimmed, not empty. |
+| `inUse` | `[{shortcut, command}]` | `shortcut` | The app's own shortcuts, in Claude's order, each trimmed: `shortcut` in menu notation, `command` one line of 1 to 200 characters; no shortcut twice; at most 500; may be empty. |
+
+Keys V3 doesn't read are kept (`otherKeys`) and written back with the item. An item without `question`,
+`suggestions` (one at least that reads as a string or a pair) or `recommended` is skipped.
+
+```json
+{"type":"color","id":"7D0E2F3A-4B5C-4D6E-9F7A-8B9C0D1E2F3A","created":"2026-11-03T14:20:01Z","requestID":"7D0E2F3A-4B5C-4D6E-9F7A-8B9C0D1E2F3A","question":"Which background color should the card use?","lightAndDark":true,"suggestions":[{"light":"#FFFFFF","dark":"#1C1C1E"},{"light":"systemBackground","dark":"secondarySystemBackground"}],"recommended":{"light":"#FFFFFF","dark":"#1C1C1E"},"answer":"Light ![](color:#FFFFFF), Dark ![](color:#2C2C2E)"}
+{"type":"shortcut","id":"8E1F2A3B-4C5D-4E6F-9A7B-8C9D0E1F2A3B","created":"2026-11-03T14:22:10Z","requestID":"8E1F2A3B-4C5D-4E6F-9A7B-8C9D0E1F2A3B","question":"Which shortcut should open the ticket filter?","suggestions":["⇧⌘F","⌥⌘F","⌃⌘F"],"recommended":"⇧⌘F","inUse":[{"shortcut":"⌘N","command":"New Ticket"}],"answer":null}
+```
+
+**Rules** (`PickerItem.request(_:from:catalogs:created:)`), checked in this order after trimming the question,
+the sample, each suggestion and the recommendation (and each `shortcut` and `command` of `inUse`); the first one
+broken refuses the call with `invalid`, and nothing shows. `<tool>` is the tool's name.
+
+| Rule | Message |
+| --- | --- |
+| The question isn't empty | `<tool> needs a question.` |
+| A font request's sample isn't empty | `ask_font needs a sample text.` |
+| 2 to 10 suggestions | `<tool> needs 2 to 10 suggestions.` |
+| Color: without `lightAndDark`, each suggestion and the recommendation are one color (a string) | `ask_color needs one color per suggestion, or lightAndDark for light and dark pairs.` |
+| Color: with `lightAndDark`, each suggestion and the recommendation are a pair | `ask_color needs a light and dark pair per suggestion.` |
+| Color: each color is a hex color `#RRGGBB`, its digits in either case, or a system color name with its case ([Text › System colors](text.md#system-colors)), checked in order, a pair's light before its dark | `<color> is not a hex color #RRGGBB or a system color name.` |
+| Color: the suggestions are distinct, colors compared as [Text › System colors](text.md#system-colors) says | `ask_color has a repeated suggestion.` |
+| Color: the recommendation is one of them | `ask_color: the recommended color must be one of the suggestions.` |
+| Other kinds: no suggestion is empty, none twice | `<tool> has an empty or repeated suggestion.` |
+| Symbol: each one is in the Mac's SF Symbols, localized variants included ([Picker catalogues](#picker-catalogues)) | `<name> is not an SF Symbol of this Mac.` |
+| Sound: each one is in the project's sound catalogue | `<name> is not a sound of this Mac or of the project.` |
+| Shortcut: each one is in menu notation ([Text › Shortcut notation](text.md#shortcut-notation)) | `<shortcut> is not a shortcut in menu notation: the modifiers ⌃⌥⇧⌘ in this order, then one key.` |
+| Font: each one is a text style or three parts separated by `/` ([Text › Font notation](text.md#font-notation)) | `<font> is not a font: write a text style such as .headline, or <family>/<weight>/<size> such as System Rounded/Semibold/17.` |
+| Font: a family font's size is 1 to 999 pt with at most one decimal | `<font>: the size must be 1 to 999 pt, with at most one decimal.` |
+| Font: its family is in the project's font catalogue, with that weight | `<font> is not a font of this Mac.` |
+| Animation: `.`, a name of letters, optionally parameters in parentheses ([Text › Animation expressions](text.md#animation-expressions)) | `<suggestion> is not a SwiftUI animation expression.` |
+| Animation: the name is a preset | `<suggestion>: use .smooth, .snappy, .bouncy, .spring, .easeIn, .easeOut, .easeInOut or .linear.` |
+| Animation: the preset's parameters, each once, in its order | `<suggestion>: .<preset> takes (<labels>).`, such as `.spring takes (duration:bounce:).` |
+| Animation: each value within its range | `<suggestion>: <label> must be from <minimum> to <maximum>.` |
+| Other kinds: the recommendation is one of the suggestions | `<tool>: the recommended <kind> must be one of the suggestions.` |
+| Shortcut: at most 500 entries in `inUse` | `ask_shortcut accepts at most 500 inUse entries.` |
+| Shortcut: each `inUse` shortcut is in menu notation | as for the suggestions |
+| Shortcut: each command is one line of 1 to 200 characters | `ask_shortcut: the command of <shortcut> in inUse must be one line of 1 to 200 characters.` |
+| Shortcut: no shortcut twice in `inUse` | `ask_shortcut: <shortcut> appears twice in inUse.` |
+
+The checks of a suggestion run in the order of `suggestions`, every check on one suggestion before the next, and
+name the first that fails.
+
+**Posting** (`ChatSession.postPicker`): an unknown chat is refused (`notFound`, `Chat <id> not found.`); a sound,
+shortcut or animation request in a project whose type isn't App (`swiftApplication`) is refused (`forbidden`,
+V2's messages `ask_sound is only available in Swift application projects.`, `ask_shortcut is available only in
+Swift application projects.`, `ask_animation is available only in Swift application projects.`); then the
+catalogues the kind needs are read and the rules checked. The chat's transcript is read; a chat has one request
+waiting at most, questions included: while questions wait, `conflict` with `Questions already wait for the user's
+answers in this chat.`; while a request waits, `conflict` with V2's `A symbol request is already waiting for an
+answer in this chat.` (`color`, `sound`, `shortcut`, `font`; `An animation request …` for an animation).
+`postQuestions` refuses the same way while a request waits. The item is added and the state refreshed: `running`
+while the turn that asked goes on, then `waitingAnswers` ([Chat processes](#chat-processes)).
+
+**Answering** (`ChatSession.answerPicker`, from the card): the answer is trimmed and has 1 to 10,000 characters
+(`invalid`, `answer: write 1 to 10,000 characters.`); an unknown request is `notFound`; one already answered is a
+`conflict` (`This <kind> request was already answered.`). It needs the Claude CLI, as a message does; the item is
+rewritten (`update`) with its answer, then the message `<Kind>: <answer>` goes to Claude as the user's, as any
+message: to the running CLI, or to a new one (with `--resume` once the session started). A closed chat reopens,
+as for any message.
+
+```
+Symbol: ![](sf:line.3.horizontal.decrease.circle)
+Color: Light ![](color:#FFFFFF), Dark ![](color:#1C1C1E)
+Sound: ![](sound:iOS 26.1/sms-received1.caf)
+Shortcut: ![](shortcut:⇧⌘K)
+Font: ![](font:System Rounded/Semibold/17)
+Animation: ![](animation:.spring(duration: 0.4, bounce: 0.2))
+```
+
+The cards answer with these markers ([Text › Markers](text.md#markers)): `![](sf:<name>)`; `![](color:<color>)`
+or `Light ![](color:<light>), Dark ![](color:<dark>)`, a hex color in uppercase; `![](sound:<name>)`;
+`![](shortcut:<shortcut>)`, a key `(`, `)` or `\` written with a `\` before it; `![](font:<font>)`, a family
+font's size written `17` or `15.5`; `![](animation:<expression>)`. "Answer another way" gives the field's text,
+trimmed, its line breaks kept; Skip gives `Skipped`. A request stays waiting across the CLI's exits and the app's
+restarts; messages typed meanwhile go to Claude as usual and change nothing in it. The result of the tool is
+`{"requestID": <id>}`.
+
+#### Picker catalogues
+
+What the requests check their suggestions against and the cards search (`PickerCatalogs`, PickerCatalogs.swift),
+as V2's. `ChatSession.catalogs` holds them; its `Sources` are injectable (the tests use fixtures in temporary
+folders): `system(runner:environment:)` reads this Mac. The Mac's catalogues are read the first time they are
+needed, off the main actor, and kept until the app quits; a project's files are read at each use.
+
+- **SF Symbols** (`SFSymbolCatalog`): `/System/Library/CoreServices/CoreGlyphs.bundle/Contents/Resources/`'s
+  `name_availability.plist` (`symbols` maps each name to its release, `year_to_release` each release to its OS
+  versions; a name belongs when its release's `macOS` version is at most the running macOS, or gives none) and
+  `symbol_search.plist` (each name's keywords). A file that can't be read leaves the catalogue empty, or the names
+  without keywords. A localized variant is a name whose last dot-separated part is one of `ar`, `bn`, `el`, `gu`,
+  `he`, `hi`, `ja`, `km`, `kn`, `ko`, `ml`, `mni`, `mr`, `my`, `or`, `pa`, `rtl`, `ru`, `sat`, `si`, `ta`, `te`,
+  `th`, `zh`: Claude may suggest one; the search never lists one.
+- **Symbol search**: the query trimmed, lowercased and split at white space (empty: nothing); a name matches by
+  name when it contains every word, by keyword when each word is in the name or one of its keywords; the name
+  matches then the keyword matches, each in alphabetical order, without localized variants and without the
+  request's suggestions; no limit.
+- **Sounds** (`SoundCatalog`): `macOS/<file>` for each sound file directly in `/System/Library/Sounds`;
+  `<platform> <version>/<path>` for each sound file at any depth under `System/Library/Audio/UISounds` of each
+  Simulator runtime that `/usr/bin/xcrun simctl list runtimes --json` lists (its `name` and `runtimeRoot`; run with
+  the login shell's environment, 30 s at most; the first of two runtimes of one name; none when it fails, such as
+  without Xcode); `Project/<path>` for each sound file of the project ([Project files](#picker-catalogues)). A sound
+  file is a regular file ending in `.caf`, `.aiff`, `.wav` or `.mp3` (any case); names starting with `.` and
+  symbolic links are skipped. Order: the macOS sounds, then each runtime's in the order of their names, then the
+  project's, paths in Finder order (`localizedStandardCompare`). A name with a line break, unbalanced parentheses,
+  or white space at either end is left out: a marker couldn't carry it.
+- **Sound search**: a name matches when, lowercased, it contains every word of the trimmed, lowercased query
+  (empty: nothing); the request's suggestions left out; catalogue order; no limit.
+- **Fonts** (`FontCatalog`): the system designs `System`, `System Rounded`, `System Serif` and `System Monospaced`
+  with the nine SwiftUI weights `Ultralight` (-0.8), `Thin` (-0.6), `Light` (-0.4), `Regular` (0), `Medium` (0.23),
+  `Semibold` (0.3), `Bold` (0.4), `Heavy` (0.56), `Black` (0.62); every family CoreText lists
+  (`CTFontManagerCopyAvailableFontFamilyNames`, names starting with `.` left out), its faces' style names as weights,
+  italic faces included, each with CoreText's weight trait; the families of the project's `.ttf`, `.otf` and `.ttc`
+  files (a collection gives each of its fonts; a file CoreText can't read is skipped). A project family named like
+  an installed one adds the faces the installed one lacks; a family named like a system design is left out. A
+  family's weights are listed by value, upright before italic, then by name; families in alphabetical order after
+  the system designs; then the eleven text styles.
+- **Font search**: a family matches when its name, lowercased, contains every word of the query; a text style when
+  its notation does; an empty query lists every family and text style; the text styles that are suggestions are
+  left out. **Nearest weight**: choosing a family of the results keeps the weight when the family has one of that
+  name, else takes the face whose value is nearest the current weight's in the family it was chosen in, an upright
+  face before an italic one on a tie, then the first.
+- **Project files** (`ProjectFiles`): `git ls-files -z --cached --others --exclude-standard` in the project's
+  folder (10 s at most), so git's ignored files stay out; without git or outside a work tree, a walk of the folder
+  that skips names starting with `.`, symbolic links and the folders `node_modules`, `DerivedData`, `Pods` and
+  `build`, 100,000 entries at most. The folders of its sub projects are left out either way.
+- **Playing a sound** (`ChatSession.soundFile(named:projectRoot:)`): `Project/<path>` is the sound file at that path
+  in the view's project folder (never outside it); another name is the Mac's sound of that name.
 
 #### Context usage
 
@@ -1152,7 +1298,7 @@ after its current CLI turn. The turn's end writes `updated`.
 | `starting` | A process was started; its first `system/init` hasn't come. |
 | `running` | A turn runs. |
 | `waitingPermission` | A card waits: the CLI's request, or the app's. |
-| `waitingAnswers` | No turn runs, and the chat's transcript, read, has questions waiting ([Questions](#questions)). |
+| `waitingAnswers` | No turn runs, and the chat's transcript, read, has questions ([Questions](#questions)) or a picker request ([Picker requests](#picker-requests)) waiting. |
 | `error` | The CLI couldn't start, didn't start in 60 s, or exited during a turn on its own. Until the next message. |
 | `idle` | Otherwise. |
 
@@ -1335,7 +1481,9 @@ state the session had already computed reports:
   - finished: `Claude's reply:` + `\n` + the reply;
   - a card: `Permission request:` + `\n` + `Tool: <tool name without its mcp__ prefix>` + `\n` + `Input: <input>`,
     the oldest pending request's input as JSON without indentation, keys sorted;
-  - questions: `Questions:` + `\n` + one `<label>: <question>` line per question of the set waiting, in order.
+  - questions: `Questions:` + `\n` + one `<label>: <question>` line per question of the set waiting, in order;
+  - a picker request: V2's `Symbol request:`, `Color request:`, `Sound request:`, `Shortcut request:`, `Font
+    request:` or `Animation request:` + `\n` + its question.
 
   The part after the label is cut at 4,000 characters.
 - **Summary** (`ChatSession.summary(of:)`): runs `notification-summary` ([Internal skills](#internal-skills)) on

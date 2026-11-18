@@ -10,7 +10,8 @@ extension MarkdownItemIDs {
     public static func linkedIDs(inMarkdown markdown: String) -> Set<String> {
         let identifiers = candidateIdentifiers(in: markdown)
         guard !identifiers.isEmpty else { return [] }
-        let options = MarkdownRenderOptions(projectIdentifiers: identifiers)
+        // Markers read as the transcript reads them: their text holds no id.
+        let options = MarkdownRenderOptions(projectIdentifiers: identifiers, markers: MarkdownMarkerOptions())
         let document = Document(parsing: markdown, options: [.disableSmartOpts])
         var converter = MarkdownConverter(options: options, source: markdown)
         converter.highlightsCode = false

@@ -37,6 +37,11 @@ protocol ChatStore: AnyObject {
     /// The user's answer to the question `label` of the set Claude asked in the conversation. Throws why it
     /// wasn't taken, as the user reads it.
     func answer(_ answer: String, to label: String, inSet setID: ChatQuestionSet.ID, of id: ChatConversation.ID) async throws(ChatSendError)
+    /// The user's answer to the picker request Claude made in the conversation. Throws why it wasn't taken, as the
+    /// user reads it.
+    func answerPicker(_ answer: String, request requestID: String, of id: ChatConversation.ID) async throws(ChatSendError)
+    /// The catalogues the conversation's picker cards search.
+    func pickerCatalogs(of id: ChatConversation.ID) -> PickerCatalogAccess
     func rename(_ id: ChatConversation.ID, to title: String) throws(ChatSendError)
     /// Closes the conversation, once its turn ends when one runs.
     func close(_ id: ChatConversation.ID) throws(ChatSendError)
@@ -69,6 +74,25 @@ protocol ChatStore: AnyObject {
 /// Why a message wasn't sent, or a setting not changed: the sentence the composer shows.
 struct ChatSendError: Error, Hashable {
     let message: String
+}
+
+/// The catalogues a picker card searches, read when the card needs them.
+struct PickerCatalogAccess {
+    var symbols: @MainActor () async -> SFSymbolCatalog
+    /// The Mac's sounds and the project's; nil when the conversation's project isn't loaded.
+    var sounds: @MainActor () async -> SoundCatalog?
+    /// The Mac's fonts and the project's; nil when the conversation's project isn't loaded.
+    var fonts: @MainActor () async -> FontCatalog?
+
+    /// The samples': this Mac's symbols, sounds and fonts, read once, without project files.
+    static let samples: PickerCatalogAccess = {
+        let catalogs = PickerCatalogs(sources: .system())
+        return PickerCatalogAccess(
+            symbols: { await catalogs.symbols() },
+            sounds: { SoundCatalog(system: await catalogs.systemSounds(), projectRoot: URL(fileURLWithPath: "/"), projectPaths: []) },
+            fonts: { FontCatalog(installed: await catalogs.installedFonts(), project: []) }
+        )
+    }()
 }
 
 /// The sample conversations and engine, for previews and captures: they come back at each launch, and new
@@ -233,6 +257,28 @@ final class SampleChatStore: ChatStore {
                 conversation.waitingQuestions = set
             }
         }
+    }
+
+    /// Stores the answer and sends it as the user's message, `<Kind>: <answer>`.
+    func answerPicker(_ answer: String, request requestID: String, of id: ChatConversation.ID) async throws(ChatSendError) {
+        update(id) { conversation in
+            guard var request = conversation.waitingPicker, request.requestID == requestID else { return }
+            request.answer = answer
+            for turn in conversation.turns.indices {
+                for block in conversation.turns[turn].blocks.indices {
+                    if case .picker(let shown) = conversation.turns[turn].blocks[block].content, shown.requestID == requestID {
+                        conversation.turns[turn].blocks[block].content = .picker(request)
+                    }
+                }
+            }
+            conversation.waitingPicker = nil
+            conversation.turns.append(ChatTurn(author: .user, date: Date(), blocks: [ChatBlock(.text(request.answerMessage))]))
+        }
+    }
+
+    /// The Mac's symbols, sounds and fonts; no project files.
+    func pickerCatalogs(of id: ChatConversation.ID) -> PickerCatalogAccess {
+        .samples
     }
 
     func decide(_ approvalID: ChatApproval.ID, in conversationID: ChatConversation.ID, answer: ChatApproval.Answer) {

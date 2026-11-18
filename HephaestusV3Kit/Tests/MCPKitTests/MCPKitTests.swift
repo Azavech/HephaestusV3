@@ -42,6 +42,14 @@ struct SchemaTests {
         #expect(schema.json["additionalProperties"] == false)
         #expect(schema.json["required"] == ["text"])
     }
+
+    @Test("A value of any type has no type and takes a string or an object alike")
+    func anyValue() {
+        let schema = ToolSchema.object(properties: [("value", .anyValue("A color, or a pair."))], required: ["value"])
+        #expect(schema.json["properties"]?["value"] == ["description": "A color, or a pair."])
+        #expect(schema.violation(of: ["value": "#FF9500"]) == nil && schema.violation(of: ["value": ["light": "a", "dark": "b"]]) == nil)
+        #expect(schema.violation(of: [:]) == "value: required.")
+    }
 }
 
 @Suite("JSON-RPC")

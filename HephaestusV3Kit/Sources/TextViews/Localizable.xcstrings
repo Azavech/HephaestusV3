@@ -1,6 +1,18 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@%@" : {
+      "comment" : "Two pieces of a line of Markdown, one after the other: never translated",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@%2$@"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
     "Copy" : {
       "comment" : "Copies a code block"
     },
@@ -11,6 +23,18 @@
 
     },
     "Not done" : {
+
+    },
+    "OK" : {
+
+    },
+    "Play Sound failed" : {
+      "comment" : "A sound of a marker couldn't be played"
+    },
+    "The sound cannot be played." : {
+
+    },
+    "This window can't play sounds." : {
 
     }
   },

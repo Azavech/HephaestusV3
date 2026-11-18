@@ -1,11 +1,15 @@
 import AZDesign
 import ChatData
 import SwiftUI
+import TextViews
+import ToolsFoundation
 
 /// Claude's questions waiting for the user's answers, over the composer (docs/ui/chat.md › Questions): one
 /// question at a time, its recommended options preselected, "Answer another way", Skip, and Next or Submit.
 struct QuestionsCard: View {
     let questionSet: ChatQuestionSet
+    /// The conversation's project: its ids link and its files open.
+    var projectID: Project.ID?
     /// Tighter, for the side panel.
     var compact = false
     /// ⌘Return answers; off while a permission card, which takes it, shows.
@@ -26,6 +30,7 @@ struct QuestionsCard: View {
     /// The question and its options' height, which the card takes up to its maximum, then scrolls.
     @State private var contentHeight: CGFloat = 120
     @State private var isSending = false
+    @Environment(\.projectDirectory) private var directory
 
     private var question: ChatQuestion { questionSet.questions[min(displayed, questionSet.questions.count - 1)] }
 
@@ -107,10 +112,9 @@ struct QuestionsCard: View {
 
     private var questionContent: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(ChatTurnView.markdown(question.question))
+            // Markdown with its markers and ids (docs/text.md › Markers).
+            MarkdownView(question.question, projects: Set(directory.projects.map(\.id)), root: projectID.flatMap { directory.project($0)?.path })
                 .foregroundStyle(.textPrimary)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("chat.questions.text")
             if question.kind == .multiple {
                 Text(choiceBounds)
@@ -158,7 +162,8 @@ struct QuestionsCard: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
-                        Text(verbatim: option.label)
+                        // Markers drawn, ▶ and ids as text: a click anywhere chooses the option.
+                        MarkerText(option.label, playsSounds: false)
                             .fontWeight(.semibold)
                             .foregroundStyle(.textPrimary)
                         if question.recommended.contains(option.label) {
@@ -166,7 +171,7 @@ struct QuestionsCard: View {
                         }
                     }
                     if let description = option.description {
-                        Text(verbatim: description)
+                        MarkerText(description, playsSounds: false)
                             .font(.callout)
                             .foregroundStyle(.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -315,7 +320,7 @@ struct QuestionsCard: View {
 }
 
 /// "Recommended", beside an option.
-private struct RecommendedTag: View {
+struct RecommendedTag: View {
     var body: some View {
         Text("Recommended", bundle: #bundle, comment: "Marks the option Claude recommends")
             .font(.caption)
@@ -329,8 +334,13 @@ private struct RecommendedTag: View {
 /// Claude's questions in the transcript: each question, its options, and its answer so far.
 struct QuestionsSummary: View {
     let questionSet: ChatQuestionSet
+    var projectID: Project.ID?
+
+    @Environment(\.projectDirectory) private var directory
 
     var body: some View {
+        let projects = Set(directory.projects.map(\.id))
+        let root = projectID.flatMap { directory.project($0)?.path }
         VStack(alignment: .leading, spacing: 10) {
             Label {
                 Text("Questions", bundle: #bundle, comment: "The title of Claude's questions in the transcript")
@@ -344,12 +354,11 @@ struct QuestionsSummary: View {
             .accessibilityAddTraits(.isHeader)
             ForEach(questionSet.questions, id: \.label) { question in
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(ChatTurnView.markdown("\(question.label). \(question.question)"))
+                    MarkdownView("\(question.label). \(question.question)", projects: projects, root: root)
                         .foregroundStyle(.textPrimary)
-                        .fixedSize(horizontal: false, vertical: true)
                     ForEach(question.options, id: \.label) { option in
                         HStack(spacing: 6) {
-                            Text(verbatim: option.description.map { "\(option.label) — \($0)" } ?? option.label)
+                            MarkerText(option.description.map { "\(option.label) — \($0)" } ?? option.label, projects: projects, root: root)
                                 .foregroundStyle(.textSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
                             if question.recommended.contains(option.label) {
@@ -358,7 +367,7 @@ struct QuestionsSummary: View {
                         }
                         .font(.callout)
                     }
-                    answerLine(question)
+                    answerLine(question, projects: projects, root: root)
                         .font(.callout)
                 }
             }
@@ -375,10 +384,14 @@ struct QuestionsSummary: View {
         .accessibilityIdentifier("chat.questionSet.\(questionSet.id)")
     }
 
-    @ViewBuilder private func answerLine(_ question: ChatQuestion) -> some View {
+    @ViewBuilder private func answerLine(_ question: ChatQuestion, projects: Set<String>, root: String?) -> some View {
         if let answer = questionSet.answers[question.label] {
-            Text("Answer: \(answer)", bundle: #bundle, comment: "The user's answer to one of Claude's questions")
-                .foregroundStyle(.textPrimary)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("Answer:", bundle: #bundle, comment: "Before the user's answer to Claude's picker request")
+                MarkerText(answer, projects: projects, root: root)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(.textPrimary)
         } else {
             Text("Not answered yet", bundle: #bundle)
                 .foregroundStyle(.textSecondary)

@@ -193,7 +193,7 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 | --- | --- | --- | --- |
 | `read` | the `list_` and `get_` tools, `open_in_app` | runs | runs |
 | `renameChats` | `rename_chat` | runs | runs |
-| `askUser` | `ask_questions`, `show_image` | refused: only a chat's own Claude asks or shows | runs |
+| `askUser` | `ask_questions`, `show_image`, `ask_symbol`, `ask_color`, `ask_sound`, `ask_shortcut`, `ask_font`, `ask_animation` | refused: only a chat's own Claude asks or shows | runs |
 | `closeChats` | `close_chat` | runs on the chats it names | its own chat runs; naming another one shows a card first |
 | `startBuilds` | `rerun_run`, `cancel_run` | runs | Start builds: Ask First shows a card and waits; Never (the default) refuses |
 | `operateClusters` | `k8s_restart`, `k8s_scale`, `k8s_port_forward`, `k8s_stop_port_forward`, `argocd_sync` | runs | Operate deployments, as Change tickets |
@@ -296,6 +296,7 @@ a project: Claude may read and change every project of this Mac, as the user can
 | `close_chat` | ChatKit | closeChats | `ChatSession.closeChats` |
 | `ask_questions` | ChatKit | askUser | `ChatSession.postQuestions` |
 | `show_image` | ChatKit | askUser | `ChatSession.postImages` |
+| `ask_symbol`, `ask_color`, `ask_sound`, `ask_shortcut`, `ask_font`, `ask_animation` | ChatKit | askUser | `ChatSession.postPicker` |
 | `list_runs`, `get_run`, `get_run_log`, `list_releases`, `get_release` | BuildsKit | read | gh ([Data › Builds](data.md#builds)) |
 | `rerun_run`, `cancel_run` | BuildsKit | startBuilds | gh |
 | `api_operations` | ContractsKit | read | the project's contract ([Data › Contracts](data.md#contracts)) |
@@ -1348,7 +1349,8 @@ Input schema:
 - **Errors:** another token than a chat's (`forbidden`, `Only a chat's own Claude can ask the user: there is no
   chat to show the questions in.`), before the arguments are checked; a broken rule (`invalid`, the rule's
   message: [Data › Questions](data.md#questions)); a chat that already has questions waiting (`conflict`,
-  `Questions already wait for the user's answers in this chat.`); a chat gone (`notFound`).
+  `Questions already wait for the user's answers in this chat.`), or a picker request (`conflict`, V2's message of
+  the request, such as `A color request is already waiting for an answer in this chat.`); a chat gone (`notFound`).
 
 Description:
 
@@ -1477,6 +1479,295 @@ Input schema:
   },
   "required" : [
     "paths"
+  ],
+  "type" : "object"
+}
+```
+
+### ask_symbol
+
+- **Calls:** `ChatSession.postPicker` with the kind `symbol` for the calling chat (the token's): the question, 2 to 10 distinct suggestions, each an SF Symbol of this Mac ([Data › Picker catalogues](data.md#picker-catalogues)), the recommended one among them ([Data › Picker requests](data.md#picker-requests)); then a `symbol` item, which the chat shows in its card over the composer ([UI › Chat › Symbol card](ui/chat.md#symbol-card)).
+- **Result:** `{"requestID": <id>}`, at once. The answer comes later, as the user's message `Symbol: <answer>`.
+- **Errors:** another token than a chat's (`forbidden`, `Only a chat's own Claude can ask the user: there is no chat to show the request in.`), before the arguments are checked; a broken rule (`invalid`, the rule's message); a chat with questions or a request waiting (`conflict`, `Questions already wait for the user's answers in this chat.`, or V2's message of the waiting request, such as `A symbol request is already waiting for an answer in this chat.`); a chat gone (`notFound`).
+
+Description:
+
+```text
+Shows the user a card in this chat to choose one SF Symbol, and returns at once with the request's id. Give the question, 2 to 10 SF Symbol names this Mac has and the recommended one, which the card preselects; the user can also search every symbol of the Mac, answer in their own words or skip. The user's next message gives the answer: "Symbol: ![](sf:<name>)" for a chosen symbol, "Symbol: <text>" for their own words, or "Symbol: Skipped". A chat has one request or set of questions waiting at most. Only a chat's own Claude can ask.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "question" : {
+      "description" : "The question, in Markdown.",
+      "type" : "string"
+    },
+    "recommended" : {
+      "description" : "The recommended symbol: one of the suggestions.",
+      "type" : "string"
+    },
+    "suggestions" : {
+      "description" : "2 to 10 distinct SF Symbol names, such as line.3.horizontal.decrease.circle.",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    }
+  },
+  "required" : [
+    "question",
+    "suggestions",
+    "recommended"
+  ],
+  "type" : "object"
+}
+```
+
+### ask_color
+
+- **Calls:** `ChatSession.postPicker` with the kind `color` for the calling chat (the token's): the question, 2 to 10 suggestions, one color each, or a light and dark pair each with `lightAndDark`, each color a hex color `#RRGGBB` or a system color name, distinct, the recommended one among them ([Data › Picker requests](data.md#picker-requests)); then a `color` item, which the chat shows in its card over the composer ([UI › Chat › Color card](ui/chat.md#color-card)).
+- **Result:** `{"requestID": <id>}`, at once. The answer comes later, as the user's message `Color: <answer>`.
+- **Errors:** another token than a chat's (`forbidden`, `Only a chat's own Claude can ask the user: there is no chat to show the request in.`), before the arguments are checked; a broken rule (`invalid`, the rule's message); a chat with questions or a request waiting (`conflict`, `Questions already wait for the user's answers in this chat.`, or V2's message of the waiting request, such as `A symbol request is already waiting for an answer in this chat.`); a chat gone (`notFound`).
+
+Description:
+
+```text
+Shows the user a card in this chat to choose one color, or a light and dark pair, and returns at once with the request's id. A color is a hex color #RRGGBB (sRGB, opaque) or a system color name such as systemBlue, label or accentColor. Give the question, 2 to 10 suggestions and the recommended one, which the card preselects. Set lightAndDark for a color that has a light and a dark appearance, such as a color set of an asset catalog: each suggestion and the recommended one are then objects {"light": "<color>", "dark": "<color>"}. The card shows the suggestions as swatches with every system color, the macOS color panel and a hex field; the user can switch between one color and a pair, answer in their own words or skip. The user's next message gives the answer: "Color: ![](color:<color>)" for one color, "Color: Light ![](color:<color>), Dark ![](color:<color>)" for a pair, "Color: <text>" for their own words, or "Color: Skipped". A chat has one request or set of questions waiting at most. Only a chat's own Claude can ask.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "lightAndDark" : {
+      "description" : "true to ask for a light and dark pair; false when absent.",
+      "type" : "boolean"
+    },
+    "question" : {
+      "description" : "The question, in Markdown.",
+      "type" : "string"
+    },
+    "recommended" : {
+      "description" : "The recommended suggestion: one of the suggestions."
+    },
+    "suggestions" : {
+      "description" : "2 to 10 distinct suggestions: colors, or with lightAndDark objects {\"light\": \"<color>\", \"dark\": \"<color>\"}.",
+      "items" : {
+        "description" : "A color, or with lightAndDark an object {\"light\": \"<color>\", \"dark\": \"<color>\"}."
+      },
+      "type" : "array"
+    }
+  },
+  "required" : [
+    "question",
+    "suggestions",
+    "recommended"
+  ],
+  "type" : "object"
+}
+```
+
+### ask_sound
+
+- **Calls:** `ChatSession.postPicker` with the kind `sound` for the calling chat (the token's): only in a project of type App; the question, 2 to 10 distinct sound names of the project's sound catalogue ([Data › Picker catalogues](data.md#picker-catalogues)), the recommended one among them ([Data › Picker requests](data.md#picker-requests)); then a `sound` item, which the chat shows in its card over the composer ([UI › Chat › Sound card](ui/chat.md#sound-card)).
+- **Result:** `{"requestID": <id>}`, at once. The answer comes later, as the user's message `Sound: <answer>`.
+- **Errors:** another token than a chat's (`forbidden`, `Only a chat's own Claude can ask the user: there is no chat to show the request in.`), before the arguments are checked; a project of another type (`forbidden`, `ask_sound is only available in Swift application projects.`); a broken rule (`invalid`, the rule's message); a chat with questions or a request waiting (`conflict`, `Questions already wait for the user's answers in this chat.`, or V2's message of the waiting request, such as `A symbol request is already waiting for an answer in this chat.`); a chat gone (`notFound`).
+
+Description:
+
+```text
+Shows the user a card in this chat to choose one sound for an app of an Apple platform, and returns at once with the request's id; only in a project of type App (a Swift application). A sound is named macOS/<file> for a file of /System/Library/Sounds, such as macOS/Glass.aiff; <runtime>/<path> for a file under System/Library/Audio/UISounds of an installed Simulator runtime, <runtime> as xcrun simctl list runtimes names it, such as iOS 26.1/sms-received1.caf; or Project/<path> for a .caf, .aiff, .wav or .mp3 file of the project, its path from the project's folder. Give the question, 2 to 10 sound names and the recommended one, which the card preselects; the user can also search every sound of the Mac and the project, play them, answer in their own words or skip. The user's next message gives the answer: "Sound: ![](sound:<name>)" for a chosen sound, "Sound: <text>" for their own words, or "Sound: Skipped". A chat has one request or set of questions waiting at most. Only a chat's own Claude can ask.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "question" : {
+      "description" : "The question, in Markdown.",
+      "type" : "string"
+    },
+    "recommended" : {
+      "description" : "The recommended sound: one of the suggestions.",
+      "type" : "string"
+    },
+    "suggestions" : {
+      "description" : "2 to 10 distinct sound names, such as macOS/Glass.aiff.",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    }
+  },
+  "required" : [
+    "question",
+    "suggestions",
+    "recommended"
+  ],
+  "type" : "object"
+}
+```
+
+### ask_shortcut
+
+- **Calls:** `ChatSession.postPicker` with the kind `shortcut` for the calling chat (the token's): only in a project of type App; the question, 2 to 10 distinct shortcuts in menu notation ([Text › Shortcut notation](text.md#shortcut-notation)), the recommended one among them, and `inUse`: at most 500 shortcuts, each once, with a command of one line of 1 to 200 characters ([Data › Picker requests](data.md#picker-requests)); then a `shortcut` item, which the chat shows in its card over the composer ([UI › Chat › Shortcut card](ui/chat.md#shortcut-card)).
+- **Result:** `{"requestID": <id>}`, at once. The answer comes later, as the user's message `Shortcut: <answer>`.
+- **Errors:** another token than a chat's (`forbidden`, `Only a chat's own Claude can ask the user: there is no chat to show the request in.`), before the arguments are checked; a project of another type (`forbidden`, `ask_shortcut is available only in Swift application projects.`); a broken rule (`invalid`, the rule's message); a chat with questions or a request waiting (`conflict`, `Questions already wait for the user's answers in this chat.`, or V2's message of the waiting request, such as `A symbol request is already waiting for an answer in this chat.`); a chat gone (`notFound`).
+
+Description:
+
+```text
+Shows the user a card in this chat to choose one keyboard shortcut, and returns at once with the request's id; only in a project of type App (a Swift application). Write each shortcut as macOS menus write it: the modifiers ⌃ ⌥ ⇧ ⌘, in this order, then one key: an uppercase letter, a digit or punctuation as the key types it without Shift, ↩ ⌤ ⎋ ⇥ Space ⌫ ⌦ ← → ↑ ↓ ↖ ↘ ⇞ ⇟, or F1 to F20, such as ⇧⌘K, ⇧⌘/ or ⌃⌥Space. Give the question, 2 to 10 shortcuts, the recommended one, which the card preselects, and in inUse every shortcut the app already uses with its command. The user can also record another combination, answer in their own words or skip; the card warns when the chosen shortcut is a standard macOS shortcut or one of inUse, without refusing it. The user's next message gives the answer: "Shortcut: ![](shortcut:<shortcut>)" for a chosen or recorded shortcut, "Shortcut: <text>" for their own words, or "Shortcut: Skipped". A chat has one request or set of questions waiting at most. Only a chat's own Claude can ask.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "inUse" : {
+      "description" : "Every shortcut the app already uses, at most 500, each once, such as ⌘N with New Ticket; empty when it has none.",
+      "items" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "command" : {
+            "description" : "The command that uses it, one line of 1 to 200 characters.",
+            "type" : "string"
+          },
+          "shortcut" : {
+            "description" : "The shortcut, in the same notation.",
+            "type" : "string"
+          }
+        },
+        "required" : [
+          "shortcut",
+          "command"
+        ],
+        "type" : "object"
+      },
+      "type" : "array"
+    },
+    "question" : {
+      "description" : "The question, in Markdown.",
+      "type" : "string"
+    },
+    "recommended" : {
+      "description" : "The recommended shortcut: one of the suggestions.",
+      "type" : "string"
+    },
+    "suggestions" : {
+      "description" : "2 to 10 distinct shortcuts, such as ⇧⌘K.",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    }
+  },
+  "required" : [
+    "question",
+    "suggestions",
+    "recommended",
+    "inUse"
+  ],
+  "type" : "object"
+}
+```
+
+### ask_font
+
+- **Calls:** `ChatSession.postPicker` with the kind `font` for the calling chat (the token's): the question, the sample text, 2 to 10 distinct fonts of the font notation ([Text › Font notation](text.md#font-notation)) that the project's font catalogue has, the recommended one among them ([Data › Picker requests](data.md#picker-requests)); then a `font` item, which the chat shows in its card over the composer ([UI › Chat › Font card](ui/chat.md#font-card)).
+- **Result:** `{"requestID": <id>}`, at once. The answer comes later, as the user's message `Font: <answer>`.
+- **Errors:** another token than a chat's (`forbidden`, `Only a chat's own Claude can ask the user: there is no chat to show the request in.`), before the arguments are checked; a broken rule (`invalid`, the rule's message); a chat with questions or a request waiting (`conflict`, `Questions already wait for the user's answers in this chat.`, or V2's message of the waiting request, such as `A symbol request is already waiting for an answer in this chat.`); a chat gone (`notFound`).
+
+Description:
+
+```text
+Shows the user a card in this chat to choose one font, and returns at once with the request's id. A font is a Dynamic Type text style, .largeTitle, .title, .title2, .title3, .headline, .subheadline, .body, .callout, .footnote, .caption or .caption2, or <family>/<weight>/<size>: a family of this Mac or of the project's font files, one of its weights as macOS names them, and a size of 1 to 999 points with at most one decimal, such as System Rounded/Semibold/17 or Avenir Next/Demi Bold/15; System, System Rounded, System Serif and System Monospaced are the system font's designs, with the weights Ultralight, Thin, Light, Regular, Medium, Semibold, Bold, Heavy and Black. Give the question, the sample text the card draws in the chosen font, taken from where the font will be used, 2 to 10 fonts and the recommended one, which the card preselects; the user can also search every font, change the weight and size, answer in their own words or skip. The user's next message gives the answer: "Font: ![](font:<font>)" for a chosen font, "Font: <text>" for their own words, or "Font: Skipped". A chat has one request or set of questions waiting at most. Only a chat's own Claude can ask.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "question" : {
+      "description" : "The question, in Markdown.",
+      "type" : "string"
+    },
+    "recommended" : {
+      "description" : "The recommended font: one of the suggestions.",
+      "type" : "string"
+    },
+    "sample" : {
+      "description" : "The text the card draws in the chosen font.",
+      "type" : "string"
+    },
+    "suggestions" : {
+      "description" : "2 to 10 distinct fonts, such as .headline or System Rounded/Semibold/17.",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    }
+  },
+  "required" : [
+    "question",
+    "sample",
+    "suggestions",
+    "recommended"
+  ],
+  "type" : "object"
+}
+```
+
+### ask_animation
+
+- **Calls:** `ChatSession.postPicker` with the kind `animation` for the calling chat (the token's): only in a project of type App; the question, 2 to 10 distinct SwiftUI animation expressions ([Text › Animation expressions](text.md#animation-expressions)), the recommended one among them ([Data › Picker requests](data.md#picker-requests)); then a `animation` item, which the chat shows in its card over the composer ([UI › Chat › Animation card](ui/chat.md#animation-card)).
+- **Result:** `{"requestID": <id>}`, at once. The answer comes later, as the user's message `Animation: <answer>`.
+- **Errors:** another token than a chat's (`forbidden`, `Only a chat's own Claude can ask the user: there is no chat to show the request in.`), before the arguments are checked; a project of another type (`forbidden`, `ask_animation is available only in Swift application projects.`); a broken rule (`invalid`, the rule's message); a chat with questions or a request waiting (`conflict`, `Questions already wait for the user's answers in this chat.`, or V2's message of the waiting request, such as `A symbol request is already waiting for an answer in this chat.`); a chat gone (`notFound`).
+
+Description:
+
+```text
+Shows the user a card in this chat to choose one animation, and returns at once with the request's id; only in a project of type App (a Swift application). An animation is a SwiftUI preset written as its expression: .smooth, .snappy or .bouncy with (duration:extraBounce:), .spring with (duration:bounce:), .easeIn, .easeOut, .easeInOut or .linear with (duration:); the parameters are optional, in this order, a parameter left out taking SwiftUI's default, such as .snappy, .spring(duration: 0.4, bounce: 0.2) or .easeInOut(duration: 0.25). duration is 0.1 to 2 seconds, bounce -1 to 1, extraBounce 0 to 1. Give the question, 2 to 10 expressions and the recommended one, which the card preselects; the card plays each one, and the user can also make their own with a preset and sliders, answer in their own words or skip. The user's next message gives the answer: "Animation: ![](animation:<expression>)" for a chosen animation, "Animation: <text>" for their own words, or "Animation: Skipped". A chat has one request or set of questions waiting at most. Only a chat's own Claude can ask.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "question" : {
+      "description" : "The question, in Markdown.",
+      "type" : "string"
+    },
+    "recommended" : {
+      "description" : "The recommended animation: one of the suggestions.",
+      "type" : "string"
+    },
+    "suggestions" : {
+      "description" : "2 to 10 distinct animation expressions, such as .spring(duration: 0.4, bounce: 0.2).",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    }
+  },
+  "required" : [
+    "question",
+    "suggestions",
+    "recommended"
   ],
   "type" : "object"
 }
