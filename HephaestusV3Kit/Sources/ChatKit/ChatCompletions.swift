@@ -9,13 +9,14 @@ enum ChatCompletions {
     static let limit = 20
 
     /// The suggestions for the composer's `text`: none unless it starts with `/` and holds no white space or
-    /// line break. The skills (the commands not built into the CLI) whose name holds the typed text, in any
+    /// line break. The skills (the commands neither built into the CLI nor synced from claude.ai for Claude's
+    /// desktop app, whose tools a chat lacks) whose name holds the typed text, in any
     /// case; those whose name, or its part after the last `:`, starts with it first, then the others, each
     /// group by name; at most `limit`. Picking one makes the text `/<name> `.
     static func list(for text: String, commands: [ClaudeCommand]) -> [MessageCompletion] {
         guard text.hasPrefix("/"), !text.contains(where: { $0.isWhitespace || $0.isNewline }) else { return [] }
         let typed = text.dropFirst().lowercased()
-        let skills = commands.filter { !$0.isBuiltIn && (typed.isEmpty || $0.name.lowercased().contains(typed)) }
+        let skills = commands.filter { !$0.isBuiltIn && !$0.isSynced && (typed.isEmpty || $0.name.lowercased().contains(typed)) }
         func starts(_ command: ClaudeCommand) -> Bool {
             let name = command.name.lowercased()
             let last = name.split(separator: ":").last.map(String.init) ?? name

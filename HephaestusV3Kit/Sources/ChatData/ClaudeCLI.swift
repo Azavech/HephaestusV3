@@ -157,14 +157,53 @@ public struct ClaudeCommand: Sendable, Hashable, Identifiable {
     public var argumentHint: String
     /// One of the CLI's own commands (`builtin`), rather than a skill.
     public var isBuiltIn: Bool
+    /// A skill the CLI syncs from the user's claude.ai account, for Claude's desktop app: its description ends
+    /// with `(claude.ai sync)`, or it belongs to a plugin synced the same way. A chat lacks the tools such a
+    /// skill needs (the browser, computer use, the desktop's connectors).
+    public var isSynced: Bool
 
     public var id: String { name }
 
-    public init(name: String, description: String = "", argumentHint: String = "", isBuiltIn: Bool = false) {
+    public init(name: String, description: String = "", argumentHint: String = "", isBuiltIn: Bool = false, isSynced: Bool = false) {
         self.name = name
         self.description = description
         self.argumentHint = argumentHint
         self.isBuiltIn = isBuiltIn
+        self.isSynced = isSynced
+    }
+
+    /// The CLI's mark at the end of a synced skill's description.
+    public static let syncedMark = "(claude.ai sync)"
+
+    /// The plugin a skill's name starts with, `hexago` for `hexago:create-service`; nil without one.
+    public var plugin: String? {
+        name.firstIndex(of: ":").map { String(name[..<$0]) }
+    }
+
+    /// The commands, those of the synced `plugins` marked synced too.
+    public static func marking(_ commands: [ClaudeCommand], syncedPlugins plugins: Set<String>) -> [ClaudeCommand] {
+        commands.map { command in
+            var command = command
+            if let plugin = command.plugin, plugins.contains(plugin) { command.isSynced = true }
+            return command
+        }
+    }
+
+    /// The plugins the CLI syncs from claude.ai: the folders of `<Claude folder>/plugins/synced/<account>/` that
+    /// hold a `.claude-plugin/plugin.json`, by the `name` it gives, else the folder's. None when the folder is
+    /// missing.
+    public static func syncedPlugins(claudeFolder: URL) -> Set<String> {
+        let synced = claudeFolder.appendingPathComponent("plugins/synced", isDirectory: true)
+        let manager = FileManager.default
+        var names: Set<String> = []
+        for account in (try? manager.contentsOfDirectory(at: synced, includingPropertiesForKeys: nil)) ?? [] {
+            for folder in (try? manager.contentsOfDirectory(at: account, includingPropertiesForKeys: nil)) ?? [] {
+                let manifest = folder.appendingPathComponent(".claude-plugin/plugin.json")
+                guard let data = try? Data(contentsOf: manifest) else { continue }
+                names.insert((try? JSONValue.parse(data))?["name"]?.stringValue ?? folder.lastPathComponent)
+            }
+        }
+        return names
     }
 
     /// The commands of an `initialize` answer, in its order; nil when it has none, or an entry without a name.
@@ -172,8 +211,10 @@ public struct ClaudeCommand: Sendable, Hashable, Identifiable {
         guard let entries = commands?.arrayValue else { return nil }
         let list = entries.compactMap { entry -> ClaudeCommand? in
             guard let name = entry["name"]?.stringValue, !name.isEmpty else { return nil }
-            return ClaudeCommand(name: name, description: entry["description"]?.stringValue ?? "",
-                                 argumentHint: entry["argumentHint"]?.stringValue ?? "", isBuiltIn: entry["builtin"]?.boolValue ?? false)
+            let description = entry["description"]?.stringValue ?? ""
+            return ClaudeCommand(name: name, description: description, argumentHint: entry["argumentHint"]?.stringValue ?? "",
+                                 isBuiltIn: entry["builtin"]?.boolValue ?? false,
+                                 isSynced: description.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix(syncedMark))
         }
         return list.isEmpty ? nil : list
     }

@@ -203,8 +203,11 @@ completes the call of one, `/<name> `. It works in the Chat window and in the ch
 - **Skills.** The commands of the chat's Claude CLI that aren't built into it ([Data › The CLI](../data.md#the-cli)):
   the app's own (`hephaestus-skills:report-feedback`), the user's skills, the skills of their plugins and of the
   project. The project's chats' last CLI gives the list; until one ran, the model probe's, which runs outside
-  any project and so lacks the project's own skills. The CLI's built-in commands (`compact`, `model`…) aren't
-  offered, as V2 offered only skills.
+  any project and so lacks the project's own skills. Not offered: the CLI's built-in commands (`compact`,
+  `model`…), as V2 offered only skills; and the skills the CLI syncs from the user's claude.ai account for
+  Claude's desktop app (the browser, computer use, Docs, the Office files…), whose tools a chat doesn't have
+  (the user's request, 17 November 2026): those whose description ends with `(claude.ai sync)`, and those of the
+  plugins in the CLI's `plugins/synced/` folder ([Data › The CLI](../data.md#the-cli)).
 - **Matching.** A skill matches when its name holds the text after the `/`, in any letter case; a lone `/`
   offers them all. Names that start with the text, or whose part after the last `:` does, come first, then the
   others; each group by name. At most 20.

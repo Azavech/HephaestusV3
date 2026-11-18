@@ -177,6 +177,25 @@ struct ChatSessionTests {
         cli.finish(.exited(0))
     }
 
+    @Test("A skill is synced when its description ends with the CLI's mark, or its plugin is in the CLI's synced folder")
+    func syncedCommands() throws {
+        let list = try #require(ClaudeCommand.list([
+            ["name": "computer-use", "description": "Controls the screen. (claude.ai sync)"],
+            ["name": "cowork:make", "description": "Makes plugins"],
+            ["name": "hexago:create-service", "description": "Creates a service"],
+        ]))
+        #expect(list.map(\.isSynced) == [true, false, false])
+        let claude = FileManager.default.temporaryDirectory.appendingPathComponent("SyncedPlugins-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: claude) }
+        let manifest = claude.appendingPathComponent("plugins/synced/account-1/cowork-folder/.claude-plugin")
+        try FileManager.default.createDirectory(at: manifest, withIntermediateDirectories: true)
+        try Data(#"{"name":"cowork"}"#.utf8).write(to: manifest.appendingPathComponent("plugin.json"))
+        try FileManager.default.createDirectory(at: claude.appendingPathComponent("plugins/synced/account-1/empty"), withIntermediateDirectories: true)
+        #expect(ClaudeCommand.syncedPlugins(claudeFolder: claude) == ["cowork"])
+        #expect(ClaudeCommand.marking(list, syncedPlugins: ["cowork"]).map(\.isSynced) == [true, true, false])
+        #expect(ClaudeCommand.syncedPlugins(claudeFolder: claude.appendingPathComponent("missing")).isEmpty)
+    }
+
     @Test("A first message makes the chat and starts the CLI: no prompt, the file tools of its own, the app's tools allowed, the skills chats call")
     func firstMessage() async throws {
         let world = try await ChatWorld()

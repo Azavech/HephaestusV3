@@ -266,7 +266,7 @@ extension ChatSession {
             case .controlResponse(let id, let success, let response, let error):
                 if id == run.initializeID, success {
                     if let list = ClaudeModel.list(response?["models"]), models != list { models = list }
-                    if let list = ClaudeCommand.list(response?["commands"]), let projectID = chats[chatID]?.projectID,
+                    if let list = ClaudeCommand.list(response?["commands"]).map(markingSynced), let projectID = chats[chatID]?.projectID,
                        projectCommands[projectID] != list {
                         projectCommands[projectID] = list
                     }
@@ -546,7 +546,7 @@ extension ChatSession {
             if !connection.hasExited { connection.signal(SIGKILL) }
         }
         if let list = answer?.models, list != models { models = list }
-        if let list = answer?.commands, list != commands { commands = list }
+        if let list = answer?.commands.map(markingSynced), list != commands { commands = list }
     }
 }
 

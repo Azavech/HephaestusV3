@@ -248,6 +248,15 @@ public final class ChatSession {
         projectCommands[projectID] ?? commands
     }
 
+    /// `list` with the skills of the plugins the CLI syncs from claude.ai marked synced: those in the CLI's folder
+    /// (`CLAUDE_CONFIG_DIR`, else `~/.claude`) of the app's environment; none without either.
+    func markingSynced(_ list: [ClaudeCommand]) -> [ClaudeCommand] {
+        let folder = processEnvironment["CLAUDE_CONFIG_DIR"].map { URL(fileURLWithPath: $0, isDirectory: true) }
+            ?? processEnvironment["HOME"].map { URL(fileURLWithPath: $0, isDirectory: true).appendingPathComponent(".claude", isDirectory: true) }
+        guard let folder else { return list }
+        return ClaudeCommand.marking(list, syncedPlugins: ClaudeCommand.syncedPlugins(claudeFolder: folder))
+    }
+
     public func state(of chatID: String) -> ChatState {
         states[chatID] ?? .idle
     }

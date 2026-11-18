@@ -995,7 +995,10 @@ other than `default` that resolves to it, else of the model whose value it is, e
 
 **Commands** (`ClaudeCommand`): each entry of `commands` gives `name` (what follows `/`), `description`,
 `argumentHint` and `builtin` (`isBuiltIn`, false when absent); an entry without a name is skipped, and an answer
-without entries changes nothing. The probe's list is `ChatSession.commands`: the user's skills, their plugins'
+without entries changes nothing. `isSynced` marks a skill the CLI syncs from the user's claude.ai account: its
+description, trimmed, ends with `(claude.ai sync)`, or its name's part before `:` is a synced plugin, one of the
+folders of `<CLI folder>/plugins/synced/<account>/` holding a `.claude-plugin/plugin.json` (by its `name`, else
+the folder's), the CLI folder being `CLAUDE_CONFIG_DIR`, else `~/.claude`, from the app's environment. The probe's list is `ChatSession.commands`: the user's skills, their plugins'
 and the app's own, outside any project. Each chat process's `initialize` answer sets the list of its chat's
 project (`projectCommands`), which then adds the project's own skills; `commands(forProject:)` gives the
 project's list, else the probe's. Lists stay in memory only. The composer offers the skills among them ([UI ›

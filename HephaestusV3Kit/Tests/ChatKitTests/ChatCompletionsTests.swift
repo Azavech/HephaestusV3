@@ -31,6 +31,14 @@ struct ChatCompletionsTests {
         #expect(names("/REL") == ["release-notes"], "Any letter case")
     }
 
+    @Test("Skills synced from claude.ai for the desktop app aren't offered")
+    func synced() {
+        let list = [ClaudeCommand(name: "computer-use", description: "Controls the screen. (claude.ai sync)", isSynced: true),
+                    ClaudeCommand(name: "cowork-plugin-management:create-cowork-plugin", isSynced: true),
+                    ClaudeCommand(name: "hexago:create-service")]
+        #expect(ChatCompletions.list(for: "/c", commands: list).map(\.title) == ["hexago:create-service"])
+    }
+
     @Test("Nothing without a first word that starts with / and holds no space, or without a match")
     func none() {
         #expect(names("").isEmpty && names("re").isEmpty && names("hello /re").isEmpty)
