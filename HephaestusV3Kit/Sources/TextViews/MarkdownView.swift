@@ -3,31 +3,33 @@ import AZDesign
 import AZDesignCode
 import SwiftUI
 import TextFormats
-import TicketData
 import ToolsFoundation
 
-/// A description or a comment, as Markdown (docs/text.md): headings, paragraphs, quotes, lists with task
-/// boxes, highlighted code blocks, tables and rules. Ticket and bundle ids of the loaded projects become links
-/// that open them in their Tickets window; other links open in the browser. The text can be selected.
-struct MarkdownView: View {
+/// Markdown as the tools show it (docs/text.md): a ticket's description or comment, Claude's reply. Headings,
+/// paragraphs, quotes, lists with task boxes, highlighted code blocks with a Copy button, tables and rules.
+/// Ticket and bundle ids of the loaded projects become links that open them in their Tickets window; other
+/// links open in the browser. The text can be selected.
+public struct MarkdownView: View {
     let blocks: [MarkdownBlock]
     let options: MarkdownRenderOptions
 
     @Environment(\.openRoute) private var openRoute
 
-    /// `markdown` rendered with the identifiers of `projects` linked. Each line break is kept, as people
-    /// type them in tickets. Relative links open the files of the project at `root`.
-    init(_ markdown: String, projects: Set<Project.ID> = [], root: String? = nil) {
-        options = MarkdownRenderOptions(projectRootPath: root, projectIdentifiers: projects, softBreaksAsLineBreaks: true)
+    /// `markdown` rendered with the identifiers of `projects` linked. With `keepsLineBreaks`, each line break is
+    /// kept, as people type them in tickets; without, Markdown's own rules join a paragraph's lines. Relative
+    /// links open the files of the project at `root`.
+    public init(_ markdown: String, projects: Set<Project.ID> = [], root: String? = nil, keepsLineBreaks: Bool = true) {
+        options = MarkdownRenderOptions(projectRootPath: root, projectIdentifiers: projects, softBreaksAsLineBreaks: keepsLineBreaks)
         blocks = MarkdownBlockRenderer.render(markdown, options: options)
     }
 
-    var body: some View {
+    public var body: some View {
         MarkdownBlocks(blocks: blocks)
             .textSelection(.enabled)
             .environment(\.openURL, OpenURLAction { url in
                 if let id = MarkdownItemIDs.id(fromHref: url.absoluteString) {
-                    let project = TicketIDs.parseTicket(id)?.project ?? TicketIDs.parseBundle(id)?.project ?? ""
+                    // `ORD-142` and the bundle `ORD-B2` belong to the project `ORD`.
+                    let project = id.split(separator: "-").first.map(String.init) ?? ""
                     openRoute(.tool(.tickets, project: project, focus: id))
                     return .handled
                 }
@@ -102,10 +104,22 @@ private struct MarkdownBlockView: View {
             }
         case let .codeBlock(_, label, code, tokens):
             VStack(alignment: .leading, spacing: 4) {
-                if let label {
-                    Text(verbatim: label)
-                        .font(.caption)
-                        .foregroundStyle(.textSecondary)
+                HStack {
+                    if let label {
+                        Text(verbatim: label)
+                            .font(.caption)
+                            .foregroundStyle(.textSecondary)
+                    }
+                    Spacer()
+                    Button(String(localized: "Copy", bundle: #bundle, comment: "Copies a code block"), systemImage: "doc.on.doc") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(code, forType: .string)
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+                    .help(String(localized: "Copy", bundle: #bundle, comment: "Copies a code block"))
+                    .accessibilityIdentifier("markdown.code.copy")
                 }
                 ScrollView(.horizontal) {
                     Text(MarkdownInlines.highlighted(code, tokens: tokens))

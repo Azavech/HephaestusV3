@@ -2,6 +2,7 @@ import AppKit
 import AZDesign
 import QuickLook
 import SwiftUI
+import TextViews
 import ToolsFoundation
 import UniformTypeIdentifiers
 

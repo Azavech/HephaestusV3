@@ -68,6 +68,9 @@ let package = Package(
 
         // Shared vocabulary: projects, tools, routes and the few components every tool uses.
         .target(name: "ToolsFoundation", dependencies: [design], resources: strings, swiftSettings: isolation),
+        // Markdown and highlighted code as the tools show them: ticket descriptions and comments, Claude's
+        // replies. Not a tool: tools that show text depend on it.
+        .target(name: "TextViews", dependencies: ["ToolsFoundation", design, code, "TextFormats"], resources: strings, swiftSettings: isolation),
 
         // The project selector: the Projects window, the switcher of every tool window, the menu bar panel.
         toolTarget("ProjectsKit", data: ["ProjectData", "ExternalTools", "MCPKit"]),
@@ -75,13 +78,13 @@ let package = Package(
         // The tools. The Dashboard draws the grid and its edit mode; each tool provides the widgets of
         // its own data, and ToolsScenes hands them to it.
         toolTarget("DashboardsKit", data: ["ProjectData"]),
-        toolTarget("TicketsKit", data: ["TicketData", "TextFormats", "MCPKit"]),
+        toolTarget("TicketsKit", data: ["TicketData", "TextFormats", "TextViews", "MCPKit"]),
         toolTarget("ServiceMapKit", data: ["ClusterData", "BuildData", "MCPKit", "ProjectData", "ExternalTools"]),
         toolTarget("ContractsKit", data: ["ContractData", "MCPKit", "ProjectData"]),
         toolTarget("BuildsKit", data: ["BuildData", "MCPKit", "ProjectData", "ExternalTools"]),
         toolTarget("MachinesKit", data: ["MachineData", "MCPKit", "ProjectData"]),
         // Claude as one more client of the tools: the Chat window and the panel beside each tool.
-        toolTarget("ChatKit", data: ["ChatData", "MCPKit", "ProjectData", "FileStorage"]),
+        toolTarget("ChatKit", data: ["ChatData", "MCPKit", "ProjectData", "FileStorage", "TextViews", "TextFormats"]),
 
         // The only target that knows every tool: scenes, menu commands and route handling.
         .target(

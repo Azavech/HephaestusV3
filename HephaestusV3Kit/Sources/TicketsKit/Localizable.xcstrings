@@ -292,9 +292,6 @@
     "High" : {
       "comment" : "A ticket's priority"
     },
-    "Image" : {
-
-    },
     "In Progress" : {
       "comment" : "A bundle's status\nA ticket's status"
     },
@@ -437,9 +434,6 @@
     },
     "None" : {
       "comment" : "A ticket property without a value: no bundle, no priority"
-    },
-    "Not done" : {
-
     },
     "Not found" : {
       "comment" : "A linked ticket whose file is missing"

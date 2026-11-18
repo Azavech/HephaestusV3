@@ -94,7 +94,7 @@ apart and wrapping onto more lines (AZDesign's `FlowStack`). Each is AZDesign's 
 
 Files sent from the composer show the same way ([Attachments](#attachments)).
 
-Claude's text is Markdown, shown inline: emphasis, code and links, line breaks kept. The user's text shows as written. In previews, a reply of the sample engine adds a **Sample reply** caption after **Claude**, with the tooltip "No model is connected yet: the reply comes from the example's sample engine."
+Text is Markdown, drawn as V2's bubbles drew it, by `MarkdownView` ([Text](../text.md)): headings, paragraphs, quotes, lists with task boxes, highlighted code blocks with a **Copy** button, tables and rules. Claude's text follows Markdown's rules (a paragraph's lines join); the user's keeps each line break as typed. Ticket and bundle ids of the loaded projects are links that open them in their Tickets window; a relative link opens a file of the chat's project; other links open in the browser. In previews, a reply of the sample engine adds a **Sample reply** caption after **Claude**, with the tooltip "No model is connected yet: the reply comes from the example's sample engine."
 
 A turn of the user's is one message. Everything after it until the next message is one turn of Claude's: its text, its calls, its cards and the app's notices, in order. Claude's thinking, the work of its sub-agents and the end of a turn that went well don't show.
 

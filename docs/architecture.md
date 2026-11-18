@@ -39,6 +39,7 @@ HephaestusV3 (app target)        @main HephaestusV3App: its body is ToolsScenes(
    ├─ ChatKit                    the Chat window, the chat panel, Settings ▸ Chat
    ├─ MachinesKit                the Virtual Machines window
    │    each kit: ToolsFoundation + AZDesign + AZDesignCode
+   ├─ TextViews                  Markdown and highlighted code as tools show them (TicketsKit, ChatKit)
    └─ ToolsFoundation            shared vocabulary; depends on AZDesign only
 ProjectData                      the data folder, the projects (used by ProjectsKit, ToolsScenes)
 ├─ FileStorage                   YAML in the files' layout, atomic writes, the lock, the Trash, file events
@@ -227,6 +228,7 @@ Shared values in the manifest:
 | `MachineData` | The virtual machines: the image and machine files, ipsw.me, the IPSW download and the install, disk clones and growth, the Virtualization framework's machines, the guest agent's protocol, the machine host. | FileStorage, MCPKit, ProjectData | `.target(name:, dependencies:)` |
 | `TextFormats` | Markdown to a block model and syntax highlighting ([Text](text.md)). | swift-markdown | `.target(name:, dependencies:)` |
 | `ToolsFoundation` | Shared vocabulary: projects, tools, routes, chat vocabulary, the Dashboard model, `ProjectIcon`. | AZDesign | `.target` |
+| `TextViews` | `MarkdownView`: Markdown and highlighted code as the tools draw them, a ticket's description and comments, Claude's replies and the user's messages ([Text](text.md)). Not a tool, so a tool depending on it still depends on no other tool. | ToolsFoundation, AZDesign, AZDesignCode, TextFormats | `.target`, with its strings |
 | `ProjectsKit` | The project selector: the Projects window, the project switcher, the menu bar panel; New Project, Project Settings, Settings ▸ Projects; the mapping of the app's projects; the project tools of the MCP server. | ToolsFoundation, AZDesign, AZDesignCode, ProjectData, ExternalTools, MCPKit | `toolTarget(_:data:)` |
 | `DashboardsKit` | The Dashboard's grid, edit mode, settings and saving in the project files; the Project widget. | same, plus ProjectData | `toolTarget(data: ["ProjectData"])` |
 | `TicketsKit` | Tickets; the Tickets widget; the tickets reader. | same | `toolTarget` |
@@ -1555,7 +1557,7 @@ The Dashboard has no focus format, no reader and no ⇧⌘N item, and reports no
 
 ### TicketsKit
 
-Spec: [Tickets](ui/tickets.md). Data: `TicketData` ([TicketData](#ticketdata)) and `TextFormats` ([Text](text.md)).
+Spec: [Tickets](ui/tickets.md). Data: `TicketData` ([TicketData](#ticketdata)) and `TextFormats` ([Text](text.md)); descriptions and comments are drawn by `TextViews`' `MarkdownView`.
 
 | File | Contents |
 | --- | --- |
@@ -1568,7 +1570,6 @@ Spec: [Tickets](ui/tickets.md). Data: `TicketData` ([TicketData](#ticketdata)) a
 | `TicketListView.swift` | `TicketListState`, `TicketListView<RowMenu>`, `TicketFilterBar`, `TicketRow` |
 | `TicketDetailView.swift` | `TicketDetailView`, `TicketSection`, `TicketText`, `TicketEditor`, `CommentEditor`, `TicketProperties`, `LinkRow`, `EventRow`, `AttachmentStrip`, `AttachmentView`, `PendingFileChip`, `FlowStack`, `TicketNotFoundView` |
 | `TicketSheets.swift` | `AddLinkSheet`, `BundleSheet` |
-| `MarkdownView.swift` | `MarkdownView`, `MarkdownInlines` (attributed inlines, highlighted code, token colors) |
 | `TicketActions.swift` | `TicketActions: ToolbarContent` |
 | `NewTicketView.swift` | `NewTicketView` |
 | `AttachmentContent.swift` | `AttachmentContent` (`nonisolated`): `read(_:name:contentType:)`, `get_attachment`'s result, an image as a `ClaudeImage` (FileStorage); `text(_:)`, UTF-8 without NUL cut at `maxTextBytes` (256 KB) on a character's boundary |
@@ -1814,6 +1815,14 @@ always-open `.inspector` (280–440); `.pad` is a `VSplitView` of the table over
 notes and the details; `.phone` is one `PhoneStack` per mode. The mode picker is segmented in the principal
 placement, or a menu in `.phone`. Refresh has an empty action. It reports `chatSubject` and applies
 `onFocusRequest`.
+
+### TextViews
+
+Spec: [Text](text.md). One file, `MarkdownView.swift`: `MarkdownView` (public; `init(_:projects:root:keepsLineBreaks:)`), its
+private block views, and `MarkdownInlines` (attributed inlines, highlighted code, token colors). It moved out of
+TicketsKit when the chat needed it (V2's chat rendered the same Markdown). A code block has a **Copy** button
+(`doc.on.doc`, `markdown.code.copy`) that puts its code on the pasteboard. Its strings: "Done", "Not done",
+"Image", "Copy".
 
 ### ChatKit
 

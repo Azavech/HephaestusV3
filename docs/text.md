@@ -4,12 +4,16 @@
 tokens. It has no UI and no default isolation. It has no Markdown markers (SF Symbols, colors, sounds,
 shortcuts, fonts, animations) and writes no HTML. The conformance tests read the examples and word lists of the
 sections below; where those sections name a documentation viewer or a code editor, the same rules serve the
-descriptions and comments of tickets (and later the chats).
+descriptions and comments of tickets and the chats' messages.
 
-The Tickets window renders a description or a comment with `MarkdownBlockRenderer.render(_:options:)`,
-`projectIdentifiers` set to the identifiers of the loaded projects, `projectRootPath` to the ticket's project folder and `softBreaksAsLineBreaks` on, and draws
-the blocks with `MarkdownView` ([UI › Tickets](ui/tickets.md#markdown)). A ticket or bundle id becomes a link
-that opens it in its Tickets window. Code blocks are highlighted with `SyntaxHighlighter`.
+`MarkdownView` (the `TextViews` target) renders text with `MarkdownBlockRenderer.render(_:options:)`,
+`projectIdentifiers` set to the identifiers of the loaded projects and `projectRootPath` to the project's folder,
+and draws the blocks. The Tickets window shows a description or a comment with `softBreaksAsLineBreaks` on ([UI ›
+Tickets](ui/tickets.md#markdown)); a chat shows Claude's text with it off, as Markdown joins a paragraph's lines,
+and the user's with it on ([UI › Chat › Turns](ui/chat.md#turns)). A ticket or bundle id becomes a link that opens
+it in its Tickets window (the project is the id's part before its first `-`). Code blocks are highlighted with
+`SyntaxHighlighter`, and each has a **Copy** button at its top trailing edge, beside its language label, that
+puts the code on the pasteboard.
 
 ## Markdown renderer
 
@@ -337,7 +341,7 @@ extension TokenKind {
 - Tokens are sorted, never empty and never overlap. Text that no token covers is plain text.
 - `tokens(in:language:)` is a pure function: the same text and language always give the same tokens. `.plain` gives no token.
 - The tokenizers scan Unicode scalars from left to right; at each position the first rule of the language's rule table that matches is applied, and a position where no rule matches is plain text of one scalar.
-- `MarkdownView` (TicketsKit) turns a `TokenStyle` into SwiftUI colors and fonts for code blocks; `cssClass` is the kind's class in the table of Token kinds and colors; TextFormats writes no HTML.
+- `MarkdownView` (TextViews) turns a `TokenStyle` into SwiftUI colors and fonts for code blocks; `cssClass` is the kind's class in the table of Token kinds and colors; TextFormats writes no HTML.
 
 ### Language detection
 

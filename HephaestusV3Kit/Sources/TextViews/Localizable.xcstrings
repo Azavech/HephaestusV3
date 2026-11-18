@@ -1,0 +1,18 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Copy" : {
+      "comment" : "Copies a code block"
+    },
+    "Done" : {
+
+    },
+    "Image" : {
+
+    },
+    "Not done" : {
+
+    }
+  },
+  "version" : "1.0"
+}

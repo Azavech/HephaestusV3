@@ -1,5 +1,6 @@
 import AZDesign
 import SwiftUI
+import TextViews
 import ToolsFoundation
 
 // The parts of a conversation, shared by the Chat window and the side panel. They take values and
@@ -20,7 +21,7 @@ struct ChatTranscript: View {
     var body: some View {
         LazyVStack(alignment: .leading, spacing: compact ? 16 : 22) {
             ForEach(conversation.turns) { turn in
-                ChatTurnView(turn: turn, compact: compact, decide: decide)
+                ChatTurnView(turn: turn, projectID: conversation.projectID, compact: compact, decide: decide)
             }
             if let activity {
                 ChatAuthorRow(author: .claude, isSample: false) {
@@ -134,8 +135,12 @@ struct ChatAuthorRow<Content: View>: View {
 /// One turn: what the user attached, then each block in order.
 struct ChatTurnView: View {
     let turn: ChatTurn
+    /// The conversation's project, whose folder relative links open from.
+    var projectID: Project.ID?
     let compact: Bool
     let decide: (ChatApproval.ID, Bool) -> Void
+
+    @Environment(\.projectDirectory) private var directory
 
     var body: some View {
         ChatAuthorRow(author: turn.author, isSample: turn.isSample) {
@@ -149,16 +154,10 @@ struct ChatTurnView: View {
             ForEach(turn.blocks) { block in
                 switch block.content {
                 case .text(let text):
-                    Group {
-                        if turn.author == .claude {
-                            Text(Self.markdown(text))
-                        } else {
-                            Text(verbatim: text)
-                        }
-                    }
-                    .foregroundStyle(.textPrimary)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
+                    // Markdown, as V2's bubbles: ids of the loaded projects are links; the user's line breaks stay.
+                    MarkdownView(text, projects: Set(directory.projects.map(\.id)), root: directory.project(projectID)?.path,
+                                 keepsLineBreaks: turn.author == .user)
+                        .foregroundStyle(.textPrimary)
                 case .call(let call):
                     ToolCallRow(turnID: turn.id, blockID: block.id, call: call, compact: compact)
                 case .approval(let approval):
