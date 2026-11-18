@@ -69,3 +69,54 @@ struct MessageAttachmentTests {
                 "Only after Feedback context:")
     }
 }
+
+@Suite("Messages with files")
+@MainActor
+struct MessageFilesTests {
+    private let png = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=")!
+
+    @Test("A message's files are stored in the chat's folder, kept on the message, its images sent, each path after the text")
+    func send() async throws {
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        let inbox = world.root.appendingPathComponent("Inbox")
+        try FileManager.default.createDirectory(at: inbox, withIntermediateDirectories: true)
+        let log = inbox.appendingPathComponent("build.log")
+        try Data("failed".utf8).write(to: log)
+        let shot = inbox.appendingPathComponent("shot.png")
+        try png.write(to: shot)
+
+        let id = try await world.session.send("Why?", references: [], to: nil, projectID: "ORD", files: [log, shot])
+        guard case .user(let message)? = world.items(id).first else { Issue.record("No message"); return }
+        #expect(message.text == "Why?" && message.attachments.map(\.name) == ["build.log", "shot.png"])
+        let folder = world.repo.appendingPathComponent(".hephaestus/chats/\(id)")
+        let stored = message.attachments.map { folder.appendingPathComponent("\($0.id)-\($0.name)") }
+        #expect(stored.allSatisfy { FileManager.default.fileExists(atPath: $0.path) })
+
+        let cli = try #require(world.launcher.chats.first)
+        try await world.until { cli.written.contains { $0["type"]?.stringValue == "user" } }
+        let user = try #require(cli.written.first { $0["type"]?.stringValue == "user" })
+        let blocks = try #require(user["message"]?["content"]?.arrayValue)
+        #expect(blocks.map { $0["type"]?.stringValue } == ["image", "text"])
+        #expect(blocks[1]["text"]?.stringValue == "Why?\n\nAttached: file \(stored[0].path)\nAttached: file \(stored[1].path)")
+        cli.finish(.exited(0))
+    }
+
+    @Test("Files alone make a message; a folder is refused before anything is made")
+    func filesOnly() async throws {
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        let log = world.root.appendingPathComponent("app.log")
+        try Data("x".utf8).write(to: log)
+        let id = try await world.session.send("  ", references: [], to: nil, projectID: "ORD", files: [log])
+        #expect(world.session.chats[id]?.file.title == "app.log")
+        guard case .user(let message)? = world.items(id).first else { Issue.record("No message"); return }
+        #expect(message.text.isEmpty && message.attachments.count == 1)
+        let chats = world.session.chats.count
+        await #expect(throws: ChatError.invalid("Folders cannot be attached.")) {
+            _ = try await world.session.send("Look", references: [], to: nil, projectID: "ORD", files: [world.root])
+        }
+        #expect(world.session.chats.count == chats)
+        world.launcher.chats.forEach { $0.finish(.exited(0)) }
+    }
+}

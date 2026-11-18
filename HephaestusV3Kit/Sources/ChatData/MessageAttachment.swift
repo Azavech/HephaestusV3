@@ -101,3 +101,46 @@ extension FeedbackReport {
         }
     }
 }
+
+extension MessageAttachment {
+    /// The largest file a message carries, and the most its files may weigh together: 20 MB, as a ticket takes.
+    public static let sizeLimit = 20 * 1024 * 1024
+
+    /// Checks files before they are stored: none is a folder (`Folders cannot be attached.`), none is over 20 MB
+    /// (`<name> is larger than 20 MB.`), and together they aren't (`The attachments of one request exceed 20 MB.`).
+    public static func check(_ files: [URL]) throws(ChatError) {
+        var total = 0
+        for file in files {
+            let values = try? file.resourceValues(forKeys: [.fileSizeKey, .isDirectoryKey])
+            if values?.isDirectory == true { throw .invalid("Folders cannot be attached.") }
+            let size = values?.fileSize ?? 0
+            guard size <= sizeLimit else { throw .invalid("\(file.lastPathComponent) is larger than 20 MB.") }
+            total += size
+        }
+        guard total <= sizeLimit else { throw .invalid("The attachments of one request exceed 20 MB.") }
+    }
+
+    /// Copies `files`, each under its name, into the chat's folder `folder` (`.hephaestus/chats/<chatID>/`) as
+    /// `<UUID>-<name>`, and returns where each went with its attachment. A copy that fails removes those made and
+    /// throws (`unavailable`, `<failure>: <reason>`).
+    static func store(_ files: [(url: URL, name: String)], chatID: String, in folder: URL,
+                      failure: String = "The files couldn't be stored") throws(ChatError) -> [(url: URL, attachment: MessageAttachment)] {
+        var stored: [(url: URL, attachment: MessageAttachment)] = []
+        do {
+            if !files.isEmpty {
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            }
+            for file in files {
+                let fileID = UUID().uuidString
+                let target = folder.appendingPathComponent("\(fileID)-\(file.name)")
+                try FileManager.default.copyItem(at: file.url, to: target)
+                let size = (try? target.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                stored.append((target, .stored(id: fileID, name: file.name, chatID: chatID, size: size)))
+            }
+        } catch {
+            for file in stored { try? FileManager.default.removeItem(at: file.url) }
+            throw .unavailable("\(failure): \((error as NSError).localizedDescription)")
+        }
+        return stored
+    }
+}

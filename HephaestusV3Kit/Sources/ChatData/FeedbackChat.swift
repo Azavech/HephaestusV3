@@ -29,7 +29,7 @@ public struct FeedbackReport: Sendable, Hashable {
     }
 
     /// The largest file, and the most of the screenshot and the files together: 20 MB, as a ticket takes.
-    public static let sizeLimit = 20 * 1024 * 1024
+    public static let sizeLimit = MessageAttachment.sizeLimit
 
     /// The chat's first message (docs/data.md › Feedback message): the skill's call on its own line, the
     /// comment, then `Feedback context:` with one `- ` line per context line, the stored screenshot's path and
@@ -61,36 +61,23 @@ extension ChatSession {
         let cli = try await availableCLI()
         guard let project = projects.snapshot.project(report.projectID) else { throw .notFound("Project \(report.projectID) not found.") }
         let files = [report.screenshot].compactMap { $0 } + report.files
-        var total = 0
-        for file in files {
-            let size = (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-            guard size <= FeedbackReport.sizeLimit else { throw .invalid("\(file.lastPathComponent) is larger than 20 MB.") }
-            total += size
-        }
-        guard total <= FeedbackReport.sizeLimit else { throw .invalid("The attachments of one request exceed 20 MB.") }
+        try MessageAttachment.check(files)
 
         let id = ChatIDs.make()
         let folder = ProjectFolder(root: URL(fileURLWithPath: project.root, isDirectory: true)).chatsFolder
             .appendingPathComponent(id, isDirectory: true)
-        var stored: [URL] = []
-        var recorded: [MessageAttachment] = []
-        do {
-            if !files.isEmpty {
-                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            }
-            for (index, file) in files.enumerated() {
-                let name = index == 0 && report.screenshot != nil ? "screenshot.png" : file.lastPathComponent
-                let fileID = UUID().uuidString
-                let target = folder.appendingPathComponent("\(fileID)-\(name)")
-                try FileManager.default.copyItem(at: file, to: target)
-                stored.append(target)
-                let size = (try? target.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-                recorded.append(.stored(id: fileID, name: name, chatID: id, size: size))
-            }
+        let named = files.enumerated().map { index, file in
+            (url: file, name: index == 0 && report.screenshot != nil ? "screenshot.png" : file.lastPathComponent)
+        }
+        let kept: [(url: URL, attachment: MessageAttachment)]
+        do throws(ChatError) {
+            kept = try MessageAttachment.store(named, chatID: id, in: folder, failure: "The feedback's files couldn't be stored")
         } catch {
             try? FileManager.default.removeItem(at: folder)
-            throw .unavailable("The feedback's files couldn't be stored: \((error as NSError).localizedDescription)")
+            throw error
         }
+        let stored = kept.map(\.url)
+        let recorded = kept.map(\.attachment)
         do {
             _ = try makeChat(id, projectID: report.projectID, title: comment, kind: .feedback, settings: report.settings)
         } catch {

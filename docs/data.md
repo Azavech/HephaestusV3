@@ -937,7 +937,17 @@ the chat's folder.
   a name, none empty, `.` or `..`, whose real path, the links of its existing part resolved, lies inside the
   project's `.hephaestus/` folder. Another path opens nothing. V2's own files of messages, tool results and shown
   images follow the same form.
-- V3 writes them for a feedback chat's first message ([Feedback chats](#feedback-chats)). The composer adds none.
+- V3 writes them for a feedback chat's first message ([Feedback chats](#feedback-chats)), and for a message sent
+  with files from the composer (`ChatSession.send(…files:)`):
+  1. Checks the files (`MessageAttachment.check`): a folder is `invalid` (`Folders cannot be attached.`), a file
+     over 20 MB `invalid` (`<name> is larger than 20 MB.`), all over 20 MB together `invalid` (`The attachments of
+     one request exceed 20 MB.`); a message needs text or files (`invalid`, `text: write a message.`).
+  2. Makes the chat when it is new: titled with the text's first line, or the first file's name without text.
+  3. Copies each file into the chat's folder under its own name (`MessageAttachment.store`); a copy that fails
+     removes those made (`unavailable`, `The files couldn't be stored: <reason>`).
+  4. Records the user item with the text and the files as its `attachments`, and sends Claude the images among
+     them ([Claude images](#claude-images)), before the text, then the text followed by one `Attached: file <stored
+     path>` line per file, after the item's line ([Messages](#messages)); without text, those lines alone.
 - **1.0.31 to 1.0.33** stored a feedback's files without listing them on the message. For a user item without
   `attachments`, the lines after its `Feedback context:` line that read `- Screenshot: <path>` or `- Attachment:
   <path>`, whose path is a file `<UUID>-<name>` directly in the chat's own folder, are taken as its files, in

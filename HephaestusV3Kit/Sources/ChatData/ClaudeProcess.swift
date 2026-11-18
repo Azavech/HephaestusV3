@@ -131,7 +131,8 @@ public enum ClaudeInput {
     /// its chip showed. V3 writes it; it describes the item and says nothing of how to work.
     public static func text(_ message: String, carrying references: [ChatItemReference]) -> String {
         let lines = references.map(attachedLine)
-        return lines.isEmpty ? message : message + "\n\n" + lines.joined(separator: "\n")
+        if lines.isEmpty { return message }
+        return message.isEmpty ? lines.joined(separator: "\n") : message + "\n\n" + lines.joined(separator: "\n")
     }
 
     /// `Attached: ticket ORD-142 of project ORD`.

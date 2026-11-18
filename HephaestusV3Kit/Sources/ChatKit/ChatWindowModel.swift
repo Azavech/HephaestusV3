@@ -23,6 +23,8 @@ final class ChatWindowModel {
     var selection: ChatConversation.ID?
     /// The message being written. It stays when the user picks another conversation.
     var draft = ""
+    /// The files going with the next message.
+    var files: [URL] = []
     /// Opened on a conversation: an iPhone's layout starts on its page.
     let opensSelection: Bool
     /// Why the last message wasn't sent; the next message clears it.
@@ -116,21 +118,24 @@ final class ChatWindowModel {
         draft = ""
     }
 
-    /// Sends the draft and clears it, once sent.
+    /// Sends the draft and its files, and clears them once sent.
     func sendDraft(reader: ToolReader) async {
         let text = draft
-        if await send(text, reader: reader), draft == text {
-            draft = ""
+        let sent = files
+        if await send(text, files: sent, reader: reader) {
+            if draft == text { draft = "" }
+            files.removeAll { sent.contains($0) }
+            ChatFiles.clean(sent)
         }
     }
 
-    /// Sends `text` to the shown conversation, or starts one about the project, and shows it. Messages
-    /// from the Chat window carry the project, not an item. The draft stays.
+    /// Sends `text` and `files` to the shown conversation, or starts one about the project, and shows it.
+    /// Messages from the Chat window carry the project, not an item. The draft stays.
     @discardableResult
-    func send(_ text: String, reader: ToolReader) async -> Bool {
+    func send(_ text: String, files: [URL] = [], reader: ToolReader) async -> Bool {
         let target = selection == Self.newChatID ? nil : selection
         do throws(ChatSendError) {
-            let id = try await store.send(text, to: target, project: project, origin: nil, attachments: [], reader: reader)
+            let id = try await store.send(text, to: target, project: project, origin: nil, attachments: [], files: files, reader: reader)
             failure = nil
             selection = id
             return true
@@ -138,6 +143,27 @@ final class ChatWindowModel {
             failure = error.message.isEmpty ? nil : error.message
             return false
         }
+    }
+
+    // MARK: Files
+
+    /// Adds files to the next message; a folder, or files over the limits, are refused with the reason shown.
+    func addFiles(_ urls: [URL]) {
+        let result = ChatFiles.adding(urls, to: files)
+        files = result.files
+        failure = result.failure
+    }
+
+    func removeFile(_ url: URL) {
+        files.removeAll { $0 == url }
+    }
+
+    /// ⌘V in the composer: the pasteboard's files, or its image, go with the next message; false lets the field
+    /// paste its text.
+    func pasteFiles() -> Bool {
+        guard let pasted = ChatFiles.pasted() else { return false }
+        addFiles(pasted)
+        return true
     }
 
     /// The user's answer to one of Claude's questions; false, with the reason shown, when it wasn't taken.

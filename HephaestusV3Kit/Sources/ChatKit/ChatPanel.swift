@@ -17,6 +17,8 @@ public struct ChatPanel: View {
 
     @Environment(\.toolReader) private var toolReader
     @Environment(\.openRoute) private var openRoute
+    /// The file panel of Add Files… is open.
+    @State private var choosesFiles = false
 
     public init(
         project: Project, origin: ToolKind, subject: ChatReference?, model: ChatPanelModel, hide: @escaping () -> Void
@@ -67,13 +69,28 @@ public struct ChatPanel: View {
                 isBusy: model.isResponding,
                 identifier: "chat.composer",
                 completions: ChatCompletions.list(for: model.draft, commands: model.store.commands(for: project.id)),
+                hasAttachments: !model.files.isEmpty,
+                pastesFiles: { model.pasteFiles() },
                 send: { Task { await model.sendDraft(project: project, origin: origin, subject: subject, reader: toolReader) } }
             ) {
-                chip(attachment)
+                FlowStack(spacing: 6) {
+                    AddFilesButton { choosesFiles = true }
+                    chip(attachment)
+                    ForEach(model.files, id: \.self) { url in
+                        PendingFileChip(url: url) { model.removeFile(url) }
+                    }
+                }
             }
             .padding(12)
         }
         .background(.canvas)
+        .fileImporter(isPresented: $choosesFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            if case .success(let urls) = result { model.addFiles(urls) }
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            model.addFiles(urls)
+            return true
+        }
         .onChange(of: subject) {
             model.subjectChanged()
         }
@@ -186,6 +203,8 @@ public final class ChatPanelModel {
     var conversationID: ChatConversation.ID?
     /// The message being written.
     var draft = ""
+    /// The files going with the next message.
+    var files: [URL] = []
     /// The subject the user took off the next message; it comes back when the selection changes.
     var leftOut: ChatReference.ID?
     /// Why the last message wasn't sent; the next message clears it.
@@ -258,27 +277,52 @@ public final class ChatPanelModel {
         attachment(for: subject).map { ChatSuggestion.about($0, reader: reader) } ?? ChatSuggestion.project
     }
 
-    /// Sends the draft, with the attachment, and clears it once sent.
+    /// Sends the draft, with the attachment and the files, and clears them once sent.
     func sendDraft(project: Project, origin: ToolKind, subject: ChatReference?, reader: ToolReader) async {
         let text = draft
-        if await send(text, project: project, origin: origin, subject: subject, reader: reader), draft == text {
-            draft = ""
+        let sent = files
+        if await send(text, files: sent, project: project, origin: origin, subject: subject, reader: reader) {
+            if draft == text { draft = "" }
+            files.removeAll { sent.contains($0) }
+            ChatFiles.clean(sent)
         }
     }
 
     /// Sends `text`, with the attachment, to the open conversation; the first message starts one, with
     /// the window's project and its tool as the origin. The draft stays as it is.
     @discardableResult
-    func send(_ text: String, project: Project, origin: ToolKind, subject: ChatReference?, reader: ToolReader) async -> Bool {
+    func send(_ text: String, files: [URL] = [], project: Project, origin: ToolKind, subject: ChatReference?, reader: ToolReader) async -> Bool {
         let attachments = attachment(for: subject).map { [$0] } ?? []
         do throws(ChatSendError) {
-            conversationID = try await store.send(text, to: conversationID, project: project, origin: origin, attachments: attachments, reader: reader)
+            conversationID = try await store.send(text, to: conversationID, project: project, origin: origin, attachments: attachments,
+                                                  files: files, reader: reader)
             failure = nil
             return true
         } catch {
             failure = error.message.isEmpty ? nil : error.message
             return false
         }
+    }
+
+    // MARK: Files
+
+    /// Adds files to the next message; a folder, or files over the limits, are refused with the reason shown.
+    func addFiles(_ urls: [URL]) {
+        let result = ChatFiles.adding(urls, to: files)
+        files = result.files
+        failure = result.failure
+    }
+
+    func removeFile(_ url: URL) {
+        files.removeAll { $0 == url }
+    }
+
+    /// ⌘V in the composer: the pasteboard's files, or its image, go with the next message; false lets the field
+    /// paste its text.
+    func pasteFiles() -> Bool {
+        guard let pasted = ChatFiles.pasted() else { return false }
+        addFiles(pasted)
+        return true
     }
 
     /// The user's answer to one of Claude's questions; false, with the reason shown, when it wasn't taken.
@@ -304,6 +348,7 @@ public final class ChatPanelModel {
     func startNewChat() {
         conversationID = nil
         draft = ""
+        files = []
         leftOut = nil
         failure = nil
     }
@@ -358,7 +403,7 @@ private func previewModel(_ store: SampleChatStore = .transient(), open conversa
     // An engine that takes its time, so the reply stays on its way.
     let store = SampleChatStore(engine: SampleChatEngine(delay: .seconds(3_600)))
     let id = try? store.send("Is run 1288 enough to close it?", to: nil, project: Project.samples[0], origin: .tickets, attachments: [ord142],
-                             reader: ToolReader { _ in nil })
+                             files: [], reader: ToolReader { _ in nil })
     let model = previewModel(store, open: id)
     ChatPanel(project: Project.samples[0], origin: .tickets, subject: ord142, model: model, hide: {})
 }

@@ -2,6 +2,7 @@ import ChatData
 import Foundation
 import Observation
 import ToolsFoundation
+import UniformTypeIdentifiers
 
 /// Every conversation of the app, shared by the Chat windows and the tool windows' side panels: a chat
 /// started beside a ticket is listed in the Chat window too. The app's is `LiveChatStore`, on the Claude CLI;
@@ -17,10 +18,10 @@ protocol ChatStore: AnyObject {
     func activity(_ id: ChatConversation.ID?) -> ChatActivity?
     /// Whether Claude's turns can be stopped.
     var canStop: Bool { get }
-    /// Sends `text` with `attachments` to the conversation, or to a new one about `project` when `id` names
-    /// none, and returns the conversation's id. Throws why it can't, as the user reads it.
+    /// Sends `text` with `attachments` and `files` to the conversation, or to a new one about `project` when `id`
+    /// names none, and returns the conversation's id. Throws why it can't, as the user reads it.
     func send(_ text: String, to id: ChatConversation.ID?, project: Project, origin: ToolKind?, attachments: [ChatReference],
-              reader: ToolReader) async throws(ChatSendError) -> ChatConversation.ID
+              files: [URL], reader: ToolReader) async throws(ChatSendError) -> ChatConversation.ID
     /// The user's answer to a change Claude asked to make.
     func decide(_ approvalID: ChatApproval.ID, in conversationID: ChatConversation.ID, allow: Bool)
     func stop(_ id: ChatConversation.ID)
@@ -82,9 +83,9 @@ final class SampleChatStore: ChatStore {
     /// A new conversation's title is the message's first 80 characters, and `origin` is the tool beside which
     /// it started.
     func send(_ text: String, to id: ChatConversation.ID?, project: Project, origin: ToolKind?, attachments: [ChatReference],
-              reader: ToolReader) throws(ChatSendError) -> ChatConversation.ID {
+              files: [URL], reader: ToolReader) throws(ChatSendError) -> ChatConversation.ID {
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty else { throw ChatSendError(message: "") }
+        guard !message.isEmpty || !files.isEmpty else { throw ChatSendError(message: "") }
         let now = Date()
         let conversationID: ChatConversation.ID
         if let id, conversations.contains(where: { $0.id == id }) {
@@ -96,7 +97,10 @@ final class SampleChatStore: ChatStore {
             ))
         }
         update(conversationID) {
-            $0.turns.append(ChatTurn(author: .user, date: now, attachments: attachments, blocks: [ChatBlock(.text(message))]))
+            var turn = ChatTurn(author: .user, date: now, attachments: attachments, blocks: message.isEmpty ? [] : [ChatBlock(.text(message))])
+            turn.files = files.map { ChatMessageFile(id: UUID().uuidString, name: $0.lastPathComponent, contentType: UTType(filenameExtension: $0.pathExtension),
+                                                     size: nil, url: $0) }
+            $0.turns.append(turn)
         }
         responding.insert(conversationID)
         let engine = engine
@@ -171,5 +175,13 @@ final class SampleChatStore: ChatStore {
     private func update(_ id: ChatConversation.ID, _ change: (inout ChatConversation) -> Void) {
         guard let index = conversations.firstIndex(where: { $0.id == id }) else { return }
         change(&conversations[index])
+    }
+}
+
+extension ChatStore {
+    /// A message without files.
+    func send(_ text: String, to id: ChatConversation.ID?, project: Project, origin: ToolKind?, attachments: [ChatReference],
+              reader: ToolReader) async throws(ChatSendError) -> ChatConversation.ID {
+        try await send(text, to: id, project: project, origin: origin, attachments: attachments, files: [], reader: reader)
     }
 }

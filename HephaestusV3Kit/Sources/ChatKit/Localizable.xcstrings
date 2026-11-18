@@ -26,6 +26,9 @@
         }
       }
     },
+    "Add Files…" : {
+      "comment" : "Adds files to the next message"
+    },
     "Allow" : {
 
     },

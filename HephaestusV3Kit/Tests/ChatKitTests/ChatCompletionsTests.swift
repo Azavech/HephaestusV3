@@ -1,4 +1,6 @@
+import AppKit
 import ChatData
+import FileStorage
 import MCPKit
 import ProjectData
 import Testing
@@ -99,5 +101,56 @@ struct ChatQuestionsCardTests {
         }
         #expect(ask.describe?(valid).action == "Asked a question")
         #expect(await ChatGate.check(.internalSkill("set-ticket-title"), ask, valid, chats: session) == ToolError(.forbidden, ChatGate.skillRefusal))
+    }
+}
+
+/// docs/ui/chat.md › Attachments.
+@Suite("Composer files")
+@MainActor
+struct ChatFilesTests {
+    @Test("Files are added once each; a folder, or files over 20 MB, are refused with the reason")
+    func adding() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ChatFilesTests-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let log = folder.appendingPathComponent("build.log")
+        try Data("x".utf8).write(to: log)
+        let first = ChatFiles.adding([log, log], to: [])
+        #expect(first.files == [log] && first.failure == nil)
+        let refused = ChatFiles.adding([folder], to: first.files)
+        #expect(refused.files == [log] && refused.failure == "Folders cannot be attached.")
+    }
+
+    @Test("A paste of files gives them; of an image, a PNG named for its time; of text, nothing")
+    func pasting() throws {
+        let board = NSPasteboard(name: NSPasteboard.Name("HephaestusV3Tests-\(UUID().uuidString)"))
+        defer { board.releaseGlobally() }
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("ChatFilesTests-\(UUID().uuidString).txt")
+        defer { try? FileManager.default.removeItem(at: file) }
+        try Data("x".utf8).write(to: file)
+        board.clearContents()
+        board.writeObjects([file as NSURL])
+        #expect(ChatFiles.pasted(from: board) == [file])
+
+        board.clearContents()
+        let image = NSImage(size: NSSize(width: 4, height: 4), flipped: false) { rect in
+            NSColor.systemPurple.setFill()
+            rect.fill()
+            return true
+        }
+        board.writeObjects([image])
+        let date = ISODate.date(from: "2026-11-17T21:05:09Z")!
+        let pasted = try #require(ChatFiles.pasted(from: board, now: date)?.first)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
+        #expect(pasted.lastPathComponent == "Pasted Image \(formatter.string(from: date)).png")
+        #expect(NSImage(contentsOf: pasted) != nil)
+        ChatFiles.clean([pasted])
+        #expect(!FileManager.default.fileExists(atPath: pasted.deletingLastPathComponent().path))
+
+        board.clearContents()
+        board.setString("plain text", forType: .string)
+        #expect(ChatFiles.pasted(from: board) == nil)
     }
 }

@@ -81,12 +81,15 @@ extension ChatSession {
     /// Sends a message to the chat, or to a new chat of `projectID` when `chatID` is nil, and returns the chat's
     /// id. `references` are the items the message carries; `origin` is the tool whose panel starts a new chat;
     /// `title` a new chat's, instead of the message's first line; `images` go before the text, as Claude sees
-    /// them.
+    /// them. `files` are copied into the chat's folder and become the message's attachments (docs/data.md ›
+    /// Message files): the images among them go to Claude as images, and each file's path follows the text as
+    /// an `Attached: file <path>` line. A message has text, files, or both.
     @discardableResult
     public func send(_ text: String, references: [ChatItemReference], to chatID: String?, projectID: String,
-                     origin: String? = nil, title: String? = nil, images: [ClaudeImage] = []) async throws(ChatError) -> String {
+                     origin: String? = nil, title: String? = nil, images: [ClaudeImage] = [], files: [URL] = []) async throws(ChatError) -> String {
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty else { throw .invalid("text: write a message.") }
+        guard !message.isEmpty || !files.isEmpty else { throw .invalid("text: write a message.") }
+        try MessageAttachment.check(files)
         let cli = try await availableCLI()
         let id: String
         if let chatID {
@@ -94,9 +97,21 @@ extension ChatSession {
             id = chatID
             await open(id)
         } else {
-            id = try makeChat(projectID: projectID, title: title ?? message, settings: defaults, origin: origin)
+            id = try makeChat(projectID: projectID, title: title ?? (message.isEmpty ? files[0].lastPathComponent : message), settings: defaults,
+                              origin: origin)
         }
-        post(message, references: references, images: images, to: id, cli: cli)
+        var attachments: [MessageAttachment] = []
+        var carried: [ChatItemReference] = []
+        var sentImages = images
+        if !files.isEmpty, let folder = folder(of: id) {
+            let stored = try MessageAttachment.store(files.map { ($0, $0.lastPathComponent) }, chatID: id,
+                                                     in: folder.chatsFolder.appendingPathComponent(id, isDirectory: true))
+            attachments = stored.map(\.attachment)
+            carried = stored.map { ChatItemReference(tool: ChatItemReference.fileTool, projectID: projectID, focus: $0.url.path, title: $0.attachment.name) }
+            sentImages += stored.filter { ClaudeImage.isImage(contentType: $0.attachment.contentType, url: $0.url) }
+                .compactMap { ClaudeImage(contentsOf: $0.url) }
+        }
+        post(message, references: references, images: sentImages, attachments: attachments, carried: carried, to: id, cli: cli)
         return id
     }
 
@@ -113,9 +128,10 @@ extension ChatSession {
     }
 
     /// Records the user's message in the chat, with the files it carries, then writes it to the chat's process,
-    /// starting one when none runs.
-    func post(_ message: String, references: [ChatItemReference], images: [ClaudeImage], attachments: [MessageAttachment] = [], to id: String,
-              cli: String) {
+    /// starting one when none runs. `carried` are items Claude reads of but the message doesn't keep as its own:
+    /// its stored files.
+    func post(_ message: String, references: [ChatItemReference], images: [ClaudeImage], attachments: [MessageAttachment] = [],
+              carried: [ChatItemReference] = [], to id: String, cli: String) {
         let item = UserItem(created: now(), text: message, sender: device, references: references, attachments: attachments)
         record(.user(item), in: id)
         change(id) {
@@ -123,7 +139,7 @@ extension ChatSession {
             $0.closed = false
         }
         failed.remove(id)
-        let line = OutgoingMessage(text: ClaudeInput.text(message, carrying: references), images: images)
+        let line = OutgoingMessage(text: ClaudeInput.text(message, carrying: references + carried), images: images)
         if let run = runs[id], !run.connection.hasExited, !run.endedByApp {
             deliver(item.id, line, to: run)
         } else {

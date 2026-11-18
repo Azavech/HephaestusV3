@@ -22,6 +22,8 @@ public final class ChatTabState {
 public struct ChatRootView: View {
     @State private var model: ChatWindowModel
     @State private var showsInspector = true
+    /// The file panel of Add Files… is open.
+    @State private var choosesFiles = false
     /// In an iPhone's layout, the inspector shows as a sheet.
     @State private var showsInspectorSheet = false
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
@@ -40,9 +42,11 @@ public struct ChatRootView: View {
         _model = State(initialValue: state.model)
     }
 
-    /// The window on the samples, for previews.
-    init(project: Project, focus: String? = nil, samples: SampleChatStore) {
-        _model = State(initialValue: ChatWindowModel(project: project, focus: focus, store: samples))
+    /// The window on the samples, for previews, with `files` waiting to go with the next message.
+    init(project: Project, focus: String? = nil, samples: SampleChatStore, files: [URL] = []) {
+        let model = ChatWindowModel(project: project, focus: focus, store: samples)
+        model.files = files
+        _model = State(initialValue: model)
     }
 
     public var body: some View {
@@ -193,13 +197,28 @@ public struct ChatRootView: View {
                 isBusy: model.isResponding,
                 identifier: "chat.composer",
                 completions: ChatCompletions.list(for: model.draft, commands: model.store.commands(for: model.project.id)),
+                hasAttachments: !model.files.isEmpty,
+                pastesFiles: { model.pasteFiles() },
                 send: { Task { await model.sendDraft(reader: toolReader) } }
             ) {
-                ProjectChip(project: model.project)
+                FlowStack(spacing: 6) {
+                    AddFilesButton { choosesFiles = true }
+                    ProjectChip(project: model.project)
+                    ForEach(model.files, id: \.self) { url in
+                        PendingFileChip(url: url) { model.removeFile(url) }
+                    }
+                }
             }
             .padding(layout == .phone ? 12 : 16)
         }
         .background(.canvas)
+        .fileImporter(isPresented: $choosesFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            if case .success(let urls) = result { model.addFiles(urls) }
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            model.addFiles(urls)
+            return true
+        }
         .task(id: model.selection) {
             await model.openSelection()
         }
@@ -404,7 +423,7 @@ private struct ChatInspector: View {
     let store = SampleChatStore(engine: SampleChatEngine(delay: .seconds(3_600)))
     let _ = try? store.send(
         "Is run 1288 enough to close ORD-142?", to: "chat-checkout", project: Project.samples[0], origin: nil,
-        attachments: [], reader: ToolReader { _ in nil }
+        attachments: [], files: [], reader: ToolReader { _ in nil }
     )
     ChatRootView(project: Project.samples[0], focus: "chat-checkout", samples: store)
 }
@@ -438,4 +457,9 @@ private struct ChatInspector: View {
 
 #Preview("New Chat, Largest Text", traits: .largestText, .fixedLayout(width: 1000, height: 680)) {
     ChatRootView(project: Project.samples[3], samples: .transient())
+}
+
+#Preview("Composer, Files", traits: .appChrome, .fixedLayout(width: 1100, height: 720)) {
+    ChatRootView(project: Project.samples[0], focus: "chat-checkout", samples: .transient(),
+                 files: [URL(fileURLWithPath: "/System/Library/CoreServices/SystemVersion.plist")])
 }

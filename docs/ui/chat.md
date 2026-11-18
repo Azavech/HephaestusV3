@@ -92,8 +92,7 @@ apart and wrapping onto more lines (AZDesign's `FlowStack`). Each is AZDesign's 
 - A feedback message of V3 1.0.31 to 1.0.33 has no files of its own: its `- Screenshot:` and `- Attachment:`
   lines that name a file of the chat's own folder show as its files (default chosen at design time).
 
-Only feedback chats send files for now: the composer has no way to add them ([Sample data and
-limits](#sample-data-and-limits)).
+Files sent from the composer show the same way ([Attachments](#attachments)).
 
 Claude's text is Markdown, shown inline: emphasis, code and links, line breaks kept. The user's text shows as written. In previews, a reply of the sample engine adds a **Sample reply** caption after **Claude**, with the tooltip "No model is connected yet: the reply comes from the example's sample engine."
 
@@ -180,15 +179,43 @@ While Claude works, the transcript ends with a **Claude** row showing a small pr
 
 The composer is a card at the bottom of the center column, with 16 pt of padding around it, or 12 pt in the iPhone layout. Its outline is `focus` while the field has focus, `divider` otherwise.
 
-- **Chips.** In the Chat window, the project's chip: its icon and name. It can't be removed. Messages from the Chat window carry no attachments; items they name are read instead (see [How Claude reaches the tools](#how-claude-reaches-the-tools)).
+- **Chips.** Wrapping onto more lines as needed (AZDesign's `FlowStack`, 6 pt apart): **Add Files…** first, then in the Chat window the project's chip, its icon and name, which can't be removed, and then the files waiting to go with the message ([Attachments](#attachments)). Messages from the Chat window carry no item; items they name are read instead (see [How Claude reaches the tools](#how-claude-reaches-the-tools)).
 - **Field.** Plain, one to eight lines, then it scrolls. Prompt: "Ask about *Orders*…". It takes focus when the composer appears.
-- **Send.** A round, prominent button with `arrow.up`. Disabled while the field is empty or only whitespace, and while Claude works in the conversation. Help: "Send (Return)".
+- **Send.** A round, prominent button with `arrow.up`. Disabled while the field is empty or only whitespace and no file waits, and while Claude works in the conversation. Help: "Send (Return)".
 - **Not sent.** When a message can't be sent, the reason shows over the composer in `danger`, with `exclamationmark.triangle.fill` (`chat.failure`), and the draft stays: "Claude CLI not found. Install Claude Code, or set its path in Settings ▸ Chat.", "<path> is not an executable file.", "The Claude CLI isn't checked yet. Try again in a moment." The next message sent clears it.
 - **Keyboard.** **Return** sends. **⌥Return** starts a new line.
 - **Skills.** A `/` typed as the message's first word lists the skills the chat can call ([Skill
   completion](#skill-completion)).
 
 Sending adds the message to the selected conversation. With no conversation selected, it starts one: a chat of the window's project, titled with the message's first line that isn't empty, at most 80 characters, with no origin. The new conversation is selected and the draft clears once the message is sent. A message from the Chat window carries the project: Claude reads "Attached: project ORD" after it ([Data › Messages](../data.md#messages)). The draft is kept when the user picks another conversation, and when a suggestion is sent.
+
+### Attachments
+
+![The composer: Add Files… (a paperclip), the project's chip, then two files, tickets-light.png 589 kB and tickets.md 58 kB, each with a remove button](images/chat-composer-files.png)
+*Two files waiting to go with the next message.*
+
+As V2's composer did, a message can carry files, in the Chat window and in the panel:
+
+- **Add Files…** (`paperclip`, icon only, tooltip "Add Files…") opens the system's file panel, several files at
+  once, no folders.
+- **Dropping** files anywhere on the conversation (the transcript, the cards, the composer) adds them.
+- **⌘V** in the field, while the pasteboard holds files, adds them; while it holds an image without a file, the
+  image is written as a PNG named `Pasted Image <yyyy-MM-dd> at <HH.mm.ss>.png` (local time) in a temporary
+  folder and added; text pastes as text (AZDesign's `pastesFiles`).
+- Each file shows as a chip after the others (`PendingFileChip`): the Finder's icon for it, its name cut in the
+  middle, its size, and a remove button (`xmark`, "Remove *name*"); a chip is at most 240 pt wide. A file is
+  added once.
+- **Refused**, with the reason over the composer and nothing added: a folder ("Folders cannot be attached."), a
+  file over 20 MB ("*name* is larger than 20 MB."), or files over 20 MB together ("The attachments of one request
+  exceed 20 MB.").
+- **Sending** works with text, files or both; Return sends files without text too. Once sent, the chips clear
+  (the draft's text too, unless it changed meanwhile), and the temporary copies of pasted images are deleted;
+  when sending fails, the files stay. The panel's **New Chat** clears them.
+- **What happens** ([Data › Message files](../data.md#message-files)): each file is copied into the chat's folder
+  and kept with the message, which shows it under its text ([Message files](#message-files)); Claude gets the
+  images among them as images, before the text, and each file's path after it, as `Attached: file <path>`.
+- V2's **Add Resource…**, which linked any item found with Search, waits for Search, which the owner set aside
+  for later ([Future improvements](../future-improvements.md)).
 
 ### Skill completion
 
@@ -705,6 +732,8 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 | Skip, Next or Submit | `chat.questions.skip`, `chat.questions.submit` | Buttons |
 | Minimized card | `chat.questions.expand` | A button with the header's text |
 | Questions in the transcript | `chat.questionSet.<set id>` | A container: each question, its options and its answer |
+| Add Files… | `chat.composer.addFiles` | A button, "Add Files…" |
+| A file waiting | `chat.composer.file.<name>`, its remove button `chat.composer.file.<name>.remove` | The file's name and size; "Remove *name*" |
 | Skill list | `chat.composer.completions` | A container, above the composer while it shows |
 | Skill in the list | `chat.composer.completion.<index>` | A button: the skill's name and description; the selected one has the selected trait |
 | Tool-call row | `chat.toolCall.<turn id>.<item id>`, or `.<block id>` for a call without an item | One element: label the action, value the detail; with an item, a button whose hint is "Open *item* in *Tool*" and whose action opens the item |
@@ -764,7 +793,7 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 
 ## Sample data and limits
 
-- **Chats.** The app's chats are the projects' `.hephaestus/chats/`. Chats of every kind are listed and shown; their items the app doesn't show (question pickers, images Claude showed) are skipped. There is no delete, no rename in the window (Claude can rename with `rename_chat`), and no file attachments in the composer.
+- **Chats.** The app's chats are the projects' `.hephaestus/chats/`. Chats of every kind are listed and shown; their items the app doesn't show (question pickers, images Claude showed) are skipped. There is no delete, and no rename in the window (Claude can rename with `rename_chat`).
 - **Claude.** The CLI runs with no system prompt from the app, no hooks, no skills but the internal skills chats call, and of its own tools only the file tools ([Decisions › What Claude reads](../decisions.md#what-claude-reads), [Files](#files)); the user's own Claude Code settings and CLAUDE.md files apply as they do in a terminal.
 - **Samples.** Previews and captures use five sample conversations, about Orders (three), Payments and Shop, and the sample engine. Their replies are written as if a model had answered, so they carry no **Sample reply** caption, and their reads are fixed text, not read live. Their Service Map reads were seen in Staging.
 

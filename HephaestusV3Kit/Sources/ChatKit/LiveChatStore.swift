@@ -47,13 +47,13 @@ public final class LiveChatStore: ChatStore {
     var canStop: Bool { true }
 
     func send(_ text: String, to id: ChatConversation.ID?, project: Project, origin: ToolKind?, attachments: [ChatReference],
-              reader: ToolReader) async throws(ChatSendError) -> ChatConversation.ID {
+              files: [URL], reader: ToolReader) async throws(ChatSendError) -> ChatConversation.ID {
         // Every message carries one item: the one its chip shows, else the project.
         let references = attachments.isEmpty
             ? [ChatItemReference(tool: ChatItemReference.projectTool, projectID: project.id, focus: "", title: project.name)]
             : attachments.map { ChatItemReference(tool: $0.tool.rawValue, projectID: $0.projectID, focus: $0.focus, title: $0.title, environment: $0.environment) }
         do throws(ChatError) {
-            return try await session.send(text, references: references, to: id, projectID: project.id, origin: origin?.rawValue)
+            return try await session.send(text, references: references, to: id, projectID: project.id, origin: origin?.rawValue, files: files)
         } catch {
             throw ChatSendError(message: error.description)
         }

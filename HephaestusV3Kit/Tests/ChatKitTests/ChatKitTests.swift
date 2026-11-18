@@ -44,7 +44,7 @@ struct ChatStoreTests {
         let engine = MockChatEngine()
         let store = SampleChatStore(conversations: [], engine: engine)
         let text = String(repeating: "a", count: 100)
-        let id = try (store.send("  \(text)\n", to: nil, project: orders, origin: .tickets, attachments: [ord142], reader: reader()))
+        let id = try (store.send("  \(text)\n", to: nil, project: orders, origin: .tickets, attachments: [ord142], files: [], reader: reader()))
         let conversation = try #require(store.conversation(id))
         #expect(conversation.title == String(repeating: "a", count: 80))
         #expect(conversation.projectID == "ORD")
@@ -69,7 +69,7 @@ struct ChatStoreTests {
         let engine = MockChatEngine()
         engine.repliesAreSamples = true
         let store = SampleChatStore(conversations: [], engine: engine)
-        let id = try? store.send("Hello", to: nil, project: orders, origin: nil, attachments: [], reader: reader())
+        let id = try? store.send("Hello", to: nil, project: orders, origin: nil, attachments: [], files: [], reader: reader())
         await store.repliesArrived()
         #expect(store.conversation(id)?.turns.last?.isSample == true)
     }
@@ -77,7 +77,7 @@ struct ChatStoreTests {
     @Test("A later message goes to the same conversation")
     func laterMessage() async {
         let store = SampleChatStore(conversations: [conversation("a", minutesAgo: 10)], engine: MockChatEngine())
-        let id = try? store.send("Again", to: "a", project: orders, origin: nil, attachments: [], reader: reader())
+        let id = try? store.send("Again", to: "a", project: orders, origin: nil, attachments: [], files: [], reader: reader())
         #expect(id == "a")
         #expect(store.conversations.count == 1)
         await store.repliesArrived()
@@ -88,7 +88,7 @@ struct ChatStoreTests {
     func blankMessage() {
         let engine = MockChatEngine()
         let store = SampleChatStore(conversations: [], engine: engine)
-        #expect((try? store.send(" \n ", to: nil, project: orders, origin: nil, attachments: [], reader: reader())) == nil)
+        #expect((try? store.send(" \n ", to: nil, project: orders, origin: nil, attachments: [], files: [], reader: reader())) == nil)
         #expect(store.conversations.isEmpty)
     }
 
