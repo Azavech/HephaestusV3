@@ -10,8 +10,8 @@ the user's or the projects' own Claude skills.
 
 ## Opening it
 
-| From | Does |
-| --- | --- |
+| From                                                       | Does                                                                                   |
+|------------------------------------------------------------|----------------------------------------------------------------------------------------|
 | **Hephaestus V3 ▸ System Prompts…** (⌥⌘,), after Settings… | Selects the System Prompts tab, or opens it ([Navigation › Tabs](navigation.md#tabs)). |
 
 It is a tab, one in the whole app, like Projects and Virtual Machines (the user's choice): it has the window's
@@ -20,20 +20,19 @@ Its tab reads "System Prompts", with `text.book.closed`.
 
 ## Anatomy
 
-![System Prompts with report-feedback selected: its name, its call /hephaestus-skills:report-feedback, Model Default, Effort High, and its empty content](images/system-prompts-report-feedback.png)
-*`report-feedback`, which chats call: the Call line shows how.*
+![System Prompts with report-feedback selected: its name, Model Default, Effort High, and its empty content](images/system-prompts-report-feedback.png)
+*`report-feedback` selected: a skill chats call shows as any other.*
 
 A `NavigationSplitView`, inside the tab:
 
-| Part | Identifier | Contents |
-| --- | --- | --- |
-| **List** | `systemPrompts.list` | Every internal skill, in the code's order: `text.book.closed` and the name in the monospaced font (`systemPrompts.skill.<name>`). The first is selected when the tab opens. 200 to 360 pt wide, 240 by default. |
-| **Name** | `systemPrompts.name` | "Name" and the selected skill's name, monospaced, selectable, not editable. Help: "The app defines this skill and its name." |
-| **Call** | `systemPrompts.call` | For a skill chats call only: "Call" and how a message calls it, `/hephaestus-skills:<name>`, monospaced, selectable. Help: "How a chat's message calls this skill." |
+| Part                     | Identifier                                    | Contents                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+|--------------------------|-----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **List**                 | `systemPrompts.list`                          | Every internal skill, in the code's order: `text.book.closed` and the name in the monospaced font (`systemPrompts.skill.<name>`). The first is selected when the tab opens. 200 to 360 pt wide, 240 by default.                                                                                                                                                                                                                                                               |
+| **Name**                 | `systemPrompts.name`                          | "Name" and the selected skill's name, monospaced, selectable, not editable. Help: "The app defines this skill and its name."                                                                                                                                                                                                                                                                                                                                                  |
 | **Model** and **Effort** | `systemPrompts.model`, `systemPrompts.effort` | Settings ▸ Chat's pickers, side by side: the CLI's models (its fallback list until the CLI has answered), then the selected model's effort levels (none for a model without effort). They set the model and effort the app uses when it runs the skill itself; a chat that calls the skill keeps its own (the user's request). Under them, in `caption` and `textSecondary`: "Used when the app runs this skill itself; a chat that calls it keeps its own model and effort." |
-| **Content** | `systemPrompts.content` | A `TextEditor` in the monospaced body font, on `surfaceSunken`, filling the rest. While empty: "Empty: Claude gets nothing from this skill." in `textSecondary`. Its VoiceOver label is "Content". |
-| **Status** | `systemPrompts.status` | Under the content, in `callout`: "Saved" or "Editing…" in `textSecondary`; after a failed save, `exclamationmark.triangle.fill` and "Not saved: <reason>" in `danger`. |
-| **Nothing selected** | `systemPrompts.nothing` | "No Skill Selected", "Select an internal skill to edit its content." |
+| **Content**              | `systemPrompts.content`                       | A `TextEditor` in the monospaced body font, on `surfaceSunken`, filling the rest. While empty: "Empty: Claude gets nothing from this skill." in `textSecondary`. Its VoiceOver label is "Content".                                                                                                                                                                                                                                                                            |
+| **Status**               | `systemPrompts.status`                        | Under the content, in `callout`: "Saved" or "Editing…" in `textSecondary`; after a failed save, `exclamationmark.triangle.fill` and "Not saved: <reason>" in `danger`.                                                                                                                                                                                                                                                                                                        |
+| **Nothing selected**     | `systemPrompts.nothing`                       | "No Skill Selected", "Select an internal skill to edit its content."                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 The window's title is "System Prompts". In narrow windows the list folds behind the sidebar button, as every
 split view does.
@@ -60,17 +59,17 @@ run is for is linked as a chat's message links the item of its chip, with an `At
 So until the content says how to answer, the answer is what the model makes of the message and of what it
 reads.
 
-| Name | Default content | Default model and effort | Used by |
-| --- | --- | --- | --- |
-| `set-ticket-title` | Empty | Haiku, Low: a short answer (default chosen at design time) | A ticket created without a title (Claude's `create_ticket`, a feedback chat's for instance), and **Generate Title**, in New Ticket and in the ticket editor ([Tickets › Titles written by Claude](tickets.md#titles-written-by-claude)). Its message is the ticket's `Attached:` line, Claude reading the ticket whole (the user's request); in the editor, after the description being edited while it isn't saved; in New Ticket, before the ticket exists, the description alone. |
-
-| `report-feedback` | Empty | `default`, High (a chat's defaults; the app never runs it itself) | The first message of a [feedback chat](chat.md#feedback), `/hephaestus-skills:report-feedback` then the comment and the feedback's context, screenshot and files (the user's request, as V2's `feedback` skill). What Claude does with the feedback, such as which ticket to create and its priority, is this skill's to say. |
+| Name               | Default content | Default model and effort                                          | Used by                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+|--------------------|-----------------|-------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `set-ticket-title` | Empty           | Haiku, Low: a short answer (default chosen at design time)        | A ticket created without a title (Claude's `create_ticket`, a feedback chat's for instance), and **Generate Title**, in New Ticket and in the ticket editor ([Tickets › Titles written by Claude](tickets.md#titles-written-by-claude)). Its message is the ticket's `Attached:` line, Claude reading the ticket whole (the user's request); in the editor, after the description being edited while it isn't saved; in New Ticket, before the ticket exists, the description alone. |
+| `report-feedback`  | Empty           | `default`, High (a chat's defaults; the app never runs it itself) | The first message of a [feedback chat](chat.md#feedback), `/hephaestus-skills:report-feedback` then the comment and the feedback's context, screenshot and files (the user's request, as V2's `feedback` skill). What Claude does with the feedback, such as which ticket to create and its priority, is this skill's to say.                                                                                                                                                        |
 
 **Called skills.** `report-feedback` is called from chats (V2's called skills); `set-ticket-title` the app runs
 itself. Every chat's CLI gets the called skills as the plugin `hephaestus-skills` ([Data › Chat
 plugin](../data.md#chat-plugin)), so a message starting with `/hephaestus-skills:<name>` calls one: Claude gets
 the skill's content, then the rest of the message. A chat that calls a skill keeps its own model and effort. The
-skills the app runs itself aren't in the plugin: no chat sees them.
+skills the app runs itself aren't in the plugin: no chat sees them. The page shows a called skill as any other:
+it never shows the `/hephaestus-skills:<name>` line that calls it (the user's rule, 17 November 2026).
 
 A skill the code adds without its own defaults runs on the CLI's `default` model at High effort, as a new chat
 does.

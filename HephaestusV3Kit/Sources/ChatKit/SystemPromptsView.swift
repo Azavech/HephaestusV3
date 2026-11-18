@@ -258,16 +258,6 @@ private struct SkillEditor: View {
             .help(String(localized: "The app defines this skill and its name.", bundle: #bundle))
             .accessibilityIdentifier("systemPrompts.name")
 
-            if skill.isCalledFromChats {
-                LabeledContent(String(localized: "Call", bundle: #bundle)) {
-                    Text(verbatim: skill.command)
-                        .monospaced()
-                        .textSelection(.enabled)
-                }
-                .help(String(localized: "How a chat's message calls this skill.", bundle: #bundle))
-                .accessibilityIdentifier("systemPrompts.call")
-            }
-
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 20) {
                     ReplySettingsRows(models: models, settings: settings, identifier: "systemPrompts", set: setSettings)
