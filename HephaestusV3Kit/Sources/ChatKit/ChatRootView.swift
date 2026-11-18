@@ -184,6 +184,7 @@ public struct ChatRootView: View {
                 prompt: Text("Ask about \(model.project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
                 isBusy: model.isResponding,
                 identifier: "chat.composer",
+                completions: ChatCompletions.list(for: model.draft, commands: model.store.commands(for: model.project.id)),
                 send: { Task { await model.sendDraft(reader: toolReader) } }
             ) {
                 ProjectChip(project: model.project)

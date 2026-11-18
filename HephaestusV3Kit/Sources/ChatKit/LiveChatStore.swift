@@ -85,6 +85,10 @@ public final class LiveChatStore: ChatStore {
         }
     }
 
+    func commands(for projectID: Project.ID) -> [ClaudeCommand] {
+        session.commands(forProject: projectID)
+    }
+
     // MARK: Turns
 
     static func conversation(_ chat: LoadedChat) -> ChatConversation {

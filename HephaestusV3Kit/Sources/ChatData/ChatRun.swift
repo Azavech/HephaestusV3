@@ -264,8 +264,12 @@ extension ChatSession {
             case .unsupportedControlRequest(let id, let subtype):
                 run.connection.write(ClaudeInput.unsupported(id, subtype: subtype))
             case .controlResponse(let id, let success, let response, let error):
-                if id == run.initializeID, success, let list = ClaudeModel.list(response?["models"]) {
-                    if models != list { models = list }
+                if id == run.initializeID, success {
+                    if let list = ClaudeModel.list(response?["models"]), models != list { models = list }
+                    if let list = ClaudeCommand.list(response?["commands"]), let projectID = chats[chatID]?.projectID,
+                       projectCommands[projectID] != list {
+                        projectCommands[projectID] = list
+                    }
                 } else if let setting = run.settingsRequests.removeValue(forKey: id), !success {
                     record(.system(SystemItem(created: now(), text: "Claude did not accept the new \(setting) now: \(error ?? "no reason"). It applies the next time Claude starts.",
                                               level: .warning)), in: chatID)
@@ -505,22 +509,27 @@ extension ChatSession {
 
     // MARK: Models
 
-    /// Reads the CLI's models: a process without session, tools or MCP servers that only answers `initialize`.
+    /// Reads the CLI's models and commands: a process without session, tools or MCP servers that only answers
+    /// `initialize`, with the chats' plugin, so that its commands are those of a chat outside any project.
     func probeModels() async {
         guard let path = status.path, let dataFolder = projects.dataFolder else { return }
         let folder = dataFolder.url.appendingPathComponent("Runtime/claude-cwd", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let arguments = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--no-session-persistence",
+        var arguments = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--no-session-persistence",
                          "--tools", "", "--strict-mcp-config", "--mcp-config", #"{"mcpServers":{}}"#]
+        if let plugin = try? dataFolder.writeChatPlugin() {
+            arguments += ["--plugin-dir", plugin.path]
+        }
         let request = ProcessRequest(executable: path, arguments: arguments, environment: ShellEnvironment.forChildren(projects.tools.environment),
                                      currentDirectory: folder.path, standardInput: .pipe, standardOutput: .pipe, standardError: .null)
         guard let connection = try? launcher.launch(request, log: nil, logLine: "") else { return }
         connection.write(ClaudeInput.control("hephaestus-models", ["subtype": "initialize"]))
-        let reader = Task {
+        let reader = Task { () -> (models: [ClaudeModel]?, commands: [ClaudeCommand]?)? in
             for await line in connection.lines {
                 guard let value = try? JSONValue.parse(line), value["type"]?.stringValue == "control_response",
                       value["response"]?["request_id"]?.stringValue == "hephaestus-models" else { continue }
-                return ClaudeModel.list(value["response"]?["response"]?["models"])
+                let answer = value["response"]?["response"]
+                return (ClaudeModel.list(answer?["models"]), ClaudeCommand.list(answer?["commands"]))
             }
             return nil
         }
@@ -528,7 +537,7 @@ extension ChatSession {
             try? await Task.sleep(for: .seconds(30))
             reader.cancel()
         }
-        let list = await reader.value
+        let answer = await reader.value
         timeout.cancel()
         connection.closeInput()
         connection.signal(SIGTERM)
@@ -536,7 +545,8 @@ extension ChatSession {
             try? await Task.sleep(for: .seconds(2))
             if !connection.hasExited { connection.signal(SIGKILL) }
         }
-        if let list, list != models { models = list }
+        if let list = answer?.models, list != models { models = list }
+        if let list = answer?.commands, list != commands { commands = list }
     }
 }
 

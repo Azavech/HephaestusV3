@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "git@github.com:Azavech/AZDesign.git",
       "state" : {
-        "revision" : "f4cac62378fec0ab92e8ffba5362ada1077a48ea",
-        "version" : "0.6.0"
+        "revision" : "7ab7318043155e68619eac9497e1afeabcb6c6bd",
+        "version" : "0.6.1"
       }
     },
     {

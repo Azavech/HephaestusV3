@@ -146,3 +146,35 @@ public enum ClaudeCLI {
         path.hasPrefix("~/") ? home + path.dropFirst(1) : path
     }
 }
+
+/// A slash command the CLI runs, from its `initialize` answer's `commands` (docs/data.md › The CLI): a skill (the
+/// user's, a plugin's, the app's own `hephaestus-skills:…`) or one of the CLI's built-in commands.
+public struct ClaudeCommand: Sendable, Hashable, Identifiable {
+    /// Typed after `/`: `hephaestus-skills:report-feedback`.
+    public var name: String
+    public var description: String
+    /// What follows the name, such as `[what to design]`; empty for nothing.
+    public var argumentHint: String
+    /// One of the CLI's own commands (`builtin`), rather than a skill.
+    public var isBuiltIn: Bool
+
+    public var id: String { name }
+
+    public init(name: String, description: String = "", argumentHint: String = "", isBuiltIn: Bool = false) {
+        self.name = name
+        self.description = description
+        self.argumentHint = argumentHint
+        self.isBuiltIn = isBuiltIn
+    }
+
+    /// The commands of an `initialize` answer, in its order; nil when it has none, or an entry without a name.
+    public static func list(_ commands: JSONValue?) -> [ClaudeCommand]? {
+        guard let entries = commands?.arrayValue else { return nil }
+        let list = entries.compactMap { entry -> ClaudeCommand? in
+            guard let name = entry["name"]?.stringValue, !name.isEmpty else { return nil }
+            return ClaudeCommand(name: name, description: entry["description"]?.stringValue ?? "",
+                                 argumentHint: entry["argumentHint"]?.stringValue ?? "", isBuiltIn: entry["builtin"]?.boolValue ?? false)
+        }
+        return list.isEmpty ? nil : list
+    }
+}

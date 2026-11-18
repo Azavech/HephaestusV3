@@ -70,6 +70,8 @@ final class FakeConnection: ClaudeConnection, @unchecked Sendable {
 final class FakeLauncher: ClaudeLaunching, @unchecked Sendable {
     private let launched = Mutex<[FakeConnection]>([])
     var chats: [FakeConnection] { launched.withLock { $0 }.filter { $0.request.arguments.contains("--include-partial-messages") } }
+    /// The models probes.
+    var probes: [FakeConnection] { launched.withLock { $0 }.filter { $0.request.arguments.contains("--no-session-persistence") } }
 
     func launch(_ request: ProcessRequest, log: URL?, logLine: String) throws -> any ClaudeConnection {
         let connection = FakeConnection(request)
@@ -79,6 +81,12 @@ final class FakeLauncher: ClaudeLaunching, @unchecked Sendable {
             var response = value
             if case .object(var object) = value, case .object(var inner)? = object["response"] {
                 inner["request_id"] = "hephaestus-models"
+                // The capture lists no command: two stand in, a skill and one of the CLI's own.
+                if case .object(var answer)? = inner["response"] {
+                    answer["commands"] = [["name": "hephaestus-skills:report-feedback", "description": "Turns feedback into tickets.", "argumentHint": ""],
+                                          ["name": "compact", "description": "Free up context", "argumentHint": "<instructions>", "builtin": true]]
+                    inner["response"] = .object(answer)
+                }
                 object["response"] = .object(inner)
                 response = .object(object)
             }
@@ -145,6 +153,28 @@ struct ChatSessionTests {
         #expect(world.session.status.version == "2.1.322")
         #expect(world.session.models.first?.value == "default")
         #expect(ClaudeModel.name(of: "claude-opus-5-5", in: world.session.models) == "Opus 5.5")
+    }
+
+    @Test("The probe lists the CLI's commands with the chats' plugin; a chat's answer gives its project's own")
+    func commands() async throws {
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        try await world.until { !world.session.commands.isEmpty }
+        #expect(world.session.commands.map(\.name) == ["hephaestus-skills:report-feedback", "compact"])
+        #expect(world.session.commands.map(\.isBuiltIn) == [false, true] && world.session.commands[1].argumentHint == "<instructions>")
+        #expect(world.session.commands(forProject: "ORD") == world.session.commands, "The probe's until a chat of the project answers")
+        let probe = try #require(world.launcher.probes.first?.request.arguments)
+        let plugins = try #require(probe.firstIndex(of: "--plugin-dir"))
+        #expect(probe[plugins + 1] == world.root.appendingPathComponent("Data/Runtime/plugins").path)
+
+        let id = try await world.session.send("Hi", references: [], to: nil, projectID: "ORD")
+        let cli = try #require(world.launcher.chats.first)
+        let initialize = try #require(cli.written.first?["request_id"]?.stringValue)
+        cli.feed(#"{"type":"control_response","response":{"subtype":"success","request_id":"\#(initialize)","response":{"commands":[{"name":"release-notes","description":"Writes notes","argumentHint":""}]}}}"#)
+        try await world.until { world.session.projectCommands["ORD"] != nil }
+        #expect(world.session.commands(forProject: "ORD").map(\.name) == ["release-notes"])
+        #expect(world.session.chats[id] != nil)
+        cli.finish(.exited(0))
     }
 
     @Test("A first message makes the chat and starts the CLI: no prompt, the file tools of its own, the app's tools allowed, the skills chats call")

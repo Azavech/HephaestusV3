@@ -29,6 +29,8 @@ protocol ChatStore: AnyObject {
     /// The model and effort of the conversation, or of new chats when `id` is nil; nil without models.
     func replySettings(of id: ChatConversation.ID?) -> ChatSettings?
     func setReplySettings(_ settings: ChatSettings, of id: ChatConversation.ID?) throws(ChatSendError)
+    /// The slash commands a chat of the project can run, for the composer's suggestions.
+    func commands(for projectID: Project.ID) -> [ClaudeCommand]
 }
 
 /// Why a message wasn't sent, or a setting not changed: the sentence the composer shows.
@@ -133,6 +135,12 @@ final class SampleChatStore: ChatStore {
     func replySettings(of id: ChatConversation.ID?) -> ChatSettings? { nil }
 
     func setReplySettings(_ settings: ChatSettings, of id: ChatConversation.ID?) throws(ChatSendError) {}
+
+    /// Two skills, for the previews of the composer's suggestions.
+    func commands(for projectID: Project.ID) -> [ClaudeCommand] {
+        [ClaudeCommand(name: "hephaestus-skills:report-feedback", description: "Turns feedback about the app into tickets."),
+         ClaudeCommand(name: "release-notes", description: "Writes the release notes of a version.")]
+    }
 
     private func update(_ id: ChatConversation.ID, _ change: (inout ChatConversation) -> Void) {
         guard let index = conversations.firstIndex(where: { $0.id == id }) else { return }

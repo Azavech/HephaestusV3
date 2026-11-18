@@ -915,14 +915,23 @@ else is tried. Then `<path> --version` (30 s): the version is its output's first
 | A version | Available. |
 
 The check runs once the projects and tools are loaded, and again after the path changes or **Look Again**. Then
-the model probe reads the CLI's models: `<path> -p --input-format stream-json --output-format stream-json
---verbose --no-session-persistence --tools "" --strict-mcp-config --mcp-config {"mcpServers":{}}` in
-`Runtime/claude-cwd/`, writes `initialize`, takes `response.models` from its answer (30 s at most), closes stdin,
-then SIGTERM and SIGKILL 2 s later. No message is sent: the probe makes no model request. Each model entry gives
+the model probe reads the CLI's models and commands: `<path> -p --input-format stream-json --output-format
+stream-json --verbose --no-session-persistence --tools "" --strict-mcp-config --mcp-config {"mcpServers":{}}
+--plugin-dir <data folder>/Runtime/plugins` in `Runtime/claude-cwd/` (the [chat plugin](#chat-plugin) written
+first; without it when it can't be), writes `initialize`, takes `response.models` and `response.commands` from
+its answer (30 s at most), closes stdin, then SIGTERM and SIGKILL 2 s later. No message is sent: the probe makes no model request. Each model entry gives
 `value`, `displayName` (default `value`), `description`, `supportedEffortLevels`, `resolvedModel`; an entry without
 `value` is skipped. Until an answer, the list is the fallback: Default, Opus, Fable, Sonnet, Haiku. Every chat
 process's `initialize` answer replaces the list too. A model id's name is the `displayName` of the first model
 other than `default` that resolves to it, else of the model whose value it is, else the id.
+
+**Commands** (`ClaudeCommand`): each entry of `commands` gives `name` (what follows `/`), `description`,
+`argumentHint` and `builtin` (`isBuiltIn`, false when absent); an entry without a name is skipped, and an answer
+without entries changes nothing. The probe's list is `ChatSession.commands`: the user's skills, their plugins'
+and the app's own, outside any project. Each chat process's `initialize` answer sets the list of its chat's
+project (`projectCommands`), which then adds the project's own skills; `commands(forProject:)` gives the
+project's list, else the probe's. Lists stay in memory only. The composer offers the skills among them ([UI ›
+Chat › Skill completion](ui/chat.md#skill-completion)).
 
 #### Launch
 

@@ -67,6 +67,12 @@ public final class ChatSession {
     public internal(set) var status = ClaudeStatus.checking
     /// The CLI's models, from its last `initialize` answer; the fallback list until one came.
     public internal(set) var models = ClaudeModel.fallback
+    /// The CLI's commands from the probe, which runs outside any project with the chats' plugin: the user's
+    /// skills, the plugins' and the app's own. Empty until it answers.
+    public internal(set) var commands: [ClaudeCommand] = []
+    /// The commands of each project's chats, by project id, from the last chat process of the project that
+    /// answered `initialize`: the probe's and the project's own skills.
+    public internal(set) var projectCommands: [String: [ClaudeCommand]] = [:]
     /// The transcripts read, by chat id: those of chats open in a window, and of chats that run.
     public internal(set) var transcripts: [String: [ChatItem]] = [:]
     /// The text Claude is writing, by chat id.
@@ -231,6 +237,11 @@ public final class ChatSession {
     /// The chats of these projects, the latest first.
     public func chats(of projectIDs: Set<String>) -> [LoadedChat] {
         chats.values.filter { projectIDs.contains($0.projectID) }.sorted { $0.file.updated > $1.file.updated }
+    }
+
+    /// The commands a chat of the project can run: its chats' last list, else the probe's.
+    public func commands(forProject projectID: String) -> [ClaudeCommand] {
+        projectCommands[projectID] ?? commands
     }
 
     public func state(of chatID: String) -> ChatState {

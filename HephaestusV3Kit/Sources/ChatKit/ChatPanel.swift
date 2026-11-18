@@ -58,6 +58,7 @@ public struct ChatPanel: View {
                 prompt: Text("Ask about \(attachment?.title ?? project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
                 isBusy: model.isResponding,
                 identifier: "chat.composer",
+                completions: ChatCompletions.list(for: model.draft, commands: model.store.commands(for: project.id)),
                 send: { Task { await model.sendDraft(project: project, origin: origin, subject: subject, reader: toolReader) } }
             ) {
                 chip(attachment)

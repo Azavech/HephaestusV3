@@ -185,8 +185,42 @@ The composer is a card at the bottom of the center column, with 16 pt of padding
 - **Send.** A round, prominent button with `arrow.up`. Disabled while the field is empty or only whitespace, and while Claude works in the conversation. Help: "Send (Return)".
 - **Not sent.** When a message can't be sent, the reason shows over the composer in `danger`, with `exclamationmark.triangle.fill` (`chat.failure`), and the draft stays: "Claude CLI not found. Install Claude Code, or set its path in Settings ▸ Chat.", "<path> is not an executable file.", "The Claude CLI isn't checked yet. Try again in a moment." The next message sent clears it.
 - **Keyboard.** **Return** sends. **⌥Return** starts a new line.
+- **Skills.** A `/` typed as the message's first word lists the skills the chat can call ([Skill
+  completion](#skill-completion)).
 
 Sending adds the message to the selected conversation. With no conversation selected, it starts one: a chat of the window's project, titled with the message's first line that isn't empty, at most 80 characters, with no origin. The new conversation is selected and the draft clears once the message is sent. A message from the Chat window carries the project: Claude reads "Attached: project ORD" after it ([Data › Messages](../data.md#messages)). The draft is kept when the user picks another conversation, and when a suggestion is sent.
+
+### Skill completion
+
+![The Chat window's composer with "/re" typed: above it, a list of two skills, hephaestus-skills:report-feedback selected, then release-notes, each with its description](images/chat-skills.png)
+*`/re` typed: the skills that match, the first one selected.*
+
+As V2's composer did, typing `/` at the start of a message lists the skills the chat can call, so that the user
+completes the call of one, `/<name> `. It works in the Chat window and in the chat panel.
+
+- **When.** While the field has the focus, its whole text starts with `/` and holds no white space or line
+  break, and a skill matches. Typing a space, deleting the `/`, or no match closes the list.
+- **Skills.** The commands of the chat's Claude CLI that aren't built into it ([Data › The CLI](../data.md#the-cli)):
+  the app's own (`hephaestus-skills:report-feedback`), the user's skills, the skills of their plugins and of the
+  project. The project's chats' last CLI gives the list; until one ran, the model probe's, which runs outside
+  any project and so lacks the project's own skills. The CLI's built-in commands (`compact`, `model`…) aren't
+  offered, as V2 offered only skills.
+- **Matching.** A skill matches when its name holds the text after the `/`, in any letter case; a lone `/`
+  offers them all. Names that start with the text, or whose part after the last `:` does, come first, then the
+  others; each group by name. At most 20.
+- **List.** AZDesign's `MessageComposer` completions: just above the composer, at its leading edge, at most
+  420 pt wide, eight rows then it scrolls; each row the skill's name, then its description's first line in
+  `textSecondary`, cut at its end. The first row is selected (`highlight`) whenever the list changes.
+- **Keys.** While the list shows: ↑ and ↓ move the selection; **Return** or **Tab** picks the selected skill,
+  a click picks its row, and the text becomes `/<name> `, so the list closes; **Escape** closes the list until
+  the text no longer starts a match. Return doesn't send while the list shows.
+
+| Text | Rows, in order (skills `hephaestus-skills:report-feedback`, `release-notes`, `swift-testing`) |
+| --- | --- |
+| `/` | `hephaestus-skills:report-feedback`, `release-notes`, `swift-testing` |
+| `/re` | `hephaestus-skills:report-feedback` (its part after `:` starts with `re`), `release-notes` |
+| `/s` | `swift-testing`, then `hephaestus-skills:report-feedback`, `release-notes`, which hold `s` |
+| `/zzz`, `/re x`, `hello /re` | none: the list is closed |
 
 ## New chat
 
@@ -614,6 +648,8 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 | Turn | `chat.turn.<turn id>` | A container; the author's name is a heading |
 | Attachment of a turn | `chat.attachment.<turn id>.<item id>` | "*Tool*: *item*" |
 | File of a message | `chat.file.<turn id>.<file id>` | A button: the file's name, then its size when known |
+| Skill list | `chat.composer.completions` | A container, above the composer while it shows |
+| Skill in the list | `chat.composer.completion.<index>` | A button: the skill's name and description; the selected one has the selected trait |
 | Tool-call row | `chat.toolCall.<turn id>.<item id>`, or `.<block id>` for a call without an item | One element: label the action, value the detail; with an item, a button whose hint is "Open *item* in *Tool*" and whose action opens the item |
 | Approval card | `chat.approval.<approval id>` | A container; its title is a heading. The id is the request's (a UUID, or the CLI's request id); the sample's is `chat-checkout.comment` |
 | Allow | `chat.approval.<approval id>.allow` | "Allow" |
