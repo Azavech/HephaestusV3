@@ -23,6 +23,8 @@ nonisolated extension EnvironmentValues {
 struct StatusChat: Identifiable, Hashable {
     enum State: Hashable {
         case starting, running, waitingPermission, waitingAnswers
+        /// Idle, its process's background work running: counted with the chats at work, as V2.
+        case background
 
         var isWaiting: Bool { self == .waitingPermission || self == .waitingAnswers }
 
@@ -32,6 +34,7 @@ struct StatusChat: Identifiable, Hashable {
             case .running: String(localized: "Running", bundle: #bundle, comment: "A chat's state in the status bar's popover")
             case .waitingPermission: String(localized: "Waiting for permission", bundle: #bundle, comment: "A chat's state in the status bar's popover")
             case .waitingAnswers: String(localized: "Waiting for answers", bundle: #bundle, comment: "A chat's state in the status bar's popover")
+            case .background: String(localized: "Running in background", bundle: #bundle, comment: "A chat's state in the status bar's popover")
             }
         }
     }
@@ -53,6 +56,7 @@ struct StatusChat: Identifiable, Hashable {
             case .running: shown = .running
             case .waitingPermission: shown = .waitingPermission
             case .waitingAnswers: shown = .waitingAnswers
+            case .idle where session.backgroundWork.contains(id): shown = .background
             default: return nil
             }
             guard let chat = session.chats[id] else { return nil }
@@ -367,6 +371,7 @@ private let previewChats = [
     StatusChat(id: "C2", title: "Refund rules", projectID: "ORD", state: .waitingPermission, updated: Date(timeIntervalSince1970: 1_800_000_200)),
     StatusChat(id: "C1", title: "Fix the totals", projectID: "ORD", state: .running, updated: Date(timeIntervalSince1970: 1_800_000_100)),
     StatusChat(id: "C3", title: "Retry the payment", projectID: "PAY", state: .starting, updated: Date(timeIntervalSince1970: 1_800_000_000)),
+    StatusChat(id: "C4", title: "Watch the nightly batch", projectID: "PAY", state: .background, updated: Date(timeIntervalSince1970: 1_799_999_000)),
 ]
 
 #Preview("Status Bar", traits: .fixedLayout(width: 600, height: 60)) {

@@ -99,7 +99,8 @@ Its feedback is about the selected tab.
 - **Look.** 26 points high, under a hairline (`Divider`), on `canvas`, in every layout. Its texts are
   `caption`, in `textSecondary`, on one line.
 - **Running chats** (`statusBar.runningChats`), in the middle: a mini spinner and "1 chat running" or
-  "<n> chats running", the chats starting or at work. Shown when the count isn't 0. A click opens the chats
+  "<n> chats running", the chats starting or at work, and the idle ones whose background work runs
+  ([Data › Background work](../data.md#background-work)). Shown when the count isn't 0. A click opens the chats
   popover.
 - **Waiting chats** (`statusBar.waitingChats`), after it: a 7-point dot in `warning` and "1 chat waiting" or
   "<n> chats waiting", the chats waiting for a card's answer or for answers to questions. Shown when the
@@ -107,7 +108,7 @@ Its feedback is about the selected tab.
 - **Chats popover** (`statusBar.chats`), under the bar's middle: the counted chats, waiting first, then at work,
   each group the latest updated first. A row (`statusBar.chats.<chat id>`): the dot or the spinner, the
   chat's title, then "<project identifier> · <state>" in `caption` and `textSecondary`, the state being
-  Starting, Running, Waiting for permission or Waiting for answers. A click closes the popover and opens the
+  Starting, Running, Waiting for permission, Waiting for answers or Running in background (with the spinner). A click closes the popover and opens the
   chat in its project's Chat window. The popover closes when no chat is counted any more. 260 to 360 points
   wide.
 

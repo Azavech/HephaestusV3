@@ -157,8 +157,8 @@ extension ChatSession {
         states.filter { $0.value == .waitingPermission || $0.value == .waitingAnswers }.map(\.key)
     }
 
-    /// The chats at work, for the status bar.
+    /// The chats at work, those idle with background work included, for the status bar.
     public var runningChats: [String] {
-        states.filter { $0.value == .starting || $0.value == .running }.map(\.key)
+        states.filter { $0.value == .starting || $0.value == .running || ($0.value == .idle && backgroundWork.contains($0.key)) }.map(\.key)
     }
 }

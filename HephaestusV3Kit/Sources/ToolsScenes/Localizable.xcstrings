@@ -185,6 +185,9 @@
     "Running" : {
       "comment" : "A chat's state in the status bar's popover"
     },
+    "Running in background" : {
+      "comment" : "A chat's state in the status bar's popover"
+    },
     "Select a project to chat about it." : {
 
     },

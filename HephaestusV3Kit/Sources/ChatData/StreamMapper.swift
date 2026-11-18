@@ -26,6 +26,10 @@ public enum StreamOutput: Sendable, Hashable {
     case result(ResultItem)
     case compactionStarted
     case compactionEnded
+    /// `background_tasks_changed`: the ids of the background tasks still running (docs/data.md › Background work).
+    case backgroundTasks([String])
+    /// `task_notification`: a task ended, its result going to Claude.
+    case taskNotification(taskID: String)
     /// A line of a known shape that changes nothing; the name of its type, for the log.
     case ignored(String)
     /// A line that isn't a JSON object.
@@ -149,6 +153,12 @@ public struct StreamMapper: Sendable {
             default: trigger
             }
             return [.item(.system(SystemItem(created: now(), text: "Conversation compacted (\(how), \(Self.tokens(tokens)) tokens before)")))]
+        case "background_tasks_changed":
+            let ids = (line["tasks"]?.arrayValue ?? []).compactMap { $0["task_id"]?.stringValue }
+            return [.backgroundTasks(ids)]
+        case "task_notification":
+            guard let id = line["task_id"]?.stringValue else { return [.ignored("system/task_notification")] }
+            return [.taskNotification(taskID: id)]
         case let subtype:
             return [.ignored("system/\(subtype ?? "")")]
         }

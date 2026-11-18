@@ -1204,6 +1204,42 @@ setting **Edit the project's files** (`chat.fileEdits` in the user defaults: `ne
 | Any exit | Open blocks finish as items; the cards still waiting are cancelled; the token and the MCP configuration go. |
 | `set_model`, `apply_flag_settings` | A model or effort change of a chat whose process runs: `{"subtype":"set_model","model":<model>}`, `{"subtype":"apply_flag_settings","settings":{"effortLevel":<effort>}}`. |
 
+### Background work
+
+V2's background work: Claude starts work that goes on after its turn, a command with `Bash` and
+`run_in_background`, an agent in the background, a workflow. Claude Code reports it in `system` lines, checked on
+V2's capture `stream-background-bash.jsonl` (`BackgroundWorkTests`):
+
+| `subtype` | Sent when | Read |
+| --- | --- | --- |
+| `background_tasks_changed` | a background task starts or ends | `tasks`, each `task_id`: the tasks still running (`StreamOutput.backgroundTasks`) |
+| `task_notification` | a task ends | `task_id` (`StreamOutput.taskNotification`) |
+
+For each process (`ChatRun`): the tasks running (`backgroundTasks`), every task a `background_tasks_changed` listed
+(`listedTasks`), and whether the CLI owes a turn (`notificationPending`):
+
+1. `background_tasks_changed` replaces the tasks running.
+2. A `task_notification` of a listed task, read while no CLI turn is open, makes a turn owed: the CLI then starts
+   a turn on its own to give Claude the task's result.
+3. A `system/init` ends the owed turn; the turn it opens makes the chat running, as any.
+4. The process's exit drops both.
+
+The process has **background work** while a task runs or a turn is owed (`hasBackgroundWork`).
+`ChatSession.backgroundWork` holds those chats. It doesn't change the chat's state: after its turn, the chat is idle
+(or waits for answers). While it lasts, the idle timer doesn't run; it starts when the work ends and no turn runs, and
+a changed context window waits for it too. The status bar counts an idle chat with background work as running,
+"Running in background" ([Navigation › Status bar](ui/navigation.md#status-bar)).
+
+| Lines of the capture | Tasks | Turn owed | State | Background work |
+| --- | --- | --- | --- | --- |
+| 1 `system/init` | none | no | running | no |
+| 18 `background_tasks_changed` `bw1kgc2rd` | `bw1kgc2rd` | no | running | yes |
+| 29 `result` | `bw1kgc2rd` | no | idle | yes |
+| 32 `task_notification` `bw1kgc2rd` | `bw1kgc2rd` | yes | idle | yes |
+| 33 `background_tasks_changed` `[]` | none | yes | idle | yes |
+| 34 `system/init` | none | no | running | no |
+| 43 `result` | none | no | idle | no |
+
 ### Chat events
 
 What the session reports for the notifications (`ChatEvent`, `ChatSession.onEvent`, in ChatNotifications.swift),

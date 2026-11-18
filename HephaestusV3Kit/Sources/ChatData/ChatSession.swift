@@ -82,6 +82,9 @@ public final class ChatSession {
     /// The text Claude is writing, by chat id.
     public internal(set) var streaming: [String: StreamingText] = [:]
     public internal(set) var states: [String: ChatState] = [:]
+    /// The chats whose process has background work running: a task, or the turn that will report one
+    /// (docs/data.md › Background work). The chat's state doesn't change for it.
+    public internal(set) var backgroundWork: Set<String> = []
     /// The ticket and bundle ids each chat mentions (docs/data.md › Mentioned ids).
     public internal(set) var mentions: [String: Set<String>] = [:]
     /// The chats whose transcript was read for their ids, and the scan that reads them.

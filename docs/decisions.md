@@ -181,6 +181,7 @@ which rules the app enforces, and never tells Claude how to work.
 | Where does Mentioned In show? | A part of the ticket's detail between Linked and Activity, as V3's detail has no tabs; for a bundle, which has no detail, a Mentioned In submenu of its sidebar row. Rows open the chat in the Chat window, or in a window of its own from their menu. | [UI › Tickets › Mentioned In](ui/tickets.md#mentioned-in) |
 | Which chats are listed? | Every loaded chat that mentions the id, closed ones included, as V2; V2's exclusion of the ticket's own chats has no V3 equivalent. | same |
 | How are mentions found without keeping every transcript? | Each transcript is read once at launch, off the main actor, one at a time, keeping only its ids; new items add theirs. V2's engine replayed them all. | [Data › Mentioned ids](data.md#mentioned-ids) |
+| Is background work followed? | Yes, as V2: the shell's background commands, background agents and workflows keep their process alive past the idle timer, and the status bar counts the chat as running, "Running in background"; the chat's state stays idle. | [Data › Background work](data.md#background-work) |
 
 ## Builds
 

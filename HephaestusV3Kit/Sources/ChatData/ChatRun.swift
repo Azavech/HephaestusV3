@@ -44,6 +44,14 @@ final class ChatRun {
     var stopTimer: Task<Void, Never>?
     /// Close asked during the turn: the chat closes once it ends well.
     var closesAfterTurn = false
+    /// The background tasks running, every one a `background_tasks_changed` listed, and whether the CLI owes a
+    /// turn for a task that ended between turns (docs/data.md › Background work).
+    var backgroundTasks: Set<String> = []
+    var listedTasks: Set<String> = []
+    var notificationPending = false
+
+    /// Background work runs: a task, or the turn that will report one.
+    var hasBackgroundWork: Bool { !backgroundTasks.isEmpty || notificationPending }
     /// The `get_context_usage` request awaiting its answer.
     var contextRequestID: String?
     /// A line asked for the context usage while a request was awaited.
@@ -269,7 +277,18 @@ extension ChatSession {
                 } else {
                     streaming[chatID] = StreamingText(itemID: itemID, text: text)
                 }
+            case .backgroundTasks(let ids):
+                run.backgroundTasks = Set(ids)
+                run.listedTasks.formUnion(ids)
+                noteBackgroundWork(run)
+            case .taskNotification(let id):
+                if !run.cliTurnOpen, run.listedTasks.contains(id) {
+                    run.notificationPending = true
+                    noteBackgroundWork(run)
+                }
             case .cliTurnOpened(let first, let problem):
+                run.notificationPending = false
+                noteBackgroundWork(run)
                 run.cliTurnOpen = true
                 run.inTurn = true
                 run.idleTimer?.cancel()
@@ -365,6 +384,27 @@ extension ChatSession {
             closeNow(run.chatID)
             return
         }
+        startIdleTimer(run)
+    }
+
+    /// The process's background work started or ended: the session says so, and the idle timer starts once
+    /// nothing runs, neither a turn nor background work.
+    func noteBackgroundWork(_ run: ChatRun) {
+        let busy = run.hasBackgroundWork
+        if busy != backgroundWork.contains(run.chatID) {
+            if busy { backgroundWork.insert(run.chatID) } else { backgroundWork.remove(run.chatID) }
+        }
+        if busy {
+            run.idleTimer?.cancel()
+        } else if !run.inTurn {
+            startIdleTimer(run)
+        }
+    }
+
+    /// Ends the process after `idleTimeout` without a turn or background work; at once when its context window
+    /// changed.
+    private func startIdleTimer(_ run: ChatRun) {
+        guard !run.inTurn, !run.hasBackgroundWork else { return }
         // A new context window needs a new process: the next message resumes with it.
         if ChatContextWindow(stored: chats[run.chatID]?.file.settings.contextWindow ?? "") != run.contextWindow {
             run.end(closingInput: true, grace: Self.signalGrace)
@@ -373,7 +413,7 @@ extension ChatSession {
         run.idleTimer?.cancel()
         run.idleTimer = Task { [weak self, weak run] in
             try? await Task.sleep(for: Self.idleTimeout)
-            guard !Task.isCancelled, let self, let run, self.runs[run.chatID] === run, !run.inTurn else { return }
+            guard !Task.isCancelled, let self, let run, self.runs[run.chatID] === run, !run.inTurn, !run.hasBackgroundWork else { return }
             run.end(closingInput: true, grace: Self.signalGrace)
         }
     }
@@ -387,6 +427,8 @@ extension ChatSession {
         run.stopTimer?.cancel()
         guard runs[chatID] === run else { return }
         runs[chatID] = nil
+        // Its background tasks and the turn it owed end with it.
+        backgroundWork.remove(chatID)
         for item in run.mapper.finish() {
             record(item, in: chatID)
         }
