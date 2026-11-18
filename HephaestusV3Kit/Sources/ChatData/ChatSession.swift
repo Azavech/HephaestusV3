@@ -23,6 +23,8 @@ public enum ChatState: Sendable, Hashable {
     case running
     /// A card waits for the user's answer.
     case waitingPermission
+    /// No turn, and questions wait for the user's answers.
+    case waitingAnswers
     /// The CLI failed: the transcript says why. The next message tries again.
     case error
 
@@ -36,11 +38,13 @@ public enum ChatError: Error, Sendable, Hashable, CustomStringConvertible {
     case unavailable(String)
     case notFound(String)
     case invalid(String)
+    /// The chat already waits for the user's answers.
+    case conflict(String)
     case storage(StorageError)
 
     public var description: String {
         switch self {
-        case .unavailable(let message), .notFound(let message), .invalid(let message): message
+        case .unavailable(let message), .notFound(let message), .invalid(let message), .conflict(let message): message
         case .storage(let error): error.description
         }
     }
@@ -369,6 +373,8 @@ public final class ChatSession {
             state = .waitingPermission
         } else if let run = runs[chatID], run.inTurn {
             state = run.initialized ? .running : .starting
+        } else if waitingQuestions(in: chatID) != nil {
+            state = .waitingAnswers
         } else {
             state = .idle
         }

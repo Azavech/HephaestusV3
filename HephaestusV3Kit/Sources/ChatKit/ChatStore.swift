@@ -31,6 +31,9 @@ protocol ChatStore: AnyObject {
     func setReplySettings(_ settings: ChatSettings, of id: ChatConversation.ID?) throws(ChatSendError)
     /// The slash commands a chat of the project can run, for the composer's suggestions.
     func commands(for projectID: Project.ID) -> [ClaudeCommand]
+    /// The user's answer to the question `label` of the set Claude asked in the conversation. Throws why it
+    /// wasn't taken, as the user reads it.
+    func answer(_ answer: String, to label: String, inSet setID: ChatQuestionSet.ID, of id: ChatConversation.ID) async throws(ChatSendError)
 }
 
 /// Why a message wasn't sent, or a setting not changed: the sentence the composer shows.
@@ -135,6 +138,29 @@ final class SampleChatStore: ChatStore {
     func replySettings(of id: ChatConversation.ID?) -> ChatSettings? { nil }
 
     func setReplySettings(_ settings: ChatSettings, of id: ChatConversation.ID?) throws(ChatSendError) {}
+
+    /// Stores the answer; the last one ends the set and sends the answers as the user's message.
+    func answer(_ answer: String, to label: String, inSet setID: ChatQuestionSet.ID, of id: ChatConversation.ID) async throws(ChatSendError) {
+        update(id) { conversation in
+            guard var set = conversation.waitingQuestions, set.id == setID else { return }
+            set.answers[label] = answer
+            set.completed = set.questions.allSatisfy { set.answers[$0.label] != nil }
+            for turn in conversation.turns.indices {
+                for block in conversation.turns[turn].blocks.indices {
+                    if case .questions(let shown) = conversation.turns[turn].blocks[block].content, shown.id == setID {
+                        conversation.turns[turn].blocks[block].content = .questions(set)
+                    }
+                }
+            }
+            if set.completed {
+                conversation.waitingQuestions = nil
+                let item = QuestionsItem(id: set.id, created: Date(), questionSetID: set.id, questions: set.questions, answers: set.answers)
+                conversation.turns.append(ChatTurn(author: .user, date: Date(), blocks: [ChatBlock(.text(item.answersMessage()))]))
+            } else {
+                conversation.waitingQuestions = set
+            }
+        }
+    }
 
     /// Two skills, for the previews of the composer's suggestions.
     func commands(for projectID: Project.ID) -> [ClaudeCommand] {

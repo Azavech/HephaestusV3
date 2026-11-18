@@ -35,6 +35,15 @@
     "Always" : {
       "comment" : "A permission: Claude may always do it"
     },
+    "Answer (⌘↩)" : {
+
+    },
+    "Answer another way" : {
+
+    },
+    "Answer: %@" : {
+      "comment" : "The user's answer to one of Claude's questions"
+    },
     "Ask First" : {
       "comment" : "A permission: Claude asks before doing it"
     },
@@ -46,6 +55,12 @@
     },
     "Ask about %@…" : {
       "comment" : "The composer's prompt: an item or a project"
+    },
+    "Asked %lld questions" : {
+      "comment" : "Claude asked the user several questions; the value is their number"
+    },
+    "Asked a question" : {
+      "comment" : "Claude asked the user one question"
     },
     "Attach %@" : {
 
@@ -73,6 +88,23 @@
     },
     "Checking the Claude CLI…" : {
 
+    },
+    "Choose %lld" : {
+      "comment" : "A multiple question: the number of choices to make"
+    },
+    "Choose %lld to %lld" : {
+      "comment" : "A multiple question: the fewest and the most choices",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Choose %1$lld to %2$lld"
+          }
+        }
+      }
+    },
+    "Choose at least %lld" : {
+      "comment" : "A multiple question without a maximum"
     },
     "Claude" : {
 
@@ -223,6 +255,9 @@
     "Medium" : {
       "comment" : "An effort level"
     },
+    "Minimize" : {
+      "comment" : "Folds the questions card into one line"
+    },
     "Model" : {
 
     },
@@ -239,6 +274,12 @@
 
     },
     "New chats start with these. Each chat keeps its own, in the Chat window's inspector." : {
+
+    },
+    "Next" : {
+      "comment" : "Answers a question and shows the next one"
+    },
+    "Next Question" : {
 
     },
     "No Chats" : {
@@ -261,6 +302,9 @@
     },
     "Not Allowed" : {
       "comment" : "The user didn't allow the change"
+    },
+    "Not answered yet" : {
+
     },
     "Not saved: %@" : {
 
@@ -306,11 +350,28 @@
     "Path" : {
       "comment" : "The Claude CLI's path"
     },
+    "Previous Question" : {
+
+    },
     "Project" : {
 
     },
     "Projects" : {
       "comment" : "The Projects window, as a tool"
+    },
+    "Question %@ (%lld of %lld)" : {
+      "comment" : "The questions card's title: a question's label, its place and the number of questions",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Question %1$@ (%2$lld of %3$lld)"
+          }
+        }
+      }
+    },
+    "Questions" : {
+      "comment" : "The title of Claude's questions in the transcript"
     },
     "Read %@" : {
       "comment" : "A chat's call: Claude read a file"
@@ -323,6 +384,9 @@
     },
     "Reading…" : {
       "comment" : "Claude reads through the tools while a reply is coming"
+    },
+    "Recommended" : {
+      "comment" : "Marks the option Claude recommends"
     },
     "Remove %@" : {
 
@@ -383,8 +447,14 @@
     "Show in Finder" : {
 
     },
+    "Show the Questions" : {
+
+    },
     "Show the chat panel in tool windows" : {
 
+    },
+    "Skip" : {
+      "comment" : "Skips one of Claude's questions"
     },
     "Start builds" : {
 
@@ -400,6 +470,9 @@
     },
     "Stop (⌘.)" : {
 
+    },
+    "Submit" : {
+      "comment" : "Sends the answers to Claude's questions"
     },
     "Summarize %@" : {
       "comment" : "A suggestion; the value is a ticket id, such as ORD-142"
@@ -472,6 +545,9 @@
     },
     "You" : {
       "comment" : "The author of the user's messages"
+    },
+    "Your answer" : {
+
     }
   },
   "version" : "1.0"

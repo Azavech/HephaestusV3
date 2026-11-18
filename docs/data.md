@@ -827,11 +827,12 @@ with `null` written for an absent optional:
 | `thinking` | `text`, `parentToolUseID` (kept; not shown) | `<message id>#<block index>` |
 | `toolUse` | `toolUseID`, `name` (without `mcp__<server>__`), `server` (`hephaestus` for the app's tools, `null` for the CLI's), `input`, `parentToolUseID` | `<message id>#<block index>` |
 | `toolResult` | `toolUseID`, `text`, `isError`, `images` (kept as read) | `<tool use id>#result` |
+| `questions` | `questionSetID`, `questions`, `answers`, `completed` ([Questions](#questions)) | the set's id, a new uppercase UUID |
 | `permissionRequest` | `requestID`, `toolName` (the CLI's name, `mcp__hephaestus__add_comment`), `input`, `reason`, `decision` (`allow`, `allowAlways`, `deny`; `null` while it waits), `decidedBy` (the Mac whose user answered; `null` while it waits and when the app cancelled it) | `perm-<request id>` |
 | `system` | `text` (in English), `level` (`info`, `warning`, `error`) | a new uppercase UUID |
 | `result` | `durationMs`, `costUSD` (kept; not shown), `isError`, `summary` | a new uppercase UUID |
 
-The items `questions`, `symbol`, `color`, `sound`, `shortcut`, `font`, `animation` and `images` are skipped
+The items `symbol`, `color`, `sound`, `shortcut`, `font`, `animation` and `images` are skipped
 when a transcript is read, and stay in the file. A string
 longer than 100,000 characters in a call's input or a result's text is cut, followed by `… [truncated <n>
 characters]`.
@@ -849,6 +850,73 @@ The `system` lines V3 writes:
 | Stop | info | `Stopped by the user.` |
 | The app quits during a turn | warning | `Stopped because Hephaestus quit.` |
 | A compaction | info | `Conversation compacted (<automatic or manual>, <tokens> tokens before)`, tokens as `24.6K`, `967K`, `1.2M` |
+
+#### Questions
+
+Claude asks the user with the MCP tool `ask_questions` ([MCP](mcp.md#ask_questions)); the chat shows them in a
+card over the composer ([UI › Chat › Questions](ui/chat.md#questions)). The `questions` item is V2's:
+
+| Key | Type | Rules |
+| --- | --- | --- |
+| `questionSetID` | `String` | The set's id; the item's `id` too. |
+| `questions` | `[Question]` | 1 to 26, labelled `A`, `B`… in order. |
+| `answers` | `{String: String}` | By label: the chosen option's label, the user's own text, `Skipped`, or for a multiple question one line `- <choice>` per choice. `{}` at first. |
+| `completed` | `Bool` | Every question has an answer, and the answers went to Claude. |
+
+A `Question` (`ChatQuestion`): `label`, `question` (Markdown), `kind` (`single`, the default when absent, or
+`multiple`), `options` (`[{label, description}]`, `description` `null` when absent; the recommended ones first),
+`recommended` (a string in a single question, a list in a multiple one, as V2 wrote it; V3 reads both forms),
+and for a multiple question `minChoices` and `maxChoices` (`null` when absent: 1, and no maximum).
+
+**Rules** (`QuestionsItem.questions(from:)`), checked in this order; the first one broken refuses the whole set
+with `invalid` and nothing shows:
+
+| Rule | Message |
+| --- | --- |
+| 1 to 26 questions | `questions: give 1 to 26 questions.` |
+| Question *n* has the *n*-th letter as label | `questions: question <n> has the label "<letter>".` |
+| A question's text isn't empty, trimmed | `questions: question <label> has no text.` |
+| 2 to 10 options | `questions: question <label> has 2 to 10 options.` |
+| Option labels not empty, trimmed, and distinct ignoring case | `questions: question <label> has an empty option label, or two the same.` |
+| Option labels one line of at most 200 characters | `questions: question <label> has an option label of several lines or over 200 characters.` |
+| `minChoices` and `maxChoices` only on a multiple question | `questions: question <label> has minChoices or maxChoices without the kind multiple.` |
+| A single question recommends exactly one of its option labels | `questions: question <label> recommends exactly one of its option labels.` |
+| A multiple question recommends one or more of its labels, each once | `questions: question <label> recommends one or more of its option labels, each once.` |
+| `minChoices` and `maxChoices` at least 1 | `questions: question <label> has a minChoices under 1.` (or `maxChoices`) |
+| `minChoices` (1 when absent) at most `maxChoices` | `questions: question <label> has a minChoices over its maxChoices.` |
+| At most `maxChoices` recommended | `questions: question <label> recommends more options than its maxChoices.` |
+
+Options and recommended labels are trimmed of spaces. A set that passes gets each question's recommended options
+moved first, in their order among the options, the others keeping theirs; `recommended` is stored in that order.
+
+**Posting** (`ChatSession.postQuestions`): the chat's transcript is read; a chat that already has a set without
+all its answers refuses (`conflict`, `Questions already wait for the user's answers in this chat.`). The item
+is added and the chat's state refreshed: `running` while the turn that asked goes on, then `waitingAnswers`.
+
+**Answering** (`ChatSession.answerQuestion`, from the card):
+
+- The answer is trimmed and has 1 to 10,000 characters (`invalid`, `answer: write 1 to 10,000 characters.`); for
+  a multiple question, `Skipped` or one line `- <choice>` per choice, none empty (`invalid`, `answer: write one
+  line "- <choice>" per choice, or Skipped.`), their number within `minChoices` and `maxChoices` (`invalid`,
+  `answer: the number of choices is outside the question's bounds.`). An unknown label is `invalid` (`label: the
+  set has no question <label>.`); a set no longer waiting is a `conflict` (`These questions are already
+  answered.`).
+- Questions are answered in any order; an answer replaces an earlier one. The item is rewritten (`update`).
+- The answer that completes the set needs the Claude CLI (as a message does), sets `completed`, then sends the
+  answers as the user's message, as any message: to the running CLI, or to a new one (with `--resume` when the
+  session started). The message, its lines separated by `\n`, the questions in label order:
+
+```
+Answers:
+A: Do nothing and beep
+B: Skipped
+C:
+- Web tabs
+- In the window title too
+```
+
+A multiple question's answer, unless skipped, follows `<label>:` on its own lines. A set stays waiting across
+the CLI's exits and the app's restarts; messages typed meanwhile go to Claude as usual and change nothing in it.
 
 #### Message files
 
@@ -997,6 +1065,7 @@ after its current CLI turn. The turn's end writes `updated`.
 | `starting` | A process was started; its first `system/init` hasn't come. |
 | `running` | A turn runs. |
 | `waitingPermission` | A card waits: the CLI's request, or the app's. |
+| `waitingAnswers` | No turn runs, and the chat's transcript, read, has questions waiting ([Questions](#questions)). |
 | `error` | The CLI couldn't start, didn't start in 60 s, or exited during a turn on its own. Until the next message. |
 | `idle` | Otherwise. |
 

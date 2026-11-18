@@ -21,6 +21,7 @@ public final class LiveChatStore: ChatStore {
         guard let id, let chat = session.chats[id] else { return nil }
         var conversation = Self.conversation(chat)
         conversation.turns = turns(session.transcripts[id] ?? [], streaming: session.streaming[id], root: session.root(ofChat: id), chatID: id)
+        conversation.waitingQuestions = session.waitingQuestions(in: id).map(ChatQuestionSet.init)
         return conversation
     }
 
@@ -39,7 +40,7 @@ public final class LiveChatStore: ChatStore {
         case .starting: return .starting
         case .running: return session.compacting.contains(id) ? .compacting(since: since) : .working(since: since)
         case .waitingPermission: return .waiting
-        case .idle, .error: return nil
+        case .idle, .waitingAnswers, .error: return nil
         }
     }
 
@@ -87,6 +88,14 @@ public final class LiveChatStore: ChatStore {
 
     func commands(for projectID: Project.ID) -> [ClaudeCommand] {
         session.commands(forProject: projectID)
+    }
+
+    func answer(_ answer: String, to label: String, inSet setID: ChatQuestionSet.ID, of id: ChatConversation.ID) async throws(ChatSendError) {
+        do throws(ChatError) {
+            try await session.answerQuestion(id, setID: setID, label: label, answer: answer)
+        } catch {
+            throw ChatSendError(message: error.description)
+        }
     }
 
     // MARK: Turns
@@ -145,6 +154,8 @@ public final class LiveChatStore: ChatStore {
                 turns[place.turn].blocks[place.block].content = .call(call)
             case .permissionRequest(let request):
                 add(ChatBlock(id: request.id, .approval(approval(request, root: root))), id: request.id, date: request.created)
+            case .questions(let set):
+                add(ChatBlock(id: set.id, .questions(ChatQuestionSet(set))), id: set.id, date: set.created)
             case .system(let line):
                 let level: ChatNotice.Level = switch line.level {
                 case .info: .info

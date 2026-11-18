@@ -75,7 +75,7 @@ struct ChatFileTests {
 @Suite("Transcripts")
 struct TranscriptTests {
     /// Part of an example transcript: a message with linked items, a session line, thinking, a call, a
-    /// permission request then its answer, a question set V3 doesn't read, a result.
+    /// permission request then its answer, a question set, a result.
     static let v2Lines = """
         {"op":"add","item":{"type":"user","id":"E1D2C3B4-A596-4877-8695-A4B3C2D1E0F9","created":"2026-10-31T13:00:00Z","text":"Plan this sprint.","attachments":[],"sender":"MacBook","linkedItems":[{"kind":"ticket","name":"HEPH-13","text":"ticket HEPH-13","added":false}]}}
         {"op":"add","item":{"type":"system","id":"8C1D2E3F-4A5B-4C6D-8E7F-9A0B1C2D3E4F","created":"2026-10-31T13:00:02Z","text":"Session started · Opus 5.5 · effort high · Ask every time","level":"info"}}
@@ -88,10 +88,10 @@ struct TranscriptTests {
 
         """
 
-    @Test("Replay: an update replaces its item in place; lines V3 doesn't read are skipped")
+    @Test("Replay: an update replaces its item in place; lines that aren't items are skipped")
     func replay() throws {
         let items = Transcript.replay(Data(Self.v2Lines.utf8))
-        #expect(items.map(\.id) == ["E1D2C3B4-A596-4877-8695-A4B3C2D1E0F9", "8C1D2E3F-4A5B-4C6D-8E7F-9A0B1C2D3E4F", "msg_01#1", "perm-5b1f", "9E8D"])
+        #expect(items.map(\.id) == ["E1D2C3B4-A596-4877-8695-A4B3C2D1E0F9", "8C1D2E3F-4A5B-4C6D-8E7F-9A0B1C2D3E4F", "msg_01#1", "perm-5b1f", "4D3C", "9E8D"])
         guard case .permissionRequest(let request) = items[3] else { Issue.record("not a request"); return }
         #expect(request.decision == .allow && request.decidedBy == "Studio")
         guard case .user(let user) = items[0] else { Issue.record("not a message"); return }

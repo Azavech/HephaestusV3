@@ -193,6 +193,7 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 | --- | --- | --- | --- |
 | `read` | the `list_` and `get_` tools, `open_in_app` | runs | runs |
 | `renameChats` | `rename_chat` | runs | runs |
+| `askUser` | `ask_questions` | refused: only a chat's own Claude asks | runs |
 | `startBuilds` | `rerun_run`, `cancel_run` | runs | Start builds: Ask First shows a card and waits; Never (the default) refuses |
 | `operateClusters` | `k8s_restart`, `k8s_scale`, `k8s_port_forward`, `k8s_stop_port_forward`, `argocd_sync` | runs | Operate deployments, as Change tickets |
 | `operateMachines` | `vm_set_account`, `vm_create`, `vm_start`, `vm_stop`, `vm_shell`, `vm_click`, `vm_drag`, `vm_scroll`, `vm_type`, `vm_key`, `vm_copy_in`, `vm_copy_out` | runs | Operate virtual machines, as Change tickets |
@@ -286,6 +287,7 @@ a project: Claude may read and change every project of this Mac, as the user can
 | `create_bundle`, `update_bundle`, `set_bundle_status`, `delete_bundle` | TicketsKit | changeTickets (`delete_bundle`: deleteTickets) | `TicketLibrary`, as Claude |
 | `list_chats`, `get_chat` | ChatKit | read | the chat session |
 | `rename_chat` | ChatKit | renameChats | `ChatSession.rename` |
+| `ask_questions` | ChatKit | askUser | `ChatSession.postQuestions` |
 | `list_runs`, `get_run`, `get_run_log`, `list_releases`, `get_release` | BuildsKit | read | gh ([Data › Builds](data.md#builds)) |
 | `rerun_run`, `cancel_run` | BuildsKit | startBuilds | gh |
 | `api_operations` | ContractsKit | read | the project's contract ([Data › Contracts](data.md#contracts)) |
@@ -1287,6 +1289,108 @@ Input schema:
   "required" : [
     "chatID",
     "title"
+  ],
+  "type" : "object"
+}
+```
+
+### ask_questions
+
+- **Calls:** `ChatSession.postQuestions` for the calling chat (the token's), after `QuestionsItem.questions(from:)`
+  checked the rules and put each question's recommended options first ([Data › Questions](data.md#questions)).
+  The chat shows them in the card over its composer ([UI › Chat › Questions](ui/chat.md#questions)).
+- **Result:** `{"questionSetID": <id>, "shown": <number of questions>}`, at once. The answers come later, as
+  the user's message, once every question has one.
+- **Errors:** another token than a chat's (`forbidden`, `Only a chat's own Claude can ask the user: there is no
+  chat to show the questions in.`), before the arguments are checked; a broken rule (`invalid`, the rule's
+  message: [Data › Questions](data.md#questions)); a chat that already has questions waiting (`conflict`,
+  `Questions already wait for the user's answers in this chat.`); a chat gone (`notFound`).
+
+Description:
+
+```text
+Shows the user questions in this chat, one at a time, and returns at once with the set's id and the number of questions shown. Each question has 2 to 10 options and the recommended ones, which the app lists first and preselects; the user can also answer in their own words or skip a question. A multiple question lets the user check several options and add answers of their own. Once every question has an answer, the user's next message gives them: "Answers:", then one line "<label>: <answer>" per question, where <answer> is the chosen option's label, the user's own text, or Skipped; a multiple question's answer follows "<label>:" as one line "- <choice>" per choice. A chat has one set of questions waiting at most. Only a chat's own Claude can ask.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "questions" : {
+      "description" : "1 to 26 questions, in the order they are asked.",
+      "items" : {
+        "additionalProperties" : false,
+        "properties" : {
+          "kind" : {
+            "description" : "single (the default): the user chooses one option. multiple: the user checks every option that applies.",
+            "enum" : [
+              "single",
+              "multiple"
+            ],
+            "type" : "string"
+          },
+          "label" : {
+            "description" : "A for the first question, B for the second, and so on, up to Z.",
+            "type" : "string"
+          },
+          "maxChoices" : {
+            "description" : "multiple only: the most choices; no maximum when absent.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "minChoices" : {
+            "description" : "multiple only: the fewest choices, checked options and own answers together; 1 when absent.",
+            "minimum" : 1,
+            "type" : "integer"
+          },
+          "options" : {
+            "description" : "2 to 10 options, their labels distinct ignoring case.",
+            "items" : {
+              "additionalProperties" : false,
+              "properties" : {
+                "description" : {
+                  "description" : "What choosing it means; optional.",
+                  "type" : "string"
+                },
+                "label" : {
+                  "description" : "The answer, one line of at most 200 characters, as it comes back when chosen.",
+                  "type" : "string"
+                }
+              },
+              "required" : [
+                "label"
+              ],
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "question" : {
+            "description" : "The question, in Markdown.",
+            "type" : "string"
+          },
+          "recommended" : {
+            "description" : "The labels of the recommended options: exactly one for a single question, one or more for a multiple one.",
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [
+          "label",
+          "question",
+          "options",
+          "recommended"
+        ],
+        "type" : "object"
+      },
+      "type" : "array"
+    }
+  },
+  "required" : [
+    "questions"
   ],
   "type" : "object"
 }

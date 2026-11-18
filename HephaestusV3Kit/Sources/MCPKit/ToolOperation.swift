@@ -31,6 +31,8 @@ public enum ToolPermission: String, Sendable, Hashable, CaseIterable {
     case removeProjects
     /// Renames a chat: always allowed.
     case renameChats
+    /// Asks the user in the calling chat (`ask_questions`): always allowed, to a chat's own Claude only.
+    case askUser
     /// Re-runs or cancels a workflow run: Settings ▸ Chat › Start builds.
     case startBuilds
     /// Calls an API of a project's contract: a `GET` or `HEAD` always runs; another method follows Settings ▸

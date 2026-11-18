@@ -53,6 +53,14 @@ public struct ChatPanel: View {
                     .padding(.horizontal, 12)
                     .padding(.top, 8)
             }
+            if let questions = model.conversation?.waitingQuestions {
+                QuestionsCard(questionSet: questions, compact: true) { label, text in
+                    await model.answer(text, to: label, inSet: questions.id)
+                }
+                .id(questions.id)
+                .padding(.horizontal, 12)
+                .padding(.top, 8)
+            }
             MessageComposer(
                 text: $model.draft,
                 prompt: Text("Ask about \(attachment?.title ?? project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
@@ -269,6 +277,19 @@ public final class ChatPanelModel {
             return true
         } catch {
             failure = error.message.isEmpty ? nil : error.message
+            return false
+        }
+    }
+
+    /// The user's answer to one of Claude's questions; false, with the reason shown, when it wasn't taken.
+    func answer(_ answer: String, to label: String, inSet setID: ChatQuestionSet.ID) async -> Bool {
+        guard let id = conversationID else { return false }
+        do throws(ChatSendError) {
+            try await store.answer(answer, to: label, inSet: setID, of: id)
+            failure = nil
+            return true
+        } catch {
+            failure = error.message
             return false
         }
     }

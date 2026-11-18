@@ -28,7 +28,7 @@ public enum ChatGate {
         let permission: ChangePermission
         let refusal: String
         switch operation.permission {
-        case .read, .renameChats:
+        case .read, .renameChats, .askUser:
             return nil
         case .changeTickets:
             permission = rule(ChatPreferences.ticketChangesKey)
@@ -75,7 +75,7 @@ public enum ChatGate {
 public enum ChatTools {
     @MainActor
     public static func operations(chats: ChatSession, projects: ProjectSession) -> [ToolOperation] {
-        [listChats(chats, projects), getChat(chats), renameChat(chats)]
+        [listChats(chats, projects), getChat(chats), renameChat(chats), askQuestions(chats)]
     }
 
     static let chatID = ToolSchema.string("Chat id, an uppercase UUID.")
@@ -152,6 +152,52 @@ public enum ChatTools {
         }
     }
 
+    /// The refusal of a question asked through another token than a chat's.
+    static let askRefusal = "Only a chat's own Claude can ask the user: there is no chat to show the questions in."
+
+    @MainActor
+    static func askQuestions(_ chats: ChatSession) -> ToolOperation {
+        let option = ToolSchema.object(properties: [
+            ("label", .string("The answer, one line of at most 200 characters, as it comes back when chosen.")),
+            ("description", .string("What choosing it means; optional.")),
+        ], required: ["label"])
+        let question = ToolSchema.object(properties: [
+            ("label", .string("A for the first question, B for the second, and so on, up to Z.")),
+            ("question", .string("The question, in Markdown.")),
+            ("kind", .string("single (the default): the user chooses one option. multiple: the user checks every option that applies.", oneOf: ["single", "multiple"])),
+            ("options", .array("2 to 10 options, their labels distinct ignoring case.", of: option)),
+            ("recommended", .array("The labels of the recommended options: exactly one for a single question, one or more for a multiple one.", of: .string())),
+            ("minChoices", .integer("multiple only: the fewest choices, checked options and own answers together; 1 when absent.", minimum: 1)),
+            ("maxChoices", .integer("multiple only: the most choices; no maximum when absent.", minimum: 1)),
+        ], required: ["label", "question", "options", "recommended"])
+        return ToolOperation(
+            name: "ask_questions",
+            description: "Shows the user questions in this chat, one at a time, and returns at once with the set's id and the number of questions shown. Each question has 2 to 10 options and the recommended ones, which the app lists first and preselects; the user can also answer in their own words or skip a question. A multiple question lets the user check several options and add answers of their own. Once every question has an answer, the user's next message gives them: \"Answers:\", then one line \"<label>: <answer>\" per question, where <answer> is the chosen option's label, the user's own text, or Skipped; a multiple question's answer follows \"<label>:\" as one line \"- <choice>\" per choice. A chat has one set of questions waiting at most. Only a chat's own Claude can ask.",
+            inputSchema: .object(properties: [("questions", .array("1 to 26 questions, in the order they are asked.", of: question))], required: ["questions"]),
+            permission: .askUser,
+            describe: { arguments in
+                let count = arguments["questions"]?.arrayValue?.count ?? 0
+                return ToolCallText(action: count == 1
+                    ? String(localized: "Asked a question", bundle: #bundle, comment: "Claude asked the user one question")
+                    : String(localized: "Asked \(count) questions", bundle: #bundle, comment: "Claude asked the user several questions; the value is their number"))
+            }
+        ) { @MainActor arguments throws(ToolError) in
+            guard let chatID = MCPCaller.current.chatID else { throw ToolError(.forbidden, askRefusal) }
+            let questions = try QuestionsItem.questions(from: arguments)
+            let item: QuestionsItem
+            do throws(ChatError) {
+                item = try await chats.postQuestions(chatID, questions: questions)
+            } catch {
+                switch error {
+                case .notFound(let message): throw ToolError(.notFound, message)
+                case .conflict(let message): throw ToolError(.conflict, message)
+                default: throw ToolError(.internal, error.description)
+                }
+            }
+            return ["questionSetID": .string(item.questionSetID), "shown": .int(item.questions.count)]
+        }
+    }
+
     /// A chat's JSON: its metadata and state.
     @MainActor
     static func json(_ chat: LoadedChat, _ chats: ChatSession) -> JSONValue {
@@ -160,6 +206,7 @@ public enum ChatTools {
         case .starting: "starting"
         case .running: "running"
         case .waitingPermission: "waitingPermission"
+        case .waitingAnswers: "waitingAnswers"
         case .error: "error"
         }
         var object: [String: JSONValue] = [

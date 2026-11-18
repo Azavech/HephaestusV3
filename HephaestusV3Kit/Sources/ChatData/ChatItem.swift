@@ -3,7 +3,7 @@ import Foundation
 import MCPKit
 
 /// One item of a chat's transcript (docs/data.md › Chat items): the items the app reads and writes. Other
-/// items (question pickers and shown images) are skipped when a transcript is read.
+/// items (V2's pickers and shown images) are skipped when a transcript is read.
 public enum ChatItem: Sendable, Hashable, Identifiable {
     case user(UserItem)
     case assistant(AssistantItem)
@@ -11,6 +11,7 @@ public enum ChatItem: Sendable, Hashable, Identifiable {
     case toolUse(ToolUseItem)
     case toolResult(ToolResultItem)
     case permissionRequest(PermissionRequestItem)
+    case questions(QuestionsItem)
     case system(SystemItem)
     case result(ResultItem)
 
@@ -22,6 +23,7 @@ public enum ChatItem: Sendable, Hashable, Identifiable {
         case .toolUse(let item): item.id
         case .toolResult(let item): item.id
         case .permissionRequest(let item): item.id
+        case .questions(let item): item.id
         case .system(let item): item.id
         case .result(let item): item.id
         }
@@ -35,6 +37,7 @@ public enum ChatItem: Sendable, Hashable, Identifiable {
         case .toolUse(let item): item.created
         case .toolResult(let item): item.created
         case .permissionRequest(let item): item.created
+        case .questions(let item): item.created
         case .system(let item): item.created
         case .result(let item): item.created
         }
@@ -288,6 +291,10 @@ extension ChatItem {
             return ["type": "permissionRequest", "id": .string(item.id), "created": date(item.created),
                     "requestID": .string(item.requestID), "toolName": .string(item.toolName), "input": item.input,
                     "reason": optional(item.reason), "decision": optional(item.decision?.rawValue), "decidedBy": optional(item.decidedBy)]
+        case .questions(let item):
+            return ["type": "questions", "id": .string(item.id), "created": date(item.created), "questionSetID": .string(item.questionSetID),
+                    "questions": .array(item.questions.map(\.json)), "answers": .object(item.answers.mapValues(JSONValue.string)),
+                    "completed": .bool(item.completed)]
         case .system(let item):
             return ["type": "system", "id": .string(item.id), "created": date(item.created), "text": .string(item.text),
                     "level": .string(item.level.rawValue)]
@@ -337,6 +344,11 @@ extension ChatItem {
             item.decision = string("decision").flatMap(PermissionRequestItem.Decision.init(rawValue:))
             item.decidedBy = string("decidedBy")
             self = .permissionRequest(item)
+        case "questions":
+            guard let setID = string("questionSetID"), let questions = object["questions"]?.arrayValue else { return nil }
+            self = .questions(QuestionsItem(id: id, created: created, questionSetID: setID, questions: questions.compactMap(ChatQuestion.init(json:)),
+                                            answers: (object["answers"]?.objectValue ?? [:]).compactMapValues(\.stringValue),
+                                            completed: bool("completed")))
         case "system":
             guard let text = string("text") else { return nil }
             self = .system(SystemItem(id: id, created: created, text: text,

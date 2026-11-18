@@ -15,6 +15,8 @@ struct ChatConversation: Identifiable, Hashable {
     var turns: [ChatTurn]
     /// The last change, as the chat's file has it; nil takes the last turn's date.
     var updated: Date?
+    /// Claude's questions waiting for the user's answers, which the card over the composer asks.
+    var waitingQuestions: ChatQuestionSet?
 
     var updatedAt: Date { updated ?? turns.last?.date ?? createdAt }
 
@@ -88,6 +90,8 @@ struct ChatBlock: Identifiable, Hashable {
         case approval(ChatApproval)
         /// A line from the app, such as an error of the Claude CLI.
         case notice(ChatNotice)
+        /// Questions Claude asked the user, with their answers so far.
+        case questions(ChatQuestionSet)
 
         /// An item Claude read through its tool, and what the tool said.
         static func toolCall(_ reference: ChatReference, _ reading: ToolReading) -> Content {
@@ -113,6 +117,48 @@ struct ChatToolCall: Hashable {
     /// The gist: the tool's one-line answer, or the error. Nil asks the item's tool for its answer.
     var detail: String?
     var failed = false
+}
+
+/// Questions Claude asked with `ask_questions`, as a conversation shows them.
+struct ChatQuestionSet: Identifiable, Hashable {
+    /// The set's id.
+    let id: String
+    var questions: [ChatQuestion]
+    /// By question label.
+    var answers: [String: String]
+    var completed: Bool
+
+    init(id: String, questions: [ChatQuestion], answers: [String: String] = [:], completed: Bool = false) {
+        self.id = id
+        self.questions = questions
+        self.answers = answers
+        self.completed = completed
+    }
+
+    init(_ item: QuestionsItem) {
+        self.init(id: item.questionSetID, questions: item.questions, answers: item.answers, completed: item.completed)
+    }
+
+    /// The first question without an answer, in label order; the first one when all have.
+    var firstUnanswered: Int {
+        questions.firstIndex { answers[$0.label] == nil } ?? 0
+    }
+
+    /// The next question without an answer after `index`, wrapping, other than `index` itself and `answered`.
+    func nextUnanswered(after index: Int, answered: String) -> Int? {
+        guard !questions.isEmpty else { return nil }
+        for step in 1..<max(questions.count, 1) + 1 {
+            let candidate = (index + step) % questions.count
+            let label = questions[candidate].label
+            if candidate != index, label != answered, answers[label] == nil { return candidate }
+        }
+        return nil
+    }
+
+    /// Whether answering the question at `index` completes the set: every other one has an answer.
+    func completes(at index: Int) -> Bool {
+        questions.indices.allSatisfy { $0 == index || answers[questions[$0].label] != nil }
+    }
 }
 
 /// A line from the app in a conversation.

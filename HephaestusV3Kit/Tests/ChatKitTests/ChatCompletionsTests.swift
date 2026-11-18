@@ -1,4 +1,6 @@
 import ChatData
+import MCPKit
+import ProjectData
 import Testing
 @testable import ChatKit
 
@@ -43,5 +45,51 @@ struct ChatCompletionsTests {
         #expect(ChatCompletions.list(for: "/rep", commands: commands).first?.detail == nil)
         let many = (1...30).map { ClaudeCommand(name: "skill-\($0)") }
         #expect(ChatCompletions.list(for: "/", commands: many).count == ChatCompletions.limit)
+    }
+}
+
+/// docs/ui/chat.md › Questions.
+@Suite("Questions card")
+@MainActor
+struct ChatQuestionsCardTests {
+    private let set = ChatQuestionSet(id: "Q", questions: [
+        ChatQuestion(label: "A", question: "a", options: [.init(label: "x"), .init(label: "y")], recommended: ["x"]),
+        ChatQuestion(label: "B", question: "b", options: [.init(label: "x"), .init(label: "y")], recommended: ["x"]),
+        ChatQuestion(label: "C", question: "c", options: [.init(label: "x"), .init(label: "y")], recommended: ["x"]),
+    ], answers: ["B": "x"])
+
+    @Test("The card opens on the first question without an answer; Next goes to the next one, wrapping")
+    func navigation() {
+        #expect(set.firstUnanswered == 0)
+        #expect(set.nextUnanswered(after: 0, answered: "A") == 2)
+        #expect(set.nextUnanswered(after: 2, answered: "C") == 0)
+        var nearlyDone = set
+        nearlyDone.answers["A"] = "y"
+        #expect(nearlyDone.nextUnanswered(after: 2, answered: "C") == nil)
+    }
+
+    @Test("Submit shows on the question whose answer completes the set; Next on the others")
+    func submit() {
+        #expect(!set.completes(at: 0))
+        var nearlyDone = set
+        nearlyDone.answers["A"] = "y"
+        #expect(nearlyDone.completes(at: 2) && !nearlyDone.completes(at: 0))
+    }
+
+    @Test("ask_questions: only a chat's own Claude asks; the rules come before the chat")
+    func tool() async throws {
+        let session = ChatSession(projects: ProjectSession(dataFolder: nil), tokens: MCPTokens(), device: "Studio")
+        let ask = ChatTools.askQuestions(session)
+        #expect(ask.permission == .askUser)
+        let valid: JSONValue = ["questions": [["label": "A", "question": "q", "options": [["label": "a"], ["label": "b"]], "recommended": ["a"]]]]
+        await #expect(throws: ToolError(.forbidden, ChatTools.askRefusal)) { _ = try await ask.run(valid) }
+        await #expect(throws: ToolError(.invalid, "questions: give 1 to 26 questions.")) {
+            _ = try await MCPCaller.$current.withValue(.chat("C")) { try await ask.run(["questions": []]) }
+        }
+        await #expect(throws: ToolError(.notFound, "Chat C not found.")) {
+            _ = try await MCPCaller.$current.withValue(.chat("C")) { try await ask.run(valid) }
+        }
+        #expect(ask.describe?(valid).action == "Asked a question")
+        #expect(await ChatGate.check(.internalSkill("set-ticket-title"), ask, valid, chats: session) == ToolError(.forbidden, ChatGate.skillRefusal))
     }
 }

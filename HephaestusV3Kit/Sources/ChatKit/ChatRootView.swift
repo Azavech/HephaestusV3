@@ -179,6 +179,14 @@ public struct ChatRootView: View {
                     .padding(.horizontal, layout == .phone ? 12 : 16)
                     .padding(.top, 8)
             }
+            if let questions = model.conversation?.waitingQuestions {
+                QuestionsCard(questionSet: questions, compact: layout == .phone) { label, text in
+                    await model.answer(text, to: label, inSet: questions.id)
+                }
+                .id(questions.id)
+                .padding(.horizontal, layout == .phone ? 12 : 16)
+                .padding(.top, 8)
+            }
             MessageComposer(
                 text: $model.draft,
                 prompt: Text("Ask about \(model.project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),

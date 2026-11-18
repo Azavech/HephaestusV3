@@ -140,6 +140,19 @@ final class ChatWindowModel {
         }
     }
 
+    /// The user's answer to one of Claude's questions; false, with the reason shown, when it wasn't taken.
+    func answer(_ answer: String, to label: String, inSet setID: ChatQuestionSet.ID) async -> Bool {
+        guard let id = selection else { return false }
+        do throws(ChatSendError) {
+            try await store.answer(answer, to: label, inSet: setID, of: id)
+            failure = nil
+            return true
+        } catch {
+            failure = error.message
+            return false
+        }
+    }
+
     /// The user's answer to a change Claude asked to make in the shown conversation.
     func decide(_ approvalID: ChatApproval.ID, allow: Bool) {
         guard let selection else { return }

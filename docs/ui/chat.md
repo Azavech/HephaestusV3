@@ -71,7 +71,7 @@ Turns have no bubbles. Each turn starts with an author row: a circular badge, 24
 Under the name, in order:
 
 1. **Attachments.** The items the user's message carried, as chips (tool symbol and title; tooltip "*Tool*: *title*").
-2. **Blocks.** Text, tool-call rows and approval cards, in the order Claude produced them. Text is selectable.
+2. **Blocks.** Text, tool-call rows, approval cards and Claude's questions ([Questions](#questions)), in the order Claude produced them. Text is selectable.
 3. **Files.** The files the user's message carried, such as a feedback's screenshot ([Message files](#message-files)).
 
 ### Message files
@@ -222,6 +222,52 @@ completes the call of one, `/<name> `. It works in the Chat window and in the ch
 | `/s` | `swift-testing`, then `hephaestus-skills:report-feedback`, `release-notes`, which hold `s` |
 | `/zzz`, `/re x`, `hello /re` | none: the list is closed |
 
+## Questions
+
+![The questions card over the composer: "Question A (1 of 2)", its arrows and minimize button, the question, two options with "Do nothing and beep" selected and tagged Recommended, "Answer another way", Skip and Next](images/chat-questions.png)
+*Claude's two questions, the first one shown: its recommended option is preselected.*
+
+V2's questions, as the user asked to bring them (17 November 2026): Claude asks with `ask_questions` ([MCP ›
+ask_questions](../mcp.md#ask_questions)), and while the set waits for answers, a card shows over the composer of
+the Chat window and of the panel, under the reason a message wasn't sent. It shows one question at a time
+(`QuestionsCard`):
+
+- **Header.** "Question *A* (*1* of *3*)" in `headline`, selectable, a heading for VoiceOver; at its trailing edge
+  **Previous Question** (`chevron.left`), **Next Question** (`chevron.right`), disabled on the first and the last
+  question, which step through the questions, answered or not, and **Minimize** (`chevron.down`).
+- **Question.** Its Markdown, inline, selectable.
+- **Single question.** One row per option, the recommended ones first: a radio button, the label in semibold,
+  a **Recommended** tag (`caption`, `accent` on `accent` at 14 %, in a capsule) for the recommended one, and the
+  description under it in `callout`, `textSecondary`. A click anywhere in a row chooses it. A last row
+  **Answer another way**: its radio button, then a field of one to six lines; typing in it chooses the row.
+- **Multiple question.** "Choose 1 to 3", "Choose 2" or "Choose at least 1" (`minChoices` 1 when absent) under
+  the question; checkboxes in place of the radio buttons, a click checking or unchecking; every recommended
+  option tagged. Then "Answer another way" and one-line fields, one under the other: when the last one gets
+  text, an empty one follows; a field emptied, but the last, goes.
+- **Selection.** A question without an answer shows its recommended options chosen and empty fields; an answered
+  one shows its answer: the option of that label, or "Answer another way" with the text (so a skipped one shows
+  `Skipped` there); a multiple one's lines split into checked options and own answers.
+- **Buttons.** At the trailing edge: **Skip**, which answers `Skipped`, then **Next**, or **Submit** on the
+  question whose answer completes the set (every other one has an answer), prominent, ⌘Return. It answers the
+  shown question with the chosen option's label or the field's text; a multiple question's answer is one line
+  `- <choice>` per checked option, in option order, then per own answer, in order, line breaks made spaces. It
+  is disabled while "Answer another way" is chosen with an empty field, and for a multiple question while the
+  number of choices is outside its bounds. After an answer, the card shows the next question without one, after
+  the shown one and wrapping; Submit sends the answers to Claude and the card goes ([Data ›
+  Questions](../data.md#questions)). An answer not taken shows why over the composer.
+- **Size.** The question and its options scroll inside the card past 380 pt (300 pt in the panel and the iPhone
+  layout). Card: 12 pt of padding, `surface`, `CardShape(minimum: 10)`, a 1 pt outline in `accent` at 50 %.
+- **Minimized.** One line: the header text and `chevron.up`; a click opens the card again. It lasts while the
+  conversation stays shown (default chosen at design time; V2 kept it across restarts).
+
+![Dark: the transcript's Questions card, its first question answered, over the card on question B, a multiple one: "Choose 1 to 3", Web tabs and Editor tabs checked and tagged Recommended, Docs tabs unchecked, a field for an own answer, Skip and Submit](images/chat-questions-multiple.png)
+*Question A answered: B, a multiple question, completes the set, so its button reads Submit.*
+
+In the transcript, the turn that asked shows the set as a card titled **Questions** (`questionmark.bubble`):
+each question as "*A*. *question*", its options in `textSecondary` ("*label* — *description*", the recommended
+ones tagged), then "Answer: *answer*" or "Not answered yet" (`QuestionsSummary`). The Answers message shows as
+the user's turn. The activity line shows nothing while the set waits: the card is the cue.
+
 ## New chat
 
 The new-chat prompt replaces the transcript when no conversation is selected: after **New Chat**, or when the project has no conversations.
@@ -312,6 +358,7 @@ Previews and the documentation's captures run on sample conversations and a samp
 | Starting | The CLI was started for the message. | "Starting Claude…" and **Stop**; **Send** disabled. |
 | Working | Claude works on the messages. | "Claude is working… m:ss" and **Stop**; the text Claude writes grows as it streams. |
 | Compacting | The CLI compacts the conversation. | "Compacting the conversation… m:ss" and **Stop**. |
+| Waiting for your answers | Claude's questions wait, and no turn runs. | The questions card over the composer; no activity line. |
 | Waiting for your answer | A card waits. | The card's **Don't Allow** and **Allow**, `warning` outline; "Waiting for your answer" and **Stop**. |
 | Approval answered | The user answered, or Stop refused it. | **Allowed** or **Not Allowed**; `divider` outline. |
 | Error | The CLI couldn't start, didn't start within 60 s, or exited during the turn. | The error notice; the next message starts the CLI again. |
@@ -648,6 +695,13 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 | Turn | `chat.turn.<turn id>` | A container; the author's name is a heading |
 | Attachment of a turn | `chat.attachment.<turn id>.<item id>` | "*Tool*: *item*" |
 | File of a message | `chat.file.<turn id>.<file id>` | A button: the file's name, then its size when known |
+| Questions card | `chat.questions` | A container over the composer |
+| Its header, arrows, minimize | `chat.questions.header`, `chat.questions.previous`, `chat.questions.next`, `chat.questions.minimize` | "Question A (1 of 3)"; buttons |
+| Its question, options | `chat.questions.text`, `chat.questions.option.<index>` | The option's label, tag and description; the chosen one has the selected trait |
+| Answer another way | `chat.questions.other`, `chat.questions.other.field`; `chat.questions.own.<index>` | The radio button and the field; a multiple question's fields |
+| Skip, Next or Submit | `chat.questions.skip`, `chat.questions.submit` | Buttons |
+| Minimized card | `chat.questions.expand` | A button with the header's text |
+| Questions in the transcript | `chat.questionSet.<set id>` | A container: each question, its options and its answer |
 | Skill list | `chat.composer.completions` | A container, above the composer while it shows |
 | Skill in the list | `chat.composer.completion.<index>` | A button: the skill's name and description; the selected one has the selected trait |
 | Tool-call row | `chat.toolCall.<turn id>.<item id>`, or `.<block id>` for a call without an item | One element: label the action, value the detail; with an item, a button whose hint is "Open *item* in *Tool*" and whose action opens the item |

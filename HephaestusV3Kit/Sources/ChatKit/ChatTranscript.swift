@@ -167,6 +167,8 @@ struct ChatTurnView: View {
                     }
                 case .notice(let notice):
                     NoticeRow(notice: notice)
+                case .questions(let set):
+                    QuestionsSummary(questionSet: set)
                 }
             }
             if !turn.files.isEmpty {
