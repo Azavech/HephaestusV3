@@ -1,4 +1,5 @@
 import ChatData
+import MCPKit
 import Foundation
 import Testing
 import ToolsFoundation
@@ -485,5 +486,25 @@ struct ClaudeCLILineTests {
     func settingsPanes() {
         #expect(SettingsPane.allCases.map(\.rawValue) == ["general", "projects", "mcp", "machines", "chat", "notifications"])
         #expect(SettingsPane.storageKey == "settings.pane")
+    }
+}
+
+/// docs/ui/chat.md › Files: the CLI's other tools.
+@MainActor
+@Suite("CLI tool wording")
+struct CLIToolTextTests {
+    @Test("Shell, web and agent calls read as V2 named them, with their detail; another tool has no wording of its own")
+    func calls() {
+        let bash = CLIToolText.call("Bash", input: ["command": "swift test\n--parallel", "description": "Run the tests"])
+        #expect(bash?.action == "Ran Run the tests" && bash?.detail == "swift test\n--parallel")
+        #expect(CLIToolText.call("Bash", input: ["command": "sleep 5", "run_in_background": true])?.action == "Started in the background: sleep 5")
+        #expect(CLIToolText.call("WebFetch", input: ["url": "https://developer.apple.com/documentation"])?.action == "Fetched developer.apple.com")
+        #expect(CLIToolText.call("WebSearch", input: ["query": "swift testing"])?.action == "Searched the web for “swift testing”")
+        #expect(CLIToolText.call("Agent", input: ["description": "Probe", "prompt": "Look"])?.action == "Ran an agent: Probe")
+        #expect(CLIToolText.call("Mystery", input: [:]) == nil)
+        #expect(CLIToolText.request("Bash", input: [:]) == "Claude wants to run a command")
+        #expect(CLIToolText.request("WebFetch", input: ["url": "https://example.com/a"]) == "Claude wants to fetch example.com")
+        #expect(CLIToolText.request("Mystery", input: [:]) == nil)
+        #expect(SampleChatStore.transient().queuesMessages == false)
     }
 }

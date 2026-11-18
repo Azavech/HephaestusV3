@@ -75,6 +75,9 @@
     "Add Files…" : {
       "comment" : "Adds files to the next message"
     },
+    "Agent" : {
+
+    },
     "Allow" : {
 
     },
@@ -212,7 +215,7 @@
     "Claude Code %@" : {
       "comment" : "The CLI's version, such as 2.1.322"
     },
-    "Claude acts through each tool, as you would, and reads and edits the project's files with Claude Code's file tools. Outside the project's folder, it asks first." : {
+    "Claude acts through each tool, as you would, and has Claude Code's own tools: files, commands, the web and agents. Outside the project's folder, and for a command, it asks first as the chat's permissions say." : {
 
     },
     "Claude asks before it edits files or runs commands." : {
@@ -242,13 +245,31 @@
     "Claude wants to edit %@" : {
 
     },
+    "Claude wants to fetch %@" : {
+
+    },
+    "Claude wants to leave Plan Only" : {
+      "comment" : "The card of a plan Claude presents in Plan Only"
+    },
     "Claude wants to list the files in %@" : {
 
     },
     "Claude wants to read %@" : {
 
     },
+    "Claude wants to run a command" : {
+
+    },
     "Claude wants to search %@" : {
+
+    },
+    "Claude wants to search the web" : {
+
+    },
+    "Claude wants to start a workflow" : {
+
+    },
+    "Claude wants to start an agent" : {
 
     },
     "Claude wants to use %@" : {
@@ -352,6 +373,9 @@
     },
     "Extra High" : {
       "comment" : "An effort level"
+    },
+    "Fetched %@" : {
+      "comment" : "A chat's call: Claude read a web page"
     },
     "File edits are accepted; other actions ask." : {
 
@@ -576,6 +600,9 @@
     "Plan Only" : {
       "comment" : "A permission mode"
     },
+    "Presented a plan" : {
+      "comment" : "A chat's call"
+    },
     "Previous Match" : {
 
     },
@@ -602,8 +629,17 @@
     "Questions" : {
       "comment" : "The title of Claude's questions in the transcript"
     },
+    "Ran %@" : {
+      "comment" : "A chat's call: Claude ran a shell command"
+    },
+    "Ran an agent: %@" : {
+      "comment" : "A chat's call: Claude ran a sub-agent"
+    },
     "Read %@" : {
       "comment" : "A chat's call: Claude read a file"
+    },
+    "Read a background command's output" : {
+      "comment" : "A chat's call"
     },
     "Read a chat" : {
       "comment" : "Claude read another chat's messages"
@@ -676,6 +712,9 @@
         }
       }
     },
+    "Searched the web for “%@”" : {
+      "comment" : "A chat's call"
+    },
     "Select an internal skill to edit its content." : {
 
     },
@@ -687,6 +726,9 @@
     },
     "Send Feedback" : {
 
+    },
+    "Sent a message to an agent" : {
+      "comment" : "A chat's call"
     },
     "Show All" : {
       "comment" : "Shows a call's whole result\nShows a card's whole preview"
@@ -721,6 +763,15 @@
     "Start builds" : {
 
     },
+    "Started a workflow: %@" : {
+      "comment" : "A chat's call: Claude started a workflow of agents"
+    },
+    "Started an agent in the background: %@" : {
+      "comment" : "A chat's call: Claude started a sub-agent that keeps working"
+    },
+    "Started in the background: %@" : {
+      "comment" : "A chat's call: Claude started a command that keeps running"
+    },
     "Starting Claude…" : {
 
     },
@@ -735,6 +786,9 @@
     },
     "Stop (⌘.)" : {
 
+    },
+    "Stopped a background task" : {
+      "comment" : "A chat's call"
     },
     "Stopped with an error" : {
 
@@ -784,8 +838,14 @@
     "Ultracode" : {
 
     },
+    "Updated the to-do list" : {
+      "comment" : "A chat's call"
+    },
     "Used %@" : {
       "comment" : "A call of a tool, by its name"
+    },
+    "Used the skill %@" : {
+      "comment" : "A chat's call"
     },
     "Used when the app runs this skill itself; a chat that calls it keeps its own model and effort." : {
 
@@ -825,6 +885,9 @@
     },
     "Which services did %@ go through?" : {
       "comment" : "A suggestion; the value is a request id, such as req-8f3a"
+    },
+    "Workflow" : {
+
     },
     "Working" : {
       "comment" : "A chat where Claude works"

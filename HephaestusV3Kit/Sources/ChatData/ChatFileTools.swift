@@ -12,17 +12,21 @@ public enum ChatFileEdits: String, Sendable, Hashable, CaseIterable {
     case always
 }
 
-/// The Claude CLI's own file tools a chat gets besides the app's MCP tools, and what the app answers when the
-/// CLI asks before a call of one (docs/data.md › Chat processes › File tools).
+/// The Claude CLI's own tools a chat gets besides the app's MCP tools, every one as in V2 (shell, web, agents,
+/// workflows, files), and what the app answers when the CLI asks before a call of a file tool (docs/data.md ›
+/// Chat processes › The CLI's tools).
 public enum ClaudeFileTools {
-    /// The tools that read: always given.
+    /// The tools that read files: always given.
     public static let reading = ["Read", "Grep", "Glob"]
-    /// The tools that edit: given unless the user set Never.
-    public static let editing = ["Edit", "Write"]
+    /// The tools that edit files: taken away when the user set Never.
+    public static let editing = ["Edit", "Write", "NotebookEdit"]
+    /// The CLI's question tool, which the app's `ask_questions` replaces, as V2 did.
+    public static let question = "AskUserQuestion"
 
-    /// The value of `--tools`: the reading tools, then the editing ones unless `edits` is Never.
-    public static func tools(edits: ChatFileEdits) -> [String] {
-        edits == .never ? reading : reading + editing
+    /// The value of `--disallowedTools`: the CLI's question tool, and the editing tools when `edits` is Never.
+    /// Every other tool of the CLI stays, its calls asking as the chat's permission mode says.
+    public static func disallowed(edits: ChatFileEdits) -> [String] {
+        edits == .never ? [question] + editing : [question]
     }
 
     /// The app's answer to the CLI's `can_use_tool` request for a file tool.
@@ -62,6 +66,7 @@ public enum ClaudeFileTools {
         let given: String?
         switch tool {
         case "Read", "Edit", "Write": given = input["file_path"]?.stringValue
+        case "NotebookEdit": given = input["notebook_path"]?.stringValue
         case "Grep", "Glob": given = input["path"]?.stringValue ?? root
         default: return nil
         }

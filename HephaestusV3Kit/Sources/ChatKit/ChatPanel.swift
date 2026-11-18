@@ -84,7 +84,7 @@ public struct ChatPanel: View {
             MessageComposer(
                 text: $model.draft,
                 prompt: Text("Ask about \(attachment?.title ?? project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
-                isBusy: model.isResponding || model.store.cliStatus?.checking == true,
+                isBusy: (model.isResponding && !model.store.queuesMessages) || model.store.cliStatus?.checking == true,
                 identifier: "chat.composer",
                 completions: ChatCompletions.list(for: model.draft, commands: model.store.commands(for: project.id)),
                 hasAttachments: !model.files.isEmpty,
@@ -120,6 +120,7 @@ public struct ChatPanel: View {
                 }
             }
             .padding(12)
+            .stopsOnEscape(model.isResponding ? model.stop : nil)
             }
         }
         .background(.canvas)

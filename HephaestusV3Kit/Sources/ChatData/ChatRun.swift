@@ -199,7 +199,7 @@ extension ChatSession {
         }
         var launch = ChatLaunch(cliPath: cli, chatID: chatID, resume: chat.file.sessionStarted, model: chat.file.settings.model,
                                 effort: chat.file.settings.effort, mcpConfig: config, tools: toolNames,
-                                fileTools: ClaudeFileTools.tools(edits: fileEdits()), workingDirectory: project.root,
+                                disallowedTools: ClaudeFileTools.disallowed(edits: fileEdits()), workingDirectory: project.root,
                                 environment: projects.tools.environment, pluginDir: plugin)
         launch.permissionMode = ChatPermissionMode(stored: chat.file.settings.permissionMode)
         launch.ultracode = chat.file.settings.ultracode

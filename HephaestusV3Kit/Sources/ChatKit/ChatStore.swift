@@ -51,6 +51,9 @@ protocol ChatStore: AnyObject {
     var drafts: ChatDrafts { get }
     /// The Claude CLI's state, for the line over the composer; nil without a CLI (the samples).
     var cliStatus: ClaudeStatus? { get }
+    /// Whether a message can go while Claude works, Claude reading it after the turn, as V2 sent them; the
+    /// samples answer one message at a time.
+    var queuesMessages: Bool { get }
 }
 
 /// Why a message wasn't sent, or a setting not changed: the sentence the composer shows.
@@ -226,6 +229,8 @@ final class SampleChatStore: ChatStore {
 extension ChatStore {
     /// The samples post no notification.
     func showing(_ id: ChatConversation.ID?, inKeyWindow: Bool, view: UUID) {}
+
+    var queuesMessages: Bool { false }
 
     /// A message without files.
     func send(_ text: String, to id: ChatConversation.ID?, project: Project, origin: ToolKind?, attachments: [ChatReference],

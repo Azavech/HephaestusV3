@@ -196,7 +196,7 @@ struct ChatSessionTests {
         #expect(ClaudeCommand.syncedPlugins(claudeFolder: claude.appendingPathComponent("missing")).isEmpty)
     }
 
-    @Test("A first message makes the chat and starts the CLI: no prompt, the file tools of its own, the app's tools allowed, the skills chats call")
+    @Test("A first message makes the chat and starts the CLI: no prompt, every CLI tool but its question tool, the app's tools allowed, the skills chats call")
     func firstMessage() async throws {
         let world = try await ChatWorld()
         defer { Task { await world.close() } }
@@ -212,8 +212,9 @@ struct ChatSessionTests {
         #expect(!arguments.contains("--append-system-prompt") && !arguments.contains("--settings"))
         let plugins = try #require(arguments.firstIndex(of: "--plugin-dir"))
         #expect(arguments[plugins + 1] == world.root.appendingPathComponent("Data/Runtime/plugins").path)
-        let tools = try #require(arguments.firstIndex(of: "--tools"))
-        #expect(arguments[tools + 1] == "Read,Grep,Glob,Edit,Write")
+        #expect(!arguments.contains("--tools"))
+        let disallowed = try #require(arguments.firstIndex(of: "--disallowedTools"))
+        #expect(arguments[disallowed + 1] == "AskUserQuestion")
         let allowed = try #require(arguments.firstIndex(of: "--allowedTools"))
         #expect(arguments[allowed + 1] == "mcp__hephaestus__list_tickets,mcp__hephaestus__add_comment")
         #expect(cli.request.currentDirectory == world.repo.path && cli.request.environment["MCP_TOOL_TIMEOUT"] == "1800000")

@@ -319,7 +319,7 @@ struct ChatPermissionsSection: View {
             Text("Claude Can", bundle: #bundle, comment: "A section: what Claude may do")
                 .accessibilityAddTraits(.isHeader)
         } footer: {
-            Text("Claude acts through each tool, as you would, and reads and edits the project's files with Claude Code's file tools. Outside the project's folder, it asks first.", bundle: #bundle)
+            Text("Claude acts through each tool, as you would, and has Claude Code's own tools: files, commands, the web and agents. Outside the project's folder, and for a command, it asks first as the chat's permissions say.", bundle: #bundle)
                 .font(.caption)
                 .foregroundStyle(.textSecondary)
         }

@@ -1069,16 +1069,18 @@ The arguments, one element each, no shell:
   --settings {"ultracode":true}          (only with Ultracode)
   --autocompact 200000 | 1000000         (only for a context window of 200K or 1M)
   --permission-prompt-tool stdio
-  --tools Read,Grep,Glob,Edit,Write      (Read,Grep,Glob under Never)
+  --disallowedTools AskUserQuestion      (AskUserQuestion,Edit,Write,NotebookEdit under Never)
   --strict-mcp-config --mcp-config <data folder>/Runtime/mcp/<CHAT-ID>.json
   --allowedTools mcp__hephaestus__<tool>,mcp__hephaestus__<tool>,…
   --plugin-dir <data folder>/Runtime/plugins
 ```
 
-- `--tools` gives Claude the CLI's file tools alone, none of its other tools (shell, web, agents): `Read`, `Grep`
-  and `Glob`, then `Edit` and `Write` unless Settings ▸ Chat › Edit the project's files is Never when the process
-  starts ([File tools](#file-tools)). `--strict-mcp-config` leaves it the app's server alone. Claude reads and
-  changes everything else only through the app's tools, as the user does.
+- No `--tools`: Claude has every one of the CLI's own tools, as in V2 (files, the shell, the web, agents,
+  workflows), but those of `--disallowedTools`: the CLI's question tool, which `ask_questions` replaces, and the
+  editing tools (`Edit`, `Write`, `NotebookEdit`) when Settings ▸ Chat › Edit the project's files is Never as the
+  process starts ([File tools](#file-tools)). The CLI asks before a call as the chat's permission mode says; the
+  app answers for the file tools, and shows a card for the others. `--strict-mcp-config` leaves it the app's
+  server alone.
 - `--allowedTools` lists every tool of the app's server: the CLI runs them without asking, and the app's server
   asks the user before a change, as Settings ▸ Chat says ([MCP › Permissions](mcp.md#permissions)).
 - No system prompt and no hook: V3 sends Claude nothing written for it besides its tools' descriptions and the
@@ -1165,8 +1167,9 @@ process:
 
 #### File tools
 
-The CLI's file tools (`ClaudeFileTools`, the user's request, 17 November 2026): `Read`, `Grep` and `Glob` read,
-`Edit` and `Write` edit. The CLI runs a call on its own where its rules allow it (a read inside its working folder,
+The CLI's file tools (`ClaudeFileTools`): `Read`, `Grep` and `Glob` read, `Edit`, `Write` and `NotebookEdit`
+edit. Claude has the CLI's other tools too, as in V2 (the user's request, 17 November 2026); their requests always
+show a card. The CLI runs a call on its own where its rules allow it (a read inside its working folder,
 a tool the user's Claude Code settings allow); otherwise it sends `can_use_tool`, and the app answers with the
 setting **Edit the project's files** (`chat.fileEdits` in the user defaults: `never`, `askFirst`, `always`;
 `askFirst` when unset) read at that moment:
@@ -1175,12 +1178,13 @@ setting **Edit the project's files** (`chat.fileEdits` in the user defaults: `ne
 | --- | --- | --- |
 | `Read`, `Grep`, `Glob` inside the project's folder | Any | `allow`, no item |
 | `Read`, `Grep`, `Glob` outside it | Any | A `permissionRequest` item: a card |
-| `Edit`, `Write` | `never` | `deny`, `The user doesn't let Claude edit files from chats (Settings ▸ Chat).`, no item |
-| `Edit`, `Write` | `askFirst` | A card |
-| `Edit`, `Write` inside the project's folder, not in its `.hephaestus/` | `always` | `allow`, no item |
-| `Edit`, `Write` in `.hephaestus/` or outside the project's folder | `always` | A card |
+| `Edit`, `Write`, `NotebookEdit` | `never` | `deny`, `The user doesn't let Claude edit files from chats (Settings ▸ Chat).`, no item |
+| `Edit`, `Write`, `NotebookEdit` | `askFirst` | A card |
+| `Edit`, `Write`, `NotebookEdit` inside the project's folder, not in its `.hephaestus/` | `always` | `allow`, no item |
+| `Edit`, `Write`, `NotebookEdit` in `.hephaestus/` or outside the project's folder | `always` | A card |
 
-- The path is `file_path` (`Read`, `Edit`, `Write`) or `path` (`Grep`, `Glob`; the project's folder without one).
+- The path is `file_path` (`Read`, `Edit`, `Write`), `notebook_path` (`NotebookEdit`) or `path` (`Grep`, `Glob`;
+  the project's folder without one).
   `~` is expanded; a relative path is taken from the project's folder; `.` and `..` are removed; the symbolic links
   of the longest part that exists are resolved, in the path and in the project's folder. A path is inside when it
   is the folder or starts with the folder and `/`.

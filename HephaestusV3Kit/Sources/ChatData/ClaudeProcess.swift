@@ -19,9 +19,10 @@ public struct ChatLaunch: Sendable, Hashable {
     /// The names of the app's MCP tools, which Claude may call without the CLI asking: the app asks itself
     /// before a change, as the user's permissions say.
     public var tools: [String]
-    /// The CLI's own tools Claude gets: the file tools (`ClaudeFileTools.tools(edits:)`), which the CLI asks
-    /// about before a call, the app answering (`ClaudeFileTools.decision`).
-    public var fileTools: [String]
+    /// The CLI's own tools Claude doesn't get (`ClaudeFileTools.disallowed(edits:)`): its question tool, and the
+    /// editing tools under Never. It has every other one, the CLI asking before a call as the permission mode says,
+    /// the app answering for the file tools (`ClaudeFileTools.decision`).
+    public var disallowedTools: [String]
     /// The project's folder.
     public var workingDirectory: String
     /// The login shell's environment, without `HEPHAESTUS_*` variables.
@@ -32,7 +33,8 @@ public struct ChatLaunch: Sendable, Hashable {
     public var contextWindow: ChatContextWindow = .auto
 
     public init(cliPath: String, chatID: String, resume: Bool, model: String, effort: Effort, mcpConfig: URL, tools: [String],
-                fileTools: [String] = [], workingDirectory: String, environment: [String: String], pluginDir: URL? = nil) {
+                disallowedTools: [String] = [ClaudeFileTools.question], workingDirectory: String, environment: [String: String],
+                pluginDir: URL? = nil) {
         self.cliPath = cliPath
         self.chatID = chatID
         self.resume = resume
@@ -40,14 +42,14 @@ public struct ChatLaunch: Sendable, Hashable {
         self.effort = effort
         self.mcpConfig = mcpConfig
         self.tools = tools
-        self.fileTools = fileTools
+        self.disallowedTools = disallowedTools
         self.workingDirectory = workingDirectory
         self.environment = environment
         self.pluginDir = pluginDir
     }
 
-    /// One argument per element, no shell involved. `--tools` gives Claude the file tools alone of the CLI's own
-    /// (no shell, no web, no agents); `--strict-mcp-config` leaves it the app's server alone.
+    /// One argument per element, no shell involved. Claude has the CLI's own tools, as in V2, but those of
+    /// `--disallowedTools`; `--strict-mcp-config` leaves it the app's server alone.
     public var arguments: [String] {
         var arguments = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--include-partial-messages"]
         arguments += [resume ? "--resume" : "--session-id", chatID]
@@ -58,7 +60,7 @@ public struct ChatLaunch: Sendable, Hashable {
         if ultracode { arguments += ["--settings", #"{"ultracode":true}"#] }
         if let autocompact = contextWindow.autocompact { arguments += ["--autocompact", autocompact] }
         arguments += ["--permission-prompt-tool", "stdio"]
-        arguments += ["--tools", fileTools.joined(separator: ",")]
+        arguments += ["--disallowedTools", disallowedTools.joined(separator: ",")]
         arguments += ["--strict-mcp-config", "--mcp-config", mcpConfig.path]
         arguments += ["--allowedTools", tools.map { "mcp__\(MCPProtocol.serverName)__\($0)" }.joined(separator: ",")]
         if let pluginDir { arguments += ["--plugin-dir", pluginDir.path] }

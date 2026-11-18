@@ -63,7 +63,7 @@ struct LiveChatTurnsTests {
         #expect(blocks.count == 8, "A stop shows nothing; a sub-agent's call is a step of its call")
         #expect(blocks[0] == .notice(ChatNotice(text: "Careful", level: .warning)))
         #expect(blocks[1].row == .call(ChatToolCall(action: "Read ticket ORD-142", reference: ChatReference(tool: .tickets, projectID: "ORD", focus: "ORD-142", title: "ORD-142"))))
-        #expect(blocks[2].row == .call(ChatToolCall(action: "Used Bash", reference: nil, detail: "boom", failed: true)))
+        #expect(blocks[2].row == .call(ChatToolCall(action: "Ran ls", reference: nil, detail: "boom", failed: true)), "V2's wording; a failed call shows its error")
         guard case .call(let bash) = blocks[2], let details = bash.details else { Issue.record("no details"); return }
         #expect(details.name == "Bash" && details.server == nil && details.input == [ChatToolInput(text: "ls", language: "shell")])
         #expect(details.result == "boom\nmore" && !details.isRunning)
@@ -168,7 +168,7 @@ struct LiveChatTurnsTests {
             Issue.record("no cards"); return
         }
         #expect(project.channel == .projects && project.reference == nil)
-        #expect(bash.channel == nil && bash.request == "Claude wants to use Bash" && bash.preview == "ls" && bash.isCLI)
+        #expect(bash.channel == nil && bash.request == "Claude wants to run a command" && bash.preview == "ls" && bash.isCLI)
     }
 
     @Test("The file tools' calls name their file from the project's folder; their cards show the change")

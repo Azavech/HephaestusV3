@@ -220,3 +220,15 @@ struct ClaudeCLILine: View {
     ClaudeCLILine(status: ClaudeStatus(error: "Claude CLI not found. Install Claude Code, or set its path in Settings ▸ Chat."))
         .padding()
 }
+
+extension View {
+    /// V2's Escape in the composer: it stops Claude's turn while one runs and the skill list is closed (the list
+    /// takes Escape first). Nil does nothing, and lets Escape go on.
+    func stopsOnEscape(_ stop: (() -> Void)?) -> some View {
+        onKeyPress(.escape) {
+            guard let stop else { return .ignored }
+            stop()
+            return .handled
+        }
+    }
+}

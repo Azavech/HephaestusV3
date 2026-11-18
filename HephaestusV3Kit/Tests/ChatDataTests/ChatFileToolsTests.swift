@@ -23,16 +23,18 @@ struct ChatFileToolsTests {
         deinit { try? FileManager.default.removeItem(at: root) }
     }
 
-    @Test("The reading tools always; the editing tools unless the user set Never")
+    @Test("Every CLI tool but its question tool; the editing tools taken away under Never")
     func tools() {
-        #expect(ClaudeFileTools.tools(edits: .askFirst) == ["Read", "Grep", "Glob", "Edit", "Write"])
-        #expect(ClaudeFileTools.tools(edits: .always) == ["Read", "Grep", "Glob", "Edit", "Write"])
-        #expect(ClaudeFileTools.tools(edits: .never) == ["Read", "Grep", "Glob"])
+        #expect(ClaudeFileTools.disallowed(edits: .askFirst) == ["AskUserQuestion"])
+        #expect(ClaudeFileTools.disallowed(edits: .always) == ["AskUserQuestion"])
+        #expect(ClaudeFileTools.disallowed(edits: .never) == ["AskUserQuestion", "Edit", "Write", "NotebookEdit"])
         let launch = ChatLaunch(cliPath: "/bin/claude", chatID: "C", resume: false, model: "default", effort: .high,
                                 mcpConfig: URL(fileURLWithPath: "/tmp/c.json"), tools: ["list_tickets"],
-                                fileTools: ClaudeFileTools.tools(edits: .never), workingDirectory: "/tmp", environment: [:])
-        let index = launch.arguments.firstIndex(of: "--tools")
-        #expect(index.map { launch.arguments[$0 + 1] } == "Read,Grep,Glob")
+                                disallowedTools: ClaudeFileTools.disallowed(edits: .never), workingDirectory: "/tmp", environment: [:])
+        #expect(!launch.arguments.contains("--tools"), "No list: the CLI's tools, as in V2")
+        let index = launch.arguments.firstIndex(of: "--disallowedTools")
+        #expect(index.map { launch.arguments[$0 + 1] } == "AskUserQuestion,Edit,Write,NotebookEdit")
+        #expect(ClaudeFileTools.decision(tool: "Bash", input: ["command": "ls"], root: "/tmp", edits: .always) == nil, "A shell call keeps its card")
     }
 
     @Test("A read inside the project's folder runs; outside, it asks")

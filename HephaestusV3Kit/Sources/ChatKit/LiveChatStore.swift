@@ -12,6 +12,9 @@ public final class LiveChatStore: ChatStore {
     let drafts = ChatDrafts()
 
     var cliStatus: ClaudeStatus? { session.status }
+
+    /// The CLI keeps a message written during a turn, and runs it after.
+    var queuesMessages: Bool { true }
     /// How a tool words a call of the app's tool `name` with its input; nil for a tool the app doesn't have.
     private let describe: @MainActor (String, JSONValue) -> ToolCallText?
 
@@ -325,6 +328,9 @@ public final class LiveChatStore: ChatStore {
             return ChatToolCall(action: text?.action ?? String(localized: "Used \(use.name)", bundle: #bundle, comment: "A call of a tool, by its name"),
                                 reference: text?.item.flatMap(Self.reference))
         }
+        if use.server == nil, let call = CLIToolText.call(use.name, input: use.input) {
+            return call
+        }
         return ChatToolCall(action: String(localized: "Used \(use.name)", bundle: #bundle, comment: "A call of a tool, by its name"), reference: nil)
     }
 
@@ -352,7 +358,8 @@ public final class LiveChatStore: ChatStore {
                 card.edit = (old, new)
             }
         } else {
-            card = ChatApproval(id: request.requestID, request: String(localized: "Claude wants to use \(split.name)", bundle: #bundle),
+            let title = split.server == nil ? CLIToolText.request(split.name, input: request.input) : nil
+            card = ChatApproval(id: request.requestID, request: title ?? String(localized: "Claude wants to use \(split.name)", bundle: #bundle),
                                 preview: Self.cliPreview(split.name, input: request.input), reference: nil, channel: nil, decision: decision)
         }
         card.decidedBy = request.decidedBy
