@@ -76,6 +76,14 @@ public final class LiveChatStore: ChatStore {
         session.answer(conversationID, requestID: approvalID, allow: allow)
     }
 
+    func decide(_ approvalID: ChatApproval.ID, in conversationID: ChatConversation.ID, answer: ChatApproval.Answer) {
+        switch answer {
+        case .allow: session.answer(conversationID, requestID: approvalID, decision: .allow)
+        case .allowAlways: session.answer(conversationID, requestID: approvalID, decision: .allowAlways)
+        case .deny(let message): session.answer(conversationID, requestID: approvalID, decision: .deny, message: message)
+        }
+    }
+
     func stop(_ id: ChatConversation.ID) {
         session.stop(id)
     }
@@ -90,7 +98,7 @@ public final class LiveChatStore: ChatStore {
     func setReplySettings(_ settings: ChatSettings, of id: ChatConversation.ID?) throws(ChatSendError) {
         do throws(ChatError) {
             if let id {
-                try session.setSettings(id, model: settings.model, effort: settings.effort)
+                try session.setSettings(id, settings)
             } else {
                 try session.setDefaults(model: settings.model, effort: settings.effort)
             }
@@ -305,26 +313,55 @@ public final class LiveChatStore: ChatStore {
 
     private func approval(_ request: PermissionRequestItem, root: String?) -> ChatApproval {
         let decision: ChatApproval.Decision? = switch request.decision {
-        case .allow?, .allowAlways?: .allowed
-        case .deny?: .declined
+        case .allow?: .allowed
+        case .allowAlways?: .allowedAlways
+        // A refusal nobody gave is the app's: Stop, the process's end, quitting.
+        case .deny?: request.decidedBy == nil ? .cancelled : .declined
         case nil: nil
         }
         let split = ToolUseItem.split(request.toolName)
+        var card: ChatApproval
         if split.server == MCPProtocol.serverName, let text = describe(split.name, request.input) {
             let reference = text.item.flatMap(Self.reference)
             let channel = text.item.map { item in
                 ToolKind(rawValue: item.tool).map(ChatApproval.Channel.init) ?? .projects
             }
-            return ChatApproval(id: request.requestID,
+            card = ChatApproval(id: request.requestID,
                                 request: text.request ?? String(localized: "Claude wants to use \(split.name)", bundle: #bundle),
                                 preview: text.preview, reference: reference, channel: channel, decision: decision)
+        } else if split.server == nil, let text = FileToolText.request(split.name, input: request.input, root: root) {
+            card = ChatApproval(id: request.requestID, request: text.request, preview: text.preview, reference: nil, channel: nil, decision: decision)
+            if split.name == "Edit", let old = request.input["old_string"]?.stringValue, let new = request.input["new_string"]?.stringValue {
+                card.edit = (old, new)
+            }
+        } else {
+            card = ChatApproval(id: request.requestID, request: String(localized: "Claude wants to use \(split.name)", bundle: #bundle),
+                                preview: Self.cliPreview(split.name, input: request.input), reference: nil, channel: nil, decision: decision)
         }
-        if split.server == nil, let text = FileToolText.request(split.name, input: request.input, root: root) {
-            return ChatApproval(id: request.requestID, request: text.request, preview: text.preview, reference: nil, channel: nil,
-                                decision: decision)
+        card.decidedBy = request.decidedBy
+        card.reason = request.reason
+        card.isCLI = split.server != MCPProtocol.serverName
+        return card
+    }
+
+    /// A CLI tool's card preview, as V2's: a command then its description, a URL then its prompt, a plan; any
+    /// other input as JSON.
+    static func cliPreview(_ name: String, input: JSONValue) -> String? {
+        switch name {
+        case "Bash":
+            if let command = input["command"]?.stringValue {
+                return [command, input["description"]?.stringValue].compactMap { $0 }.joined(separator: "\n\n")
+            }
+        case "WebFetch":
+            if let url = input["url"]?.stringValue {
+                return [url, input["prompt"]?.stringValue].compactMap { $0 }.joined(separator: "\n\n")
+            }
+        case "ExitPlanMode":
+            if let plan = input["plan"]?.stringValue { return plan }
+        default:
+            break
         }
-        return ChatApproval(id: request.requestID, request: String(localized: "Claude wants to use \(split.name)", bundle: #bundle),
-                            preview: Self.pretty(request.input), reference: nil, channel: nil, decision: decision)
+        return pretty(input)
     }
 
     /// The item of a tool's call, as a chat names it; a project's has none (no tool window shows it alone).

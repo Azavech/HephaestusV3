@@ -12,8 +12,8 @@ public enum StreamOutput: Sendable, Hashable {
     case cliTurnOpened(first: Bool, mcpProblem: String?)
     /// `command_lifecycle`: what the CLI did with the message whose line had `uuid`.
     case commandState(uuid: String, state: String)
-    /// `can_use_tool`: the CLI asks before a call.
-    case permissionRequest(PermissionRequestItem)
+    /// `can_use_tool`: the CLI asks before a call, with its `permission_suggestions`, the rules Always Allow keeps.
+    case permissionRequest(PermissionRequestItem, suggestions: JSONValue?)
     /// Another control request, which the app refuses.
     case unsupportedControlRequest(requestID: String, subtype: String)
     /// The answer to one of the app's control requests.
@@ -80,7 +80,8 @@ public struct StreamMapper: Sendable {
             }
             let reason = request["decision_reason"]?.stringValue.map(Self.withoutANSI)
             return [.permissionRequest(PermissionRequestItem(requestID: id, created: now(), toolName: tool,
-                                                             input: request["input"] ?? [:], reason: reason))]
+                                                             input: request["input"] ?? [:], reason: reason),
+                                       suggestions: request["permission_suggestions"])]
         case "control_response":
             guard let response = object["response"], let id = response["request_id"]?.stringValue else { return [.ignored(type)] }
             let success = response["subtype"]?.stringValue == "success"

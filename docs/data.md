@@ -1065,7 +1065,10 @@ The arguments, one element each, no shell:
 <cli> -p --input-format stream-json --output-format stream-json --verbose --include-partial-messages
   --session-id <CHAT-ID>          (or --resume <CHAT-ID> once sessionStarted)
   --model <settings.model> --effort <settings.effort>
-  --permission-mode manual --permission-prompt-tool stdio
+  --permission-mode <settings.permissionMode> --allow-dangerously-skip-permissions
+  --settings {"ultracode":true}          (only with Ultracode)
+  --autocompact 200000 | 1000000         (only for a context window of 200K or 1M)
+  --permission-prompt-tool stdio
   --tools Read,Grep,Glob,Edit,Write      (Read,Grep,Glob under Never)
   --strict-mcp-config --mcp-config <data folder>/Runtime/mcp/<CHAT-ID>.json
   --allowedTools mcp__hephaestus__<tool>,mcp__hephaestus__<tool>,…
@@ -1129,11 +1132,36 @@ after its current CLI turn. The turn's end writes `updated`.
   gate calls `ChatSession.requestApproval`: a `permissionRequest` item with a new lowercase UUID as request id
   and `mcp__hephaestus__<tool>` as `toolName`; the call waits for the answer.
 - **The CLI's requests.** A `can_use_tool` request for a file tool is answered as [File tools](#file-tools) says:
-  at once, or with a card. Another (one the CLI makes on its own, such as for a tool the user's Claude Code
-  settings deny) becomes a card too. Allow writes
+  at once, or with a card (Accept Edits and Allow All count as Settings ▸ Chat's Always unless it is Never).
+  Another (one the CLI makes on its own, such as for a tool the user's Claude Code settings deny) becomes a card
+  too. The request's `permission_suggestions` stay in memory with it. Allow writes
   `{"type":"control_response","response":{"subtype":"success","request_id":<id>,"response":{"behavior":"allow","updatedInput":<input>}}}`;
-  Don't Allow writes `"behavior":"deny","message":"Permission denied by the user."`.
-- An answer records `decision` and `decidedBy`, this Mac's name.
+  Always Allow adds `"updatedPermissions":<the suggestions>` (the plain allow without any); Don't Allow writes
+  `"behavior":"deny","message":<the user's message, trimmed, or "Permission denied by the user.">`.
+- **The app's cards** follow the chat's mode first: Plan Only refuses every change (`forbidden`, `The chat is in Plan
+  Only: Claude plans and changes nothing.`), Don't Ask refuses what would ask (`The chat doesn't ask (Don't Ask):
+  …`), Allow All runs it. Never stays a refusal. Always Allow on an app's card allows the call.
+- An answer records `decision` (`allow`, `allowAlways`, `deny`) and `decidedBy`, this Mac's name; the app's own
+  refusals (Stop, the end of the process, quitting) record `deny` without `decidedBy`.
+
+#### Chat settings
+
+The chat file's `settings` (V2's `ChatSettings`): `model`, `effort`, `permissionMode` (`ChatPermissionMode`:
+`manual`, `acceptEdits`, `plan`, `auto`, `dontAsk`, `bypassPermissions`; `manual` for an unknown value),
+`ultracode` and `contextWindow` (`ChatContextWindow`: `auto`, `200k`, `1m`). A new chat starts with `manual`,
+`false` and `auto`. `ChatSession.setSettings(_:_:)` checks them (`invalid`: `model: use a model of the list.`,
+`permissionMode: use a mode of the list.`, `contextWindow: use auto, 200k or 1m.`), writes them, and with a live
+process:
+
+- a new model sends `set_model`; a new effort `apply_flag_settings` `{"effortLevel":<effort>}`;
+- a new mode sends `set_permission_mode` `{"mode":<mode>}` (`default` for `manual`); on its success, while the mode
+  is still the chat's, each card waiting that it allows is approved as if the mode had come first (every card
+  under `bypassPermissions`; an `Edit` or `Write` inside the project's folder under `acceptEdits`), recorded as
+  allowed by this Mac. A failure adds the warning `Claude did not accept the new permission mode now: <reason>.
+  It applies the next time Claude starts.`;
+- a new Ultracode sends `apply_flag_settings` `{"ultracode":<bool>}`;
+- a new context window needs a new process: the app ends it (closing stdin, as when idle) once no turn runs, at
+  once when none does; the next message resumes the session with the new `--autocompact`.
 
 #### File tools
 

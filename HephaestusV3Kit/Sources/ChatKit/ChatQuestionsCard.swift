@@ -8,6 +8,8 @@ struct QuestionsCard: View {
     let questionSet: ChatQuestionSet
     /// Tighter, for the side panel.
     var compact = false
+    /// ⌘Return answers; off while a permission card, which takes it, shows.
+    var allowsShortcut = true
     /// Stores an answer; false when it wasn't taken.
     let answer: (_ label: String, _ text: String) async -> Bool
 
@@ -233,7 +235,7 @@ struct QuestionsCard: View {
                 submit(currentAnswer)
             }
             .buttonStyle(.borderedProminent)
-            .keyboardShortcut(.return, modifiers: .command)
+            .keyboardShortcut(allowsShortcut ? KeyboardShortcut(.return, modifiers: .command) : nil)
             .disabled(isSending || !canSubmit)
             .help(String(localized: "Answer (⌘↩)", bundle: #bundle))
             .accessibilityIdentifier("chat.questions.submit")

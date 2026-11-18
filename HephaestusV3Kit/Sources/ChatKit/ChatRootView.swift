@@ -248,8 +248,13 @@ public struct ChatRootView: View {
                     .padding(.horizontal, layout == .phone ? 12 : 16)
                     .padding(.top, 8)
             }
+            if let pending = model.conversation?.pendingApprovals, !pending.isEmpty {
+                PermissionCard(approvals: pending) { id, answer in model.decide(id, answer: answer) }
+                    .padding(.horizontal, layout == .phone ? 12 : 16)
+                    .padding(.top, 8)
+            }
             if let questions = model.conversation?.waitingQuestions {
-                QuestionsCard(questionSet: questions, compact: layout == .phone) { label, text in
+                QuestionsCard(questionSet: questions, compact: layout == .phone, allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { label, text in
                     await model.answer(text, to: label, inSet: questions.id)
                 }
                 .id(questions.id)
@@ -275,6 +280,9 @@ public struct ChatRootView: View {
                     ProjectChip(project: model.project)
                     ForEach(model.files, id: \.self) { url in
                         PendingFileChip(url: url) { model.removeFile(url) }
+                    }
+                    if model.conversation != nil, model.replySettings?.permissionMode == ChatPermissionMode.bypassPermissions.rawValue {
+                        AllowAllBadge()
                     }
                     if let conversation = model.conversation, let usage = conversation.contextUsage {
                         ContextIndicator(usage: usage, compactions: conversation.compactions, isCompacting: conversation.isCompacting)
@@ -480,7 +488,7 @@ private struct ChatInspector: View {
                                    identifier: "chat.inspector.permissions")
             Section {
                 if let settings {
-                    ReplySettingsRows(models: models, settings: settings, identifier: "chat.inspector", set: setSettings)
+                    ReplySettingsRows(models: models, settings: settings, identifier: "chat.inspector", isChat: true, set: setSettings)
                 } else {
                     ModelRow(identifier: "chat.inspector.model")
                     Text("Replies are samples until a model is connected.", bundle: #bundle)

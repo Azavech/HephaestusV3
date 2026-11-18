@@ -102,6 +102,22 @@ struct LiveChatTurnsTests {
         #expect(ChatAuthorRow<EmptyView>.caption(ChatTurnCaption()) == nil)
     }
 
+    @Test("A CLI card previews a command and its description, a URL and its prompt; an edit shows its diff; an answer shows who gave it")
+    func cliCards() {
+        #expect(LiveChatStore.cliPreview("Bash", input: ["command": "ls", "description": "List"]) == "ls\n\nList")
+        #expect(LiveChatStore.cliPreview("WebFetch", input: ["url": "https://x", "prompt": "Read it"]) == "https://x\n\nRead it")
+        #expect(LiveChatStore.cliPreview("Other", input: ["a": 1]) == "{\n  \"a\" : 1\n}")
+        var always = PermissionRequestItem(requestID: "r9", created: date, toolName: "Edit", input: ["file_path": "/r/a", "old_string": "a", "new_string": "b"])
+        always.decision = .allowAlways
+        always.decidedBy = "Studio"
+        var cancelled = PermissionRequestItem(requestID: "r8", created: date, toolName: "Bash", input: ["command": "ls"])
+        cancelled.decision = .deny
+        let blocks = store.turns([.permissionRequest(always), .permissionRequest(cancelled)], streaming: nil, root: "/r").flatMap(\.blocks).map(\.content)
+        guard case .approval(let edit) = blocks[0], case .approval(let stop) = blocks[1] else { Issue.record("no cards"); return }
+        #expect(edit.decision == .allowedAlways && edit.decidedBy == "Studio" && edit.edit?.old == "a" && edit.edit?.new == "b")
+        #expect(stop.decision == .cancelled, "A refusal without anyone is the app's")
+    }
+
     @Test("Find: the blocks that hold the query, ignoring case")
     func find() {
         let conversation = ChatConversation(id: "C", projectID: "ORD", title: "", origin: nil, createdAt: date, turns: store.turns(items(), streaming: nil))
@@ -152,7 +168,7 @@ struct LiveChatTurnsTests {
             Issue.record("no cards"); return
         }
         #expect(project.channel == .projects && project.reference == nil)
-        #expect(bash.channel == nil && bash.request == "Claude wants to use Bash" && bash.preview == "{\n  \"command\" : \"ls\"\n}")
+        #expect(bash.channel == nil && bash.request == "Claude wants to use Bash" && bash.preview == "ls" && bash.isCLI)
     }
 
     @Test("The file tools' calls name their file from the project's folder; their cards show the change")
@@ -206,6 +222,20 @@ struct ChatGateTests {
             == ToolError(.forbidden, "The user didn't allow this call."))
         #expect(await ChatGate.check(.chat("C"), operation(.changeProjects), [:], chats: chats, defaults: defaults)?.code == .forbidden,
                 "Projects default to Ask First")
+    }
+
+    @Test("The chat's mode: Plan Only changes nothing, Don't Ask refuses what would ask, Allow All runs it; Never stays a refusal")
+    func modes() async {
+        let chats = bareSession()
+        defaults.set("askFirst", forKey: ChatPreferences.ticketChangesKey)
+        #expect(await ChatGate.check(.chat("C"), operation(.changeTickets), [:], chats: chats, defaults: defaults, mode: .bypassPermissions) == nil)
+        #expect(await ChatGate.check(.chat("C"), operation(.deleteTickets), [:], chats: chats, defaults: defaults, mode: .bypassPermissions) == nil)
+        #expect(await ChatGate.check(.chat("C"), operation(.changeTickets), [:], chats: chats, defaults: defaults, mode: .dontAsk)?.message.hasPrefix("The chat doesn't ask (Don't Ask)") == true)
+        #expect(await ChatGate.check(.chat("C"), operation(.changeTickets), [:], chats: chats, defaults: defaults, mode: .plan)
+            == ToolError(.forbidden, "The chat is in Plan Only: Claude plans and changes nothing."))
+        #expect(await ChatGate.check(.chat("C"), operation(.read), [:], chats: chats, defaults: defaults, mode: .plan) == nil)
+        defaults.set("never", forKey: ChatPreferences.ticketChangesKey)
+        #expect(await ChatGate.check(.chat("C"), operation(.changeTickets), [:], chats: chats, defaults: defaults, mode: .bypassPermissions)?.code == .forbidden)
     }
 
     @Test("An internal skill's run reads, whatever the settings say; it changes nothing and opens no window")

@@ -160,10 +160,11 @@ struct IDLinkedText: View {
     @Environment(\.openRoute) private var openRoute
 
     var body: some View {
+        // No fixedSize: in the card over the composer, a fixed height made the window's split view take the
+        // transcript's whole height.
         Text(attributed)
             .foregroundStyle(.textPrimary)
             .textSelection(.enabled)
-            .fixedSize(horizontal: false, vertical: true)
             .environment(\.openURL, OpenURLAction { url in
                 guard let id = MarkdownItemIDs.id(fromHref: url.absoluteString) else { return .systemAction }
                 openRoute(.tool(.tickets, project: id.split(separator: "-").first.map(String.init) ?? "", focus: id))

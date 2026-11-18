@@ -137,6 +137,8 @@ struct ReplySettingsRows: View {
     let models: [ClaudeModel]
     let settings: ChatSettings
     let identifier: String
+    /// The rows of one chat, as V2's composer menus: its permission mode, Ultracode and context window too.
+    var isChat = false
     let set: (ChatSettings) -> Void
 
     var body: some View {
@@ -164,6 +166,72 @@ struct ReplySettingsRows: View {
                 }
             }
             .accessibilityIdentifier("\(identifier).effort")
+        }
+        if isChat {
+            Picker(String(localized: "Permissions", bundle: #bundle, comment: "A chat's permission mode"), selection: Binding(
+                get: { ChatPermissionMode(stored: settings.permissionMode) },
+                set: { mode in
+                    var changed = settings
+                    changed.permissionMode = mode.rawValue
+                    set(changed)
+                })) {
+                ForEach(ChatPermissionMode.allCases, id: \.self) { mode in
+                    Text(Self.title(mode)).tag(mode)
+                }
+            }
+            .help(Self.subtitle(ChatPermissionMode(stored: settings.permissionMode)))
+            .accessibilityIdentifier("\(identifier).permissionMode")
+            Toggle(String(localized: "Ultracode", bundle: #bundle), isOn: Binding(get: { settings.ultracode }, set: { on in
+                var changed = settings
+                changed.ultracode = on
+                set(changed)
+            }))
+            .help(String(localized: "Standing dynamic-workflow orchestration for this chat, at any effort level.", bundle: #bundle))
+            .accessibilityIdentifier("\(identifier).ultracode")
+            Picker(String(localized: "Context", bundle: #bundle, comment: "A chat's context window"), selection: Binding(
+                get: { ChatContextWindow(stored: settings.contextWindow) },
+                set: { window in
+                    var changed = settings
+                    changed.contextWindow = window.rawValue
+                    set(changed)
+                })) {
+                ForEach(ChatContextWindow.allCases, id: \.self) { window in
+                    Text(Self.title(window)).tag(window)
+                }
+            }
+            .accessibilityIdentifier("\(identifier).contextWindow")
+        }
+    }
+
+    /// V2's labels of the permission modes.
+    static func title(_ mode: ChatPermissionMode) -> String {
+        switch mode {
+        case .manual: String(localized: "Ask Every Time", bundle: #bundle, comment: "A permission mode")
+        case .acceptEdits: String(localized: "Accept Edits", bundle: #bundle, comment: "A permission mode")
+        case .plan: String(localized: "Plan Only", bundle: #bundle, comment: "A permission mode")
+        case .auto: String(localized: "Auto", bundle: #bundle, comment: "A permission mode")
+        case .dontAsk: String(localized: "Don't Ask", bundle: #bundle, comment: "A permission mode")
+        case .bypassPermissions: String(localized: "Allow All", bundle: #bundle, comment: "A permission mode")
+        }
+    }
+
+    /// What each mode does, as V2's menu said it.
+    static func subtitle(_ mode: ChatPermissionMode) -> String {
+        switch mode {
+        case .manual: String(localized: "Claude asks before it edits files or runs commands.", bundle: #bundle)
+        case .acceptEdits: String(localized: "File edits are accepted; other actions ask.", bundle: #bundle)
+        case .plan: String(localized: "Claude plans and changes nothing.", bundle: #bundle)
+        case .auto: String(localized: "A classifier approves or denies each request.", bundle: #bundle)
+        case .dontAsk: String(localized: "Anything not pre-approved is denied without asking.", bundle: #bundle)
+        case .bypassPermissions: String(localized: "Every action runs without asking.", bundle: #bundle)
+        }
+    }
+
+    static func title(_ window: ChatContextWindow) -> String {
+        switch window {
+        case .auto: String(localized: "Auto", bundle: #bundle, comment: "The model's own context window")
+        case .window200K: String(localized: "200K", bundle: #bundle, comment: "A context window of 200,000 tokens")
+        case .window1M: String(localized: "1M", bundle: #bundle, comment: "A context window of a million tokens")
         }
     }
 

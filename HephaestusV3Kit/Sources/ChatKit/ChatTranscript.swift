@@ -528,24 +528,40 @@ struct ApprovalCard: View {
     }
 
     @ViewBuilder private var answer: some View {
+        // The pending card's buttons are those of the card over the composer; the transcript keeps the answer.
         switch approval.decision {
         case nil:
-            HStack {
-                Button(String(localized: "Don't Allow", bundle: #bundle)) { decide(false) }
-                    .accessibilityIdentifier("chat.approval.\(approval.id).deny")
-                Button(String(localized: "Allow", bundle: #bundle)) { decide(true) }
-                    .buttonStyle(.borderedProminent)
-                    .accessibilityIdentifier("chat.approval.\(approval.id).allow")
-            }
+            Label(String(localized: "Waiting for your answer", bundle: #bundle, comment: "A card waits for the user"), systemImage: "hourglass")
+                .foregroundStyle(.warning)
+                .accessibilityIdentifier("chat.approval.\(approval.id).waiting")
         case .allowed?:
-            Label(String(localized: "Allowed", bundle: #bundle, comment: "The user allowed the change"), systemImage: "checkmark.circle.fill")
+            Label(by(String(localized: "Allowed", bundle: #bundle, comment: "The user allowed the change"),
+                     String(localized: "Allowed by \(approval.decidedBy ?? "")", bundle: #bundle, comment: "The user allowed the change, on the Mac named")),
+                  systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.success)
+                .accessibilityIdentifier("chat.approval.\(approval.id).decision")
+        case .allowedAlways?:
+            Label(by(String(localized: "Always Allowed", bundle: #bundle, comment: "The user allowed the change and its kind"),
+                     String(localized: "Always allowed by \(approval.decidedBy ?? "")", bundle: #bundle, comment: "The user allowed it and its kind, on the Mac named")),
+                  systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.success)
                 .accessibilityIdentifier("chat.approval.\(approval.id).decision")
         case .declined?:
-            Label(String(localized: "Not Allowed", bundle: #bundle, comment: "The user didn't allow the change"), systemImage: "xmark.circle")
+            Label(by(String(localized: "Not Allowed", bundle: #bundle, comment: "The user didn't allow the change"),
+                     String(localized: "Not allowed by \(approval.decidedBy ?? "")", bundle: #bundle, comment: "The user didn't allow it, on the Mac named")),
+                  systemImage: "xmark.circle")
+                .foregroundStyle(.textSecondary)
+                .accessibilityIdentifier("chat.approval.\(approval.id).decision")
+        case .cancelled?:
+            Label(String(localized: "Cancelled", bundle: #bundle, comment: "A card the app refused: Stop, the end of Claude's process"), systemImage: "minus.circle")
                 .foregroundStyle(.textSecondary)
                 .accessibilityIdentifier("chat.approval.\(approval.id).decision")
         }
+    }
+
+    /// The answer with the Mac whose user gave it, when known.
+    private func by(_ alone: String, _ named: String) -> String {
+        approval.decidedBy == nil ? alone : named
     }
 }
 

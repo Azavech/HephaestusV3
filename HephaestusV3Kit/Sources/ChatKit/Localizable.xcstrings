@@ -57,17 +57,53 @@
     "%lld%% left" : {
       "comment" : "The part of the context left before compaction"
     },
+    "1 of %lld" : {
+      "comment" : "The card shown among the cards waiting"
+    },
+    "1M" : {
+      "comment" : "A context window of a million tokens"
+    },
+    "200K" : {
+      "comment" : "A context window of 200,000 tokens"
+    },
+    "A classifier approves or denies each request." : {
+
+    },
+    "Accept Edits" : {
+      "comment" : "A permission mode"
+    },
     "Add Files…" : {
       "comment" : "Adds files to the next message"
     },
     "Allow" : {
 
     },
+    "Allow (⌘↩)" : {
+
+    },
+    "Allow All" : {
+      "comment" : "A permission mode\nThe badge of a chat whose Claude runs every action without asking"
+    },
     "Allowed" : {
       "comment" : "The user allowed the change"
     },
+    "Allowed by %@" : {
+      "comment" : "The user allowed the change, on the Mac named"
+    },
     "Always" : {
       "comment" : "A permission: Claude may always do it"
+    },
+    "Always Allow" : {
+
+    },
+    "Always Allow (⌥⌘↩): the Claude CLI keeps the rule it suggests" : {
+
+    },
+    "Always Allowed" : {
+      "comment" : "The user allowed the change and its kind"
+    },
+    "Always allowed by %@" : {
+      "comment" : "The user allowed it and its kind, on the Mac named"
     },
     "Answer (⌘↩)" : {
 
@@ -77,6 +113,12 @@
     },
     "Answer: %@" : {
       "comment" : "The user's answer to one of Claude's questions"
+    },
+    "Anything not pre-approved is denied without asking." : {
+
+    },
+    "Ask Every Time" : {
+      "comment" : "A permission mode"
     },
     "Ask First" : {
       "comment" : "A permission: Claude asks before doing it"
@@ -102,11 +144,17 @@
     "Attach Files…" : {
 
     },
+    "Auto" : {
+      "comment" : "A permission mode\nThe model's own context window"
+    },
     "Call APIs that change data" : {
 
     },
     "Cancel" : {
 
+    },
+    "Cancelled" : {
+      "comment" : "A card the app refused: Stop, the end of Claude's process"
     },
     "Change projects" : {
 
@@ -115,6 +163,9 @@
 
     },
     "Chat" : {
+
+    },
+    "Chat Settings" : {
 
     },
     "Chats run Claude Code from this Mac. Empty, the app finds it in ~/.local/bin, /opt/homebrew/bin, /usr/local/bin, or your shell's PATH." : {
@@ -158,11 +209,17 @@
     "Claude acts through each tool, as you would, and reads and edits the project's files with Claude Code's file tools. Outside the project's folder, it asks first." : {
 
     },
+    "Claude asks before it edits files or runs commands." : {
+
+    },
     "Claude goes on from where it stopped, through the internal skill resume-chat." : {
 
     },
     "Claude is working… %@" : {
       "comment" : "The time since the turn began, such as 0:12"
+    },
+    "Claude plans and changes nothing." : {
+
     },
     "Claude reads it through %@, and asks before it changes anything." : {
       "comment" : "The item's tool, such as Tickets"
@@ -230,6 +287,9 @@
     "Content" : {
 
     },
+    "Context" : {
+      "comment" : "A chat's context window"
+    },
     "Copy" : {
       "comment" : "Copies a message's text"
     },
@@ -247,6 +307,12 @@
     },
     "Don't Allow" : {
 
+    },
+    "Don't Allow (⇧⌘↩): Claude reads your message as the call's error" : {
+
+    },
+    "Don't Ask" : {
+      "comment" : "A permission mode"
     },
     "Done" : {
       "comment" : "Closes the inspector sheet"
@@ -272,11 +338,17 @@
     "Error" : {
       "comment" : "Tags a call that failed"
     },
+    "Every action runs without asking." : {
+
+    },
     "Exclude Screenshot" : {
 
     },
     "Extra High" : {
       "comment" : "An effort level"
+    },
+    "File edits are accepted; other actions ask." : {
+
     },
     "Find in Conversation" : {
 
@@ -361,6 +433,9 @@
     "Medium" : {
       "comment" : "An effort level"
     },
+    "Message for Claude (optional)" : {
+
+    },
     "Minimize" : {
       "comment" : "Folds the questions card into one line"
     },
@@ -427,6 +502,9 @@
     "Not Allowed" : {
       "comment" : "The user didn't allow the change"
     },
+    "Not allowed by %@" : {
+      "comment" : "The user didn't allow it, on the Mac named"
+    },
     "Not answered yet" : {
 
     },
@@ -476,6 +554,12 @@
     },
     "Path" : {
       "comment" : "The Claude CLI's path"
+    },
+    "Permissions" : {
+      "comment" : "A chat's permission mode"
+    },
+    "Plan Only" : {
+      "comment" : "A permission mode"
     },
     "Previous Match" : {
 
@@ -590,7 +674,7 @@
 
     },
     "Show All" : {
-      "comment" : "Shows a call's whole result"
+      "comment" : "Shows a call's whole result\nShows a card's whole preview"
     },
     "Show Closed Chats" : {
 
@@ -615,6 +699,9 @@
     },
     "Skip" : {
       "comment" : "Skips one of Claude's questions"
+    },
+    "Standing dynamic-workflow orchestration for this chat, at any effort level." : {
+
     },
     "Start builds" : {
 
@@ -674,6 +761,9 @@
       "comment" : "A change Claude would make with a tool of its own"
     },
     "Title" : {
+
+    },
+    "Ultracode" : {
 
     },
     "Used %@" : {

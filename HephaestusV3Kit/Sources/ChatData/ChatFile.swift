@@ -126,12 +126,11 @@ public struct ChatSettings: Codable, Sendable, Hashable {
     /// The CLI's model value: `default`, or a value of the CLI's model list such as `opus`.
     public var model: String
     public var effort: Effort
-    /// A permission mode, kept as read and not used: the user's permissions in Settings ▸ Chat
-    /// decide what Claude may change.
+    /// The chat's permission mode, a `ChatPermissionMode` value, as V2's Permissions menu set it.
     public var permissionMode: String
-    /// Ultracode, kept as read and not used.
+    /// Ultracode: standing dynamic-workflow orchestration, as V2's toggle set it.
     public var ultracode: Bool
-    /// A context window, kept as read and not used.
+    /// The context window, a `ChatContextWindow` value.
     public var contextWindow: String
     public var unknownKeys: YAMLMapping
 
@@ -188,5 +187,45 @@ public enum ChatIDs {
     /// True for an uppercase UUID, as chat ids are written.
     public static func isChatID(_ value: String) -> Bool {
         UUID(uuidString: value)?.uuidString == value
+    }
+}
+
+/// A chat's permission mode, as V2's Permissions menu had them (docs/data.md › Chat settings): what the CLI asks
+/// before, and what the app's tools may change without a card.
+public enum ChatPermissionMode: String, Sendable, Hashable, CaseIterable {
+    /// Ask Every Time: the default.
+    case manual
+    case acceptEdits
+    case plan
+    case auto
+    case dontAsk
+    case bypassPermissions
+
+    /// The mode a chat's stored value names; Ask Every Time for an unknown one.
+    public init(stored: String) {
+        self = ChatPermissionMode(rawValue: stored) ?? .manual
+    }
+
+    /// What `set_permission_mode` and the CLI's `init` call it: `default` for Ask Every Time.
+    public var cliValue: String { self == .manual ? "default" : rawValue }
+}
+
+/// A chat's context window, as V2's Context menu had them: the model's own, or where the CLI compacts.
+public enum ChatContextWindow: String, Sendable, Hashable, CaseIterable {
+    case auto
+    case window200K = "200k"
+    case window1M = "1m"
+
+    public init(stored: String) {
+        self = ChatContextWindow(rawValue: stored) ?? .auto
+    }
+
+    /// `--autocompact`'s value; nil for Auto, which passes none.
+    public var autocompact: String? {
+        switch self {
+        case .auto: nil
+        case .window200K: "200000"
+        case .window1M: "1000000"
+        }
     }
 }

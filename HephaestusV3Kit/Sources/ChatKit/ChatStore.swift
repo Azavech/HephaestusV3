@@ -24,6 +24,8 @@ protocol ChatStore: AnyObject {
               files: [URL], reader: ToolReader) async throws(ChatSendError) -> ChatConversation.ID
     /// The user's answer to a change Claude asked to make.
     func decide(_ approvalID: ChatApproval.ID, in conversationID: ChatConversation.ID, allow: Bool)
+    /// The card's answer: Allow, Always Allow, or Don't Allow with a message for Claude.
+    func decide(_ approvalID: ChatApproval.ID, in conversationID: ChatConversation.ID, answer: ChatApproval.Answer)
     func stop(_ id: ChatConversation.ID)
     /// The models Claude can answer with; empty when no model is connected (the samples).
     var models: [ClaudeModel] { get }
@@ -171,6 +173,14 @@ final class SampleChatStore: ChatStore {
             } else {
                 conversation.waitingQuestions = set
             }
+        }
+    }
+
+    func decide(_ approvalID: ChatApproval.ID, in conversationID: ChatConversation.ID, answer: ChatApproval.Answer) {
+        if case .deny = answer {
+            decide(approvalID, in: conversationID, allow: false)
+        } else {
+            decide(approvalID, in: conversationID, allow: true)
         }
     }
 

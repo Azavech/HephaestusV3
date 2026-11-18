@@ -32,6 +32,14 @@ struct ChatConversation: Identifiable, Hashable {
 
     var updatedAt: Date { updated ?? turns.last?.date ?? createdAt }
 
+    /// The cards waiting for the user, the oldest first.
+    var pendingApprovals: [ChatApproval] {
+        turns.flatMap(\.blocks).compactMap { block in
+            if case .approval(let approval) = block.content, approval.decision == nil { return approval }
+            return nil
+        }
+    }
+
     /// The conversation as plain text, for Copy Conversation: each turn's author, then its text and its calls'
     /// actions, turns a blank line apart.
     var plainText: String {
@@ -256,7 +264,19 @@ struct ChatNotice: Hashable {
 struct ChatApproval: Identifiable, Hashable {
     enum Decision: Hashable {
         case allowed
+        /// Allowed, with the CLI keeping its suggested rules.
+        case allowedAlways
         case declined
+        /// Refused by the app, not the user: Stop, the process's end, quitting.
+        case cancelled
+    }
+
+    /// What the user answers.
+    enum Answer: Hashable {
+        case allow
+        case allowAlways
+        /// With an optional message, which Claude reads as the call's error.
+        case deny(String?)
     }
 
     /// The request's id, stable for the conversation's life: `chat-checkout.comment`.
@@ -271,6 +291,18 @@ struct ChatApproval: Identifiable, Hashable {
     /// The tool it goes through; nil for a tool of the Claude CLI.
     let channel: Channel?
     var decision: Decision?
+    /// The Mac whose user answered.
+    var decidedBy: String?
+    /// Why the CLI asks, as it says.
+    var reason: String?
+    /// The CLI's own request, which Always Allow can answer with the CLI's rules.
+    var isCLI = false
+    /// An edit's replaced and new text, which the card shows as a diff.
+    var edit: (old: String, new: String)? {
+        get { editTexts.map { ($0[0], $0[1]) } }
+        set { editTexts = newValue.map { [$0.old, $0.new] } }
+    }
+    private var editTexts: [String]?
 
     /// A tool of the app, as the card names it.
     struct Channel: Hashable {

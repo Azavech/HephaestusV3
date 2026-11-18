@@ -183,12 +183,33 @@ A change Claude wants to make shows as a card, when the user's permissions say A
   | `Read`, `Grep`, `Glob`, outside the project's folder | Claude wants to read /etc/hosts; Claude wants to search /Users/you/Other; Claude wants to list the files in /Users/you/Other |
   | Another tool of the CLI (its own request) | Claude wants to use Bash |
 
-- **Preview.** What it would write, selectable, at most 20 lines, on a `surfaceSunken` box: a comment's text; a new ticket's title and description; a ticket change's new title, priority, labels and description; a bundle's title and tickets; a project's identifier and folder, or the settings it changes; for a removal, "The project's folder and files stay on this Mac."; for an edit, the text it replaces, each line after `- `, then the new text, each line after `+ `; for a whole file, its content; for a search or a listing, its pattern; for another request of the CLI, its input as JSON. None for a deletion or a status change.
+- **Reason.** Why the CLI asks, as it says (its `decision_reason`), in `textSecondary`, when it gives one.
+- **Preview.** What it would write, selectable, its ticket and bundle ids links, on a `surfaceSunken` box in the code font, its first 20 lines then **Show All**: a comment's text; a new ticket's title and description; a ticket change's new title, priority, labels and description; a bundle's title and tickets; a project's identifier and folder, or the settings it changes; for a removal, "The project's folder and files stay on this Mac."; for an edit, as V2's diff, the text it replaces on `danger` at 16 % and the new text on `success` at 16 % (the transcript's copy keeps the `- ` and `+ ` lines); for a whole file, its content; for a search or a listing, its pattern; for `Bash`, its command then its description; for `WebFetch`, its URL then its prompt; for `ExitPlanMode`, its plan; for another request of the CLI, its input as JSON. None for a deletion or a status change.
 - **Note.** The tool's symbol and "Through *Tickets*, as if you did it" (Projects, with `folder`, for a project's change); "Through the Claude CLI" for a request of the CLI.
-- **Answer.** **Don't Allow** and **Allow** (prominent). After the answer, the buttons give way to **Allowed** (`checkmark.circle.fill`, `success`) or **Not Allowed** (`xmark.circle`, `textSecondary`). Allow lets the call run; Don't Allow refuses it, and Claude reads "The user didn't allow this call." Stop, the CLI's end and quitting refuse the cards still waiting.
+- **Where.** As V2's pinned card, the oldest card waiting shows over the composer of the Chat window and the panel (`PermissionCard`, `chat.permission`), with "1 of *n*" while several wait; its answer shows the next. The transcript keeps each card where Claude asked: "Waiting for your answer" (`hourglass`, `warning`) while it waits, then its answer.
+- **Answer.** On the pinned card, a field "Message for Claude (optional)" (`chat.permission.message`), then **Don't Allow** (⇧⌘↩), **Always Allow** (⌥⌘↩, for a request of the CLI only) and **Allow** (⌘↩, prominent). The keys act once the card has shown for a second, and the questions card's ⌘↩ waits while a permission card shows. Allow lets the call run. Always Allow lets it run and passes the CLI's own suggestions back, the rules it then keeps for the session or the project, as the CLI said ([Data › Permissions](../data.md#permissions)). Don't Allow refuses it: Claude reads the message, or "Permission denied by the user." (for the app's cards, "The user didn't allow this call."). Stop, the CLI's end and quitting refuse the cards still waiting.
+- **The transcript's answer**: **Allowed by *Mac*** or **Always allowed by *Mac*** (`checkmark.circle.fill`, `success`), **Not allowed by *Mac*** (`xmark.circle`, `textSecondary`), or **Cancelled** (`minus.circle`) for a card the app refused; without the Mac's name for answers recorded without one.
 - **Outline.** `warning` at 50 % opacity while the card waits; `divider` once answered.
 - The note and the answer share one line when they fit and stack when they don't.
 - The answer is written in the chat's transcript, with this Mac's name ([Data › Chat items](../data.md#chat-items)): a card answered stays answered.
+
+### Chat settings
+
+As V2's composer menus did, each chat has its permission mode, Ultracode and context window besides its model and effort: in the inspector's **Replies** (Model, Effort, then **Permissions**, **Ultracode**, **Context**), and in the panel's composer under one menu (`slider.horizontal.3`, "Chat Settings", `chat.panel.settings`) whose submenus are the same rows; a new chat in the panel sets only its model and effort.
+
+| Permissions | Stored | What it does (V2's subtitle, as the picker's help) |
+| --- | --- | --- |
+| Ask Every Time | `manual` | Claude asks before it edits files or runs commands. The default. |
+| Accept Edits | `acceptEdits` | File edits are accepted; other actions ask. Inside the project's folder, an edit runs as under Settings ▸ Chat's Always. |
+| Plan Only | `plan` | Claude plans and changes nothing: the app's tools refuse every change. |
+| Auto | `auto` | A classifier approves or denies each request (the CLI's). |
+| Don't Ask | `dontAsk` | Anything not pre-approved is denied without asking: what would show a card is refused. |
+| Allow All | `bypassPermissions` | Every action runs without asking: what would show a card runs. Never in Settings ▸ Chat still refuses. |
+
+- While Allow All is set, the composer shows a red **Allow All** capsule (`chat.allowAll`), as V2's badge.
+- **Ultracode** ("Standing dynamic-workflow orchestration for this chat, at any effort level."): on, the CLI orchestrates most of the work as workflows.
+- **Context**: Auto (the model's own window), 200K, 1M: where the CLI compacts.
+- A change applies to the running Claude at once (the mode and Ultracode), and the cards the new mode allows are answered as if it had come first (all under Allow All, edits inside the folder under Accept Edits); a new context window starts Claude again once its turn ends, the conversation going on ([Data › Chat settings](../data.md#chat-settings)).
 
 ### Notices
 
@@ -791,6 +812,9 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 | Closed chat | `chat.closed`, `chat.reopen` | "This conversation is over"; a button |
 | Resume | `chat.resumeLine`, `chat.resume` | "Claude stopped with an error"; a button |
 | Context indicator | `chat.context` | Its tooltip's text |
+| Pinned card | `chat.permission`, `chat.permission.message`, `chat.permission.deny`, `chat.permission.always`, `chat.permission.allow`, `chat.permission.diff`, `chat.permission.showAll` | The request's sentence is a heading; buttons |
+| Card in the transcript | `chat.approval.<id>.waiting`, `chat.approval.<id>.decision` | "Waiting for your answer"; the answer |
+| Chat settings | `chat.inspector.permissionMode`, `chat.inspector.ultracode`, `chat.inspector.contextWindow`, `chat.panel.settings`, `chat.allowAll` | Pickers, a toggle, a menu, a badge |
 | Skill list | `chat.composer.completions` | A container, above the composer while it shows |
 | Skill in the list | `chat.composer.completion.<index>` | A button: the skill's name and description; the selected one has the selected trait |
 | Tool-call row | `chat.toolCall.<turn id>.<item id>`, or `.<block id>` for a call without an item | One element: label the action, value the detail; with an item, a button whose hint is "Open *item* in *Tool*" and whose action opens the item |

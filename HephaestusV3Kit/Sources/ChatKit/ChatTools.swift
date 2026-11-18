@@ -16,7 +16,7 @@ public enum ChatGate {
     /// card in the chat.
     @MainActor
     public static func check(_ caller: MCPCaller, _ operation: ToolOperation, _ arguments: JSONValue, chats: ChatSession,
-                             defaults: UserDefaults = .standard) async -> ToolError? {
+                             defaults: UserDefaults = .standard, mode given: ChatPermissionMode? = nil) async -> ToolError? {
         if case .internalSkill = caller {
             // The app runs the skill in the background, for its answer alone: it reads, and opens no window.
             return operation.permission == .read && operation.name != "open_in_app" ? nil : ToolError(.forbidden, skillRefusal)
@@ -24,6 +24,21 @@ public enum ChatGate {
         guard case .chat(let chatID) = caller else { return nil }
         func rule(_ key: String) -> ChangePermission {
             defaults.string(forKey: key).flatMap(ChangePermission.init(rawValue:)) ?? .askFirst
+        }
+        // The chat's permission mode, as V2's: Plan Only changes nothing; Don't Ask refuses what would ask; Allow
+        // All runs it. Never stays a refusal.
+        let mode = given ?? ChatPermissionMode(stored: chats.chats[chatID]?.file.settings.permissionMode ?? "")
+        if mode == .plan, ![.read, .renameChats, .askUser].contains(operation.permission) {
+            return ToolError(.forbidden, "The chat is in Plan Only: Claude plans and changes nothing.")
+        }
+        func ask(_ refusal: String) async -> ToolError? {
+            switch mode {
+            case .bypassPermissions: return nil
+            case .dontAsk: return ToolError(.forbidden, "The chat doesn't ask (Don't Ask): \(refusal)")
+            default:
+                let allowed = await chats.requestApproval(chatID, tool: operation.name, input: arguments)
+                return allowed ? nil : ToolError(.forbidden, "The user didn't allow this call.")
+            }
         }
         let permission: ChangePermission
         let refusal: String
@@ -34,8 +49,7 @@ public enum ChatGate {
             // Its own chat closes without asking; another one asks first.
             let others = (arguments["chatIDs"]?.arrayValue ?? []).compactMap(\.stringValue).filter { $0.uppercased() != chatID }
             if others.isEmpty { return nil }
-            let allowed = await chats.requestApproval(chatID, tool: operation.name, input: arguments)
-            return allowed ? nil : ToolError(.forbidden, "The user didn't allow this call.")
+            return await ask("closing another chat asks first.")
         case .changeTickets:
             permission = rule(ChatPreferences.ticketChangesKey)
             refusal = "The user doesn't let Claude change tickets from chats (Settings ▸ Chat)."
@@ -71,8 +85,7 @@ public enum ChatGate {
         case .never:
             return ToolError(.forbidden, refusal)
         case .askFirst:
-            let allowed = await chats.requestApproval(chatID, tool: operation.name, input: arguments)
-            return allowed ? nil : ToolError(.forbidden, "The user didn't allow this call.")
+            return await ask(refusal.replacingOccurrences(of: "doesn't let", with: "asks before letting"))
         }
     }
 }

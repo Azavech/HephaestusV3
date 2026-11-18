@@ -150,7 +150,9 @@ struct StreamMapperTests {
     @Test("The CLI's permission request becomes an item; thinking without text makes none")
     func writeDenied() throws {
         let outputs = try run("stream-write-denied.jsonl")
-        let requests = outputs.compactMap { if case .permissionRequest(let request) = $0 { request } else { nil } }
+        let requests = outputs.compactMap { if case .permissionRequest(let request, _) = $0 { request } else { nil } }
+        let suggestions = outputs.compactMap { if case .permissionRequest(_, let suggestions) = $0 { suggestions } else { nil } }
+        #expect(suggestions.count == 1, "The CLI's suggestions come with the request, for Always Allow")
         #expect(requests.count == 1)
         #expect(requests[0].id == "perm-1967e0c0-4eab-4e9a-8c9e-67ec5e2cb4a0" && requests[0].toolName == "Write")
         #expect(requests[0].reason == "Path is outside allowed working directories" && requests[0].isPending)

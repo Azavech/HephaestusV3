@@ -223,6 +223,11 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
   in the background, where no card can show): the `read` tools run but `open_in_app`; every other call is
   refused with `An internal skill's run only reads.` (`forbidden`), whatever Settings ▸ Chat says.
 
+A chat's permission mode refines the column of a chat's Claude ([UI › Chat › Chat settings](ui/chat.md#chat-settings)):
+under Plan Only every group but `read`, `renameChats` and `askUser` is refused (`The chat is in Plan Only: Claude
+plans and changes nothing.`); under Don't Ask what would show a card is refused (`The chat doesn't ask (Don't
+Ask): …`); under Allow All it runs. A permission set to Never stays a refusal.
+
 ## External use
 
 Terminal Claude Code sessions on this Mac use the server with the external token. Settings ▸ MCP shows this

@@ -1,4 +1,5 @@
 import AZDesign
+import ChatData
 import SwiftUI
 import ToolsFoundation
 
@@ -52,8 +53,13 @@ public struct ChatPanel: View {
                     .padding(.horizontal, 12)
                     .padding(.top, 8)
             }
+            if let pending = model.conversation?.pendingApprovals, !pending.isEmpty {
+                PermissionCard(approvals: pending) { id, answer in model.decide(id, answer: answer) }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+            }
             if let questions = model.conversation?.waitingQuestions {
-                QuestionsCard(questionSet: questions, compact: true) { label, text in
+                QuestionsCard(questionSet: questions, compact: true, allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { label, text in
                     await model.answer(text, to: label, inSet: questions.id)
                 }
                 .id(questions.id)
@@ -79,6 +85,23 @@ public struct ChatPanel: View {
                     chip(attachment)
                     ForEach(model.files, id: \.self) { url in
                         PendingFileChip(url: url) { model.removeFile(url) }
+                    }
+                    if let settings = model.replySettings {
+                        // The chat's settings, as V2's composer folded them into one menu.
+                        Menu {
+                            ReplySettingsRows(models: model.store.models, settings: settings, identifier: "chat.panel.settings",
+                                              isChat: model.conversationID != nil) { model.setReplySettings($0) }
+                        } label: {
+                            Label(String(localized: "Chat Settings", bundle: #bundle), systemImage: "slider.horizontal.3")
+                        }
+                        .labelStyle(.iconOnly)
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
+                        .help(String(localized: "Chat Settings", bundle: #bundle))
+                        .accessibilityIdentifier("chat.panel.settings")
+                        if settings.permissionMode == ChatPermissionMode.bypassPermissions.rawValue, model.conversationID != nil {
+                            AllowAllBadge()
+                        }
                     }
                     if let conversation = model.conversation, let usage = conversation.contextUsage {
                         ContextIndicator(usage: usage, compactions: conversation.compactions, isCompacting: conversation.isCompacting)
@@ -347,6 +370,26 @@ public final class ChatPanelModel {
     func decide(_ approvalID: ChatApproval.ID, allow: Bool) {
         guard let conversationID else { return }
         store.decide(approvalID, in: conversationID, allow: allow)
+    }
+
+    /// The open conversation's model and settings, or those of new chats; nil without models (the samples).
+    var replySettings: ChatSettings? {
+        store.replySettings(of: conversationID)
+    }
+
+    func setReplySettings(_ settings: ChatSettings) {
+        do throws(ChatSendError) {
+            try store.setReplySettings(settings, of: conversationID)
+            failure = nil
+        } catch {
+            failure = error.message
+        }
+    }
+
+    /// The pinned card's answer.
+    func decide(_ approvalID: ChatApproval.ID, answer: ChatApproval.Answer) {
+        guard let conversationID else { return }
+        store.decide(approvalID, in: conversationID, answer: answer)
     }
 
     /// Reopens the open conversation, closed.

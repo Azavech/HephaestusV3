@@ -2,8 +2,8 @@ import AZDesign
 import SwiftUI
 
 /// The transcript's scroll view, in the Chat window and the panel: a short conversation starts at the top, a long
-/// one opens on its end and follows new turns; scrolled up more than 40 pt from the end, **Jump to Latest** shows
-/// at its bottom edge. With a find query, the blocks that hold it are highlighted, the current one scrolled to.
+/// one opens on its end and follows new turns, and stays at its end when a card over the composer shrinks it;
+/// scrolled up more than 40 pt from the end, **Jump to Latest** shows at its bottom edge. With a find query, the blocks that hold it are highlighted, the current one scrolled to.
 struct TranscriptScrollView: View {
     let conversation: ChatConversation
     let activity: ChatActivity?
@@ -30,10 +30,17 @@ struct TranscriptScrollView: View {
             .defaultScrollAnchor(.top, for: .alignment)
             .defaultScrollAnchor(.bottom, for: .initialOffset)
             .defaultScrollAnchor(.bottom, for: .sizeChanges)
-            .onScrollGeometryChange(for: Bool.self) { geometry in
-                geometry.contentSize.height - (geometry.contentOffset.y + geometry.containerSize.height) > 40
-            } action: { _, away in
-                awayFromEnd = away
+            .onScrollGeometryChange(for: Place.self) { geometry in
+                // The visible rectangle counts the toolbar's inset, which the offset leaves out.
+                Place(height: geometry.containerSize.height, fromEnd: geometry.contentSize.height - geometry.visibleRect.maxY)
+            } action: { old, new in
+                // A card over the composer shrinks the transcript: one that was at its end stays there.
+                if new.height < old.height, old.fromEnd <= 40 {
+                    position.scrollTo(edge: .bottom)
+                    awayFromEnd = false
+                } else {
+                    awayFromEnd = new.fromEnd > 40
+                }
             }
             .overlay(alignment: .bottom) {
                 if awayFromEnd {
@@ -61,6 +68,12 @@ struct TranscriptScrollView: View {
             }
         }
     }
+}
+
+/// The transcript's height and its distance from its end, for Jump to Latest.
+private struct Place: Equatable {
+    var height: CGFloat
+    var fromEnd: CGFloat
 }
 
 /// Find in a conversation (docs/ui/chat.md › Find): the blocks that hold the query, in order.

@@ -144,6 +144,12 @@ final class ChatWindowModel {
         selection = focus
     }
 
+    /// The pinned card's answer.
+    func decide(_ approvalID: ChatApproval.ID, answer: ChatApproval.Answer) {
+        guard let selection else { return }
+        store.decide(approvalID, in: selection, answer: answer)
+    }
+
     // MARK: Managing chats
 
     /// The chats a list action acts on: the selection when it holds `id`, else `id` alone.

@@ -29,6 +29,12 @@ final class ChatRun {
     var retried = false
     /// The CLI's permission requests waiting, by request id, with their input.
     var cliPermissions: [String: JSONValue] = [:]
+    /// Their `permission_suggestions`, which Always Allow passes back.
+    var cliSuggestions: [String: JSONValue] = [:]
+    /// The `set_permission_mode` requests awaiting their answer, by request id, with the mode asked.
+    var modeRequests: [String: ChatPermissionMode] = [:]
+    /// The window the process started with: a new one needs a new process.
+    var contextWindow: ChatContextWindow = .auto
     var nextControl = 1
     var initializeID = ""
     /// The app's settings requests, by request id: `model` or `effort`.
@@ -191,10 +197,13 @@ extension ChatSession {
             plugin = nil
             record(.system(SystemItem(created: now(), text: "Skills could not be prepared: \(error)", level: .warning)), in: chatID)
         }
-        let launch = ChatLaunch(cliPath: cli, chatID: chatID, resume: chat.file.sessionStarted, model: chat.file.settings.model,
+        var launch = ChatLaunch(cliPath: cli, chatID: chatID, resume: chat.file.sessionStarted, model: chat.file.settings.model,
                                 effort: chat.file.settings.effort, mcpConfig: config, tools: toolNames,
                                 fileTools: ClaudeFileTools.tools(edits: fileEdits()), workingDirectory: project.root,
                                 environment: projects.tools.environment, pluginDir: plugin)
+        launch.permissionMode = ChatPermissionMode(stored: chat.file.settings.permissionMode)
+        launch.ultracode = chat.file.settings.ultracode
+        launch.contextWindow = ChatContextWindow(stored: chat.file.settings.contextWindow)
         let connection: any ClaudeConnection
         do {
             try FileManager.default.createDirectory(at: config.deletingLastPathComponent(), withIntermediateDirectories: true,
@@ -212,6 +221,7 @@ extension ChatSession {
         }
         let run = ChatRun(chatID: chatID, connection: connection, token: token, mcpConfig: config, resumed: launch.resume,
                           effort: chat.file.settings.effort, now: now)
+        run.contextWindow = launch.contextWindow
         runs[chatID] = run
         touch(chatID)
         run.initializeID = run.controlID()
@@ -280,15 +290,18 @@ extension ChatSession {
                     run.outstanding.remove(at: index)
                     endTurnIfDone(run)
                 }
-            case .permissionRequest(let request):
-                // A file tool's call is answered at once where Settings ▸ Chat decides it; anything else gets its card.
-                switch root(ofChat: chatID).flatMap({ ClaudeFileTools.decision(tool: request.toolName, input: request.input, root: $0, edits: fileEdits()) }) {
+            case .permissionRequest(let request, let suggestions):
+                // A file tool's call is answered at once where Settings ▸ Chat and the chat's mode decide it; anything
+                // else gets its card.
+                switch root(ofChat: chatID).flatMap({ ClaudeFileTools.decision(tool: request.toolName, input: request.input, root: $0,
+                                                                                edits: fileEdits(forChat: chatID)) }) {
                 case .allow?:
                     run.connection.write(ClaudeInput.allow(request.requestID, input: request.input))
                 case .deny(let message)?:
                     run.connection.write(ClaudeInput.deny(request.requestID, message: message))
                 case .ask?, nil:
                     run.cliPermissions[request.requestID] = request.input
+                    run.cliSuggestions[request.requestID] = suggestions
                     record(.permissionRequest(request), in: chatID)
                 }
             case .unsupportedControlRequest(let id, let subtype):
@@ -296,6 +309,13 @@ extension ChatSession {
             case .controlResponse(let id, let success, let response, let error):
                 if id == run.contextRequestID {
                     received(contextUsage: response, success: success, for: run)
+                } else if let mode = run.modeRequests.removeValue(forKey: id) {
+                    if success {
+                        approvePending(in: chatID, for: mode)
+                    } else {
+                        record(.system(SystemItem(created: now(), text: "Claude did not accept the new permission mode now: \(error ?? "no reason"). It applies the next time Claude starts.",
+                                                  level: .warning)), in: chatID)
+                    }
                 } else if id == run.initializeID, success {
                     if let list = ClaudeModel.list(response?["models"]), models != list { models = list }
                     if let list = ClaudeCommand.list(response?["commands"]).map(markingSynced), let projectID = chats[chatID]?.projectID,
@@ -343,6 +363,11 @@ extension ChatSession {
         if run.closesAfterTurn {
             run.closesAfterTurn = false
             closeNow(run.chatID)
+            return
+        }
+        // A new context window needs a new process: the next message resumes with it.
+        if ChatContextWindow(stored: chats[run.chatID]?.file.settings.contextWindow ?? "") != run.contextWindow {
+            run.end(closingInput: true, grace: Self.signalGrace)
             return
         }
         run.idleTimer?.cancel()
@@ -461,16 +486,59 @@ extension ChatSession {
 
     /// The user's answer to a card: the CLI's request, or the app's own.
     public func answer(_ chatID: String, requestID: String, allow: Bool) {
+        answer(chatID, requestID: requestID, decision: allow ? .allow : .deny)
+    }
+
+    /// Answers a card, as V2's: Allow, Always Allow (for the CLI's request, its suggestions become its rules; for
+    /// the app's own, it allows), or Don't Allow with an optional `message`, which Claude reads as the call's
+    /// error (`Permission denied by the user.` without one).
+    public func answer(_ chatID: String, requestID: String, decision: PermissionRequestItem.Decision, message: String? = nil) {
+        let allow = decision != .deny
+        let trimmed = message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let note = trimmed.isEmpty ? "Permission denied by the user." : trimmed
         if let run = runs[chatID], let input = run.cliPermissions.removeValue(forKey: requestID) {
-            run.connection.write(allow ? ClaudeInput.allow(requestID, input: input)
-                                       : ClaudeInput.deny(requestID, message: "Permission denied by the user."))
+            let suggestions = run.cliSuggestions.removeValue(forKey: requestID)
+            run.connection.write(allow ? ClaudeInput.allow(requestID, input: input, permissions: decision == .allowAlways ? suggestions : nil)
+                                       : ClaudeInput.deny(requestID, message: note))
         } else if let continuation = approvals[chatID]?.removeValue(forKey: requestID) {
             continuation.resume(returning: allow)
         } else {
             return
         }
-        decide(chatID, requestID: requestID, decision: allow ? .allow : .deny, by: device)
+        decide(chatID, requestID: requestID, decision: decision, by: device)
         refreshState(chatID)
+    }
+
+    /// The pending cards a new mode allows, approved as if the mode had come first, as V2 did: every one under
+    /// Allow All; a file edit inside the project's folder under Accept Edits.
+    func approvePending(in chatID: String, for mode: ChatPermissionMode) {
+        guard let run = runs[chatID], ChatPermissionMode(stored: chats[chatID]?.file.settings.permissionMode ?? "") == mode else { return }
+        for (requestID, input) in run.cliPermissions {
+            guard case .permissionRequest(let request)? = item("perm-\(requestID)", in: chatID) else { continue }
+            let allowed: Bool = switch mode {
+            case .bypassPermissions: true
+            case .acceptEdits:
+                ClaudeFileTools.editing.contains(request.toolName) && Self.isInside(request.toolName, input: input, root: root(ofChat: chatID))
+            default: false
+            }
+            if allowed { answer(chatID, requestID: requestID, decision: .allow) }
+        }
+        if mode == .bypassPermissions {
+            for requestID in Array((approvals[chatID] ?? [:]).keys) { answer(chatID, requestID: requestID, decision: .allow) }
+        }
+    }
+
+    /// Whether a file tool's path lies in the project's folder `root`.
+    static func isInside(_ tool: String, input: JSONValue, root: String?) -> Bool {
+        guard let root, let path = ClaudeFileTools.path(tool: tool, input: input, root: root) else { return false }
+        return ClaudeFileTools.location(path, in: root) == .inside
+    }
+
+    /// The edits Claude may make in the chat: Settings ▸ Chat's, Always under Accept Edits unless it is Never.
+    func fileEdits(forChat chatID: String) -> ChatFileEdits {
+        let setting = fileEdits()
+        let mode = ChatPermissionMode(stored: chats[chatID]?.file.settings.permissionMode ?? "")
+        return setting != .never && (mode == .acceptEdits || mode == .bypassPermissions) ? .always : setting
     }
 
     /// Asks the user about a call of the app's tool `name` with `input`, from the chat's Claude: a card in the
@@ -514,14 +582,45 @@ extension ChatSession {
 
     /// Changes the chat's model and effort; a running process takes them at once, when the CLI accepts.
     public func setSettings(_ chatID: String, model: String, effort: Effort) throws(ChatError) {
+        guard var settings = chats[chatID]?.file.settings else { throw .notFound("Chat \(chatID) not found.") }
+        settings.model = model
+        settings.effort = effort
+        try setSettings(chatID, settings)
+    }
+
+    /// Changes the chat's settings, as V2's composer menus did: a running process takes the model, the effort, the
+    /// permission mode and Ultracode at once, when the CLI accepts; a new context window ends it once no turn
+    /// runs, so that the next message resumes with it.
+    public func setSettings(_ chatID: String, _ settings: ChatSettings) throws(ChatError) {
         guard let chat = chats[chatID] else { throw .notFound("Chat \(chatID) not found.") }
-        guard ChatSettings.isModel(model) else { throw .invalid("model: use a model of the list.") }
+        guard ChatSettings.isModel(settings.model) else { throw .invalid("model: use a model of the list.") }
+        guard ChatPermissionMode(rawValue: settings.permissionMode) != nil else { throw .invalid("permissionMode: use a mode of the list.") }
+        guard ChatContextWindow(rawValue: settings.contextWindow) != nil else { throw .invalid("contextWindow: use auto, 200k or 1m.") }
         let old = chat.file.settings
+        let model = settings.model
+        let effort = settings.effort
         change(chatID) {
-            $0.settings.model = model
-            $0.settings.effort = effort
+            $0.settings.model = settings.model
+            $0.settings.effort = settings.effort
+            $0.settings.permissionMode = settings.permissionMode
+            $0.settings.ultracode = settings.ultracode
+            $0.settings.contextWindow = settings.contextWindow
         }
         guard let run = runs[chatID] else { return }
+        if old.permissionMode != settings.permissionMode {
+            let id = run.controlID()
+            let mode = ChatPermissionMode(stored: settings.permissionMode)
+            run.modeRequests[id] = mode
+            run.connection.write(ClaudeInput.control(id, ["subtype": "set_permission_mode", "mode": .string(mode.cliValue)]))
+        }
+        if old.ultracode != settings.ultracode {
+            let id = run.controlID()
+            run.settingsRequests[id] = "Ultracode"
+            run.connection.write(ClaudeInput.control(id, ["subtype": "apply_flag_settings", "settings": ["ultracode": .bool(settings.ultracode)]]))
+        }
+        if ChatContextWindow(stored: settings.contextWindow) != run.contextWindow, !run.inTurn {
+            run.end(closingInput: true, grace: Self.signalGrace)
+        }
         if old.model != model {
             let id = run.controlID()
             run.settingsRequests[id] = "model"

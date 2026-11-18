@@ -26,6 +26,10 @@ public struct ChatLaunch: Sendable, Hashable {
     public var workingDirectory: String
     /// The login shell's environment, without `HEPHAESTUS_*` variables.
     public var environment: [String: String]
+    /// The chat's permission mode, Ultracode and context window (docs/data.md › Chat settings).
+    public var permissionMode: ChatPermissionMode = .manual
+    public var ultracode = false
+    public var contextWindow: ChatContextWindow = .auto
 
     public init(cliPath: String, chatID: String, resume: Bool, model: String, effort: Effort, mcpConfig: URL, tools: [String],
                 fileTools: [String] = [], workingDirectory: String, environment: [String: String], pluginDir: URL? = nil) {
@@ -45,18 +49,20 @@ public struct ChatLaunch: Sendable, Hashable {
     /// One argument per element, no shell involved. `--tools` gives Claude the file tools alone of the CLI's own
     /// (no shell, no web, no agents); `--strict-mcp-config` leaves it the app's server alone.
     public var arguments: [String] {
-        [
-            "-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
-            resume ? "--resume" : "--session-id", chatID,
-            "--model", model,
-            "--effort", effort.rawValue,
-            "--permission-mode", "manual",
-            "--permission-prompt-tool", "stdio",
-            "--tools", fileTools.joined(separator: ","),
-            "--strict-mcp-config",
-            "--mcp-config", mcpConfig.path,
-            "--allowedTools", tools.map { "mcp__\(MCPProtocol.serverName)__\($0)" }.joined(separator: ","),
-        ] + (pluginDir.map { ["--plugin-dir", $0.path] } ?? [])
+        var arguments = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--include-partial-messages"]
+        arguments += [resume ? "--resume" : "--session-id", chatID]
+        arguments += ["--model", model, "--effort", effort.rawValue]
+        arguments += ["--permission-mode", permissionMode.rawValue]
+        // As V2: lets a later switch to Allow All take, whatever mode the CLI started in.
+        arguments += ["--allow-dangerously-skip-permissions"]
+        if ultracode { arguments += ["--settings", #"{"ultracode":true}"#] }
+        if let autocompact = contextWindow.autocompact { arguments += ["--autocompact", autocompact] }
+        arguments += ["--permission-prompt-tool", "stdio"]
+        arguments += ["--tools", fileTools.joined(separator: ",")]
+        arguments += ["--strict-mcp-config", "--mcp-config", mcpConfig.path]
+        arguments += ["--allowedTools", tools.map { "mcp__\(MCPProtocol.serverName)__\($0)" }.joined(separator: ",")]
+        if let pluginDir { arguments += ["--plugin-dir", pluginDir.path] }
+        return arguments
     }
 
     /// The CLI's time limit for a tool call, in milliseconds: a call waits while the user decides on its card.
@@ -106,9 +112,11 @@ public enum ClaudeInput {
         line(["type": "control_request", "request_id": .string(id), "request": request])
     }
 
-    public static func allow(_ requestID: String, input: JSONValue) -> Data {
-        line(["type": "control_response", "response": ["subtype": "success", "request_id": .string(requestID),
-                                                       "response": ["behavior": "allow", "updatedInput": input]]])
+    /// Allows a call; with the CLI's `permissions`, its suggestions, Always Allow keeps them as rules.
+    public static func allow(_ requestID: String, input: JSONValue, permissions: JSONValue? = nil) -> Data {
+        var response: [String: JSONValue] = ["behavior": "allow", "updatedInput": input]
+        if let permissions, !(permissions.arrayValue ?? []).isEmpty { response["updatedPermissions"] = permissions }
+        return line(["type": "control_response", "response": ["subtype": "success", "request_id": .string(requestID), "response": .object(response)]])
     }
 
     public static func deny(_ requestID: String, message: String) -> Data {

@@ -112,3 +112,56 @@ struct ChatManagementTests {
         cli.finish(.exited(0))
     }
 }
+
+@Suite("Chat settings and answers")
+@MainActor
+struct ChatModesTests {
+    @Test("A launch passes the chat's mode, lets Allow All take later, and passes Ultracode and the window when set")
+    func launch() {
+        var launch = ChatLaunch(cliPath: "/c", chatID: "C", resume: false, model: "default", effort: .high, mcpConfig: URL(fileURLWithPath: "/m.json"),
+                                tools: [], workingDirectory: "/", environment: [:])
+        #expect(launch.arguments.contains("--allow-dangerously-skip-permissions") && !launch.arguments.contains("--autocompact"))
+        launch.permissionMode = .acceptEdits
+        launch.ultracode = true
+        launch.contextWindow = .window200K
+        let arguments = launch.arguments
+        let mode = try? #require(arguments.firstIndex(of: "--permission-mode"))
+        #expect(mode.map { arguments[$0 + 1] } == "acceptEdits")
+        #expect(arguments.contains(#"{"ultracode":true}"#) && arguments.firstIndex(of: "--autocompact").map { arguments[$0 + 1] } == "200000")
+        #expect(ChatPermissionMode.manual.cliValue == "default" && ChatPermissionMode(stored: "nonsense") == .manual)
+    }
+
+    @Test("Always Allow passes the CLI's suggestions back; Don't Allow passes the user's message; Allow All approves what waits")
+    func answers() async throws {
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        let id = try await world.session.send("Run it", references: [], to: nil, projectID: "ORD")
+        let cli = try #require(world.launcher.chats.first)
+        func ask(_ request: String) {
+            cli.feed(#"{"type":"control_request","request_id":"\#(request)","request":{"subtype":"can_use_tool","tool_name":"Bash","input":{"command":"ls"},"permission_suggestions":[{"type":"addRules","rules":[{"toolName":"Bash"}],"behavior":"allow","destination":"session"}]}}"#)
+        }
+        ask("r1")
+        try await world.until { world.session.state(of: id) == .waitingPermission }
+        world.session.answer(id, requestID: "r1", decision: .allowAlways)
+        let always = try #require(cli.written.last { $0["response"]?["request_id"]?.stringValue == "r1" })
+        #expect(always["response"]?["response"]?["updatedPermissions"]?.arrayValue?.count == 1)
+        ask("r2")
+        try await world.until { world.session.state(of: id) == .waitingPermission }
+        world.session.answer(id, requestID: "r2", decision: .deny, message: "  Not now  ")
+        let denied = try #require(cli.written.last { $0["response"]?["request_id"]?.stringValue == "r2" })
+        #expect(denied["response"]?["response"]?["message"]?.stringValue == "Not now")
+
+        ask("r3")
+        try await world.until { world.session.state(of: id) == .waitingPermission }
+        var settings = try #require(world.session.chats[id]?.file.settings)
+        settings.permissionMode = ChatPermissionMode.bypassPermissions.rawValue
+        try world.session.setSettings(id, settings)
+        let change = try #require(cli.written.last { $0["request"]?["subtype"]?.stringValue == "set_permission_mode" })
+        #expect(change["request"]?["mode"]?.stringValue == "bypassPermissions")
+        cli.feed(#"{"type":"control_response","response":{"subtype":"success","request_id":"\#(change["request_id"]?.stringValue ?? "")","response":{}}}"#)
+        try await world.until { cli.written.contains { $0["response"]?["request_id"]?.stringValue == "r3" } }
+        guard case .permissionRequest(let approved)? = world.items(id).first(where: { $0.id == "perm-r3" }) else { Issue.record("no card"); return }
+        #expect(approved.decision == .allow && approved.decidedBy == "Studio")
+        cli.finish(.exited(0))
+    }
+}
