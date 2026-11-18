@@ -165,8 +165,14 @@
     "Chat" : {
 
     },
+    "Chat Not Found" : {
+
+    },
     "Chat Settings" : {
 
+    },
+    "Chats" : {
+      "comment" : "The panel's list of the project's chats"
     },
     "Chats run Claude Code from this Mac. Empty, the app finds it in ~/.local/bin, /opt/homebrew/bin, /usr/local/bin, or your shell's PATH." : {
 
@@ -389,6 +395,9 @@
     "Inspector" : {
 
     },
+    "It was deleted, or its project isn't loaded." : {
+
+    },
     "Items Claude reads or you attach show here." : {
 
     },
@@ -534,11 +543,17 @@
         }
       }
     },
+    "Open Settings" : {
+      "comment" : "Opens Settings ▸ Chat, where the Claude CLI is set"
+    },
     "Open With Default App" : {
 
     },
     "Open in Chat Window" : {
 
+    },
+    "Open in New Window" : {
+      "comment" : "Opens a chat in a window of its own"
     },
     "Open in the Chat Window" : {
 
@@ -737,6 +752,9 @@
 
     },
     "System Prompts" : {
+
+    },
+    "The Claude CLI isn't available." : {
 
     },
     "The app defines this skill and its name." : {

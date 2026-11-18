@@ -116,21 +116,23 @@ nonisolated extension FocusedValues {
 extension View {
     /// The status bar at the bottom of the window, with the ladybug that sends feedback about it; nothing while
     /// no feedback project is set (docs/ui/navigation.md › Status bar).
-    func statusBar(_ source: FeedbackSource) -> some View {
-        modifier(StatusBarModifier(source: source))
+    func statusBar(_ source: FeedbackSource, countsChats: Bool = true) -> some View {
+        modifier(StatusBarModifier(source: source, countsChats: countsChats))
     }
 }
 
 /// The window's content above the status bar; the Send Feedback sheet on the window.
 private struct StatusBarModifier: ViewModifier {
     let source: FeedbackSource
+    /// Whether the bar counts the chats: not in a chat window, as V2's chat windows didn't.
+    let countsChats: Bool
     @Environment(\.feedbackTarget) private var target
     @Environment(\.chatSession) private var chatSession
     @Environment(\.openRoute) private var openRoute
     @State private var feedback = FeedbackStarter()
 
     func body(content: Content) -> some View {
-        let chats = StatusChat.list(chatSession)
+        let chats = countsChats ? StatusChat.list(chatSession) : []
         VStack(spacing: 0) {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

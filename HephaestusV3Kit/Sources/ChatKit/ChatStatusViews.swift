@@ -162,3 +162,61 @@ private struct ShownChatReporter: ViewModifier {
         store.showing(id, inKeyWindow: activeState == .key, view: view)
     }
 }
+
+/// V2's line over the composer while the Claude CLI is checked, and its banner, with Open Settings, while it
+/// can't be used (docs/ui/chat.md › Claude CLI line). Nothing once the CLI is found.
+struct ClaudeCLILine: View {
+    let status: ClaudeStatus
+
+    @Environment(\.openRoute) private var openRoute
+
+    /// Whether the line has something to say.
+    static func shows(_ status: ClaudeStatus?) -> Bool {
+        guard let status else { return false }
+        return status.checking || !status.isAvailable
+    }
+
+    var body: some View {
+        if status.checking {
+            HStack(spacing: 6) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("Checking the Claude CLI…", bundle: #bundle)
+            }
+            .font(.callout)
+            .foregroundStyle(.textSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("chat.cliChecking")
+        } else if !status.isAvailable {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Label {
+                    Text(verbatim: status.error ?? String(localized: "The Claude CLI isn't available.", bundle: #bundle))
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .accessibilityHidden(true)
+                }
+                .foregroundStyle(.danger)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Button(String(localized: "Open Settings", bundle: #bundle, comment: "Opens Settings ▸ Chat, where the Claude CLI is set")) {
+                    openRoute(.settings(.chat))
+                }
+                .accessibilityIdentifier("chat.cliUnavailable.openSettings")
+            }
+            .font(.callout)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("chat.cliUnavailable")
+        }
+    }
+}
+
+#Preview("Claude CLI Line, Checking", traits: .fixedLayout(width: 420, height: 60)) {
+    ClaudeCLILine(status: .checking)
+        .padding()
+}
+
+#Preview("Claude CLI Line, Not Found", traits: .fixedLayout(width: 420, height: 80)) {
+    ClaudeCLILine(status: ClaudeStatus(error: "Claude CLI not found. Install Claude Code, or set its path in Settings ▸ Chat."))
+        .padding()
+}

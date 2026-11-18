@@ -29,6 +29,7 @@ public struct ChatRootView: View {
     @State private var columnVisibility: NavigationSplitViewVisibility = .all
 
     @Environment(\.toolReader) private var toolReader
+    @Environment(\.openRoute) private var openRoute
     @Environment(\.windowLayout) private var layout
 
     /// The chats of `project`, with `focus` (a conversation id) selected, or the latest one. A later
@@ -72,6 +73,10 @@ public struct ChatRootView: View {
             ToolbarItem(placement: .primaryAction) {
                 if let conversation = model.conversation {
                     Menu {
+                        Button(String(localized: "Open in New Window", bundle: #bundle, comment: "Opens a chat in a window of its own")) {
+                            openRoute(.chatWindow(chat: conversation.id))
+                        }
+                        Divider()
                         Button(String(localized: "Rename…", bundle: #bundle)) { model.startRenaming(conversation.id) }
                         if conversation.closed {
                             Button(String(localized: "Reopen", bundle: #bundle, comment: "Reopens a closed chat")) { model.reopen(conversation.id) }
@@ -238,7 +243,12 @@ public struct ChatRootView: View {
                     Task { await model.send(suggestion, reader: toolReader) }
                 }
             }
-            if let failure = model.failure {
+            if let status = model.store.cliStatus, ClaudeCLILine.shows(status), model.conversation?.closed != true, model.selectedIDs.count <= 1 {
+                ClaudeCLILine(status: status)
+                    .padding(.horizontal, layout == .phone ? 12 : 16)
+                    .padding(.top, 8)
+            }
+            if let failure = model.failure, failure != model.store.cliStatus?.error {
                 ChatFailure(message: failure)
                     .padding(.horizontal, layout == .phone ? 12 : 16)
                     .padding(.top, 8)
@@ -268,7 +278,7 @@ public struct ChatRootView: View {
             MessageComposer(
                 text: $model.draft,
                 prompt: Text("Ask about \(model.project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
-                isBusy: model.isResponding,
+                isBusy: model.isResponding || model.store.cliStatus?.checking == true,
                 identifier: "chat.composer",
                 completions: ChatCompletions.list(for: model.draft, commands: model.store.commands(for: model.project.id)),
                 hasAttachments: !model.files.isEmpty,
@@ -315,6 +325,8 @@ public struct ChatRootView: View {
 private struct ChatList: View {
     @Bindable var model: ChatWindowModel
 
+    @Environment(\.openRoute) private var openRoute
+
     var body: some View {
         List(selection: $model.selectedIDs) {
             ForEach(model.sections) { section in
@@ -336,6 +348,11 @@ private struct ChatList: View {
         }
         .contextMenu(forSelectionType: ChatConversation.ID.self) { ids in
             menu(for: ids)
+        } primaryAction: { ids in
+            // A double-click opens the chat in a window of its own, as Mail opens a message.
+            for id in ids {
+                openRoute(.chatWindow(chat: id))
+            }
         }
         .onDeleteCommand {
             if let id = model.selection { model.confirming = .delete(id) }
@@ -376,6 +393,10 @@ private struct ChatList: View {
     @ViewBuilder private func menu(for ids: Set<ChatConversation.ID>) -> some View {
         let chats = ids.compactMap(model.conversationSummary)
         if chats.count == 1, let chat = chats.first {
+            Button(String(localized: "Open in New Window", bundle: #bundle, comment: "Opens a chat in a window of its own")) {
+                openRoute(.chatWindow(chat: chat.id))
+            }
+            Divider()
             Button(String(localized: "Rename…", bundle: #bundle)) { model.startRenaming(chat.id) }
             if chat.closed {
                 Button(String(localized: "Reopen", bundle: #bundle, comment: "Reopens a closed chat")) { model.reopen(chat.id) }

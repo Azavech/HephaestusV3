@@ -135,6 +135,8 @@ panel and the chat's **Open** buttons all use routes.
 | `.tool(tool, project:, focus:)` | The tool's tab for the project. The focus is selected in it. |
 | `.machine(id)` | Virtual Machines, with the machine selected. |
 | `.projectSettings(id)` | The project's Project Settings tab. |
+| `.chatWindow(chat:)` | The chat's own window ([Chat › Chat windows](chat.md#chat-windows)): the one already showing it, un-minimized and brought forward, or a new one. Not a tab: chat windows are a scene of their own, never merged into the others. |
+| `.settings(pane)` | The Settings window, on that tab (`SettingsPane`: `general`, `projects`, `mcp`, `machines`, `chat`, `notifications`). The tab is stored as `settings.pane` in the user defaults, so Settings also opens on the last tab shown. Used by the chat's **Open Settings**. |
 
 **Focus formats**, the item a tool selects when a route opens it:
 

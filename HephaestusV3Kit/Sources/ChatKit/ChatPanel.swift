@@ -15,6 +15,8 @@ public struct ChatPanel: View {
     /// The open conversation and the draft, which the window keeps while the panel is hidden.
     @Bindable var model: ChatPanelModel
     let hide: () -> Void
+    /// A chat window's chat has no header: the window's title names it.
+    var showsHeader = true
 
     @Environment(\.toolReader) private var toolReader
     @Environment(\.openRoute) private var openRoute
@@ -22,20 +24,24 @@ public struct ChatPanel: View {
     @State private var choosesFiles = false
 
     public init(
-        project: Project, origin: ToolKind, subject: ChatReference?, model: ChatPanelModel, hide: @escaping () -> Void
+        project: Project, origin: ToolKind, subject: ChatReference?, model: ChatPanelModel, hide: @escaping () -> Void,
+        showsHeader: Bool = true
     ) {
         self.project = project
         self.origin = origin
         self.subject = subject
         self.model = model
         self.hide = hide
+        self.showsHeader = showsHeader
     }
 
     public var body: some View {
         let attachment = model.attachment(for: subject)
         VStack(spacing: 0) {
-            header
-            Divider()
+            if showsHeader {
+                header
+                Divider()
+            }
             if let conversation = model.conversation {
                 TranscriptScrollView(conversation: conversation, activity: model.activity, compact: true, padding: 14,
                                      decide: { approval, allow in model.decide(approval, allow: allow) }, stop: model.stop)
@@ -43,7 +49,12 @@ public struct ChatPanel: View {
             } else {
                 emptyState(attachment)
             }
-            if let failure = model.failure {
+            if let status = model.store.cliStatus, ClaudeCLILine.shows(status), model.conversation?.closed != true {
+                ClaudeCLILine(status: status)
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+            }
+            if let failure = model.failure, failure != model.store.cliStatus?.error {
                 ChatFailure(message: failure)
                     .padding(.horizontal, 12)
                     .padding(.top, 8)
@@ -73,7 +84,7 @@ public struct ChatPanel: View {
             MessageComposer(
                 text: $model.draft,
                 prompt: Text("Ask about \(attachment?.title ?? project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
-                isBusy: model.isResponding,
+                isBusy: model.isResponding || model.store.cliStatus?.checking == true,
                 identifier: "chat.composer",
                 completions: ChatCompletions.list(for: model.draft, commands: model.store.commands(for: project.id)),
                 hasAttachments: !model.files.isEmpty,
@@ -136,14 +147,7 @@ public struct ChatPanel: View {
                 .font(.headline)
                 .foregroundStyle(.textPrimary)
                 .accessibilityAddTraits(.isHeader)
-            if let conversation = model.conversation {
-                Text(verbatim: conversation.title)
-                    .font(.callout)
-                    .foregroundStyle(.textSecondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .accessibilityIdentifier("chat.panel.title")
-            }
+            chatPicker
             Spacer(minLength: 4)
             Button(String(localized: "New Chat", bundle: #bundle), systemImage: "square.and.pencil") {
                 model.startNewChat()
@@ -168,6 +172,56 @@ public struct ChatPanel: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+    }
+
+    /// V2's pop-up of the project's chats: the one shown, the others to switch to, the latest first, each with
+    /// its mark; then Open in New Window. A closed chat is listed only while it shows.
+    private var chatPicker: some View {
+        let chats = model.store.conversations(of: [project.id]).filter { !$0.closed || $0.id == model.conversationID }
+        return Menu {
+            Picker(String(localized: "Chats", bundle: #bundle, comment: "The panel's list of the project's chats"),
+                   selection: Binding(get: { model.conversationID }, set: { model.show($0) })) {
+                ForEach(chats) { chat in
+                    Group {
+                        if let symbol = Self.symbol(of: chat.mark) {
+                            Label(chat.title, systemImage: symbol)
+                        } else {
+                            Text(verbatim: chat.title)
+                        }
+                    }
+                    .tag(Optional(chat.id))
+                    .accessibilityIdentifier("chat.panel.chats.\(chat.id)")
+                }
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+            Divider()
+            Button(String(localized: "Open in New Window", bundle: #bundle, comment: "Opens a chat in a window of its own"), systemImage: "macwindow.badge.plus") {
+                if let id = model.conversationID { openRoute(.chatWindow(chat: id)) }
+            }
+            .disabled(model.conversationID == nil)
+            .accessibilityIdentifier("chat.panel.openNewWindow")
+        } label: {
+            Text(verbatim: model.conversation?.title ?? String(localized: "New Chat", bundle: #bundle))
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .menuStyle(.borderlessButton)
+        .font(.callout)
+        .foregroundStyle(.textSecondary)
+        .disabled(chats.isEmpty && model.conversationID == nil)
+        .help(String(localized: "Chats", bundle: #bundle, comment: "The panel's list of the project's chats"))
+        .accessibilityIdentifier("chat.panel.chats")
+    }
+
+    /// A chat's mark in the pop-up, where a spinner can't turn: V2's `progress.indicator` for work.
+    static func symbol(of mark: ChatMark?) -> String? {
+        switch mark {
+        case .working?: "progress.indicator"
+        case .waiting?: "hand.raised"
+        case .error?: "exclamationmark.triangle"
+        case nil: nil
+        }
     }
 
     /// Before the first message: what the chat is about, how Claude reaches it, and questions to start
@@ -230,10 +284,18 @@ public final class ChatPanelModel {
     let store: any ChatStore
     /// The conversation the panel shows; nil before the first message, and after New Chat.
     var conversationID: ChatConversation.ID?
-    /// The message being written.
-    var draft = ""
+    /// The new chat's draft; an existing chat's is the store's, shared by every view of it.
+    private var composer = ComposerDraft()
+    /// The message being written: the shown chat's.
+    var draft: String {
+        get { composer.text(of: conversationID, in: store.drafts) }
+        set { composer.setText(newValue, of: conversationID, in: store.drafts) }
+    }
     /// The files going with the next message.
-    var files: [URL] = []
+    var files: [URL] {
+        get { composer.files(of: conversationID, in: store.drafts) }
+        set { composer.setFiles(newValue, of: conversationID, in: store.drafts) }
+    }
     /// The subject the user took off the next message; it comes back when the selection changes.
     var leftOut: ChatReference.ID?
     /// Why the last message wasn't sent; the next message clears it.
@@ -311,8 +373,8 @@ public final class ChatPanelModel {
         let text = draft
         let sent = files
         if await send(text, files: sent, project: project, origin: origin, subject: subject, reader: reader) {
-            if draft == text { draft = "" }
-            files.removeAll { sent.contains($0) }
+            // A new chat's draft became the chat's as it got its id.
+            composer.clear(sentText: text, sentFiles: sent, from: conversationID, in: store.drafts)
             ChatFiles.clean(sent)
         }
     }
@@ -323,8 +385,10 @@ public final class ChatPanelModel {
     func send(_ text: String, files: [URL] = [], project: Project, origin: ToolKind, subject: ChatReference?, reader: ToolReader) async -> Bool {
         let attachments = attachment(for: subject).map { [$0] } ?? []
         do throws(ChatSendError) {
-            conversationID = try await store.send(text, to: conversationID, project: project, origin: origin, attachments: attachments,
-                                                  files: files, reader: reader)
+            let id = try await store.send(text, to: conversationID, project: project, origin: origin, attachments: attachments,
+                                          files: files, reader: reader)
+            if conversationID == nil { composer.adopt(id, in: store.drafts) }
+            conversationID = id
             failure = nil
             return true
         } catch {
@@ -415,11 +479,17 @@ public final class ChatPanelModel {
         }
     }
 
+    /// Shows another chat of the project, from the pop-up; its own draft comes with it.
+    func show(_ id: ChatConversation.ID?) {
+        guard let id, id != conversationID else { return }
+        conversationID = id
+        failure = nil
+    }
+
     /// Leaves the conversation for a new one, with an empty draft and the subject attached.
     func startNewChat() {
         conversationID = nil
-        draft = ""
-        files = []
+        composer = ComposerDraft()
         leftOut = nil
         failure = nil
     }
@@ -443,6 +513,18 @@ private func previewModel(_ store: SampleChatStore = .transient(), open conversa
 
 #Preview("Panel, Ticket", traits: .appChrome, .fixedLayout(width: 341, height: 640)) {
     ChatPanel(project: Project.samples[0], origin: .tickets, subject: ord142, model: previewModel(), hide: {})
+}
+
+#Preview("Panel, Checking the CLI", traits: .appChrome, .fixedLayout(width: 341, height: 640)) {
+    let store = SampleChatStore.transient()
+    let _ = store.cliStatus = .checking
+    ChatPanel(project: Project.samples[0], origin: .tickets, subject: ord142, model: ChatPanelModel(chats: store), hide: {})
+}
+
+#Preview("Panel, CLI Not Found", traits: .appChrome, .fixedLayout(width: 341, height: 640)) {
+    let store = SampleChatStore.transient()
+    let _ = store.cliStatus = ClaudeStatus(error: "Claude CLI not found. Install Claude Code, or set its path in Settings ▸ Chat.")
+    ChatPanel(project: Project.samples[0], origin: .tickets, subject: ord142, model: ChatPanelModel(chats: store), hide: {})
 }
 
 #Preview("Panel, No Subject", traits: .appChrome, .fixedLayout(width: 341, height: 640)) {

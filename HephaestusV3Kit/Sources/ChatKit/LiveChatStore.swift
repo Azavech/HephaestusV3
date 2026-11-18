@@ -9,12 +9,25 @@ import UniformTypeIdentifiers
 /// turns made from the chat's transcript, the tools' calls worded by the tools.
 public final class LiveChatStore: ChatStore {
     public let session: ChatSession
+    let drafts = ChatDrafts()
+
+    var cliStatus: ClaudeStatus? { session.status }
     /// How a tool words a call of the app's tool `name` with its input; nil for a tool the app doesn't have.
     private let describe: @MainActor (String, JSONValue) -> ToolCallText?
 
     public init(session: ChatSession, describe: @escaping @MainActor (String, JSONValue) -> ToolCallText?) {
         self.session = session
         self.describe = describe
+    }
+
+    /// The chat's project; nil for a chat the session doesn't know.
+    public func projectID(of chatID: String) -> Project.ID? {
+        session.chats[chatID]?.projectID
+    }
+
+    /// The chat's title; nil for a chat the session doesn't know.
+    public func title(of chatID: String) -> String? {
+        session.chats[chatID]?.file.title
     }
 
     func conversation(_ id: ChatConversation.ID?) -> ChatConversation? {

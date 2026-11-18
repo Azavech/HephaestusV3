@@ -42,10 +42,22 @@ final class ChatWindowModel {
 
         var id: Self { self }
     }
-    /// The message being written. It stays when the user picks another conversation.
-    var draft = ""
+    /// The new chat's draft; an existing chat's is the store's, shared by every view of it.
+    private var composer = ComposerDraft()
+    /// The chat whose draft the composer shows: the selection, or nil for a new chat.
+    private var draftID: ChatConversation.ID? {
+        selection == Self.newChatID ? nil : selection
+    }
+    /// The message being written: the shown chat's, as V2 kept one per chat.
+    var draft: String {
+        get { composer.text(of: draftID, in: store.drafts) }
+        set { composer.setText(newValue, of: draftID, in: store.drafts) }
+    }
     /// The files going with the next message.
-    var files: [URL] = []
+    var files: [URL] {
+        get { composer.files(of: draftID, in: store.drafts) }
+        set { composer.setFiles(newValue, of: draftID, in: store.drafts) }
+    }
     /// What Find looks for in the shown conversation; empty for nothing.
     var findQuery = ""
     /// The find field shows (⌘F).
@@ -230,7 +242,7 @@ final class ChatWindowModel {
     /// Leaves the conversation for a new chat, with an empty draft: in place, or as a page.
     func startNewChat(asPage: Bool) {
         selection = asPage ? Self.newChatID : nil
-        draft = ""
+        composer = ComposerDraft()
     }
 
     /// Sends the draft and its files, and clears them once sent.
@@ -238,8 +250,8 @@ final class ChatWindowModel {
         let text = draft
         let sent = files
         if await send(text, files: sent, reader: reader) {
-            if draft == text { draft = "" }
-            files.removeAll { sent.contains($0) }
+            // A new chat's draft became the chat's as it got its id.
+            composer.clear(sentText: text, sentFiles: sent, from: draftID, in: store.drafts)
             ChatFiles.clean(sent)
         }
     }
@@ -252,6 +264,7 @@ final class ChatWindowModel {
         do throws(ChatSendError) {
             let id = try await store.send(text, to: target, project: project, origin: nil, attachments: [], files: files, reader: reader)
             failure = nil
+            if target == nil { composer.adopt(id, in: store.drafts) }
             selection = id
             return true
         } catch {

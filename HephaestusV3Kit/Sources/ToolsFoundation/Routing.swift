@@ -29,6 +29,19 @@ nonisolated public enum Route: Hashable, Sendable {
     case machine(String? = nil)
     /// A project's Project Settings tab.
     case projectSettings(Project.ID)
+    /// A chat in a window of its own, V2's chat window: the one already showing it, brought forward, or a new
+    /// one.
+    case chatWindow(chat: String)
+    /// The Settings window, on this tab.
+    case settings(SettingsPane)
+}
+
+/// A tab of the Settings window, by its stored name.
+nonisolated public enum SettingsPane: String, Hashable, Sendable, CaseIterable {
+    case general, projects, mcp, machines, chat, notifications
+
+    /// Where Settings keeps its tab, in the user defaults: it opens on the last one, or on a route's.
+    public static let storageKey = "settings.pane"
 }
 
 /// Opens a route. Read it from the environment: `@Environment(\.openRoute) private var openRoute`.

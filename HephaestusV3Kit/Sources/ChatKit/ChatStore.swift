@@ -47,6 +47,10 @@ protocol ChatStore: AnyObject {
     func resume(_ id: ChatConversation.ID) async throws(ChatSendError)
     /// What a view shows, and whether its window is the key window: a chat shown there gets no notification.
     func showing(_ id: ChatConversation.ID?, inKeyWindow: Bool, view: UUID)
+    /// Each chat's unsent text and files, shared by its views.
+    var drafts: ChatDrafts { get }
+    /// The Claude CLI's state, for the line over the composer; nil without a CLI (the samples).
+    var cliStatus: ClaudeStatus? { get }
 }
 
 /// Why a message wasn't sent, or a setting not changed: the sentence the composer shows.
@@ -63,6 +67,9 @@ final class SampleChatStore: ChatStore {
     private(set) var responding: Set<ChatConversation.ID> = []
 
     private let engine: any ChatEngine
+    let drafts = ChatDrafts()
+    /// The samples have no CLI; previews set a state to show its line.
+    var cliStatus: ClaudeStatus?
     /// The replies on their way, by conversation.
     @ObservationIgnored private var replies: [ChatConversation.ID: Task<Void, Never>] = [:]
 

@@ -22,6 +22,31 @@ final class WindowDirectory {
 
     private var entries: [ObjectIdentifier: Entry] = [:]
 
+    private struct ChatEntry {
+        weak var window: NSWindow?
+        let chatID: String
+    }
+
+    /// The chat windows, each showing one chat.
+    private var chatEntries: [ObjectIdentifier: ChatEntry] = [:]
+
+    /// Lists a chat window with its chat.
+    func register(_ window: NSWindow, chat chatID: String) {
+        chatEntries[ObjectIdentifier(window)] = ChatEntry(window: window, chatID: chatID)
+        if window.tabbingMode != .disallowed {
+            window.tabbingMode = .disallowed
+        }
+    }
+
+    /// The chat window showing the chat, minimised or not.
+    func chatWindow(showing chatID: String) -> NSWindow? {
+        chatEntries = chatEntries.filter { $0.value.window != nil }
+        return chatEntries.values.first { entry in
+            guard let window = entry.window else { return false }
+            return entry.chatID == chatID && (window.isVisible || window.isMiniaturized)
+        }?.window
+    }
+
     /// Lists `window` with its tabs, or updates it.
     func register(_ window: NSWindow, workspace: Workspace) {
         entries[ObjectIdentifier(window)] = Entry(window: window, workspace: workspace)

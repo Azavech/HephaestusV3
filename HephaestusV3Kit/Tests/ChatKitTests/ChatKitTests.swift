@@ -1,3 +1,4 @@
+import ChatData
 import Foundation
 import Testing
 import ToolsFoundation
@@ -418,5 +419,71 @@ struct ChatWordingTests {
     func sampleIDs() {
         let turns = ChatConversation.samples.flatMap(\.turns)
         #expect(Set(turns.map(\.id)).count == turns.count)
+    }
+}
+
+/// docs/ui/chat.md › Drafts.
+@MainActor
+@Suite("Drafts")
+struct ChatDraftsTests {
+    private let orders = Project.sample("ORD")!
+
+    @Test("Each chat keeps its own draft, shared by the views that show it; a new chat's stays in its view")
+    func perChat() {
+        let store = SampleChatStore(conversations: ChatConversation.samples, engine: MockChatEngine())
+        let ids = store.conversations(of: ["ORD", "PAY"]).map(\.id)
+        let window = ChatWindowModel(project: orders, focus: ids[0], store: store)
+        let panel = ChatPanelModel(chats: store)
+        window.draft = "About the first"
+        window.files = [URL(fileURLWithPath: "/tmp/a.log")]
+        panel.conversationID = ids[0]
+        #expect(panel.draft == "About the first" && panel.files.count == 1, "Another view of the chat shows its draft")
+        window.selection = ids[1]
+        #expect(window.draft.isEmpty && window.files.isEmpty)
+        window.draft = "About the second"
+        window.selection = ids[0]
+        #expect(window.draft == "About the first")
+        window.startNewChat(asPage: false)
+        #expect(window.draft.isEmpty)
+        window.draft = "A new one"
+        #expect(panel.draft == "About the first")
+        window.selection = ids[1]
+        #expect(window.draft == "About the second")
+    }
+
+    @Test("The panel's pop-up shows another chat of the project with its draft; picking the shown one changes nothing")
+    func picker() {
+        let store = SampleChatStore(conversations: ChatConversation.samples, engine: MockChatEngine())
+        let ids = store.conversations(of: ["ORD"]).map(\.id)
+        let panel = ChatPanelModel(chats: store)
+        panel.conversationID = ids[0]
+        panel.failure = "Not sent"
+        panel.show(ids[0])
+        #expect(panel.failure == "Not sent")
+        store.drafts.setText("Kept", of: ids[1])
+        panel.show(ids[1])
+        #expect(panel.conversationID == ids[1] && panel.draft == "Kept" && panel.failure == nil)
+        panel.show(nil)
+        #expect(panel.conversationID == ids[1])
+    }
+}
+
+/// docs/ui/chat.md › Claude CLI line.
+@MainActor
+@Suite("Claude CLI line")
+struct ClaudeCLILineTests {
+    @Test("The line shows while the CLI is checked or can't be used, never without a CLI or once it is found")
+    func shows() {
+        #expect(!ClaudeCLILine.shows(nil))
+        #expect(ClaudeCLILine.shows(.checking))
+        #expect(ClaudeCLILine.shows(ClaudeStatus(error: "Claude CLI not found.")))
+        #expect(!ClaudeCLILine.shows(ClaudeStatus(path: "/usr/local/bin/claude", version: "2.1.322")))
+        #expect(SampleChatStore.transient().cliStatus == nil)
+    }
+
+    @Test("Settings' tabs are stored by name, under one key")
+    func settingsPanes() {
+        #expect(SettingsPane.allCases.map(\.rawValue) == ["general", "projects", "mcp", "machines", "chat", "notifications"])
+        #expect(SettingsPane.storageKey == "settings.pane")
     }
 }

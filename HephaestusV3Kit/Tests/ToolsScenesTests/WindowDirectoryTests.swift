@@ -152,6 +152,26 @@ struct WindowDirectoryTests {
         #expect(window.tabbingMode == .disallowed)
     }
 
+    @Test("A chat window is found by its chat while it is open or minimised, never as a workspace, and takes no macOS tabs")
+    func chatWindows() {
+        let directory = WindowDirectory()
+        let one = window(-20_000)
+        let two = window(-19_000)
+        defer {
+            one.orderOut(nil)
+            two.orderOut(nil)
+        }
+        directory.register(one, chat: "C1")
+        directory.register(two, chat: "C2")
+        #expect(directory.chatWindow(showing: "C1") === one && directory.chatWindow(showing: "C2") === two)
+        #expect(directory.chatWindow(showing: "C3") == nil)
+        #expect(one.tabbingMode == .disallowed)
+        #expect(directory.windows().isEmpty, "Routes to tabs never pick a chat window")
+        two.orderOut(nil)
+        #expect(directory.chatWindow(showing: "C2") == nil, "A closed window shows nothing")
+        #expect(ChatWindowValue(chatID: "C1") == (try? JSONDecoder().decode(ChatWindowValue.self, from: JSONEncoder().encode(ChatWindowValue(chatID: "C1")))))
+    }
+
     @Test("A route selects the tab that shows it and asks it for the focus; nothing shows what no tab does")
     func show() {
         let directory = WindowDirectory()

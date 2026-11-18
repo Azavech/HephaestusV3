@@ -42,7 +42,7 @@ On a Mac the list is the split view's sidebar column, the transcript (or prompt)
 | Title and subtitle | Window title | — | — | **Chat** and the project's path. Dropped below 760 pt wide. | Mac, iPad |
 | Sidebar | The split view's own button | System | System | Shows or hides the conversation list. | Mac, iPad |
 | **New Chat** | Button | `square.and.pencil` | ⇧⌘N (File ▸ New Chat) | Clears the selection and the draft, and shows the new-chat prompt in place. In the iPhone layout it opens the prompt as a page. Help: "New Chat (⇧⌘N)". | Mac, iPad, iPhone |
-| **More** | Menu | `ellipsis.circle` | — | While a conversation shows, as V2's chat header: **Rename…**, **Close** (or **Reopen** for a closed chat), **Copy Conversation**, then **Delete…** ([Managing chats](#managing-chats)). Help: "More". | Mac, iPad, iPhone |
+| **More** | Menu | `ellipsis.circle` | — | While a conversation shows, as V2's chat header: **Open in New Window** ([Chat windows](#chat-windows)), then **Rename…**, **Close** (or **Reopen** for a closed chat), **Copy Conversation**, then **Delete…** ([Managing chats](#managing-chats)). Help: "More". | Mac, iPad, iPhone |
 | **Inspector** | Button | `sidebar.right` | — | Shows or hides the inspector. In the iPhone layout it opens the inspector as a sheet. Help: "Show Inspector" or "Hide Inspector". | Mac, iPad, iPhone |
 | Find | The search field (`.searchable`, toolbar) | `magnifyingglass` | ⌘F | "Find in Conversation" ([Find](#find)). | Mac, iPad |
 | Closed chats filter | Button, in the list's column | `line.3.horizontal.decrease.circle`, filled while closed chats are hidden | — | Hides or shows the closed chats; hidden by default. Help: "Show Closed Chats" or "Hide Closed Chats". | Mac, iPad |
@@ -57,7 +57,7 @@ The Chat window has no chat panel and no chat panel button. Its `sidebar.right` 
 - **Selection.** As V2's: click, ⌘-click and ⇧-click. One selected conversation shows in the transcript; several show "*n* Chats Selected" and **Close** in its place (`chat.severalSelected`), without a composer. The list column is 220 to 340 pt wide, 260 pt ideally.
 - **Closed chats** are hidden while the filter is on, as by default; a selected one stays listed until the selection moves. When the filter hides every chat, the list shows "No Open Chats" and "Closed chats are hidden." (`chat.list.noOpen`).
 - **Empty.** When neither the project nor its sub projects have a conversation, the list shows "No Chats" with the Chat symbol (`bubble.left.and.text.bubble.right`) and "Ask a question to start one."
-- **Context menu**, on the clicked row or the selection that holds it: with one chat, **Rename…**, **Close** or **Reopen**, **Copy Conversation**, then **Delete…**; with several, **Close** alone, enabled while one of them is open. ⌫ (Edit ▸ Delete) asks to delete the selected chat. There is no drag.
+- **Context menu**, on the clicked row or the selection that holds it: with one chat, **Open in New Window**, then **Rename…**, **Close** or **Reopen**, **Copy Conversation**, then **Delete…**; with several, **Close** alone, enabled while one of them is open. ⌫ (Edit ▸ Delete) asks to delete the selected chat. A double-click on a row opens its chat in a [chat window](#chat-windows). There is no drag.
 
 ### Managing chats
 
@@ -250,12 +250,64 @@ The composer is a card at the bottom of the center column, with 16 pt of padding
 - **Chips.** Wrapping onto more lines as needed (AZDesign's `FlowStack`, 6 pt apart): **Add Files…** first, then in the Chat window the project's chip, its icon and name, which can't be removed, and then the files waiting to go with the message ([Attachments](#attachments)). Messages from the Chat window carry no item; items they name are read instead (see [How Claude reaches the tools](#how-claude-reaches-the-tools)).
 - **Field.** Plain, one to eight lines, then it scrolls. Prompt: "Ask about *Orders*…". It takes focus when the composer appears.
 - **Send.** A round, prominent button with `arrow.up`. Disabled while the field is empty or only whitespace and no file waits, and while Claude works in the conversation. Help: "Send (Return)".
-- **Not sent.** When a message can't be sent, the reason shows over the composer in `danger`, with `exclamationmark.triangle.fill` (`chat.failure`), and the draft stays: "Claude CLI not found. Install Claude Code, or set its path in Settings ▸ Chat.", "<path> is not an executable file.", "The Claude CLI isn't checked yet. Try again in a moment." The next message sent clears it.
+- **Not sent.** When a message can't be sent, the reason shows over the composer in `danger`, with `exclamationmark.triangle.fill` (`chat.failure`), and the draft stays: "Claude CLI not found. Install Claude Code, or set its path in Settings ▸ Chat.", "<path> is not an executable file.", "The Claude CLI isn't checked yet. Try again in a moment." The next message sent clears it. A reason the [Claude CLI line](#claude-cli-line) already shows isn't repeated.
 - **Keyboard.** **Return** sends. **⌥Return** starts a new line.
 - **Skills.** A `/` typed as the message's first word lists the skills the chat can call ([Skill
   completion](#skill-completion)).
 
-Sending adds the message to the selected conversation. With no conversation selected, it starts one: a chat of the window's project, titled with the message's first line that isn't empty, at most 80 characters, with no origin. The new conversation is selected and the draft clears once the message is sent. A message from the Chat window carries the project: Claude reads "Attached: project ORD" after it ([Data › Messages](../data.md#messages)). The draft is kept when the user picks another conversation, and when a suggestion is sent.
+Sending adds the message to the selected conversation. With no conversation selected, it starts one: a chat of the window's project, titled with the message's first line that isn't empty, at most 80 characters, with no origin. The new conversation is selected and the draft clears once the message is sent. A message from the Chat window carries the project: Claude reads "Attached: project ORD" after it ([Data › Messages](../data.md#messages)). Each chat keeps its own draft ([Drafts](#drafts)); a suggestion leaves it as it is.
+
+### Drafts
+
+V2's drafts: each chat keeps its unsent text and files, by chat id, in memory (`ChatDrafts`, held by the chat
+store), shared by every view of it (the Chat window, the panels, its chat window): picking another chat shows
+that chat's draft, and coming back shows this one's. A new chat's draft, before it has an id, stays in its view
+(the Chat window's new-chat prompt, a panel's empty state); when its first message, or a suggestion, starts the
+chat, what wasn't sent becomes the chat's draft. **New Chat** starts an empty one and leaves the others as they
+are. Sending clears the text sent, unless it changed meanwhile, and the files sent. Drafts last as long as the
+app runs, as in V2.
+
+### Claude CLI line
+
+V2's line over the composer, in the Chat window, the panels and chat windows, while the chat isn't closed:
+
+![The panel while the Claude CLI isn't found: the reason in danger with Open Settings, over the composer](images/chat-cli-unavailable.png)
+
+| State | What shows | Identifier |
+| --- | --- | --- |
+| The CLI is being checked (`ClaudeStatus.checking`) | A small spinner and "Checking the Claude CLI…" in `textSecondary`; **Send** is disabled until the check ends. | `chat.cliChecking` |
+| The CLI can't be used | `exclamationmark.triangle.fill` and the reason (`ClaudeStatus.error`, else "The Claude CLI isn't available.") in `danger`, then **Open Settings**, which opens Settings on its Chat tab, where the CLI's path is (V2 opened General, where its path was). | `chat.cliUnavailable`, `chat.cliUnavailable.openSettings` |
+| The CLI is found | Nothing. | — |
+
+![The panel while the Claude CLI is checked: a spinner and Checking the Claude CLI…](images/chat-cli-checking.png)
+
+The samples have no CLI and show nothing; previews set a state: **Panel, Checking the CLI**, **Panel, CLI Not
+Found**, and the line's own **Claude CLI Line, Checking** and **Claude CLI Line, Not Found**.
+
+## Chat windows
+
+V2's chat window: one chat in a window of its own, for keeping it in view beside the others.
+
+![A chat window: Why does checkout time out on Staging? – Orders, its transcript, the pinned card and the composer](images/chat-window.png)
+
+- **Opening.** **Open in New Window**: in the Chat window's More menu and a row's context menu (first, before
+  Rename…), by double-clicking a row of the list (as Mail opens a message), and in the panel's Chats pop-up. All
+  ask for the route `.chatWindow(chat:)` ([navigation.md › Routes](navigation.md#routes)). A chat that already has
+  a window brings it forward, un-minimized, and activates the app; otherwise a window opens.
+- **Content.** The panel's conversation without its header (`ChatWindowView`, `chat.window`): the transcript,
+  the cards, the Claude CLI line, the composer with **Add Files…**, the project's chip, the chat's settings and
+  context indicator. The window's title is the chat's title, following each rename; its subtitle the project's
+  name. Under it, the [status bar](navigation.md#status-bar) with its ladybug only, as V2's chat windows had
+  (its feedback names the window "Chat", the chat's project and its title).
+- **Size.** 720 × 820 pt at first, at least 480 × 480 pt.
+- **States.** Loading (a spinner, `chat.window.loading`) while the projects load; **Chat Not Found** ("It was
+  deleted, or its project isn't loaded.", `chat.window.notFound`) for a restored window whose chat is gone. A
+  chat deleted while its window shows it closes the window.
+- **Restoration.** macOS restores the window with its chat (`ChatWindowValue`); it never shows another chat.
+- **Notifications.** A chat window shows its chat for the [notifications](#notifications): none is posted while
+  it is the key window.
+- Previews: **Chat Window**, **Chat Window, Dark**, **Chat Not Found**.
+
 
 ### Attachments
 
@@ -525,7 +577,7 @@ The chip has three states:
 | Item | Control | Symbol | Behavior |
 |---|---|---|---|
 | **Chat** | Label, headline, a heading for VoiceOver | `bubble.left.and.text.bubble.right` | — |
-| Conversation title | Text, one line, truncated | — | Shows when a conversation is open. |
+| **Chats** pop-up (`chat.panel.chats`) | Borderless menu, `callout`, one line, truncated | — | V2's pop-up of the project's chats. Its label is the open conversation's title, or "New Chat". It lists the project's chats (not its sub projects'), the latest first, a closed chat only while it is open, the open one checked; each with its mark, a menu's symbol since a spinner can't turn there: `progress.indicator` while Claude works (V2's), `hand.raised` while it waits for the user, `exclamationmark.triangle` after an error. Picking one shows it, with its own draft ([Drafts](#drafts)). Then, after a divider, **Open in New Window** (`macwindow.badge.plus`, `chat.panel.openNewWindow`), disabled with no conversation open, which opens the chat in a [chat window](#chat-windows). Disabled when the project has no chat and none is open. Help: "Chats". |
 | **New Chat** | Icon button | `square.and.pencil` | Leaves the conversation and clears the draft; the empty state returns. Disabled when no conversation is open. |
 | **Open in Chat Window** | Icon button | `macwindow` | Opens the project's Chat window with this conversation selected. With no conversation open, it opens the project's Chat window without a focus. Help: "Open in the Chat Window". |
 | **Hide Chat** | Icon button | `xmark` | Hides the panel, sliding it out. Help: "Hide the Chat Panel (⌃⌘C)". |
@@ -881,7 +933,10 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 | Element | Identifier | Label or notes |
 |---|---|---|
 | Chat panel | `chat.panel` | A container; its **Chat** label is a heading |
-| Conversation title | `chat.panel.title` | The open conversation's title |
+| Chats pop-up | `chat.panel.chats` | A menu, labeled with the open conversation's title or "New Chat"; its rows `chat.panel.chats.<conversation id>` |
+| Open in New Window (pop-up) | `chat.panel.openNewWindow` | "Open in New Window" |
+| Claude CLI line | `chat.cliChecking`, `chat.cliUnavailable`, `chat.cliUnavailable.openSettings` | One element while checking; the reason, then **Open Settings** |
+| Chat window | `chat.window`, `chat.window.loading`, `chat.window.notFound` | The window's content, and its two states |
 | Panel's New Chat | `chat.panel.new` | "New Chat", icon only |
 | Open in Chat Window | `chat.panel.openWindow` | "Open in Chat Window", icon only |
 | Hide Chat | `chat.panel.hide` | "Hide Chat", icon only |
@@ -925,7 +980,9 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 Previews use the windows' models with the sample conversations, and with the sample engine, slowed down where a reply must stay on its way.
 
 - `ChatRootView.swift`: "Chat" (Orders, 1240 × 800 pt), "Chat, Dark", "New Chat" (Tools, which has no chats, 1000 × 680 pt), "Grouped" (Shop and its sub projects), "Reading" (a reply on its way), "Approval Answered" (Not Allowed), "iPad" (820 pt), "iPhone" (the list, 420 pt), "iPhone, Conversation" (opened on `chat-checkout`), "iPhone, Dark", "Largest Text", "New Chat, Largest Text".
-- `ChatPanel.swift`: "Panel, Ticket" (ORD-142 attached, 341 × 640 pt), "Panel, No Subject" (the Dashboard), "Panel, Subject Taken Off", "Panel, Conversation", "Panel, Conversation, Dark", "Panel, Approval Answered" (Allowed), "Panel, Reading", "Panel, iPhone" (420 pt), "Panel, Largest Text", "Panel, Conversation, Largest Text".
+- `ChatPanel.swift`: "Panel, Ticket" (ORD-142 attached, 341 × 640 pt), "Panel, Checking the CLI", "Panel, CLI Not Found", "Panel, No Subject" (the Dashboard), "Panel, Subject Taken Off", "Panel, Conversation", "Panel, Conversation, Dark", "Panel, Approval Answered" (Allowed), "Panel, Reading", "Panel, iPhone" (420 pt), "Panel, Largest Text", "Panel, Conversation, Largest Text".
+- `ChatWindowView.swift`: "Chat Window" (`chat-checkout`, 720 × 820 pt), "Chat Window, Dark" (`chat-release-notes`), "Chat Not Found".
+- `ChatStatusViews.swift`: "Claude CLI Line, Checking", "Claude CLI Line, Not Found".
 - `ChatTranscript.swift`: "Approval, Waiting", "Approval, Allowed", "Approval, Not Allowed, Dark", "Approval, Narrow, Largest Text" (the note and the answer stacked).
 - `ChatSettingsView.swift`: "Settings" (the CLI found, 520 × 440 pt), "Settings, CLI Not Found", "Settings, Looking", "Settings, Dark", "Settings, Largest Text".
 - `FeedbackView.swift` (size that fits, on a `FeedbackModel` with a stand-in sender, the screenshot a gradient, the feedback project Shop): "Empty", "Filled, Dark" (a comment of two paragraphs), "Screenshot Left Out", "Not Captured", "No Claude CLI" (Send disabled, "Claude CLI is not available: Claude CLI not found.").

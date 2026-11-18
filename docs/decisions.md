@@ -172,6 +172,11 @@ which rules the app enforces, and never tells Claude how to work.
 | Where does a click take the user? | To the chat in its project's Chat window, through the route `.tool(.chat, project:, focus:)`, as the status bar's popover does. | same |
 | Does the status bar count chats? | Yes, V2's running and waiting items and their popover, in the middle of the bar; they show the bar also without a feedback project. V2's other items (device, MCP port, version, updates, usage, costs) stay out. | [Navigation › Status bar](ui/navigation.md#status-bar) |
 | Which chats does it count? | Every loaded project's, whatever the window shows, as V2 counted the chats of the window's Mac. | same |
+| Do chats open in windows of their own? | Yes, V2's chat window: one chat, its title and project, the ladybug only in its status bar, 720 × 820 pt, at least 480; one window per chat, brought forward when asked again. | [UI › Chat › Chat windows](ui/chat.md#chat-windows) |
+| Where is Open in New Window? | In the Chat window's More menu and row menu, a row's double-click (as Mail opens a message), and the panel's Chats pop-up. The panel's header keeps its Open in Chat Window button; V2's own header button was a design-time default too. | same |
+| Does the panel switch chats? | Yes, V2's pop-up of the project's chats in its header, the open one checked, each with a menu symbol for its mark. Only the project's own chats, as V2's inspector listed the active project's; closed chats only while open. | [UI › Chat › Header](ui/chat.md#header) |
+| Is a draft kept per chat? | Yes, as V2 kept them by chat id in memory, shared by every view of the chat; a new chat's draft becomes the chat's when it starts. This replaces V3's one draft per window, which stayed when the user picked another chat. | [UI › Chat › Drafts](ui/chat.md#drafts) |
+| Does the chat say when the CLI is missing? | Yes, V2's "Checking the Claude CLI…" line and its banner with Open Settings, which opens Settings on Chat, where V3 keeps the CLI's path (V2 opened General). Settings now opens on its last tab. | [UI › Chat › Claude CLI line](ui/chat.md#claude-cli-line) |
 
 ## Builds
 

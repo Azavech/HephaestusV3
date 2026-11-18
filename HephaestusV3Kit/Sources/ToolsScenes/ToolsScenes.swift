@@ -14,8 +14,10 @@ import ToolsFoundation
 
 /// Ids of the app's scenes.
 enum SceneID {
-    /// Every window but Settings and the menu bar panel: the app's tabs.
+    /// Every window but Settings, the menu bar panel and the chat windows: the app's tabs.
     static let workspace = "workspace"
+    /// A chat in a window of its own (V2's chat window).
+    static let chat = "chat"
 }
 
 /// Every window of the app.
@@ -42,6 +44,8 @@ public struct ToolsScenes: Scene {
     @State private var machineFocus: String?
     /// A route's ask to select a machine in the open Virtual Machines tab.
     @State private var machineFocusRequest: FocusRequest?
+    /// The Settings window's tab: the last one, or a route's.
+    @AppStorage(SettingsPane.storageKey) private var settingsPane = SettingsPane.general.rawValue
 
     public init() {
         // The app draws its own tabs: macOS's tab items and tabbing are off.
@@ -65,6 +69,17 @@ public struct ToolsScenes: Scene {
             FeedbackCommands()
         }
 
+        // One chat in a window of its own, from Open in New Window.
+        WindowGroup(Text(verbatim: "Chat"), id: SceneID.chat, for: ChatWindowValue.self) { $value in
+            routeHost {
+                if let value {
+                    ChatWindowScene(value: value)
+                }
+            }
+        }
+        .defaultSize(width: 720, height: 820)
+        .windowResizability(.contentMinSize)
+
         // Type a few letters, then Return: the project's tab comes forward.
         MenuBarExtra(String(localized: "Open Project", bundle: #bundle), systemImage: "wrench.and.screwdriver") {
             routeHost {
@@ -74,24 +89,28 @@ public struct ToolsScenes: Scene {
         .menuBarExtraStyle(.window)
 
         Settings {
-            TabView {
+            TabView(selection: $settingsPane) {
                 GeneralSettingsPane(appData: appData)
                     .tabItem {
                         Label(String(localized: "General", bundle: #bundle, comment: "The Settings tab of the app's general settings"), systemImage: "gearshape")
                     }
+                    .tag(SettingsPane.general.rawValue)
                 ProjectsSettingsPane(session: appData.session)
                     .tabItem {
                         Label(String(localized: "Projects", bundle: #bundle), systemImage: "folder")
                     }
+                    .tag(SettingsPane.projects.rawValue)
                 MCPSettingsPane(appData: appData)
                     .tabItem {
                         Label(String(localized: "MCP", bundle: #bundle, comment: "The Settings tab of the MCP server"), systemImage: "point.3.connected.trianglepath.dotted")
                     }
+                    .tag(SettingsPane.mcp.rawValue)
                 if AppData.machinesAvailable {
                     MachineSettingsView(store: appData.machineStore)
                         .tabItem {
                             Label(String(localized: "Virtual Machines", bundle: #bundle), systemImage: "desktopcomputer")
                         }
+                        .tag(SettingsPane.machines.rawValue)
                 }
                 if AppData.availableTools.contains(.chat) {
                     ChatSettingsView()
@@ -99,10 +118,12 @@ public struct ToolsScenes: Scene {
                         .tabItem {
                             Label(ToolKind.chat.title, systemImage: ToolKind.chat.symbol)
                         }
+                        .tag(SettingsPane.chat.rawValue)
                     NotificationSettingsPane(appData: appData)
                         .tabItem {
                             Label(String(localized: "Notifications", bundle: #bundle, comment: "The Settings tab of the chats' notifications"), systemImage: "bell.badge")
                         }
+                        .tag(SettingsPane.notifications.rawValue)
                 }
             }
             .frame(width: 520, height: 440)
@@ -144,6 +165,7 @@ private struct RouteHost<Content: View>: View {
     let content: Content
 
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.openSettings) private var openSettings
 
     init(
         appData: AppData, selectedProjectID: Binding<Project.ID?>, machineFocus: Binding<String?>,
@@ -159,7 +181,7 @@ private struct RouteHost<Content: View>: View {
     /// Opens a route: selects the tab that shows it and brings its window forward, or opens a tab
     /// (docs/ui/navigation.md › Routes).
     private var openRouteAction: OpenRouteAction {
-        OpenRouteAction { [openWindow, $selectedProjectID, $machineFocus, $machineFocusRequest] route in
+        OpenRouteAction { [openWindow, openSettings, $selectedProjectID, $machineFocus, $machineFocusRequest] route in
             let windows = WindowDirectory.shared
             switch route {
             case .project(let id):
@@ -174,6 +196,17 @@ private struct RouteHost<Content: View>: View {
                 windows.showOrOpen(.tool(tool, project: projectID), focus: focus, openWindow: openWindow)
             case .projectSettings(let id):
                 windows.showOrOpen(.projectSettings(id), openWindow: openWindow)
+            case .settings(let pane):
+                UserDefaults.standard.set(pane.rawValue, forKey: SettingsPane.storageKey)
+                openSettings()
+                WindowDirectory.activate()
+            case .chatWindow(let chat):
+                if let window = windows.chatWindow(showing: chat) {
+                    WindowDirectory.show(window)
+                } else {
+                    openWindow(id: SceneID.chat, value: ChatWindowValue(chatID: chat))
+                    WindowDirectory.activate()
+                }
             case .machine(let id):
                 // A new tab opens on the machine; an open one is asked to select it.
                 $machineFocus.wrappedValue = id

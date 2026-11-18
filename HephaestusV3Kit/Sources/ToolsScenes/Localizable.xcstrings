@@ -44,6 +44,9 @@
     "As tabs of the front window" : {
 
     },
+    "Chat" : {
+      "comment" : "A chat window's name, in the feedback's context"
+    },
     "Chats" : {
       "comment" : "Settings ▸ Notifications, the section of the chats' notifications"
     },
