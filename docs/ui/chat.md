@@ -373,6 +373,40 @@ completes the call of one, `/<name> `. It works in the Chat window and in the ch
 | `/s` | `swift-testing`, then `hephaestus-skills:report-feedback`, `release-notes`, which hold `s` |
 | `/zzz`, `/re x`, `hello /re` | none: the list is closed |
 
+## Agents
+
+V2's agents: the workflows Claude runs with the Workflow tool (Ultracode makes it use them for most of its work),
+their agents, and the sub-agents it starts with the Agent tool ([Data › Agents](../data.md#agents)).
+
+![The Chat window: under Why does checkout time out on Staging?, the workflow Check the retries of every client with its two agents, and the sub-agent Find the retry settings, failed; the workflow selected, its agents listed with their states, and Stop](images/chat-workflow.png)
+
+- **Rows under their chat**, in the Chat window's list: each workflow (`point.3.filled.connected.trianglepath.dotted`,
+  indented 16 pt, its summary), followed by its agents (`person.crop.circle.badge.clock`, indented 32 pt, the
+  title, then the phase in `caption`), then the sub-agents (indented 16 pt). Each row has the mark of a chat
+  row: a spinner while it runs, the `danger` dot when it failed, nothing when completed or stopped
+  (`chat.list.workflow.<id>`, `chat.list.agent.<id>`). They hide with their chat. A row's context menu has
+  **Stop Workflow** while its workflow runs; a double-click opens nothing (a chat's opens its window).
+- **Workflow view** (`chat.workflow`), in the detail when a workflow is selected: a 36 pt header with its summary,
+  a chip "Workflow · *name*", its mark, and **Stop** (`stop.fill`, `chat.workflow.stop`, help "Stop the Workflow
+  and Its Agents") while it runs; then one row per agent, in start order: its mark, title, phase in
+  `textSecondary`, and its state at the trailing edge (Running, Completed, Failed, Stopped). A click selects
+  that agent's row. Without agents: "No agents yet".
+- **Agent view** (`chat.agent`): the header with the title, "Agent" or "Agent · *phase*", its mark; **Stop**
+  (`chat.agent.stop`) for an agent of a running workflow, which stops the whole workflow; **Resume**
+  (`arrow.uturn.forward`, `chat.agent.resume`) for a sub-agent that failed or stopped and whose id is known. Then
+  its transcript, read-only, as the chat's (no composer, no cards to answer): a workflow agent's as read from the
+  CLI's folder, a sub-agent's made of the chat's own items, its task first.
+- **Resume** sends the chat `/hephaestus-skills:resume-agent <title> (agent id <id>)`, the call of the internal
+  skill `resume-agent`, whose text tells Claude to resume the agent with SendMessage ([System
+  Prompts](system-prompts.md)); disabled until the agent runs again. A failure shows over the transcript. (V2
+  sent a fixed sentence; every text Claude acts on is an internal skill, the user's rule.)
+- The panel and chat windows show no agent rows, as V2's inspector showed none.
+
+![An agent's view: orders-api client, Agent · Read, Stop; its task, then Claude's search and answer](images/chat-agent.png)
+
+Previews: `ChatAgentViews.swift`: "Workflow", "Agent", "Sub-agent, Failed, Dark", "List Rows"; `ChatRootView.swift`:
+"Workflow Selected", "Agent Selected" (`SampleChatStore.withAgents()`).
+
 ## Shown images
 
 ![Claude's turn: Showed 2 images, the caption "The Tickets window, light then dark.", then the two thumbnails with their names](images/chat-shown-images.png)

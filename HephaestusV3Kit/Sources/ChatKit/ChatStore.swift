@@ -54,6 +54,16 @@ protocol ChatStore: AnyObject {
     /// Whether a message can go while Claude works, Claude reading it after the turn, as V2 sent them; the
     /// samples answer one message at a time.
     var queuesMessages: Bool { get }
+    /// The chat's workflows, each followed by its agents, then its sub-agents, as the list shows them under it.
+    func agentRows(of id: ChatConversation.ID) -> [ChatAgentRow]
+    /// An agent's transcript as a read-only conversation.
+    func agentConversation(_ row: ChatAgentRow) -> ChatConversation
+    /// Reads an agent's transcript, once.
+    func openAgent(_ agentID: String, in chatID: ChatConversation.ID) async
+    /// Stop Workflow: the workflow and its agents stop.
+    func stopWorkflow(_ workflowID: String, in chatID: ChatConversation.ID)
+    /// Resume: Claude goes on with a sub-agent that failed or stopped, through the internal skill `resume-agent`.
+    func resumeAgent(_ agentID: String, in chatID: ChatConversation.ID) async throws(ChatSendError)
 }
 
 /// Why a message wasn't sent, or a setting not changed: the sentence the composer shows.
@@ -73,6 +83,43 @@ final class SampleChatStore: ChatStore {
     let drafts = ChatDrafts()
     /// The samples have no CLI; previews set a state to show its line.
     var cliStatus: ClaudeStatus?
+    /// The samples' agents, by chat, and their transcripts, by row id: none unless a preview sets them.
+    var sampleAgents: [ChatConversation.ID: [ChatAgentRow]] = [:]
+    var sampleAgentTurns: [String: [ChatTurn]] = [:]
+
+    func agentRows(of id: ChatConversation.ID) -> [ChatAgentRow] {
+        sampleAgents[id] ?? []
+    }
+
+    func agentConversation(_ row: ChatAgentRow) -> ChatConversation {
+        ChatConversation(id: row.tag, projectID: conversation(row.chatID)?.projectID ?? "", title: row.title, origin: nil, createdAt: Date(),
+                         turns: sampleAgentTurns[row.id] ?? [])
+    }
+
+    /// Samples whose chat-checkout ran a workflow of two agents, and a sub-agent that failed.
+    static func withAgents() -> SampleChatStore {
+        let store = SampleChatStore.transient()
+        func agent(_ id: String, _ kind: ChatAgentRow.Kind, _ title: String, phase: String? = nil, state: ChatAgentState, workflow: String? = nil) -> ChatAgentRow {
+            ChatAgentRow(id: id, chatID: "chat-checkout", kind: kind, title: title, phase: phase, name: kind == .workflow ? "retries" : nil, state: state,
+                         workflowID: workflow, canResume: kind == .subagent && state == .failed, workflowRuns: workflow != nil)
+        }
+        store.sampleAgents["chat-checkout"] = [
+            agent("wf1", .workflow, "Check the retries of every client", state: .running, workflow: "wf1"),
+            agent("a1", .workflowAgent, "orders-api client", phase: "Read", state: .completed, workflow: "wf1"),
+            agent("a2", .workflowAgent, "payments-api client", phase: "Read", state: .running, workflow: "wf1"),
+            agent("s1", .subagent, "Find the retry settings", state: .failed),
+        ]
+        store.sampleAgentTurns["a1"] = [
+            ChatTurn(id: "a1.1", author: .user, date: SampleClock.date(minutes: -9), blocks: [
+                ChatBlock(id: "a1.1.text", .text("Read how orders-api retries its calls to payments-api, and say whether it waits between them.")),
+            ]),
+            ChatTurn(id: "a1.2", author: .claude, date: SampleClock.date(minutes: -8), blocks: [
+                ChatBlock(id: "a1.2.call", .call(ChatToolCall(action: "Searched for “retry”", reference: nil))),
+                ChatBlock(id: "a1.2.text", .text("`PaymentsClient` retries three times with no delay: `RetryPolicy(maxAttempts: 3, backoff: .none)`.")),
+            ]),
+        ]
+        return store
+    }
     /// The replies on their way, by conversation.
     @ObservationIgnored private var replies: [ChatConversation.ID: Task<Void, Never>] = [:]
 
@@ -231,6 +278,17 @@ extension ChatStore {
     func showing(_ id: ChatConversation.ID?, inKeyWindow: Bool, view: UUID) {}
 
     var queuesMessages: Bool { false }
+
+    /// The samples have no agents.
+    func agentRows(of id: ChatConversation.ID) -> [ChatAgentRow] { [] }
+
+    func agentConversation(_ row: ChatAgentRow) -> ChatConversation {
+        ChatConversation(id: row.tag, projectID: "", title: row.title, origin: nil, createdAt: Date(), turns: [])
+    }
+
+    func openAgent(_ agentID: String, in chatID: ChatConversation.ID) async {}
+    func stopWorkflow(_ workflowID: String, in chatID: ChatConversation.ID) {}
+    func resumeAgent(_ agentID: String, in chatID: ChatConversation.ID) async throws(ChatSendError) {}
 
     /// A message without files.
     func send(_ text: String, to id: ChatConversation.ID?, project: Project, origin: ToolKind?, attachments: [ChatReference],

@@ -15,6 +15,61 @@ public final class LiveChatStore: ChatStore {
 
     /// The CLI keeps a message written during a turn, and runs it after.
     var queuesMessages: Bool { true }
+
+    func agentRows(of id: ChatConversation.ID) -> [ChatAgentRow] {
+        let records = session.agents(of: id)
+        func row(_ agent: ChatAgent) -> ChatAgentRow {
+            let workflow = agent.workflowID.flatMap { workflowID in records.workflows.first { $0.id == workflowID } }
+            return ChatAgentRow(id: agent.id, chatID: id, kind: agent.kind == .workflow ? .workflowAgent : .subagent, title: agent.title,
+                                phase: agent.phase, name: nil, state: agent.state, workflowID: agent.workflowID,
+                                canResume: agent.kind == .subagent && (agent.state == .failed || agent.state == .stopped) && agent.taskID != nil,
+                                workflowRuns: workflow?.state == .running)
+        }
+        var rows: [ChatAgentRow] = []
+        for workflow in records.workflows {
+            rows.append(ChatAgentRow(id: workflow.id, chatID: id, kind: .workflow, title: workflow.summary, phase: nil, name: workflow.name,
+                                     state: workflow.state, workflowID: workflow.id, canResume: false, workflowRuns: workflow.state == .running))
+            rows += records.agents.filter { $0.workflowID == workflow.id }.map(row)
+        }
+        rows += records.agents.filter { $0.kind == .subagent }.map(row)
+        return rows
+    }
+
+    func agentConversation(_ row: ChatAgentRow) -> ChatConversation {
+        var conversation = ChatConversation(id: row.tag, projectID: session.chats[row.chatID]?.projectID ?? "", title: row.title, origin: nil,
+                                            createdAt: Date(), turns: [])
+        // A sub-agent's own items are its view's top level; those of agents it started stay steps of their calls.
+        let items = session.agentTranscript(row.id, in: row.chatID).map { item -> ChatItem in
+            switch item {
+            case .assistant(var text) where text.parentToolUseID == row.id:
+                text.parentToolUseID = nil
+                return .assistant(text)
+            case .thinking(var thinking) where thinking.parentToolUseID == row.id:
+                thinking.parentToolUseID = nil
+                return .thinking(thinking)
+            case .toolUse(var use) where use.parentToolUseID == row.id:
+                use.parentToolUseID = nil
+                return .toolUse(use)
+            default:
+                return item
+            }
+        }
+        conversation.turns = turns(items, streaming: nil, root: session.root(ofChat: row.chatID),
+                                   chatID: row.chatID, isRunning: row.state == .running)
+        return conversation
+    }
+
+    func openAgent(_ agentID: String, in chatID: ChatConversation.ID) async {
+        await session.openAgent(agentID, in: chatID)
+    }
+
+    func stopWorkflow(_ workflowID: String, in chatID: ChatConversation.ID) {
+        session.stopWorkflow(workflowID, in: chatID)
+    }
+
+    func resumeAgent(_ agentID: String, in chatID: ChatConversation.ID) async throws(ChatSendError) {
+        do throws(ChatError) { try await session.resumeAgent(agentID, in: chatID) } catch { throw ChatSendError(message: error.description) }
+    }
     /// How a tool words a call of the app's tool `name` with its input; nil for a tool the app doesn't have.
     private let describe: @MainActor (String, JSONValue) -> ToolCallText?
 

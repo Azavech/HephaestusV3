@@ -30,6 +30,8 @@ public enum StreamOutput: Sendable, Hashable {
     case backgroundTasks([String])
     /// `task_notification`: a task ended, its result going to Claude.
     case taskNotification(taskID: String)
+    /// `task_started`, `task_progress`, `task_updated` and `task_notification`, for the chat's workflows and agents.
+    case taskLine(JSONValue)
     /// A line of a known shape that changes nothing; the name of its type, for the log.
     case ignored(String)
     /// A line that isn't a JSON object.
@@ -158,7 +160,9 @@ public struct StreamMapper: Sendable {
             return [.backgroundTasks(ids)]
         case "task_notification":
             guard let id = line["task_id"]?.stringValue else { return [.ignored("system/task_notification")] }
-            return [.taskNotification(taskID: id)]
+            return [.taskNotification(taskID: id), .taskLine(.object(line))]
+        case "task_started", "task_progress", "task_updated":
+            return [.taskLine(.object(line))]
         case let subtype:
             return [.ignored("system/\(subtype ?? "")")]
         }

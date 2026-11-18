@@ -37,6 +37,13 @@ public struct InternalSkill: Hashable, Sendable, Identifiable {
         done, then finish what is left of the user's last request. Don't redo what is done.
         """, isCalledFromChats: true)
 
+    /// Resume, on a sub-agent that failed or stopped: the chat's Claude resumes it with `SendMessage`. The message
+    /// carries the agent's title and id after the call.
+    public static let resumeAgent = InternalSkill(name: "resume-agent", defaultContent: """
+        One of your agents in this chat stopped before it was finished. The arguments name it, with its agent id in
+        parentheses. Resume that agent with SendMessage, telling it to go on from where it stopped.
+        """, isCalledFromChats: true)
+
     /// The line of a chat's notification, as V2's `notification-summary`: the app runs it on what happened when
     /// Settings ▸ Notifications › AI-generated summary is on. A short answer, so a quick model at a low effort.
     public static let notificationSummary = InternalSkill(name: "notification-summary", defaultContent: """
@@ -46,7 +53,7 @@ public struct InternalSkill: Hashable, Sendable, Identifiable {
         """, defaultModel: "haiku", defaultEffort: .low)
 
     /// Every internal skill, in the order System Prompts lists them.
-    public static let all: [InternalSkill] = [.setTicketTitle, .reportFeedback, .resumeChat, .notificationSummary]
+    public static let all: [InternalSkill] = [.setTicketTitle, .reportFeedback, .resumeChat, .notificationSummary, .resumeAgent]
 
     /// The plugin that gives chats the skills they call, as V2 named it.
     public static let pluginName = "hephaestus-skills"

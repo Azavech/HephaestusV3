@@ -44,6 +44,8 @@ final class ChatRun {
     var stopTimer: Task<Void, Never>?
     /// Close asked during the turn: the chat closes once it ends well.
     var closesAfterTurn = false
+    /// Stop Workflow's requests waiting for their answer, by request id: the workflow's id.
+    var stopRequests: [String: String] = [:]
     /// The background tasks running, every one a `background_tasks_changed` listed, and whether the CLI owes a
     /// turn for a task that ended between turns (docs/data.md › Background work).
     var backgroundTasks: Set<String> = []
@@ -265,6 +267,7 @@ extension ChatSession {
             case .item(let item):
                 if streaming[chatID]?.itemID == item.id { streaming[chatID] = nil }
                 record(item, in: chatID, op: self.item(item.id, in: chatID) == nil ? .add : .update)
+                noteAgents(of: item, in: chatID)
                 if case .assistant(let text) = item, text.parentToolUseID == nil, text.messageID != run.lastAssistantMessage {
                     run.lastAssistantMessage = text.messageID
                     askContextUsage(run)
@@ -277,6 +280,8 @@ extension ChatSession {
                 } else {
                     streaming[chatID] = StreamingText(itemID: itemID, text: text)
                 }
+            case .taskLine(let line):
+                applyTaskLine(line, in: chatID)
             case .backgroundTasks(let ids):
                 run.backgroundTasks = Set(ids)
                 run.listedTasks.formUnion(ids)
@@ -326,7 +331,9 @@ extension ChatSession {
             case .unsupportedControlRequest(let id, let subtype):
                 run.connection.write(ClaudeInput.unsupported(id, subtype: subtype))
             case .controlResponse(let id, let success, let response, let error):
-                if id == run.contextRequestID {
+                if stopAnswered(id, success: success, error: error, run: run) {
+                    break
+                } else if id == run.contextRequestID {
                     received(contextUsage: response, success: success, for: run)
                 } else if let mode = run.modeRequests.removeValue(forKey: id) {
                     if success {
@@ -350,6 +357,7 @@ extension ChatSession {
                 decide(chatID, requestID: id, decision: .deny, by: nil)
             case .result(let result):
                 record(.result(result), in: chatID)
+                stopForegroundAgents(in: chatID)
                 if result.isError { run.closesAfterTurn = false }
                 askContextUsage(run)
                 run.cliTurnOpen = false
@@ -427,8 +435,9 @@ extension ChatSession {
         run.stopTimer?.cancel()
         guard runs[chatID] === run else { return }
         runs[chatID] = nil
-        // Its background tasks and the turn it owed end with it.
+        // Its background tasks and the turn it owed end with it, and its workflows and agents.
         backgroundWork.remove(chatID)
+        stopAllAgents(in: chatID)
         for item in run.mapper.finish() {
             record(item, in: chatID)
         }

@@ -508,3 +508,24 @@ struct CLIToolTextTests {
         #expect(SampleChatStore.transient().queuesMessages == false)
     }
 }
+
+/// docs/ui/chat.md › Agents.
+@MainActor
+@Suite("Agent rows")
+struct AgentRowsTests {
+    @Test("A row's tag names its chat and itself; a chat's id isn't a row; the Chat window shows a selected row's view")
+    func tags() throws {
+        let store = SampleChatStore.withAgents()
+        let rows = store.agentRows(of: "chat-checkout")
+        #expect(rows.map(\.kind) == [.workflow, .workflowAgent, .workflowAgent, .subagent])
+        #expect(rows[0].tag == "workflow|chat-checkout|wf1" && rows[1].tag == "agent|chat-checkout|a1")
+        let parsed = try #require(ChatAgentRow.parse("agent|chat-checkout|a1"))
+        #expect(!parsed.isWorkflow && parsed.chatID == "chat-checkout" && parsed.id == "a1")
+        #expect(ChatAgentRow.parse("chat-checkout") == nil)
+        #expect(rows[3].canResume && !rows[1].canResume && rows[1].workflowRuns)
+        let model = ChatWindowModel(project: Project.sample("ORD")!, focus: "chat-checkout", store: store)
+        model.select(rows[1])
+        #expect(model.selectedAgent == rows[1] && model.conversation == nil)
+        #expect(store.agentConversation(rows[1]).turns.count == 2)
+    }
+}

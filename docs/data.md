@@ -1232,6 +1232,51 @@ setting **Edit the project's files** (`chat.fileEdits` in the user defaults: `ne
 | Any exit | Open blocks finish as items; the cards still waiting are cancelled; the token and the MCP configuration go. |
 | `set_model`, `apply_flag_settings` | A model or effort change of a chat whose process runs: `{"subtype":"set_model","model":<model>}`, `{"subtype":"apply_flag_settings","settings":{"effortLevel":<effort>}}`. |
 
+### Agents
+
+V2's workflows and agents (`ChatAgents.swift`), checked on V2's captures `stream-workflow.jsonl` with its folder,
+`stream-workflow-stop.jsonl` and `stream-background-agent.jsonl` (`ChatAgentsTests`).
+
+| Record | Made when | `id` | Title |
+| --- | --- | --- | --- |
+| workflow (`ChatWorkflow`) | `system/task_started` with `task_type` `local_workflow` | the line's `task_id` | `summary`: its `description`, else `Workflow` |
+| workflow agent (`ChatAgent`, kind `workflow`) | a `workflow_agent` entry of a `task_progress` line, or a `started` entry of the run's `journal.jsonl` | `agentId` | `label`, else `Agent` |
+| sub-agent (`ChatAgent`, kind `subagent`) | a `toolUse` item `Agent` or `Task` of the CLI | the call's id | its `description`, else `subagent_type`, else `Agent` |
+
+- A workflow keeps `toolUseID` (its Workflow call), `runID`, `name` (`workflow_name`), `summary` (a
+  `task_progress`'s new `summary` replaces it), `state`, `started`, `ended`. An agent keeps `kind`, `workflowID`,
+  `title`, `phase` (`phaseTitle`, the journal's `phase`), a sub-agent's `taskID` (the CLI's id: a
+  `task_started` `local_agent` line of its call, or the last `agentId: <id>` line of its call's result), `state`,
+  `started`, `ended`.
+- **States** (`ChatAgentState`): `running`, `completed`, `failed`, `stopped`. A workflow ends on `task_updated`
+  (`patch.status` `completed`, `failed`, `killed` → stopped) or `task_notification` (`completed`, `failed`,
+  `stopped`); its agents still running then stop. A workflow agent completes on its entry's `done` (or fails on
+  `error`) or the journal's `result`. A sub-agent ends on the `task_notification` of its call or task, or, when
+  not started in the background, on its call's result (failed when it is an error) or the turn's `result`
+  (stopped); a `task_started` of its task while it has ended runs it again (SendMessage resumed it). The
+  process's exit stops everything running.
+- **The run's folder.** The Workflow call's result names it: "Task ID: <id>", "Run ID: <id>", "Transcript dir:
+  <path>", an absolute path whose last part is the run id. The session reads it at once, then every second
+  while the workflow runs, and once as it ends: the complete lines added to `journal.jsonl` and to each
+  `agent-<agentId>.jsonl` since the last read. A file not there yet is read later; a line that isn't JSON is
+  skipped. The app never writes there.
+- **Agent transcript lines** (`AgentTranscriptLine`): `assistant` → one item per block (`text`, `thinking` not
+  empty, `tool_use`), id `<message id>#<index + apiBlockIndex>`; `user` with a string (not `isMeta`) → a `user`
+  item, sender `Claude`, id the line's `uuid`; `user` with blocks → a `toolResult` per `tool_result`, and a `user`
+  item of its texts. `created` is the line's `timestamp` to the second. The size limits apply; an item the
+  transcript has is skipped.
+- **Files.** Each new record or change appends the whole record to `.hephaestus/chats/<CHAT-ID>/agents.jsonl`, V2's
+  file: `{"workflow":{…}}` or `{"agent":{…}}` per line, the last of an id winning when read; a record read
+  running reads stopped. A workflow agent's items go to `.hephaestus/chats/<CHAT-ID>/agents/<AGENT-ID>.jsonl`,
+  in the chat transcript's format. A sub-agent's transcript isn't stored again: it is the chat's items of its
+  call (its `prompt` as a `user` item `<call id>#prompt`, then every item whose `parentToolUseID` is its call or
+  a call of an agent among them, with their results). The agents file is read with the chat's mentions, after
+  `reload()`; a workflow agent's file when its view opens (`openAgent`).
+- **Stop Workflow** writes `{"subtype":"stop_task","task_id":<id>}`; an error answer adds the warning `The workflow
+  “<summary>” was not stopped: <error>.` The CLI's `task_updated` (`killed`) then stops it.
+- **Resume** sends `/hephaestus-skills:resume-agent <title> (agent id <taskID>)` to the chat, for a sub-agent that
+  failed or stopped and has a `taskID`.
+
 ### Background work
 
 V2's background work: Claude starts work that goes on after its turn, a command with `Bash` and
@@ -1830,10 +1875,10 @@ content the user writes in [System Prompts](ui/system-prompts.md). A V3 addition
   starting or ending with a hyphen, without two in a row (`InternalSkill.isValidName`). Today:
   `set-ticket-title` and `notification-summary`, which the app runs itself ([Running a skill](#internal-skills),
   below, and [Chat events](#chat-events)), and
-  `report-feedback` and `resume-chat`, which chats call (`isCalledFromChats`), through the [chat plugin](#chat-plugin):
+  `report-feedback`, `resume-chat` and `resume-agent`, which chats call (`isCalledFromChats`), through the [chat plugin](#chat-plugin):
   a feedback chat's first message calls `report-feedback` ([Feedback chats](#feedback-chats)), Resume calls
-  `resume-chat` ([Closing and deleting chats](#closing-and-deleting-chats)). The first two are empty by default;
-  `resume-chat` and `notification-summary` hold V3's own text, which the user's saved file replaces. Every text the app has Claude act on
+  `resume-chat` ([Closing and deleting chats](#closing-and-deleting-chats)), an agent's Resume `resume-agent` ([Agents](#agents)). The first two are empty by default;
+  `resume-chat`, `resume-agent` and `notification-summary` hold V3's own text, which the user's saved file replaces. Every text the app has Claude act on
   is an internal skill, never written in the code (the user's rule, 17 November 2026).
 - **File**: `<data folder>/skills/<name>/SKILL.md`, Claude's skill layout. Written atomically by
   `DataFolder.writeSkill(_:of:)`, its folder made when missing: a front matter with `name` (the code's),

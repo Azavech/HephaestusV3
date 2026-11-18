@@ -46,6 +46,6 @@ struct BackgroundWorkTests {
         var mapper = StreamMapper(effort: .high, now: { Date() })
         let changed = #"{"type":"system","subtype":"background_tasks_changed","tasks":[{"task_id":"bw1"},{"x":1}]}"#
         #expect(mapper.map(Data(changed.utf8)) == [.backgroundTasks(["bw1"])])
-        #expect(mapper.map(Data(#"{"type":"system","subtype":"task_notification","task_id":"bw1"}"#.utf8)) == [.taskNotification(taskID: "bw1")])
+        #expect(mapper.map(Data(#"{"type":"system","subtype":"task_notification","task_id":"bw1"}"#.utf8)).first == .taskNotification(taskID: "bw1"))
     }
 }

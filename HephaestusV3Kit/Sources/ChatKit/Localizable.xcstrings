@@ -78,6 +78,9 @@
     "Agent" : {
 
     },
+    "Agent · %@" : {
+
+    },
     "Allow" : {
 
     },
@@ -236,6 +239,9 @@
     "Claude reads through the tools, and asks before it changes anything. Name a ticket, a run or a request to point at it." : {
 
     },
+    "Claude resumes the agent where it stopped, through the internal skill resume-agent." : {
+
+    },
     "Claude stopped with an error" : {
 
     },
@@ -311,6 +317,9 @@
     "Compacting the conversation… %@" : {
       "comment" : "The time since it began, such as 0:12"
     },
+    "Completed" : {
+      "comment" : "An agent's state"
+    },
     "Content" : {
 
     },
@@ -373,6 +382,9 @@
     },
     "Extra High" : {
       "comment" : "An effort level"
+    },
+    "Failed" : {
+      "comment" : "An agent's state"
     },
     "Fetched %@" : {
       "comment" : "A chat's call: Claude read a web page"
@@ -515,6 +527,9 @@
 
     },
     "No Skill Selected" : {
+
+    },
+    "No agents yet" : {
 
     },
     "No model is connected to this example yet, so I can't answer. Above is what I read through the tools; a connected model would answer from it." : {
@@ -687,7 +702,7 @@
       "comment" : "A run of Builds, as a chip names it"
     },
     "Running" : {
-      "comment" : "A call without its result yet"
+      "comment" : "A call without its result yet\nAn agent's state"
     },
     "Sample reply" : {
 
@@ -793,6 +808,15 @@
     "Stop (⌘.)" : {
 
     },
+    "Stop Workflow" : {
+
+    },
+    "Stop the Workflow and Its Agents" : {
+
+    },
+    "Stopped" : {
+      "comment" : "An agent's state"
+    },
     "Stopped a background task" : {
       "comment" : "A chat's call"
     },
@@ -893,6 +917,9 @@
       "comment" : "A suggestion; the value is a request id, such as req-8f3a"
     },
     "Workflow" : {
+
+    },
+    "Workflow · %@" : {
 
     },
     "Working" : {

@@ -45,8 +45,9 @@ public struct ChatRootView: View {
 
     /// The window on the samples, for previews, with `files` waiting to go with the next message and Find
     /// looking for `findQuery`.
-    init(project: Project, focus: String? = nil, samples: SampleChatStore, files: [URL] = [], findQuery: String = "") {
+    init(project: Project, focus: String? = nil, samples: SampleChatStore, files: [URL] = [], findQuery: String = "", selecting row: String? = nil) {
         let model = ChatWindowModel(project: project, focus: focus, store: samples)
+        if let row { model.selection = row }
         model.files = files
         model.findQuery = findQuery
         model.isFinding = !findQuery.isEmpty
@@ -228,6 +229,13 @@ public struct ChatRootView: View {
                 SeveralSelected(count: model.selectedIDs.count) {
                     model.confirming = .close(Array(model.selectedIDs))
                 }
+            } else if let agent = model.selectedAgent {
+                if agent.kind == .workflow {
+                    WorkflowDetailView(row: agent, agents: model.store.agentRows(of: agent.chatID).filter { $0.kind == .workflowAgent && $0.workflowID == agent.id },
+                                       store: model.store) { model.select($0) }
+                } else {
+                    AgentDetailView(row: agent, store: model.store, padding: layout == .phone ? 16 : 24)
+                }
             } else if let conversation = model.conversation {
                 let matches = ChatFind.matches(of: model.findQuery, in: conversation)
                 if !model.findQuery.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -274,7 +282,7 @@ public struct ChatRootView: View {
             if let conversation = model.conversation, conversation.closed {
                 ClosedNotice { model.reopen(conversation.id) }
                     .padding(layout == .phone ? 12 : 16)
-            } else if model.selectedIDs.count <= 1 {
+            } else if model.selectedIDs.count <= 1, model.selectedAgent == nil {
             MessageComposer(
                 text: $model.draft,
                 prompt: Text("Ask about \(model.project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
@@ -351,7 +359,7 @@ private struct ChatList: View {
             menu(for: ids)
         } primaryAction: { ids in
             // A double-click opens the chat in a window of its own, as Mail opens a message.
-            for id in ids {
+            for id in ids where ChatAgentRow.parse(id) == nil {
                 openRoute(.chatWindow(chat: id))
             }
         }
@@ -393,6 +401,18 @@ private struct ChatList: View {
     /// V2's row menu: on one chat, Rename…, Close or Reopen, Copy Conversation and Delete…; on several, Close.
     @ViewBuilder private func menu(for ids: Set<ChatConversation.ID>) -> some View {
         let chats = ids.compactMap(model.conversationSummary)
+        // A workflow's row, or one of its agents': Stop Workflow while it runs, as V2's.
+        let workflows = Set(ids.compactMap(ChatAgentRow.parse).compactMap { tag in
+            model.store.agentRows(of: tag.chatID).first { $0.id == tag.id && $0.workflowRuns }.flatMap { row in row.workflowID.map { (row.chatID, $0) } }
+        }.map { "\($0.0)|\($0.1)" })
+        if chats.isEmpty, !workflows.isEmpty {
+            Button(String(localized: "Stop Workflow", bundle: #bundle)) {
+                for key in workflows {
+                    let parts = key.split(separator: "|").map(String.init)
+                    model.store.stopWorkflow(parts[1], in: parts[0])
+                }
+            }
+        }
         if chats.count == 1, let chat = chats.first {
             Button(String(localized: "Open in New Window", bundle: #bundle, comment: "Opens a chat in a window of its own")) {
                 openRoute(.chatWindow(chat: chat.id))
@@ -415,6 +435,17 @@ private struct ChatList: View {
 
     private func rows(_ conversations: [ChatConversation]) -> some View {
         ForEach(conversations) { conversation in
+            chatRow(conversation)
+            // V2's rows under their chat: its workflows, each with its agents, then its sub-agents.
+            ForEach(model.store.agentRows(of: conversation.id)) { row in
+                AgentListRow(row: row)
+                    .tag(row.tag)
+            }
+        }
+    }
+
+    private func chatRow(_ conversation: ChatConversation) -> some View {
+        Group {
             HStack(spacing: 6) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: conversation.title)
@@ -672,4 +703,12 @@ private struct SeveralSelected: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.severalSelected")
     }
+}
+
+#Preview("Workflow Selected", traits: .appChrome, .fixedLayout(width: 1240, height: 800)) {
+    ChatRootView(project: Project.sample("ORD")!, samples: .withAgents(), selecting: "workflow|chat-checkout|wf1")
+}
+
+#Preview("Agent Selected", traits: .appChrome, .fixedLayout(width: 1240, height: 800)) {
+    ChatRootView(project: Project.sample("ORD")!, samples: .withAgents(), selecting: "agent|chat-checkout|a1")
 }

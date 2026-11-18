@@ -118,6 +118,17 @@ final class ChatWindowModel {
         store.conversation(selection)
     }
 
+    /// The agent or workflow row selected in the list, under its chat; nil for a chat.
+    var selectedAgent: ChatAgentRow? {
+        guard let selection, let tag = ChatAgentRow.parse(selection) else { return nil }
+        return store.agentRows(of: tag.chatID).first { $0.id == tag.id && ($0.kind == .workflow) == tag.isWorkflow }
+    }
+
+    /// Selects an agent's row, from its workflow's view.
+    func select(_ row: ChatAgentRow) {
+        selection = row.tag
+    }
+
     /// What Claude is doing in the shown conversation; nil when nothing.
     var activity: ChatActivity? {
         store.activity(selection)

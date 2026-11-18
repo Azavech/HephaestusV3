@@ -5,7 +5,7 @@ System Prompts is where the user writes what the app's own Claude skills say (th
 the model and effort the app runs each with when no chat calls it. The list holds the internal skills only: not
 the user's or the projects' own Claude skills.
 
-![System Prompts: set-ticket-title, report-feedback, resume-chat and notification-summary in the list, set-ticket-title selected, its name, Model Haiku and Effort Low, and its empty content](images/system-prompts.png)
+![System Prompts: set-ticket-title, report-feedback, resume-chat, notification-summary and resume-agent in the list, set-ticket-title selected, its name, Model Haiku and Effort Low, and its empty content](images/system-prompts.png)
 *System Prompts with `set-ticket-title` selected: Haiku at a low effort, empty.*
 
 ## Opening it
@@ -65,8 +65,9 @@ reads.
 | `report-feedback`  | Empty           | `default`, High (a chat's defaults; the app never runs it itself) | The first message of a [feedback chat](chat.md#feedback), `/hephaestus-skills:report-feedback` then the comment and the feedback's context, screenshot and files (the user's request, as V2's `feedback` skill). What Claude does with the feedback, such as which ticket to create and its priority, is this skill's to say.                                                                                                                                                        |
 | `resume-chat` | V3's own text: "Your last turn in this chat stopped with an error before it was finished. Look at what was already done, then finish what is left of the user's last request. Don't redo what is done." | `default`, High (a chat's defaults; the app never runs it itself) | **Resume**, after a chat stopped with an error ([Chat › Resume](chat.md#resume)): the message `/hephaestus-skills:resume-chat`. V2 sent a fixed sentence; the user asked for every text Claude acts on to be an internal skill (17 November 2026). |
 | `notification-summary` | V3's own text: "The message tells what just happened in a chat between the user and Claude: Claude's last reply, or what Claude waits for the user to answer. Write the line of a notification about it: one plain sentence of at most 150 characters that says what it is about. Answer with the sentence alone, without quotes or Markdown." | Haiku, Low: a short answer, as V2's summary call (default chosen at design time) | A chat notification's line, while Settings ▸ Notifications ▸ **AI-generated summary** is on ([Chat › Notifications](chat.md#notifications)): the app runs it on Claude's reply, the card's request or the questions, at most 30 s. V2's internal skill of the same name; V3 writes its own text (no V2 prompt). |
+| `resume-agent` | V3's own text: "One of your agents in this chat stopped before it was finished. The arguments name it, with its agent id in parentheses. Resume that agent with SendMessage, telling it to go on from where it stopped." | `default`, High (a chat's defaults; the app never runs it itself) | **Resume** in a sub-agent's view ([Chat › Agents](chat.md#agents)): `/hephaestus-skills:resume-agent <title> (agent id <id>)`. V2 sent a fixed sentence. |
 
-**Called skills.** `report-feedback` and `resume-chat` are called from chats (V2's called skills); `set-ticket-title` and
+**Called skills.** `report-feedback`, `resume-chat` and `resume-agent` are called from chats (V2's called skills); `set-ticket-title` and
 `notification-summary` the app runs itself. Every chat's CLI gets the called skills as the plugin `hephaestus-skills` ([Data › Chat
 plugin](../data.md#chat-plugin)), so a message starting with `/hephaestus-skills:<name>` calls one: Claude gets
 the skill's content, then the rest of the message. A chat that calls a skill keeps its own model and effort. The

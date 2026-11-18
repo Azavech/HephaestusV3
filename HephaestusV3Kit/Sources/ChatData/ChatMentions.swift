@@ -52,6 +52,8 @@ extension ChatSession {
                     ChatMentions.ids(in: Transcript.replay((try? Data(contentsOf: url)) ?? Data()))
                 }.value
                 guard let self else { return }
+                // The chat's agents come with its ids, for the lists that show them under it.
+                self.loadAgents(id)
                 self.mentionsScanned.insert(id)
                 if self.chats[id] != nil, !ids.isSubset(of: self.mentions[id] ?? []) {
                     self.mentions[id, default: []].formUnion(ids)
