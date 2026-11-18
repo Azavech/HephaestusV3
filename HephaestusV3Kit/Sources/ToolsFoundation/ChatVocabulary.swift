@@ -174,3 +174,64 @@ public struct ChatPanelToolbarItem: ToolbarContent {
         }
     }
 }
+
+/// A chat that mentions a ticket or a bundle, as the Tickets window lists it (docs/ui/tickets.md › Mentioned In).
+nonisolated public struct MentioningChat: Identifiable, Hashable, Sendable {
+    /// What the chat does, as the Chat window's list marks it.
+    public enum State: Hashable, Sendable {
+        case idle, working, waiting, error
+    }
+
+    public let id: String
+    public let title: String
+    public let projectID: Project.ID
+    public let updated: Date
+    public let state: State
+    public let closed: Bool
+
+    public init(id: String, title: String, projectID: Project.ID, updated: Date, state: State = .idle, closed: Bool = false) {
+        self.id = id
+        self.title = title
+        self.projectID = projectID
+        self.updated = updated
+        self.state = state
+        self.closed = closed
+    }
+
+    /// The samples' chats that mention ORD-142 and ORD-B3, for previews.
+    public static let samples: [String: [MentioningChat]] = [
+        "ORD-142": [
+            MentioningChat(id: "chat-checkout", title: "Why does checkout time out on Staging?", projectID: "ORD",
+                           updated: Date(timeIntervalSince1970: 1_794_394_140), state: .waiting),
+            MentioningChat(id: "chat-week", title: "What changed in Shop this week?", projectID: "SHOP",
+                           updated: Date(timeIntervalSince1970: 1_794_300_000), closed: true),
+        ],
+        "ORD-B3": [
+            MentioningChat(id: "chat-checkout", title: "Why does checkout time out on Staging?", projectID: "ORD",
+                           updated: Date(timeIntervalSince1970: 1_794_394_140), state: .waiting),
+        ],
+    ]
+}
+
+/// The chats that mention a ticket or bundle id, the latest updated first. ToolsScenes gives every window the
+/// chat session's; previews pass the samples, and without one the Tickets window lists none.
+nonisolated public struct ChatMentionsReader: Sendable {
+    private let read: @MainActor @Sendable (String) -> [MentioningChat]
+
+    public init(_ read: @escaping @MainActor @Sendable (String) -> [MentioningChat]) {
+        self.read = read
+    }
+
+    @MainActor
+    public func callAsFunction(_ id: String) -> [MentioningChat] {
+        read(id)
+    }
+
+    /// The samples, for previews.
+    public static let samples = ChatMentionsReader { MentioningChat.samples[$0] ?? [] }
+}
+
+nonisolated extension EnvironmentValues {
+    /// The chats that mention a ticket or bundle; nil lists none.
+    @Entry public var chatMentions: ChatMentionsReader? = nil
+}

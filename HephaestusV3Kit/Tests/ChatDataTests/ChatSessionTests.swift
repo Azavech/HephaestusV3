@@ -9,7 +9,7 @@ import Testing
 @testable import ChatData
 
 /// Answers `claude --version`; every other process fails. Nothing real starts.
-private struct ChatRunner: ProcessRunning {
+struct ChatRunner: ProcessRunning {
     func run(_ request: ProcessRequest, input: Data?, timeout: Duration?) async throws -> ProcessResult {
         if request.arguments == ["--version"] {
             return ProcessResult(termination: .exited(0), standardOutput: Data("2.1.322 (Claude Code)\n".utf8))

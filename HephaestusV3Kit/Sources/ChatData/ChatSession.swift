@@ -82,6 +82,12 @@ public final class ChatSession {
     /// The text Claude is writing, by chat id.
     public internal(set) var streaming: [String: StreamingText] = [:]
     public internal(set) var states: [String: ChatState] = [:]
+    /// The ticket and bundle ids each chat mentions (docs/data.md › Mentioned ids).
+    public internal(set) var mentions: [String: Set<String>] = [:]
+    /// The chats whose transcript was read for their ids, and the scan that reads them.
+    @ObservationIgnored var mentionsScanned: Set<String> = []
+    @ObservationIgnored var mentionScan: Task<Void, Never>?
+    @ObservationIgnored var mentionRescan = false
     /// When the turn began, by chat id, for the status line's time.
     public internal(set) var turnStarts: [String: Date] = [:]
     /// The chats whose conversation the CLI is compacting.
@@ -335,6 +341,7 @@ public final class ChatSession {
             }
             transcripts[chatID] = items
         }
+        noteMentions(of: item, in: chatID)
         guard let url = transcriptURL(chatID) else { return }
         try? Transcript.append(Transcript.line(op, item), to: url, endingLine: appended.insert(chatID).inserted)
     }
@@ -364,6 +371,8 @@ public final class ChatSession {
             }
         }
         if found != chats { chats = found }
+        dropMentions(keeping: found.keys)
+        scanMentions()
     }
 
     /// The chat files of a `chats/` folder: `<UUID>.yml` names only, an invalid file skipped.

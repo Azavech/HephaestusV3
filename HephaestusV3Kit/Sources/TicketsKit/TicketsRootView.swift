@@ -271,6 +271,8 @@ private struct TicketMenu: View {
 /// The sidebar: every ticket, one row per status with its count, the projects of a parent, then the
 /// bundles with their progress.
 private struct TicketSidebar: View {
+    @Environment(\.chatMentions) private var chatMentions
+    @Environment(\.openRoute) private var openRoute
     @Bindable var model: TicketsModel
 
     var body: some View {
@@ -336,6 +338,19 @@ private struct TicketSidebar: View {
                                 }
                                 .disabled(status == bundle.status)
                             }
+                        }
+                        if let chatMentions {
+                            // V2's Mentioned In of a bundle: the chats that mention it, each opening in the Chat window.
+                            let chats = chatMentions(bundle.id)
+                            Menu(String(localized: "Mentioned In", bundle: #bundle, comment: "The chats that mention a ticket")) {
+                                if chats.isEmpty {
+                                    Text("No Mentions", bundle: #bundle)
+                                }
+                                ForEach(chats) { chat in
+                                    Button(chat.title) { openRoute(.tool(.chat, project: chat.projectID, focus: chat.id)) }
+                                }
+                            }
+                            .accessibilityIdentifier("tickets.sidebar.bundle.\(bundle.id).mentions")
                         }
                         Divider()
                         Button(String(localized: "Delete Bundle…", bundle: #bundle), role: .destructive) {
@@ -463,6 +478,16 @@ private struct TicketFilterMenu: View {
 #Preview("Loaded, Dark", traits: .appChrome, .fixedLayout(width: 1180, height: 760)) {
     TicketsRootView(model: TicketsModel(project: Project.sample("ORD")!, focus: nil, store: SampleTicketStore()))
         .preferredColorScheme(.dark)
+}
+
+#Preview("Mentioned In", traits: .appChrome, .fixedLayout(width: 1180, height: 1100)) {
+    TicketsRootView(model: TicketsModel(project: Project.sample("ORD")!, focus: "ORD-142", store: SampleTicketStore()))
+        .environment(\.chatMentions, .samples)
+}
+
+#Preview("Mentioned In, None", traits: .appChrome, .fixedLayout(width: 1180, height: 1100)) {
+    TicketsRootView(model: TicketsModel(project: Project.sample("ORD")!, focus: "ORD-141", store: SampleTicketStore()))
+        .environment(\.chatMentions, .samples)
 }
 
 #Preview("Parent Project", traits: .appChrome, .fixedLayout(width: 1180, height: 760)) {

@@ -113,6 +113,24 @@ final class AppData {
         opensWindowsAsTabs = value
     }
 
+    // MARK: Mentioned In (docs/ui/tickets.md › Mentioned In)
+
+    /// The chats that mention a ticket or bundle, as the Tickets window lists them.
+    var chatMentions: ChatMentionsReader {
+        ChatMentionsReader { [chats] id in
+            chats.chats(mentioning: id).map { chat in
+                let state: MentioningChat.State = switch chats.state(of: chat.id) {
+                case .starting, .running: .working
+                case .waitingPermission, .waitingAnswers: .waiting
+                case .error: .error
+                case .idle: .idle
+                }
+                return MentioningChat(id: chat.id, title: chat.file.title, projectID: chat.projectID, updated: chat.file.updated,
+                                      state: state, closed: chat.file.closed)
+            }
+        }
+    }
+
     // MARK: Notifications (docs/ui/navigation.md › Settings ▸ Notifications)
 
     /// The three toggles of Settings ▸ Notifications, all on until read.

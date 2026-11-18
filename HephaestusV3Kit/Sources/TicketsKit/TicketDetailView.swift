@@ -26,6 +26,7 @@ struct TicketDetailView: View {
     @State private var preview: URL?
 
     @Environment(\.openRoute) private var openRoute
+    @Environment(\.chatMentions) private var chatMentions
 
     var body: some View {
         Group {
@@ -92,6 +93,9 @@ struct TicketDetailView: View {
         }
         attachments
         linked
+        if let chatMentions {
+            MentionedInSection(chats: chatMentions(ticket.id), emptyText: String(localized: "Chats that mention this ticket appear here.", bundle: #bundle))
+        }
         activity
     }
 
@@ -541,6 +545,104 @@ private struct TicketProperties: View {
 
 /// Something the ticket points to: another ticket, or an item in another tool. Clicking it opens its
 /// window on it.
+/// V2's Mentioned In: the chats of every project that mention the ticket, the latest updated first, closed ones
+/// included (docs/ui/tickets.md › Mentioned In). A row opens its chat in the Chat window; its menu also opens it
+/// in a window of its own.
+struct MentionedInSection: View {
+    let chats: [MentioningChat]
+    let emptyText: String
+
+    @Environment(\.openRoute) private var openRoute
+
+    var body: some View {
+        TicketSection(String(localized: "Mentioned In", bundle: #bundle, comment: "The chats that mention a ticket")) {
+            EmptyView()
+        } content: {
+            if chats.isEmpty {
+                Text(verbatim: emptyText)
+                    .foregroundStyle(.textSecondary)
+                    .accessibilityIdentifier("ticket.mentions.empty")
+            } else {
+                GroupBox {
+                    VStack(spacing: 0) {
+                        ForEach(chats) { chat in
+                            if chat.id != chats.first?.id {
+                                Divider()
+                            }
+                            MentionRow(chat: chat) { openRoute(.tool(.chat, project: chat.projectID, focus: chat.id)) }
+                                .contextMenu {
+                                    Button(String(localized: "Open in Chat Window", bundle: #bundle)) {
+                                        openRoute(.tool(.chat, project: chat.projectID, focus: chat.id))
+                                    }
+                                    Button(String(localized: "Open in New Window", bundle: #bundle, comment: "Opens a chat in a window of its own")) {
+                                        openRoute(.chatWindow(chat: chat.id))
+                                    }
+                                }
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("ticket.mentions")
+    }
+}
+
+/// A chat that mentions the ticket: its mark, title, project and last update.
+private struct MentionRow: View {
+    let chat: MentioningChat
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: "bubble.left.and.text.bubble.right")
+                    .foregroundStyle(.accent)
+                    .frame(minWidth: 20)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: chat.title)
+                        .foregroundStyle(chat.closed ? Color.textSecondary : Color.textPrimary)
+                        .lineLimit(1)
+                    Text("\(chat.projectID) · \(chat.updated, format: Self.dateFormat)", bundle: #bundle,
+                         comment: "A chat that mentions a ticket: its project's identifier, then its last date")
+                        .font(.caption)
+                        .foregroundStyle(.textSecondary)
+                }
+                Spacer(minLength: 16)
+                mark
+                Image(systemName: "arrow.up.forward.app")
+                    .foregroundStyle(.textSecondary)
+                    .accessibilityHidden(true)
+            }
+            .padding(.vertical, 8)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("ticket.mentions.\(chat.id)")
+    }
+
+    @ViewBuilder private var mark: some View {
+        switch chat.state {
+        case .working:
+            ProgressView()
+                .controlSize(.mini)
+                .accessibilityLabel(String(localized: "Working", bundle: #bundle, comment: "A chat where Claude works"))
+        case .waiting:
+            StatusDot(.warning)
+                .accessibilityLabel(String(localized: "Waiting for you", bundle: #bundle, comment: "A chat waiting for the user's answer"))
+        case .error:
+            StatusDot(.danger)
+                .accessibilityLabel(String(localized: "Stopped with an error", bundle: #bundle))
+        case .idle:
+            EmptyView()
+        }
+    }
+
+    private static let dateFormat = Date.FormatStyle.dateTime.day().month(.abbreviated).hour().minute()
+}
+
 private struct LinkRow: View {
     let link: TicketLink
     let action: () -> Void

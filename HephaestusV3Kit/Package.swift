@@ -61,7 +61,7 @@ let package = Package(
         // Builds: gh's runs, jobs, logs and releases of a project's GitHub repository.
         .target(name: "BuildData", dependencies: ["ExternalTools"]),
         // Chats: their files, the Claude CLI and its stream-json protocol, the chats' processes.
-        .target(name: "ChatData", dependencies: ["FileStorage", "ExternalTools", "ProjectData", "MCPKit"]),
+        .target(name: "ChatData", dependencies: ["FileStorage", "ExternalTools", "ProjectData", "MCPKit", "TextFormats"]),
         // Virtual machines: the image and machine files, ipsw.me, the download and install of macOS, disk
         // clones, the Virtualization framework's machines and the guest agent's protocol.
         .target(name: "MachineData", dependencies: ["FileStorage", "MCPKit", "ProjectData"]),

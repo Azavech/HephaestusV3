@@ -279,6 +279,34 @@ its file) shows **Not found** (`exclamationmark.triangle`, `warning`) and is dis
 | Contract | `curlybraces.square` | Contracts | The operation id, such as `listOrders` |
 | Build | `hammer` | Builds | The run number, such as `1288` |
 
+### Mentioned In
+
+![ORD-142's detail: Mentioned In lists Why does checkout time out on Staging?, ORD, with the waiting dot, and What changed in Shop this week?, SHOP, closed](images/tickets-mentioned-in.png)
+
+V2's Mentioned In tab, as a part of the detail between **Linked** and **Activity** (V3's detail has no tabs):
+the chats of every loaded project that mention the ticket, the latest updated first, closed chats included
+(`ticket.mentions`).
+
+- **Mentions.** A chat mentions a ticket when its messages or Claude's replies (outside a sub-agent) show the
+  id as a link, or a message carries the ticket ([Data › Mentioned ids](../data.md#mentioned-ids)). Calls,
+  results, thinking and questions don't count. The list follows each new message.
+- **Rows.** In a group box, separated by dividers, each one plain button (`ticket.mentions.<chat id>`):
+  `bubble.left.and.text.bubble.right` in `accent`, the chat's title on one line (`textSecondary` when closed),
+  under it "<project identifier> · <date>" (`caption`, `textSecondary`, such as "ORD · 11 Nov at 05:49"), then
+  the chat's mark as the Chat window's list draws it (a spinner, the `warning` dot while it waits, the `danger`
+  dot after an error) and `arrow.up.forward.app`. A click opens the chat in its project's Chat window. The
+  context menu: **Open in Chat Window**, **Open in New Window** ([Chat › Chat windows](chat.md#chat-windows)).
+- **None.** "Chats that mention this ticket appear here." in `textSecondary` (`ticket.mentions.empty`).
+- V2's rows also offered Rename…, Close and Delete…: they are in the chat, once opened (default chosen at design
+  time: the Tickets window doesn't change chats). V2 left out the ticket's own chats, which its Chats tab
+  listed; V3 has no such tab, so every chat that mentions the ticket is listed.
+- The section shows only where the app gives the window the chats (`\.chatMentions`); previews pass the
+  samples: **Mentioned In**, **Mentioned In, None**.
+
+**Bundles.** A bundle has no detail: its sidebar row's context menu has **Mentioned In ▸**
+(`tickets.sidebar.bundle.<id>.mentions`), after **Set Status ▸**, listing the chats that mention the bundle by
+title, each opening it in the Chat window, or "No Mentions", disabled.
+
 ### Activity
 
 The ticket's history and its comments under the heading **Activity**, oldest first, 14 pt apart (at equal
@@ -652,6 +680,8 @@ See [Chat](chat.md) for the panel itself.
 | **Blocked** | `ticket.blocked` | Help "It depends on a ticket that isn't done." |
 | Attachments, **Add Files…**, a file | `ticket.attachments`, `ticket.attachments.add`, `ticket.attachment.<uuid>` | A file is one button: its name (and size). |
 | **Add Link…** | `ticket.links.add` | None. |
+| Mentioned In, a chat, none | `ticket.mentions`, `ticket.mentions.<chat id>`, `ticket.mentions.empty` | A row is one button: its title, project and date, then its mark's label ("Working", "Waiting for you", "Stopped with an error"). |
+| A bundle's **Mentioned In ▸** | `tickets.sidebar.bundle.<id>.mentions` | A menu. |
 | Comment editor | `ticket.commentEditor.text`, `ticket.commentEditor.save` | None. |
 | **New Bundle** (sidebar) | `tickets.sidebar.newBundle` | Help "New Bundle". |
 | Add Link sheet | `addLink.sheet`, `addLink.kind`, `addLink.ticket.<id>`, `addLink.add` | Heading. |
@@ -698,6 +728,8 @@ pointed at, such as "TicketsRootView, iPhone, Filtered".
 | --- | --- | --- |
 | "Loaded" | `.appChrome`, 1180 × 760 pt | Orders, All Tickets, ORD-142 selected. |
 | "Loaded, Dark" | Same | The same, in Dark Mode. |
+| "Mentioned In" | `.appChrome`, 1180 × 1100 pt | Orders, ORD-142 selected, with the samples' chats that mention it. |
+| "Mentioned In, None" | Same | ORD-141, which no chat mentions. |
 | "Parent Project" | Same | Shop: the Projects section, the list grouped by project, SHOP-14 selected. |
 | "Bundle" | Same | Orders, the Checkout reliability bundle selected, ORD-139 selected. |
 | "No Matching Tickets" | Same | Tools, Done selected in the sidebar. |

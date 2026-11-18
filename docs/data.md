@@ -1237,6 +1237,25 @@ state the session had already computed reports:
 - `waitingChats` (`waitingPermission`, `waitingAnswers`) and `runningChats` (`starting`, `running`) feed the Dock's
   badge and the status bar.
 
+### Mentioned ids
+
+The ticket and bundle ids each chat mentions, for the Mentioned In lists ([UI › Tickets › Mentioned
+In](ui/tickets.md#mentioned-in)), as V2's `mentionedIDs` (`ChatMentions`, `ChatSession.mentions`):
+
+- a `user` item: the ids its `text` shows as links, the `focus` of each of its `references` whose tool is
+  `tickets`, and the `name` of each of V2's `linkedItems` of kind `ticket` or `bundle`;
+- an `assistant` item without `parentToolUseID`: the ids its `text` shows as links.
+
+A text is read with the transcript's own rules (`MarkdownItemIDs.linkedIDs(inMarkdown:)`, TextFormats): an id in
+text, or a code span that is exactly an id, counts; one in a code block, inside a link, in HTML or a marker
+doesn't. Every identifier counts, whether a loaded project has it or not. The other items add none.
+
+- **Reading.** After the chats are read (`reload()`), the session reads, one transcript at a time and off the
+  main actor, those of the chats not read yet, and adds their ids; a read asked for meanwhile follows it. Each
+  item recorded afterwards adds its own. Ids only grow while the app runs; a chat gone drops its own.
+- **Never stored**: each launch reads them again from the transcripts.
+- `chats(mentioning:)` gives the loaded chats that mention an id, the latest `updated` first.
+
 ### Feedback chats
 
 Send Feedback's chat (`ChatSession.createFeedback`, [UI › Chat › Feedback](ui/chat.md#feedback)), as V2's

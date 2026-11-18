@@ -14,6 +14,17 @@
     "%@ has no tickets." : {
 
     },
+    "%@ · %@" : {
+      "comment" : "A chat that mentions a ticket: its project's identifier, then its last date",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
     "%lld of %lld done" : {
       "localizations" : {
         "en" : {
@@ -91,6 +102,9 @@
 
     },
     "Changed bundle %@" : {
+
+    },
+    "Chats that mention this ticket appear here." : {
 
     },
     "Claude" : {
@@ -358,6 +372,9 @@
     "Medium" : {
       "comment" : "A ticket's priority"
     },
+    "Mentioned In" : {
+      "comment" : "The chats that mention a ticket"
+    },
     "Moved %@ to %@" : {
       "localizations" : {
         "en" : {
@@ -400,6 +417,9 @@
 
     },
     "No Matching Tickets" : {
+
+    },
+    "No Mentions" : {
 
     },
     "No Ticket Selected" : {
@@ -446,6 +466,12 @@
     },
     "Open With Default App" : {
 
+    },
+    "Open in Chat Window" : {
+
+    },
+    "Open in New Window" : {
+      "comment" : "Opens a chat in a window of its own"
     },
     "Pick a ticket to see its details." : {
 
@@ -537,6 +563,9 @@
     "Status" : {
       "comment" : "The word for a ticket's status, as a label: a property, a section of the sidebar, the status menu without a ticket"
     },
+    "Stopped with an error" : {
+
+    },
     "Sub projects included" : {
 
     },
@@ -573,6 +602,9 @@
     "Urgent" : {
       "comment" : "A ticket's priority"
     },
+    "Waiting for you" : {
+      "comment" : "A chat waiting for the user's answer"
+    },
     "What did %@ change?" : {
 
     },
@@ -581,6 +613,9 @@
     },
     "Where should work on %@ start?" : {
 
+    },
+    "Working" : {
+      "comment" : "A chat where Claude works"
     },
     "You" : {
       "comment" : "The user, as the author of a ticket"

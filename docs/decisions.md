@@ -177,6 +177,9 @@ which rules the app enforces, and never tells Claude how to work.
 | Does the panel switch chats? | Yes, V2's pop-up of the project's chats in its header, the open one checked, each with a menu symbol for its mark. Only the project's own chats, as V2's inspector listed the active project's; closed chats only while open. | [UI › Chat › Header](ui/chat.md#header) |
 | Is a draft kept per chat? | Yes, as V2 kept them by chat id in memory, shared by every view of the chat; a new chat's draft becomes the chat's when it starts. This replaces V3's one draft per window, which stayed when the user picked another chat. | [UI › Chat › Drafts](ui/chat.md#drafts) |
 | Does the chat say when the CLI is missing? | Yes, V2's "Checking the Claude CLI…" line and its banner with Open Settings, which opens Settings on Chat, where V3 keeps the CLI's path (V2 opened General). Settings now opens on its last tab. | [UI › Chat › Claude CLI line](ui/chat.md#claude-cli-line) |
+| Where does Mentioned In show? | A part of the ticket's detail between Linked and Activity, as V3's detail has no tabs; for a bundle, which has no detail, a Mentioned In submenu of its sidebar row. Rows open the chat in the Chat window, or in a window of its own from their menu. | [UI › Tickets › Mentioned In](ui/tickets.md#mentioned-in) |
+| Which chats are listed? | Every loaded chat that mentions the id, closed ones included, as V2; V2's exclusion of the ticket's own chats has no V3 equivalent. | same |
+| How are mentions found without keeping every transcript? | Each transcript is read once at launch, off the main actor, one at a time, keeping only its ids; new items add theirs. V2's engine replayed them all. | [Data › Mentioned ids](data.md#mentioned-ids) |
 
 ## Builds
 

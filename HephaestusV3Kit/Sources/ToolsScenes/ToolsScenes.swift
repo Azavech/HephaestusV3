@@ -237,6 +237,7 @@ private struct RouteHost<Content: View>: View {
             .environment(\.availableTools, AppData.availableTools)
             .environment(\.feedbackTarget, appData.feedbackTarget)
             .environment(\.chatSession, appData.chats)
+            .environment(\.chatMentions, appData.chatMentions)
             .environment(\.generateTitle, appData.generateTitle)
             .task {
                 if appData.openRoute == nil { appData.openRoute = openRouteAction }
