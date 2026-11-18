@@ -105,7 +105,7 @@ extension ChatSession {
                   origin: String? = nil) throws(ChatError) -> String {
         guard let project = projects.snapshot.project(projectID) else { throw .notFound("Project \(projectID) not found.") }
         let file = ChatFile(id: id, title: Self.title(of: title), kind: kind, created: now(), settings: settings, origin: origin)
-        try? ProjectFolder(root: URL(fileURLWithPath: project.root, isDirectory: true)).ensureGitignore()
+        _ = try? ProjectFolder(root: URL(fileURLWithPath: project.root, isDirectory: true)).ensureGitignore()
         try write(file, projectID: projectID)
         transcripts[id] = []
         touch(id)
@@ -167,7 +167,8 @@ extension ChatSession {
             record(.system(SystemItem(created: now(), text: "Skills could not be prepared: \(error)", level: .warning)), in: chatID)
         }
         let launch = ChatLaunch(cliPath: cli, chatID: chatID, resume: chat.file.sessionStarted, model: chat.file.settings.model,
-                                effort: chat.file.settings.effort, mcpConfig: config, tools: toolNames, workingDirectory: project.root,
+                                effort: chat.file.settings.effort, mcpConfig: config, tools: toolNames,
+                                fileTools: ClaudeFileTools.tools(edits: fileEdits()), workingDirectory: project.root,
                                 environment: projects.tools.environment, pluginDir: plugin)
         let connection: any ClaudeConnection
         do {
@@ -249,8 +250,16 @@ extension ChatSession {
                     endTurnIfDone(run)
                 }
             case .permissionRequest(let request):
-                run.cliPermissions[request.requestID] = request.input
-                record(.permissionRequest(request), in: chatID)
+                // A file tool's call is answered at once where Settings ▸ Chat decides it; anything else gets its card.
+                switch root(ofChat: chatID).flatMap({ ClaudeFileTools.decision(tool: request.toolName, input: request.input, root: $0, edits: fileEdits()) }) {
+                case .allow?:
+                    run.connection.write(ClaudeInput.allow(request.requestID, input: request.input))
+                case .deny(let message)?:
+                    run.connection.write(ClaudeInput.deny(request.requestID, message: message))
+                case .ask?, nil:
+                    run.cliPermissions[request.requestID] = request.input
+                    record(.permissionRequest(request), in: chatID)
+                }
             case .unsupportedControlRequest(let id, let subtype):
                 run.connection.write(ClaudeInput.unsupported(id, subtype: subtype))
             case .controlResponse(let id, let success, let response, let error):
@@ -398,6 +407,11 @@ extension ChatSession {
     }
 
     // MARK: Approvals
+
+    /// The folder of the chat's project: where its CLI runs, and where its file tools may work without asking.
+    public func root(ofChat chatID: String) -> String? {
+        chats[chatID].flatMap { projects.snapshot.project($0.projectID)?.root }
+    }
 
     /// The user's answer to a card: the CLI's request, or the app's own.
     public func answer(_ chatID: String, requestID: String, allow: Bool) {

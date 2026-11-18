@@ -910,14 +910,16 @@ The arguments, one element each, no shell:
   --session-id <CHAT-ID>          (or --resume <CHAT-ID> once sessionStarted)
   --model <settings.model> --effort <settings.effort>
   --permission-mode manual --permission-prompt-tool stdio
-  --tools ""
+  --tools Read,Grep,Glob,Edit,Write      (Read,Grep,Glob under Never)
   --strict-mcp-config --mcp-config <data folder>/Runtime/mcp/<CHAT-ID>.json
   --allowedTools mcp__hephaestus__<tool>,mcp__hephaestus__<tool>,…
   --plugin-dir <data folder>/Runtime/plugins
 ```
 
-- `--tools ""` leaves Claude none of the CLI's own tools (shell, files, web, agents); `--strict-mcp-config`
-  leaves it the app's server alone. Claude reads and changes only through the app's tools, as the user does.
+- `--tools` gives Claude the CLI's file tools alone, none of its other tools (shell, web, agents): `Read`, `Grep`
+  and `Glob`, then `Edit` and `Write` unless Settings ▸ Chat › Edit the project's files is Never when the process
+  starts ([File tools](#file-tools)). `--strict-mcp-config` leaves it the app's server alone. Claude reads and
+  changes everything else only through the app's tools, as the user does.
 - `--allowedTools` lists every tool of the app's server: the CLI runs them without asking, and the app's server
   asks the user before a change, as Settings ▸ Chat says ([MCP › Permissions](mcp.md#permissions)).
 - No system prompt and no hook: V3 sends Claude nothing written for it besides its tools' descriptions and the
@@ -969,11 +971,37 @@ after its current CLI turn. The turn's end writes `updated`.
 - **The app's cards.** Before a change by a chat's Claude that Settings ▸ Chat sets to Ask First, the server's
   gate calls `ChatSession.requestApproval`: a `permissionRequest` item with a new lowercase UUID as request id
   and `mcp__hephaestus__<tool>` as `toolName`; the call waits for the answer.
-- **The CLI's requests.** A `can_use_tool` request (one the CLI makes on its own, such as for a tool the user's
-  Claude Code settings deny) becomes a card too. Allow writes
+- **The CLI's requests.** A `can_use_tool` request for a file tool is answered as [File tools](#file-tools) says:
+  at once, or with a card. Another (one the CLI makes on its own, such as for a tool the user's Claude Code
+  settings deny) becomes a card too. Allow writes
   `{"type":"control_response","response":{"subtype":"success","request_id":<id>,"response":{"behavior":"allow","updatedInput":<input>}}}`;
   Don't Allow writes `"behavior":"deny","message":"Permission denied by the user."`.
 - An answer records `decision` and `decidedBy`, this Mac's name.
+
+#### File tools
+
+The CLI's file tools (`ClaudeFileTools`, the user's request, 17 November 2026): `Read`, `Grep` and `Glob` read,
+`Edit` and `Write` edit. The CLI runs a call on its own where its rules allow it (a read inside its working folder,
+a tool the user's Claude Code settings allow); otherwise it sends `can_use_tool`, and the app answers with the
+setting **Edit the project's files** (`chat.fileEdits` in the user defaults: `never`, `askFirst`, `always`;
+`askFirst` when unset) read at that moment:
+
+| Request | Setting | Answer |
+| --- | --- | --- |
+| `Read`, `Grep`, `Glob` inside the project's folder | Any | `allow`, no item |
+| `Read`, `Grep`, `Glob` outside it | Any | A `permissionRequest` item: a card |
+| `Edit`, `Write` | `never` | `deny`, `The user doesn't let Claude edit files from chats (Settings ▸ Chat).`, no item |
+| `Edit`, `Write` | `askFirst` | A card |
+| `Edit`, `Write` inside the project's folder, not in its `.hephaestus/` | `always` | `allow`, no item |
+| `Edit`, `Write` in `.hephaestus/` or outside the project's folder | `always` | A card |
+
+- The path is `file_path` (`Read`, `Edit`, `Write`) or `path` (`Grep`, `Glob`; the project's folder without one).
+  `~` is expanded; a relative path is taken from the project's folder; `.` and `..` are removed; the symbolic links
+  of the longest part that exists are resolved, in the path and in the project's folder. A path is inside when it
+  is the folder or starts with the folder and `/`.
+- `allow` writes `{"behavior":"allow","updatedInput":<input>}`, `deny` `{"behavior":"deny","message":<message>}`,
+  as an answer to a card does ([Permissions](#permissions)).
+- An item for another tool keeps its card, whatever the setting.
 
 #### Stop, end and quit
 

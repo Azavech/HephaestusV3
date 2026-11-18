@@ -89,7 +89,7 @@
     "Claude Code %@" : {
       "comment" : "The CLI's version, such as 2.1.322"
     },
-    "Claude acts through each tool, as you would. Nothing it reads or changes goes around them." : {
+    "Claude acts through each tool, as you would, and reads and edits the project's files with Claude Code's file tools. Outside the project's folder, it asks first." : {
 
     },
     "Claude is working… %@" : {
@@ -104,7 +104,22 @@
     "Claude wants to comment on %@" : {
 
     },
+    "Claude wants to edit %@" : {
+
+    },
+    "Claude wants to list the files in %@" : {
+
+    },
+    "Claude wants to read %@" : {
+
+    },
+    "Claude wants to search %@" : {
+
+    },
     "Claude wants to use %@" : {
+
+    },
+    "Claude wants to write %@" : {
 
     },
     "Claude's turn ended with an error." : {
@@ -124,6 +139,12 @@
     },
     "Done" : {
       "comment" : "Closes the inspector sheet"
+    },
+    "Edit the project's files" : {
+
+    },
+    "Edited %@" : {
+      "comment" : "A chat's call: Claude edited a file"
     },
     "Editing…" : {
 
@@ -172,6 +193,20 @@
     },
     "Listed the chats of %@" : {
 
+    },
+    "Listed the files matching %@" : {
+      "comment" : "A chat's call: Claude listed the project's files"
+    },
+    "Listed the files matching %@ in %@" : {
+      "comment" : "A chat's call: Claude listed files in a folder",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Listed the files matching %1$@ in %2$@"
+          }
+        }
+      }
     },
     "Look Again" : {
       "comment" : "Looks for the Claude CLI again"
@@ -271,10 +306,13 @@
     "Projects" : {
       "comment" : "The Projects window, as a tool"
     },
+    "Read %@" : {
+      "comment" : "A chat's call: Claude read a file"
+    },
     "Read a chat" : {
       "comment" : "Claude read another chat's messages"
     },
-    "Read tickets, services, contracts, builds and machines" : {
+    "Read tickets, services, contracts, builds, machines and the project's files" : {
 
     },
     "Reading…" : {
@@ -303,6 +341,20 @@
     },
     "Screenshot of the window" : {
 
+    },
+    "Searched for “%@”" : {
+      "comment" : "A chat's call: Claude searched the project's files"
+    },
+    "Searched for “%@” in %@" : {
+      "comment" : "A chat's call: Claude searched files in a folder",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Searched for “%1$@” in %2$@"
+          }
+        }
+      }
     },
     "Select an internal skill to edit its content." : {
 
@@ -405,6 +457,9 @@
     },
     "Which services did %@ go through?" : {
       "comment" : "A suggestion; the value is a request id, such as req-8f3a"
+    },
+    "Wrote %@" : {
+      "comment" : "A chat's call: Claude wrote a whole file"
     },
     "You" : {
       "comment" : "The author of the user's messages"

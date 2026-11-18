@@ -1,3 +1,4 @@
+import ChatData
 import Foundation
 import ToolsFoundation
 
@@ -193,4 +194,10 @@ public enum ChatPreferences {
     static let clusterChangesKey = "chat.clusterChanges"
     static let machineChangesKey = "chat.machineChanges"
     static let buildStartsKey = "chat.buildStarts"
+    static let fileEditsKey = "chat.fileEdits"
+
+    /// Settings ▸ Chat › Edit the project's files; Ask First until the user sets it.
+    public static func fileEdits(_ defaults: UserDefaults = .standard) -> ChatFileEdits {
+        defaults.string(forKey: fileEditsKey).flatMap(ChatFileEdits.init(rawValue:)) ?? .askFirst
+    }
 }

@@ -1,6 +1,6 @@
 # Chat
 
-Chat is where the user asks Claude about a project. Claude is one more client of the tools, never their center: it reads items only through each tool's read function, every read shows in the conversation with an **Open** button, and it asks before it changes anything (the user's principle). Chat appears in two places (the user's choice). The **Chat window** is a tool window like the others: it lists every conversation of a project and shows one with an inspector. The **chat panel** sits beside every other tool window and asks about the item that tool has selected. Both show the same conversations, from one shared store. Claude replies through the Claude CLI on this Mac: each conversation is a chat of the project, kept in its `.hephaestus/chats/` ([Data › Chats](../data.md#chats)). Claude has none of the CLI's own tools (no shell, no file edits, no web): it reads and changes only through the app's tools, over the MCP server, and the user's permissions decide what it may change without asking.
+Chat is where the user asks Claude about a project. Claude is one more client of the tools, never their center: it reads items only through each tool's read function, every read shows in the conversation with an **Open** button, and it asks before it changes anything (the user's principle). Chat appears in two places (the user's choice). The **Chat window** is a tool window like the others: it lists every conversation of a project and shows one with an inspector. The **chat panel** sits beside every other tool window and asks about the item that tool has selected. Both show the same conversations, from one shared store. Claude replies through the Claude CLI on this Mac: each conversation is a chat of the project, kept in its `.hephaestus/chats/` ([Data › Chats](../data.md#chats)). Of the CLI's own tools, Claude has only those that read and edit the project's files ([Files](#files)), and no shell or web: it reads and changes everything else only through the app's tools, over the MCP server, and the user's permissions decide what it may change without asking.
 
 ![The Chat window for Orders: the conversation list, the checkout conversation with four reads and an approval card, and the inspector](images/chat-light.png)
 *The Chat window for Orders, light appearance. Claude's reply lists what it read through Service Map, Tickets and Builds, each with Open, then asks to comment on ORD-142.*
@@ -94,7 +94,13 @@ Each call Claude makes to one of the app's tools shows as one row on a `surfaceS
 | `api_operations`, `api_call` | Read the contract of ORD; Called POST /orders/{id}/checkout of ORD | — | The project's Contracts window |
 | The cluster and map tools | Read the deployment of ORD in Staging; Read the logs…; Restarted ORD in Staging; Scaled…; Synced… with Argo CD; Read the service map of ORD in Staging; Read request <id> | — | The Service Map (a request: on it) |
 | `open_in_app` | Opened a window of Hephaestus | — | None |
-| A tool of the CLI (in a chat whose Claude had them) | Used Bash | Its result's first line when it failed | None |
+| `Read` | Read Sources/App.swift | The file's whole path | None |
+| `Grep` | Searched for “screenshot”; Searched for “screenshot” in Sources | Its result's first line, such as "Found 3 files" | None |
+| `Glob` | Listed the files matching \*\*/\*.swift; Listed the files matching \*\*/\*.swift in Sources | The folder's whole path | None |
+| `Edit`, `Write` | Edited Sources/App.swift; Wrote Sources/New.swift | The file's whole path | None |
+| Another tool of the CLI (in an older chat whose Claude had it) | Used Bash | Its result's first line when it failed | None |
+
+A file tool's path inside the project's folder is shown from that folder; another path, whole.
 
 - A call that failed (its result is an error, a refusal included) shows `exclamationmark.triangle` and its error's first line in `danger`.
 - **Open** opens the item in its tool's window, with the item selected: the route `.tool(tool, project:, focus:)`; a window already showing it comes forward. Help: "Open ORD-142 in Tickets". A call without an item has no **Open**.
@@ -102,7 +108,7 @@ Each call Claude makes to one of the app's tools shows as one row on a `surfaceS
 
 ### Approval cards
 
-A change Claude wants to make shows as a card, when the user's permissions say Ask First ([Inspector](#inspector), [MCP › Permissions](../mcp.md#permissions)). Nothing changes until the user answers: Claude's call waits.
+A change Claude wants to make shows as a card, when the user's permissions say Ask First ([Inspector](#inspector), [MCP › Permissions](../mcp.md#permissions)), and so does a file Claude wants to read outside the project's folder ([Files](#files)). Nothing changes until the user answers: Claude's call waits.
 
 - **Title.** `hand.raised.fill` in `warning`, then the request as one sentence, worded by the tool, so that a translation orders the words as its language needs. The title is a heading for VoiceOver.
 
@@ -119,9 +125,11 @@ A change Claude wants to make shows as a card, when the user's permissions say A
   | `create_project`, `update_project`, `remove_project` | Claude wants to add the project Web; Claude wants to change the settings of ORD; Claude wants to remove ORD from Hephaestus |
   | `api_call`, not `GET` or `HEAD` | Claude wants to call POST /orders of ORD on Staging, with the body as preview |
   | `rerun_run`, `cancel_run` | Claude wants to re-run a run of ORD; Claude wants to re-run the failed jobs of a run of ORD; Claude wants to cancel a run of ORD |
-  | A tool of the CLI (its own request) | Claude wants to use Write |
+  | `Edit`, `Write` | Claude wants to edit Sources/App.swift; Claude wants to write Sources/New.swift |
+  | `Read`, `Grep`, `Glob`, outside the project's folder | Claude wants to read /etc/hosts; Claude wants to search /Users/you/Other; Claude wants to list the files in /Users/you/Other |
+  | Another tool of the CLI (its own request) | Claude wants to use Bash |
 
-- **Preview.** What it would write, selectable, at most 20 lines, on a `surfaceSunken` box: a comment's text; a new ticket's title and description; a ticket change's new title, priority, labels and description; a bundle's title and tickets; a project's identifier and folder, or the settings it changes; for a removal, "The project's folder and files stay on this Mac."; for a request of the CLI, its input as JSON. None for a deletion or a status change.
+- **Preview.** What it would write, selectable, at most 20 lines, on a `surfaceSunken` box: a comment's text; a new ticket's title and description; a ticket change's new title, priority, labels and description; a bundle's title and tickets; a project's identifier and folder, or the settings it changes; for a removal, "The project's folder and files stay on this Mac."; for an edit, the text it replaces, each line after `- `, then the new text, each line after `+ `; for a whole file, its content; for a search or a listing, its pattern; for another request of the CLI, its input as JSON. None for a deletion or a status change.
 - **Note.** The tool's symbol and "Through *Tickets*, as if you did it" (Projects, with `folder`, for a project's change); "Through the Claude CLI" for a request of the CLI.
 - **Answer.** **Don't Allow** and **Allow** (prominent). After the answer, the buttons give way to **Allowed** (`checkmark.circle.fill`, `success`) or **Not Allowed** (`xmark.circle`, `textSecondary`). Allow lets the call run; Don't Allow refuses it, and Claude reads "The user didn't allow this call." Stop, the CLI's end and quitting refuse the cards still waiting.
 - **Outline.** `warning` at 50 % opacity while the card waits; `divider` once answered.
@@ -181,10 +189,10 @@ A grouped form in a trailing column, 260 to 400 pt wide, 300 pt ideally.
 | Section | Contents |
 |---|---|
 | **In This Chat** | Every item the conversation attached or read, in the order it first came up. Each row: the tool's symbol, the item's title, the tool's name as a caption, and **Open**, which opens the item in its tool's window (help "Open *item* in *Tool*"). An item seen in two Service Map environments has a row for each. With none: "Items Claude reads or you attach show here." |
-| **Claude Can** | **Read tickets, services, contracts, builds and machines**: Always (fixed text). **Change tickets**: Never, Ask First or Always; Ask First by default. **Change projects**: Never, Ask First or Always; Ask First by default. **Call APIs that change data**: Never, Ask First or Always; Ask First by default (a `GET` or `HEAD` call always runs). **Operate deployments** (restart, scale, Argo CD sync, port forwards): Never, Ask First or Always; Ask First by default. **Operate virtual machines** (create, start, stop, shell, input, files): Never, Ask First or Always; Ask First by default. **Start builds**: Never or Ask First; Never by default. Footer: "Claude acts through each tool, as you would. Nothing it reads or changes goes around them." The same settings as [Settings ▸ Chat](#settings--chat). |
+| **Claude Can** | **Read tickets, services, contracts, builds, machines and the project's files**: Always (fixed text). **Edit the project's files**: Never, Ask First or Always; Ask First by default ([Files](#files)). **Change tickets**: Never, Ask First or Always; Ask First by default. **Change projects**: Never, Ask First or Always; Ask First by default. **Call APIs that change data**: Never, Ask First or Always; Ask First by default (a `GET` or `HEAD` call always runs). **Operate deployments** (restart, scale, Argo CD sync, port forwards): Never, Ask First or Always; Ask First by default. **Operate virtual machines** (create, start, stop, shell, input, files): Never, Ask First or Always; Ask First by default. **Start builds**: Never or Ask First; Never by default. Footer: "Claude acts through each tool, as you would, and reads and edits the project's files with Claude Code's file tools. Outside the project's folder, it asks first." The same settings as [Settings ▸ Chat](#settings--chat). |
 | **Replies** | **Model**: a pop-up of the CLI's models (Default, Opus, Fable, Sonnet, Haiku until the CLI answers). **Effort**: Low, Medium, High, Extra High, Max, the levels the model has; hidden for a model without one. For the selected conversation, its own; with no conversation selected, those of new chats. A change applies to the running CLI at once. In previews: **Model**: None connected, and "Replies are samples until a model is connected." |
 
-The permissions are stored in the user defaults (`chat.ticketChanges`, `chat.projectChanges`, `chat.apiCalls`, `chat.clusterChanges`, `chat.buildStarts`) and the MCP server applies them to every chat's calls ([MCP › Permissions](../mcp.md#permissions)): Always runs the change, Ask First shows a card and waits, Never refuses it. A deletion (a ticket, a bundle, a comment, an attachment) or a project's removal asks first even under Always. **Start builds** covers re-running and cancelling runs: Never refuses them, Ask First shows a card.
+The permissions are stored in the user defaults (`chat.fileEdits`, `chat.ticketChanges`, `chat.projectChanges`, `chat.apiCalls`, `chat.clusterChanges`, `chat.machineChanges`, `chat.buildStarts`). The app applies **Edit the project's files** to the CLI's requests ([Files](#files)); the MCP server applies the others to every chat's calls ([MCP › Permissions](../mcp.md#permissions)): Always runs the change, Ask First shows a card and waits, Never refuses it. A deletion (a ticket, a bundle, a comment, an attachment) or a project's removal asks first even under Always. **Start builds** covers re-running and cancelling runs: Never refuses them, Ask First shows a card.
 
 ## How Claude reaches the tools
 
@@ -192,7 +200,7 @@ Claude reaches a tool only through that tool's operations, the same functions th
 
 1. **A tool says what is selected.** A tool window reports its selected item as a reference (tool, project, focus, title, and for the Service Map the environment on screen) through `reportChatSubject`. The window keeps it for its chat panel. The chat never looks into the tool's window.
 2. **The message carries it.** Sent from the panel, the item travels with the message as a chip; from the Chat window, the project. Claude reads one line after the message's text, such as "Attached: ticket ORD-142 of project ORD" ([Data › Messages](../data.md#messages)).
-3. **Claude calls the tools.** It reads and changes through the app's MCP tools (`get_ticket`, `add_comment`…), as any client of them would; it has no other tools.
+3. **Claude calls the tools.** It reads and changes through the app's MCP tools (`get_ticket`, `add_comment`…), as any client of them would; besides them it has only the CLI's file tools ([Files](#files)).
 4. **The call shows.** Each call becomes a tool-call row with **Open**, and its item is listed under **In This Chat**.
 5. **Changes ask first.** A change the user's permissions set to Ask First shows as an approval card; Claude's call waits for the answer.
 
@@ -207,6 +215,29 @@ The panel also reads its attached item before the first message, through `toolRe
 | Dashboard, Chat | None | — | — |
 
 The app's MCP tools are those of Projects, Tickets, Chat, Builds, Contracts and the Service Map, and every tool's reader reads the app's data.
+
+### Files
+
+Claude reads and edits the project's files with five of the Claude CLI's own tools (the user's request, 17 November
+2026): `Read`, `Grep` and `Glob` read, `Edit` and `Write` edit. It has none of the CLI's other tools: no shell, no
+web, no agents. The CLI asks before a call it doesn't run on its own, and the app answers at once where Settings ▸
+Chat decides it, or shows a card ([Data › File tools](../data.md#file-tools)):
+
+| Call | Edit the project's files | Answer |
+| --- | --- | --- |
+| A read inside the project's folder | Any | Runs, without a card. |
+| A read outside the project's folder | Any | A card. |
+| An edit | Never | Refused; Claude reads "The user doesn't let Claude edit files from chats (Settings ▸ Chat)." A chat started under Never has no `Edit` or `Write`. |
+| An edit | Ask First (default) | A card, with the change as preview. |
+| An edit inside the project's folder, outside its `.hephaestus/` | Always | Runs, without a card. |
+| An edit in `.hephaestus/`, or outside the project's folder | Always | A card: the app's tools change its data. |
+
+- A relative path is taken from the project's folder, and symbolic links are resolved (defaults chosen at design
+  time, as V2's Accept Edits).
+- The CLI's own rules still apply before it asks: it runs a read inside its working folder on its own, and the
+  user's Claude Code permission rules may allow a tool without asking.
+- A change of the setting applies to the next request; whether the CLI has `Edit` and `Write` is decided when its
+  process starts.
 
 ### Samples
 
@@ -510,14 +541,15 @@ The Settings window's **Chat** tab (`bubble.left.and.text.bubble.right`), at 520
 | | **Path**, text field in monospace | Empty | The CLI to run, absolute or from `~/`; its prompt is the path found, or "Found automatically". Return applies it. Stored as `claudePath` in `settings.yml`. |
 | | **Look Again**, button | — | Applies the path and looks for the CLI again, then reads its models. Disabled while looking. A path that can't be stored shows its reason beside it, in `danger`. |
 | | Footer | — | "Chats run Claude Code from this Mac. Empty, the app finds it in ~/.local/bin, /opt/homebrew/bin, /usr/local/bin, or your shell's PATH." |
-| **Claude Can** | **Read tickets, services, contracts, builds and machines** | Always | Fixed text. |
+| **Claude Can** | **Read tickets, services, contracts, builds, machines and the project's files** | Always | Fixed text. |
+| | **Edit the project's files**, pop-up: Never, Ask First, Always | Ask First | Shared with the inspector; Claude's `Edit` and `Write` ([Files](#files)), stored as `chat.fileEdits`. |
 | | **Change tickets**, pop-up: Never, Ask First, Always | Ask First | Shared with the Chat window's inspector; applied to every chat's calls. |
 | | **Change projects**, pop-up: Never, Ask First, Always | Ask First | The same, for adding projects and changing or removing them. |
 | | **Call APIs that change data**, pop-up: Never, Ask First, Always | Ask First | Claude's `api_call` with another method than `GET` or `HEAD`. |
 | | **Operate deployments**, pop-up: Never, Ask First, Always | Ask First | Claude's restarts, scales, Argo CD syncs and port forwards. |
 | | **Operate virtual machines**, pop-up: Never, Ask First, Always | Ask First | Claude's `vm_` tools that create, start, stop or act in a machine (`chat.machineChanges`). |
 | | **Start builds**, pop-up: Never, Ask First | Never | Shared with the inspector; applied to Claude's re-runs and cancels of runs. |
-| | Footer | — | "Claude acts through each tool, as you would. Nothing it reads or changes goes around them." |
+| | Footer | — | "Claude acts through each tool, as you would, and reads and edits the project's files with Claude Code's file tools. Outside the project's folder, it asks first." |
 | **Replies** | **Model**, **Effort**, pop-ups | Default, High | The model and effort of new chats, stored as `chatModel` and `chatEffort` in `settings.yml`. Footer: "New chats start with these. Each chat keeps its own, in the Chat window's inspector." |
 
 The switch is stored as `chat.showsPanel` in the user defaults.
@@ -540,7 +572,8 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 | In This Chat row | `chat.inspector.reference.<item id>` | A container: title and tool name as one element, then **Open** |
 | In This Chat row's Open | `chat.inspector.reference.<item id>.open` | "Open"; help "Open *item* in *Tool*" |
 | Nothing in this chat | `chat.inspector.empty` | "Items Claude reads or you attach show here." |
-| Read (inspector) | `chat.inspector.permissions.reads` | "Read tickets, services, contracts, builds and machines", "Always" |
+| Read (inspector) | `chat.inspector.permissions.reads` | "Read tickets, services, contracts, builds, machines and the project's files", "Always" |
+| Edit files (inspector) | `chat.inspector.permissions.files` | Pop-up button |
 | Change tickets (inspector) | `chat.inspector.permissions.tickets` | Pop-up button |
 | Call APIs (inspector) | `chat.inspector.permissions.apiCalls` | Pop-up button |
 | Start builds (inspector) | `chat.inspector.permissions.builds` | Pop-up button |
@@ -591,7 +624,8 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 | Element | Identifier | Label or notes |
 |---|---|---|
 | Panel switch | `settings.chat.showsPanel` | "Show the chat panel in tool windows" |
-| Read | `settings.chat.permissions.reads` | "Read tickets, services, contracts, builds and machines", "Always" |
+| Read | `settings.chat.permissions.reads` | "Read tickets, services, contracts, builds, machines and the project's files", "Always" |
+| Edit files | `settings.chat.permissions.files` | Pop-up button |
 | Change tickets | `settings.chat.permissions.tickets` | Pop-up button |
 | Start builds | `settings.chat.permissions.builds` | Pop-up button |
 | Change projects | `settings.chat.permissions.projects` | Pop-up button |
@@ -613,7 +647,7 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 ## Sample data and limits
 
 - **Chats.** The app's chats are the projects' `.hephaestus/chats/`. Chats of every kind are listed and shown; their items the app doesn't show (question pickers, images Claude showed) are skipped. There is no delete, no rename in the window (Claude can rename with `rename_chat`), and no file attachments in the composer.
-- **Claude.** The CLI runs with no system prompt from the app, no hooks, no skills and none of its own tools ([Decisions › What Claude reads](../decisions.md#what-claude-reads)); the user's own Claude Code settings and CLAUDE.md files apply as they do in a terminal.
+- **Claude.** The CLI runs with no system prompt from the app, no hooks, no skills but the internal skills chats call, and of its own tools only the file tools ([Decisions › What Claude reads](../decisions.md#what-claude-reads), [Files](#files)); the user's own Claude Code settings and CLAUDE.md files apply as they do in a terminal.
 - **Samples.** Previews and captures use five sample conversations, about Orders (three), Payments and Shop, and the sample engine. Their replies are written as if a model had answered, so they carry no **Sample reply** caption, and their reads are fixed text, not read live. Their Service Map reads were seen in Staging.
 
 ## Previews

@@ -147,7 +147,7 @@ struct ChatSessionTests {
         #expect(ClaudeModel.name(of: "claude-opus-5-5", in: world.session.models) == "Opus 5.5")
     }
 
-    @Test("A first message makes the chat and starts the CLI: no prompt, no tools of its own, the app's tools allowed, the skills chats call")
+    @Test("A first message makes the chat and starts the CLI: no prompt, the file tools of its own, the app's tools allowed, the skills chats call")
     func firstMessage() async throws {
         let world = try await ChatWorld()
         defer { Task { await world.close() } }
@@ -164,7 +164,7 @@ struct ChatSessionTests {
         let plugins = try #require(arguments.firstIndex(of: "--plugin-dir"))
         #expect(arguments[plugins + 1] == world.root.appendingPathComponent("Data/Runtime/plugins").path)
         let tools = try #require(arguments.firstIndex(of: "--tools"))
-        #expect(arguments[tools + 1] == "")
+        #expect(arguments[tools + 1] == "Read,Grep,Glob,Edit,Write")
         let allowed = try #require(arguments.firstIndex(of: "--allowedTools"))
         #expect(arguments[allowed + 1] == "mcp__hephaestus__list_tickets,mcp__hephaestus__add_comment")
         #expect(cli.request.currentDirectory == world.repo.path && cli.request.environment["MCP_TOOL_TIMEOUT"] == "1800000")

@@ -83,13 +83,39 @@ struct LiveChatTurnsTests {
     func channels() {
         let turns = store.turns([
             .permissionRequest(PermissionRequestItem(requestID: "r2", created: date, toolName: "mcp__hephaestus__create_project", input: [:])),
-            .permissionRequest(PermissionRequestItem(requestID: "r3", created: date, toolName: "Write", input: ["file_path": "/tmp/x"])),
+            .permissionRequest(PermissionRequestItem(requestID: "r3", created: date, toolName: "Bash", input: ["command": "ls"])),
         ], streaming: nil)
-        guard case .approval(let project) = turns[0].blocks[0].content, case .approval(let write) = turns[0].blocks[1].content else {
+        guard case .approval(let project) = turns[0].blocks[0].content, case .approval(let bash) = turns[0].blocks[1].content else {
             Issue.record("no cards"); return
         }
         #expect(project.channel == .projects && project.reference == nil)
-        #expect(write.channel == nil && write.request == "Claude wants to use Write" && write.preview == "{\n  \"file_path\" : \"/tmp/x\"\n}")
+        #expect(bash.channel == nil && bash.request == "Claude wants to use Bash" && bash.preview == "{\n  \"command\" : \"ls\"\n}")
+    }
+
+    @Test("The file tools' calls name their file from the project's folder; their cards show the change")
+    func files() {
+        let root = "/Users/you/Repo"
+        let turns = store.turns([
+            .toolUse(ToolUseItem(id: "m#0", created: date, toolUseID: "t1", name: "Read", server: nil, input: ["file_path": "/Users/you/Repo/Sources/App.swift"])),
+            .toolResult(ToolResultItem(id: "t1#result", created: date, toolUseID: "t1", text: "     1\timport SwiftUI", isError: false)),
+            .toolUse(ToolUseItem(id: "m#1", created: date, toolUseID: "t2", name: "Grep", server: nil, input: ["pattern": "screenshot"])),
+            .toolResult(ToolResultItem(id: "t2#result", created: date, toolUseID: "t2", text: "Found 3 files\nSources/A.swift", isError: false)),
+            .toolUse(ToolUseItem(id: "m#2", created: date, toolUseID: "t3", name: "Glob", server: nil, input: ["pattern": "**/*.swift", "path": "/Users/you/Repo/Sources"])),
+            .toolUse(ToolUseItem(id: "m#3", created: date, toolUseID: "t4", name: "Edit", server: nil, input: ["file_path": "Sources/App.swift", "old_string": "a", "new_string": "b"])),
+            .toolUse(ToolUseItem(id: "m#4", created: date, toolUseID: "t5", name: "Write", server: nil, input: ["file_path": "/tmp/x", "content": "hi"])),
+            .permissionRequest(PermissionRequestItem(requestID: "r1", created: date, toolName: "Edit",
+                                                     input: ["file_path": "/Users/you/Repo/Sources/App.swift", "old_string": "a\nb", "new_string": "c"])),
+            .permissionRequest(PermissionRequestItem(requestID: "r2", created: date, toolName: "Read", input: ["file_path": "/etc/hosts"])),
+        ], streaming: nil, root: root)
+        let blocks = turns[0].blocks.map(\.content)
+        #expect(blocks[0] == .call(ChatToolCall(action: "Read Sources/App.swift", reference: nil, detail: "/Users/you/Repo/Sources/App.swift")))
+        #expect(blocks[1] == .call(ChatToolCall(action: "Searched for “screenshot”", reference: nil, detail: "Found 3 files")))
+        #expect(blocks[2] == .call(ChatToolCall(action: "Listed the files matching **/*.swift in Sources", reference: nil, detail: "/Users/you/Repo/Sources")))
+        #expect(blocks[3] == .call(ChatToolCall(action: "Edited Sources/App.swift", reference: nil, detail: "/Users/you/Repo/Sources/App.swift")))
+        #expect(blocks[4] == .call(ChatToolCall(action: "Wrote /tmp/x", reference: nil, detail: "/tmp/x")))
+        guard case .approval(let edit) = blocks[5], case .approval(let read) = blocks[6] else { Issue.record("no cards"); return }
+        #expect(edit.request == "Claude wants to edit Sources/App.swift" && edit.preview == "- a\n- b\n+ c" && edit.channel == nil)
+        #expect(read.request == "Claude wants to read /etc/hosts" && read.preview == nil)
     }
 }
 

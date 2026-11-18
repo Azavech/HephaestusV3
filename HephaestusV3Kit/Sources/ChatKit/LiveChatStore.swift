@@ -19,7 +19,7 @@ public final class LiveChatStore: ChatStore {
     func conversation(_ id: ChatConversation.ID?) -> ChatConversation? {
         guard let id, let chat = session.chats[id] else { return nil }
         var conversation = Self.conversation(chat)
-        conversation.turns = turns(session.transcripts[id] ?? [], streaming: session.streaming[id])
+        conversation.turns = turns(session.transcripts[id] ?? [], streaming: session.streaming[id], root: session.root(ofChat: id))
         return conversation
     }
 
@@ -93,7 +93,8 @@ public final class LiveChatStore: ChatStore {
 
     /// The transcript as turns: each message a turn of the user's, then what follows it a turn of Claude's.
     /// Sub-agents' work, thinking, and the results of turns that ended well don't show.
-    func turns(_ items: [ChatItem], streaming: StreamingText?) -> [ChatTurn] {
+    /// `root` is the folder of the chat's project, which the file tools' rows and cards show paths from.
+    func turns(_ items: [ChatItem], streaming: StreamingText?, root: String? = nil) -> [ChatTurn] {
         var turns: [ChatTurn] = []
         /// Where each call's row is, by the CLI's tool use id.
         var calls: [String: (turn: Int, block: Int)] = [:]
@@ -120,7 +121,7 @@ public final class LiveChatStore: ChatStore {
             case .assistant(let text) where text.parentToolUseID == nil:
                 add(ChatBlock(id: text.id, .text(text.text)), id: text.id, date: text.created)
             case .toolUse(let use) where use.parentToolUseID == nil:
-                add(ChatBlock(id: use.id, .call(call(use))), id: use.id, date: use.created)
+                add(ChatBlock(id: use.id, .call(call(use, root: root))), id: use.id, date: use.created)
                 let turn = turns.count - 1
                 calls[use.toolUseID] = (turn, turns[turn].blocks.count - 1)
             case .toolResult(let result):
@@ -135,7 +136,7 @@ public final class LiveChatStore: ChatStore {
                 }
                 turns[place.turn].blocks[place.block].content = .call(call)
             case .permissionRequest(let request):
-                add(ChatBlock(id: request.id, .approval(approval(request))), id: request.id, date: request.created)
+                add(ChatBlock(id: request.id, .approval(approval(request, root: root))), id: request.id, date: request.created)
             case .system(let line):
                 let level: ChatNotice.Level = switch line.level {
                 case .info: .info
@@ -156,7 +157,10 @@ public final class LiveChatStore: ChatStore {
         return turns
     }
 
-    private func call(_ use: ToolUseItem) -> ChatToolCall {
+    private func call(_ use: ToolUseItem, root: String?) -> ChatToolCall {
+        if use.server == nil, let call = FileToolText.call(use.name, input: use.input, root: root) {
+            return call
+        }
         if use.server == MCPProtocol.serverName {
             let text = describe(use.name, use.input)
             return ChatToolCall(action: text?.action ?? String(localized: "Used \(use.name)", bundle: #bundle, comment: "A call of a tool, by its name"),
@@ -165,7 +169,7 @@ public final class LiveChatStore: ChatStore {
         return ChatToolCall(action: String(localized: "Used \(use.name)", bundle: #bundle, comment: "A call of a tool, by its name"), reference: nil)
     }
 
-    private func approval(_ request: PermissionRequestItem) -> ChatApproval {
+    private func approval(_ request: PermissionRequestItem, root: String?) -> ChatApproval {
         let decision: ChatApproval.Decision? = switch request.decision {
         case .allow?, .allowAlways?: .allowed
         case .deny?: .declined
@@ -180,6 +184,10 @@ public final class LiveChatStore: ChatStore {
             return ChatApproval(id: request.requestID,
                                 request: text.request ?? String(localized: "Claude wants to use \(split.name)", bundle: #bundle),
                                 preview: text.preview, reference: reference, channel: channel, decision: decision)
+        }
+        if split.server == nil, let text = FileToolText.request(split.name, input: request.input, root: root) {
+            return ChatApproval(id: request.requestID, request: text.request, preview: text.preview, reference: nil, channel: nil,
+                                decision: decision)
         }
         return ChatApproval(id: request.requestID, request: String(localized: "Claude wants to use \(split.name)", bundle: #bundle),
                             preview: Self.pretty(request.input), reference: nil, channel: nil, decision: decision)

@@ -192,6 +192,7 @@ struct ChatPermissionsSection: View {
     @AppStorage(ChatPreferences.apiCallsKey) private var apiCalls = ChangePermission.askFirst
     @AppStorage(ChatPreferences.clusterChangesKey) private var clusterChanges = ChangePermission.askFirst
     @AppStorage(ChatPreferences.machineChangesKey) private var machineChanges = ChangePermission.askFirst
+    @AppStorage(ChatPreferences.fileEditsKey) private var fileEdits = ChangePermission.askFirst
     let identifier: String
 
     var body: some View {
@@ -200,10 +201,16 @@ struct ChatPermissionsSection: View {
                 Text(ChangePermission.always.title)
                     .foregroundStyle(.textSecondary)
             } label: {
-                Text("Read tickets, services, contracts, builds and machines", bundle: #bundle)
+                Text("Read tickets, services, contracts, builds, machines and the project's files", bundle: #bundle)
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("\(identifier).reads")
+            Picker(String(localized: "Edit the project's files", bundle: #bundle), selection: $fileEdits) {
+                ForEach(ChangePermission.allCases) { permission in
+                    Text(permission.title).tag(permission)
+                }
+            }
+            .accessibilityIdentifier("\(identifier).files")
             Picker(String(localized: "Change tickets", bundle: #bundle), selection: $ticketChanges) {
                 ForEach(ChangePermission.allCases) { permission in
                     Text(permission.title).tag(permission)
@@ -244,7 +251,7 @@ struct ChatPermissionsSection: View {
             Text("Claude Can", bundle: #bundle, comment: "A section: what Claude may do")
                 .accessibilityAddTraits(.isHeader)
         } footer: {
-            Text("Claude acts through each tool, as you would. Nothing it reads or changes goes around them.", bundle: #bundle)
+            Text("Claude acts through each tool, as you would, and reads and edits the project's files with Claude Code's file tools. Outside the project's folder, it asks first.", bundle: #bundle)
                 .font(.caption)
                 .foregroundStyle(.textSecondary)
         }

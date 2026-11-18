@@ -90,6 +90,9 @@ public final class ChatSession {
     @ObservationIgnored let processEnvironment: [String: String]
     @ObservationIgnored let now: @Sendable () -> Date
     @ObservationIgnored let ownWrites = OwnWrites()
+    /// Settings ▸ Chat › Edit the project's files, read when a process starts and when its CLI asks before an
+    /// edit; Ask First until the app sets it.
+    @ObservationIgnored public var fileEdits: @MainActor () -> ChatFileEdits = { .askFirst }
     /// The app's MCP tools, which a chat's Claude may call, and the server's port.
     @ObservationIgnored var toolNames: [String] = []
     @ObservationIgnored var port = SettingsFile.defaultMCPPort

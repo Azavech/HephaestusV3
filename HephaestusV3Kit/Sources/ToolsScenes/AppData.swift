@@ -134,6 +134,8 @@ final class AppData {
         let tokens = MCPTokens()
         self.tokens = tokens
         chats = ChatSession(projects: session, tokens: tokens, device: TicketSession.computerName())
+        // Which file tools a chat's Claude gets, and when an edit runs without asking: Settings ▸ Chat.
+        chats.fileEdits = { ChatPreferences.fileEdits() }
         let operations = Operations()
         self.operations = operations
         chatStore = LiveChatStore(session: chats) { name, input in

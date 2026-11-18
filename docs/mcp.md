@@ -215,6 +215,8 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
   `askFirst`.
 - The CLI runs every tool of the server without asking (`--allowedTools`): the gate is where the user's
   permissions hold, whatever the CLI's own settings say.
+- The CLI's own file tools, which a chat's Claude also has, aren't the server's: the app answers the CLI's requests
+  about them itself, under Settings ▸ Chat › Edit the project's files ([Data › File tools](data.md#file-tools)).
 - **An internal skill's run** only reads (default chosen at design time: the app runs it for its answer alone,
   in the background, where no card can show): the `read` tools run but `open_in_app`; every other call is
   refused with `An internal skill's run only reads.` (`forbidden`), whatever Settings ▸ Chat says.
