@@ -1,3 +1,4 @@
+import AppKit
 import ChatData
 import Foundation
 import Observation
@@ -18,9 +19,29 @@ final class ChatWindowModel {
     let project: Project
     let store: any ChatStore
     private let directory: ProjectDirectory
-    /// The conversation shown; nil for a new chat. In an iPhone's layout, `newChatID` opens a new chat
-    /// as a page.
-    var selection: ChatConversation.ID?
+    /// The conversations selected in the list: one shows beside it; several show their number and Close.
+    var selectedIDs: Set<ChatConversation.ID> = []
+    /// The conversation shown, the selection's only one; nil for a new chat or several. In an iPhone's layout,
+    /// `newChatID` opens a new chat as a page.
+    var selection: ChatConversation.ID? {
+        get { selectedIDs.count == 1 ? selectedIDs.first : nil }
+        set { selectedIDs = newValue.map { [$0] } ?? [] }
+    }
+    /// Closed chats aren't listed, as V2's filter hid them by default.
+    var hidesClosed = true
+    /// The chat being renamed, and the title typed.
+    var renaming: ChatConversation.ID?
+    var newTitle = ""
+    /// The chats waiting for the user's yes to Close or Delete….
+    var confirming: Confirmation?
+
+    /// A question the window asks before it closes or deletes chats.
+    enum Confirmation: Identifiable, Hashable {
+        case close([ChatConversation.ID])
+        case delete(ChatConversation.ID)
+
+        var id: Self { self }
+    }
     /// The message being written. It stays when the user picks another conversation.
     var draft = ""
     /// The files going with the next message.
@@ -66,9 +87,14 @@ final class ChatWindowModel {
     /// first.
     var sections: [Section] {
         family.compactMap { member in
-            let conversations = store.conversations(of: [member.id])
+            let conversations = store.conversations(of: [member.id]).filter { !hidesClosed || !$0.closed || selectedIDs.contains($0.id) }
             return conversations.isEmpty ? nil : Section(project: member, conversations: conversations)
         }
+    }
+
+    /// Whether the filter hides every chat there is.
+    var hidesEveryChat: Bool {
+        sections.isEmpty && !hasNoConversations
     }
 
     /// Whether neither the project nor its sub projects have a conversation.
@@ -116,6 +142,83 @@ final class ChatWindowModel {
     func select(focus: String) {
         guard sections.contains(where: { $0.conversations.contains { $0.id == focus } }) else { return }
         selection = focus
+    }
+
+    // MARK: Managing chats
+
+    /// The chats a list action acts on: the selection when it holds `id`, else `id` alone.
+    func targets(of id: ChatConversation.ID) -> [ChatConversation.ID] {
+        selectedIDs.contains(id) ? Array(selectedIDs) : [id]
+    }
+
+    func conversationSummary(_ id: ChatConversation.ID) -> ChatConversation? {
+        store.conversations(of: Set(family.map(\.id))).first { $0.id == id }
+    }
+
+    func startRenaming(_ id: ChatConversation.ID) {
+        newTitle = conversationSummary(id)?.title ?? ""
+        renaming = id
+    }
+
+    func commitRename() {
+        guard let id = renaming else { return }
+        renaming = nil
+        do throws(ChatSendError) {
+            try store.rename(id, to: newTitle)
+            failure = nil
+        } catch {
+            failure = error.message
+        }
+    }
+
+    /// Closes the chats once the user said yes; the first that fails stops the others.
+    func close(_ ids: [ChatConversation.ID]) {
+        for id in ids where conversationSummary(id)?.closed == false {
+            do throws(ChatSendError) {
+                try store.close(id)
+            } catch {
+                failure = error.message
+                return
+            }
+        }
+        failure = nil
+    }
+
+    func reopen(_ id: ChatConversation.ID) {
+        do throws(ChatSendError) {
+            try store.reopen(id)
+            failure = nil
+        } catch {
+            failure = error.message
+        }
+    }
+
+    func delete(_ id: ChatConversation.ID) {
+        do throws(ChatSendError) {
+            try store.delete(id)
+            selectedIDs.remove(id)
+            failure = nil
+        } catch {
+            failure = error.message
+        }
+    }
+
+    func resume() async {
+        guard let selection, selection != Self.newChatID else { return }
+        do throws(ChatSendError) {
+            try await store.resume(selection)
+            failure = nil
+        } catch {
+            failure = error.message
+        }
+    }
+
+    /// The shown conversation as plain text, for Copy Conversation.
+    func copyConversation(_ id: ChatConversation.ID) async {
+        await store.open(id)
+        guard let conversation = store.conversation(id) else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(conversation.plainText, forType: .string)
     }
 
     /// Leaves the conversation for a new chat, with an empty draft: in place, or as a page.

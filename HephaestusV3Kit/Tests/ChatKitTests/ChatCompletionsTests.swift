@@ -154,3 +154,16 @@ struct ChatFilesTests {
         #expect(ChatFiles.pasted(from: board) == nil)
     }
 }
+
+/// docs/ui/chat.md › Context indicator.
+@Suite("Context indicator")
+struct ContextIndicatorTests {
+    @Test("Tokens read 850, 17.7K, 120K, 1M, 1.5M; the tooltip adds the compactions")
+    func numbers() {
+        #expect([850, 17_700, 120_000, 1_000_000, 1_500_000, 948_446].map(ContextIndicator.tokens) == ["850", "17.7K", "120K", "1M", "1.5M", "948.4K"])
+        let usage = ContextUsage(usedTokens: 18_554, windowTokens: 1_000_000, bufferTokens: 33_000, received: Date())
+        #expect(ContextIndicator.tooltip(usage, compactions: 0) == "18.6K of 1M tokens used · 948.4K left before compaction")
+        #expect(ContextIndicator.tooltip(usage, compactions: 2).hasSuffix("\nCompacted 2 times"))
+        #expect(ContextIndicator.tooltip(usage, compactions: 1).hasSuffix("\nCompacted once"))
+    }
+}

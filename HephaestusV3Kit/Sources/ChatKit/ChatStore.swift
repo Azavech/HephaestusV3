@@ -35,6 +35,14 @@ protocol ChatStore: AnyObject {
     /// The user's answer to the question `label` of the set Claude asked in the conversation. Throws why it
     /// wasn't taken, as the user reads it.
     func answer(_ answer: String, to label: String, inSet setID: ChatQuestionSet.ID, of id: ChatConversation.ID) async throws(ChatSendError)
+    func rename(_ id: ChatConversation.ID, to title: String) throws(ChatSendError)
+    /// Closes the conversation, once its turn ends when one runs.
+    func close(_ id: ChatConversation.ID) throws(ChatSendError)
+    func reopen(_ id: ChatConversation.ID) throws(ChatSendError)
+    /// Deletes the conversation: its files go to the Trash.
+    func delete(_ id: ChatConversation.ID) throws(ChatSendError)
+    /// Goes on after an error, through the internal skill `resume-chat`.
+    func resume(_ id: ChatConversation.ID) async throws(ChatSendError)
 }
 
 /// Why a message wasn't sent, or a setting not changed: the sentence the composer shows.
@@ -164,6 +172,24 @@ final class SampleChatStore: ChatStore {
                 conversation.waitingQuestions = set
             }
         }
+    }
+
+    func rename(_ id: ChatConversation.ID, to title: String) throws(ChatSendError) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw ChatSendError(message: "title: use 1 to 100 characters on one line.") }
+        update(id) { $0.title = trimmed }
+    }
+
+    func close(_ id: ChatConversation.ID) throws(ChatSendError) { update(id) { $0.closed = true } }
+
+    func reopen(_ id: ChatConversation.ID) throws(ChatSendError) { update(id) { $0.closed = false } }
+
+    func delete(_ id: ChatConversation.ID) throws(ChatSendError) {
+        conversations.removeAll { $0.id == id }
+    }
+
+    func resume(_ id: ChatConversation.ID) async throws(ChatSendError) {
+        update(id) { $0.needsResume = false }
     }
 
     /// Two skills, for the previews of the composer's suggestions.

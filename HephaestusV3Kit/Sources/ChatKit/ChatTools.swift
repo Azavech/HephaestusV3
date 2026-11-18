@@ -30,6 +30,12 @@ public enum ChatGate {
         switch operation.permission {
         case .read, .renameChats, .askUser:
             return nil
+        case .closeChats:
+            // Its own chat closes without asking; another one asks first.
+            let others = (arguments["chatIDs"]?.arrayValue ?? []).compactMap(\.stringValue).filter { $0.uppercased() != chatID }
+            if others.isEmpty { return nil }
+            let allowed = await chats.requestApproval(chatID, tool: operation.name, input: arguments)
+            return allowed ? nil : ToolError(.forbidden, "The user didn't allow this call.")
         case .changeTickets:
             permission = rule(ChatPreferences.ticketChangesKey)
             refusal = "The user doesn't let Claude change tickets from chats (Settings ▸ Chat)."
@@ -75,7 +81,7 @@ public enum ChatGate {
 public enum ChatTools {
     @MainActor
     public static func operations(chats: ChatSession, projects: ProjectSession) -> [ToolOperation] {
-        [listChats(chats, projects), getChat(chats), renameChat(chats), askQuestions(chats)]
+        [listChats(chats, projects), getChat(chats), renameChat(chats), closeChat(chats), askQuestions(chats)]
     }
 
     static let chatID = ToolSchema.string("Chat id, an uppercase UUID.")
@@ -149,6 +155,29 @@ public enum ChatTools {
             }
             guard let chat = chats.chats[id] else { throw ToolError(.notFound, "Chat \(id) not found.") }
             return json(chat, chats)
+        }
+    }
+
+    @MainActor
+    static func closeChat(_ chats: ChatSession) -> ToolOperation {
+        ToolOperation(
+            name: "close_chat",
+            description: "Closes chats. Without chatIDs, closes the calling chat once its current turn ends; the conversation stays, and a message reopens it. With chatIDs, closes those chats of the calling chat's project; a chat where Claude is at work, a chat of another project or an unknown one is refused, and the others still close. Closing another chat than the calling one asks the user first. Returns the chats closed, whether the calling chat closes after its turn, and each refusal with its reason.",
+            inputSchema: .object(properties: [("chatIDs", .array("The chats to close, each an uppercase UUID; absent for the calling chat.", of: chatID))]),
+            permission: .closeChats,
+            describe: { arguments in
+                let count = arguments["chatIDs"]?.arrayValue?.count ?? 0
+                return ToolCallText(action: count > 1
+                    ? String(localized: "Closed \(count) chats", bundle: #bundle, comment: "Claude closed several chats; the value is their number")
+                    : String(localized: "Closed a chat", bundle: #bundle, comment: "Claude closed a chat"))
+            }
+        ) { @MainActor arguments throws(ToolError) in
+            let caller = MCPCaller.current.chatID
+            let listed = (arguments["chatIDs"]?.arrayValue ?? []).compactMap(\.stringValue).map { $0.uppercased() }
+            guard caller != nil || !listed.isEmpty else { throw ToolError(.forbidden, "chatIDs: name the chats to close; only a chat's own Claude closes its chat without them.") }
+            let result = chats.closeChats(arguments["chatIDs"] == nil ? nil : listed, caller: caller)
+            return ["closed": .array(result.closed.map(JSONValue.string)), "closesAfterTurn": .bool(result.closesAfterTurn),
+                    "refused": .array(result.refused.map { ["chatID": .string($0.chatID), "reason": .string($0.reason)] })]
         }
     }
 

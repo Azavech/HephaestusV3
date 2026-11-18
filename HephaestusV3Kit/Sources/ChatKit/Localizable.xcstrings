@@ -4,6 +4,17 @@
     "%@ is larger than 20 MB." : {
 
     },
+    "%@ of %@ tokens used · %@ left before compaction" : {
+      "comment" : "The context indicator's tooltip: tokens used, the window, tokens left",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ of %2$@ tokens used · %3$@ left before compaction"
+          }
+        }
+      }
+    },
     "%@ · from %@" : {
       "comment" : "A chat's last date, then the tool whose panel started it",
       "localizations" : {
@@ -26,6 +37,9 @@
         }
       }
     },
+    "%lld Chats Selected" : {
+
+    },
     "%lld of %lld" : {
       "comment" : "Find's place among its matches: 2 of 5",
       "localizations" : {
@@ -39,6 +53,9 @@
     },
     "%lld steps" : {
       "comment" : "The number of a sub-agent's steps in a call's row"
+    },
+    "%lld%% left" : {
+      "comment" : "The part of the context left before compaction"
     },
     "Add Files…" : {
       "comment" : "Adds files to the next message"
@@ -141,6 +158,9 @@
     "Claude acts through each tool, as you would, and reads and edits the project's files with Claude Code's file tools. Outside the project's folder, it asks first." : {
 
     },
+    "Claude goes on from where it stopped, through the internal skill resume-chat." : {
+
+    },
     "Claude is working… %@" : {
       "comment" : "The time since the turn began, such as 0:12"
     },
@@ -148,6 +168,9 @@
       "comment" : "The item's tool, such as Tickets"
     },
     "Claude reads through the tools, and asks before it changes anything. Name a ticket, a run or a request to point at it." : {
+
+    },
+    "Claude stopped with an error" : {
 
     },
     "Claude wants to comment on %@" : {
@@ -174,7 +197,31 @@
     "Claude's turn ended with an error." : {
 
     },
+    "Close" : {
+      "comment" : "Closes a chat"
+    },
+    "Close %lld chats?" : {
+
+    },
+    "Close the chat “%@”?" : {
+
+    },
+    "Closed %lld chats" : {
+      "comment" : "Claude closed several chats; the value is their number"
+    },
+    "Closed a chat" : {
+      "comment" : "Claude closed a chat"
+    },
+    "Closed chats are hidden." : {
+
+    },
     "Comment" : {
+
+    },
+    "Compacted %lld times" : {
+
+    },
+    "Compacted once" : {
 
     },
     "Compacting the conversation… %@" : {
@@ -185,6 +232,18 @@
     },
     "Copy" : {
       "comment" : "Copies a message's text"
+    },
+    "Copy Conversation" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete the chat “%@”?" : {
+
+    },
+    "Delete…" : {
+
     },
     "Don't Allow" : {
 
@@ -231,6 +290,9 @@
     "Hide Chat" : {
 
     },
+    "Hide Closed Chats" : {
+
+    },
     "Hide Details" : {
 
     },
@@ -256,6 +318,9 @@
 
     },
     "Items Claude reads or you attach show here." : {
+
+    },
+    "Its transcript and files move to the Trash." : {
 
     },
     "Jump to Latest" : {
@@ -302,6 +367,9 @@
     "Model" : {
 
     },
+    "More" : {
+      "comment" : "The menu of the shown chat"
+    },
     "Name" : {
 
     },
@@ -334,6 +402,9 @@
     },
     "No Matches" : {
       "comment" : "Find found nothing in the conversation"
+    },
+    "No Open Chats" : {
+
     },
     "No Skill Selected" : {
 
@@ -450,8 +521,20 @@
     "Remove %@" : {
 
     },
+    "Rename" : {
+
+    },
+    "Rename Chat" : {
+
+    },
     "Renamed a chat “%@”" : {
       "comment" : "Claude renamed a chat; the value is the new title"
+    },
+    "Rename…" : {
+
+    },
+    "Reopen" : {
+      "comment" : "Reopens a closed chat"
     },
     "Replies" : {
       "comment" : "A section: what answers the user's messages"
@@ -461,6 +544,9 @@
     },
     "Result" : {
       "comment" : "A call's result"
+    },
+    "Resume" : {
+      "comment" : "Has Claude go on after an error"
     },
     "Run %@" : {
       "comment" : "A run of Builds, as a chip names it"
@@ -506,6 +592,9 @@
     "Show All" : {
       "comment" : "Shows a call's whole result"
     },
+    "Show Closed Chats" : {
+
+    },
     "Show Details" : {
 
     },
@@ -545,6 +634,9 @@
     "Stop (⌘.)" : {
 
     },
+    "Stopped with an error" : {
+
+    },
     "Submit" : {
       "comment" : "Sends the answers to Claude's questions"
     },
@@ -572,17 +664,26 @@
     "Thinking" : {
       "comment" : "Claude's thinking, folded in the transcript"
     },
+    "This conversation is over" : {
+
+    },
     "Through %@, as if you did it" : {
       "comment" : "How Claude would make a change: through a tool, such as Tickets"
     },
     "Through the Claude CLI" : {
       "comment" : "A change Claude would make with a tool of its own"
     },
+    "Title" : {
+
+    },
     "Used %@" : {
       "comment" : "A call of a tool, by its name"
     },
     "Used when the app runs this skill itself; a chat that calls it keeps its own model and effort." : {
 
+    },
+    "Waiting for you" : {
+      "comment" : "A chat waiting for the user's answer"
     },
     "Waiting for your answer" : {
       "comment" : "A card waits for the user"
@@ -616,6 +717,9 @@
     },
     "Which services did %@ go through?" : {
       "comment" : "A suggestion; the value is a request id, such as req-8f3a"
+    },
+    "Working" : {
+      "comment" : "A chat where Claude works"
     },
     "Wrote %@" : {
       "comment" : "A chat's call: Claude wrote a whole file"

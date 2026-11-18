@@ -70,6 +70,25 @@ public struct ChatRootView: View {
                 .accessibilityIdentifier("chat.new")
             }
             ToolbarItem(placement: .primaryAction) {
+                if let conversation = model.conversation {
+                    Menu {
+                        Button(String(localized: "Rename…", bundle: #bundle)) { model.startRenaming(conversation.id) }
+                        if conversation.closed {
+                            Button(String(localized: "Reopen", bundle: #bundle, comment: "Reopens a closed chat")) { model.reopen(conversation.id) }
+                        } else {
+                            Button(String(localized: "Close", bundle: #bundle, comment: "Closes a chat")) { model.confirming = .close([conversation.id]) }
+                        }
+                        Button(String(localized: "Copy Conversation", bundle: #bundle)) { Task { await model.copyConversation(conversation.id) } }
+                        Divider()
+                        Button(String(localized: "Delete…", bundle: #bundle), role: .destructive) { model.confirming = .delete(conversation.id) }
+                    } label: {
+                        Label(String(localized: "More", bundle: #bundle, comment: "The menu of the shown chat"), systemImage: "ellipsis.circle")
+                    }
+                    .help(String(localized: "More", bundle: #bundle, comment: "The menu of the shown chat"))
+                    .accessibilityIdentifier("chat.more")
+                }
+            }
+            ToolbarItem(placement: .primaryAction) {
                 Button {
                     if layout == .phone {
                         showsInspectorSheet = true
@@ -85,6 +104,27 @@ public struct ChatRootView: View {
                         : String(localized: "Show Inspector", bundle: #bundle)
                 )
                 .accessibilityIdentifier("chat.inspectorToggle")
+            }
+        }
+        .alert(String(localized: "Rename Chat", bundle: #bundle), isPresented: Binding(get: { model.renaming != nil }, set: { if !$0 { model.renaming = nil } })) {
+            TextField(String(localized: "Title", bundle: #bundle), text: $model.newTitle)
+                .accessibilityIdentifier("chat.rename.field")
+            Button(String(localized: "Rename", bundle: #bundle)) { model.commitRename() }
+                .keyboardShortcut(.defaultAction)
+            Button(String(localized: "Cancel", bundle: #bundle), role: .cancel) { model.renaming = nil }
+        }
+        .confirmationDialog(confirmationTitle, isPresented: Binding(get: { model.confirming != nil }, set: { if !$0 { model.confirming = nil } }),
+                            presenting: model.confirming) { confirmation in
+            switch confirmation {
+            case .close(let ids):
+                Button(String(localized: "Close", bundle: #bundle, comment: "Closes a chat")) { model.close(ids) }
+            case .delete(let id):
+                Button(String(localized: "Delete", bundle: #bundle), role: .destructive) { model.delete(id) }
+            }
+            Button(String(localized: "Cancel", bundle: #bundle), role: .cancel) {}
+        } message: { confirmation in
+            if case .delete = confirmation {
+                Text("Its transcript and files move to the Trash.", bundle: #bundle)
             }
         }
         .sheet(isPresented: $showsInspectorSheet) {
@@ -152,7 +192,7 @@ public struct ChatRootView: View {
     }
 
     private var list: some View {
-        ChatList(sections: model.sections, isGrouped: model.isGrouped, isEmpty: model.hasNoConversations, selection: $model.selection)
+        ChatList(model: model)
     }
 
     private var inspector: some View {
@@ -161,10 +201,29 @@ public struct ChatRootView: View {
         }
     }
 
+    /// "Close the chat “Checkout”?", "Close 3 chats?", or "Delete the chat “Checkout”?".
+    private var confirmationTitle: String {
+        switch model.confirming {
+        case .close(let ids)?:
+            if ids.count == 1, let title = model.conversationSummary(ids[0])?.title {
+                return String(localized: "Close the chat “\(title)”?", bundle: #bundle)
+            }
+            return String(localized: "Close \(ids.count) chats?", bundle: #bundle)
+        case .delete(let id)?:
+            return String(localized: "Delete the chat “\(model.conversationSummary(id)?.title ?? "")”?", bundle: #bundle)
+        case nil:
+            return ""
+        }
+    }
+
     /// The conversation picked, or a new one, over the field to write in.
     private var detail: some View {
         VStack(spacing: 0) {
-            if let conversation = model.conversation {
+            if model.selectedIDs.count > 1 {
+                SeveralSelected(count: model.selectedIDs.count) {
+                    model.confirming = .close(Array(model.selectedIDs))
+                }
+            } else if let conversation = model.conversation {
                 let matches = ChatFind.matches(of: model.findQuery, in: conversation)
                 if !model.findQuery.trimmingCharacters(in: .whitespaces).isEmpty {
                     FindBar(count: matches.count, index: model.findIndex, previous: { model.findIndex -= 1 }, next: { model.findIndex += 1 })
@@ -184,6 +243,11 @@ public struct ChatRootView: View {
                     .padding(.horizontal, layout == .phone ? 12 : 16)
                     .padding(.top, 8)
             }
+            if model.conversation?.needsResume == true {
+                ResumeLine { Task { await model.resume() } }
+                    .padding(.horizontal, layout == .phone ? 12 : 16)
+                    .padding(.top, 8)
+            }
             if let questions = model.conversation?.waitingQuestions {
                 QuestionsCard(questionSet: questions, compact: layout == .phone) { label, text in
                     await model.answer(text, to: label, inSet: questions.id)
@@ -192,6 +256,10 @@ public struct ChatRootView: View {
                 .padding(.horizontal, layout == .phone ? 12 : 16)
                 .padding(.top, 8)
             }
+            if let conversation = model.conversation, conversation.closed {
+                ClosedNotice { model.reopen(conversation.id) }
+                    .padding(layout == .phone ? 12 : 16)
+            } else if model.selectedIDs.count <= 1 {
             MessageComposer(
                 text: $model.draft,
                 prompt: Text("Ask about \(model.project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
@@ -208,9 +276,13 @@ public struct ChatRootView: View {
                     ForEach(model.files, id: \.self) { url in
                         PendingFileChip(url: url) { model.removeFile(url) }
                     }
+                    if let conversation = model.conversation, let usage = conversation.contextUsage {
+                        ContextIndicator(usage: usage, compactions: conversation.compactions, isCompacting: conversation.isCompacting)
+                    }
                 }
             }
             .padding(layout == .phone ? 12 : 16)
+            }
         }
         .background(.canvas)
         .searchable(text: $model.findQuery, isPresented: $model.isFinding, placement: .toolbar,
@@ -232,15 +304,12 @@ public struct ChatRootView: View {
 
 /// The project's conversations, and its sub projects' grouped by project, the latest first.
 private struct ChatList: View {
-    let sections: [ChatWindowModel.Section]
-    let isGrouped: Bool
-    let isEmpty: Bool
-    @Binding var selection: ChatConversation.ID?
+    @Bindable var model: ChatWindowModel
 
     var body: some View {
-        List(selection: $selection) {
-            ForEach(sections) { section in
-                if isGrouped {
+        List(selection: $model.selectedIDs) {
+            ForEach(model.sections) { section in
+                if model.isGrouped {
                     Section {
                         rows(section.conversations)
                     } header: {
@@ -256,33 +325,82 @@ private struct ChatList: View {
                 }
             }
         }
+        .contextMenu(forSelectionType: ChatConversation.ID.self) { ids in
+            menu(for: ids)
+        }
+        .onDeleteCommand {
+            if let id = model.selection { model.confirming = .delete(id) }
+        }
+        .toolbar {
+            ToolbarItem {
+                Button {
+                    model.hidesClosed.toggle()
+                } label: {
+                    Label(model.hidesClosed ? String(localized: "Show Closed Chats", bundle: #bundle) : String(localized: "Hide Closed Chats", bundle: #bundle),
+                          systemImage: model.hidesClosed ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                }
+                .help(model.hidesClosed ? String(localized: "Show Closed Chats", bundle: #bundle) : String(localized: "Hide Closed Chats", bundle: #bundle))
+                .accessibilityIdentifier("chat.list.closedFilter")
+            }
+        }
         .overlay {
-            if isEmpty {
+            if model.hasNoConversations {
                 ContentUnavailableView {
                     Label(String(localized: "No Chats", bundle: #bundle), systemImage: ToolKind.chat.symbol)
                 } description: {
                     Text("Ask a question to start one.", bundle: #bundle)
                 }
                 .accessibilityIdentifier("chat.list.empty")
+            } else if model.hidesEveryChat {
+                ContentUnavailableView {
+                    Label(String(localized: "No Open Chats", bundle: #bundle), systemImage: ToolKind.chat.symbol)
+                } description: {
+                    Text("Closed chats are hidden.", bundle: #bundle)
+                }
+                .accessibilityIdentifier("chat.list.noOpen")
             }
         }
         .accessibilityIdentifier("chat.list")
     }
 
+    /// V2's row menu: on one chat, Rename…, Close or Reopen, Copy Conversation and Delete…; on several, Close.
+    @ViewBuilder private func menu(for ids: Set<ChatConversation.ID>) -> some View {
+        let chats = ids.compactMap(model.conversationSummary)
+        if chats.count == 1, let chat = chats.first {
+            Button(String(localized: "Rename…", bundle: #bundle)) { model.startRenaming(chat.id) }
+            if chat.closed {
+                Button(String(localized: "Reopen", bundle: #bundle, comment: "Reopens a closed chat")) { model.reopen(chat.id) }
+            } else {
+                Button(String(localized: "Close", bundle: #bundle, comment: "Closes a chat")) { model.confirming = .close([chat.id]) }
+            }
+            Button(String(localized: "Copy Conversation", bundle: #bundle)) { Task { await model.copyConversation(chat.id) } }
+            Divider()
+            Button(String(localized: "Delete…", bundle: #bundle), role: .destructive) { model.confirming = .delete(chat.id) }
+        } else if chats.count > 1 {
+            Button(String(localized: "Close", bundle: #bundle, comment: "Closes a chat")) { model.confirming = .close(chats.map(\.id)) }
+                .disabled(chats.allSatisfy(\.closed))
+        }
+    }
+
     private func rows(_ conversations: [ChatConversation]) -> some View {
         ForEach(conversations) { conversation in
-            VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: conversation.title)
-                    .lineLimit(1)
-                Group {
-                    if let origin = conversation.origin {
-                        Text("\(conversation.updatedAt, format: Self.dateFormat) · from \(origin.title)", bundle: #bundle, comment: "A chat's last date, then the tool whose panel started it")
-                    } else {
-                        Text(conversation.updatedAt, format: Self.dateFormat)
+            HStack(spacing: 6) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(verbatim: conversation.title)
+                        .lineLimit(1)
+                        .foregroundStyle(conversation.closed ? Color.textSecondary : Color.textPrimary)
+                    Group {
+                        if let origin = conversation.origin {
+                            Text("\(conversation.updatedAt, format: Self.dateFormat) · from \(origin.title)", bundle: #bundle, comment: "A chat's last date, then the tool whose panel started it")
+                        } else {
+                            Text(conversation.updatedAt, format: Self.dateFormat)
+                        }
                     }
+                    .font(.caption)
+                    .foregroundStyle(.textSecondary)
                 }
-                .font(.caption)
-                .foregroundStyle(.textSecondary)
+                Spacer(minLength: 4)
+                ChatMarkView(mark: conversation.mark)
             }
             .tag(conversation.id)
             .accessibilityElement(children: .combine)
@@ -503,5 +621,24 @@ private struct FindBar: View {
         .background(.surfaceSunken)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.find")
+    }
+}
+
+/// Several chats selected in the list: their number, and Close for them all, as V2's Chats section.
+private struct SeveralSelected: View {
+    let count: Int
+    let close: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Text("\(count) Chats Selected", bundle: #bundle)
+                .font(.title3)
+                .foregroundStyle(.textSecondary)
+            Button(String(localized: "Close", bundle: #bundle, comment: "Closes a chat"), action: close)
+                .accessibilityIdentifier("chat.closeSelected")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("chat.severalSelected")
     }
 }

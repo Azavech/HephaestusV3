@@ -30,8 +30,15 @@ public struct InternalSkill: Hashable, Sendable, Identifiable {
     /// Turning feedback into a ticket: the first message of a feedback chat calls it.
     public static let reportFeedback = InternalSkill(name: "report-feedback", isCalledFromChats: true)
 
+    /// Going on after a turn that ended with an error: the chat's Resume button calls it, where V2 sent a fixed
+    /// message. Its default text is V3's own; the user edits it in System Prompts.
+    public static let resumeChat = InternalSkill(name: "resume-chat", defaultContent: """
+        Your last turn in this chat stopped with an error before it was finished. Look at what was already
+        done, then finish what is left of the user's last request. Don't redo what is done.
+        """, isCalledFromChats: true)
+
     /// Every internal skill, in the order System Prompts lists them.
-    public static let all: [InternalSkill] = [.setTicketTitle, .reportFeedback]
+    public static let all: [InternalSkill] = [.setTicketTitle, .reportFeedback, .resumeChat]
 
     /// The plugin that gives chats the skills they call, as V2 named it.
     public static let pluginName = "hephaestus-skills"

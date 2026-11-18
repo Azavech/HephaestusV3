@@ -36,6 +36,14 @@ final class ChatRun {
     var startTimer: Task<Void, Never>?
     var idleTimer: Task<Void, Never>?
     var stopTimer: Task<Void, Never>?
+    /// Close asked during the turn: the chat closes once it ends well.
+    var closesAfterTurn = false
+    /// The `get_context_usage` request awaiting its answer.
+    var contextRequestID: String?
+    /// A line asked for the context usage while a request was awaited.
+    var contextAskedAgain = false
+    /// The last message of Claude's that asked for the context usage: one ask per message.
+    var lastAssistantMessage: String?
 
     init(chatID: String, connection: any ClaudeConnection, token: String, mcpConfig: URL, resumed: Bool, effort: Effort,
          now: @escaping @Sendable () -> Date) {
@@ -239,6 +247,10 @@ extension ChatSession {
             case .item(let item):
                 if streaming[chatID]?.itemID == item.id { streaming[chatID] = nil }
                 record(item, in: chatID, op: self.item(item.id, in: chatID) == nil ? .add : .update)
+                if case .assistant(let text) = item, text.parentToolUseID == nil, text.messageID != run.lastAssistantMessage {
+                    run.lastAssistantMessage = text.messageID
+                    askContextUsage(run)
+                }
             case .toolResultImages(let toolUseID, let images):
                 storeResultImages(images, of: toolUseID, in: chatID)
             case .delta(let itemID, let text):
@@ -282,7 +294,9 @@ extension ChatSession {
             case .unsupportedControlRequest(let id, let subtype):
                 run.connection.write(ClaudeInput.unsupported(id, subtype: subtype))
             case .controlResponse(let id, let success, let response, let error):
-                if id == run.initializeID, success {
+                if id == run.contextRequestID {
+                    received(contextUsage: response, success: success, for: run)
+                } else if id == run.initializeID, success {
                     if let list = ClaudeModel.list(response?["models"]), models != list { models = list }
                     if let list = ClaudeCommand.list(response?["commands"]).map(markingSynced), let projectID = chats[chatID]?.projectID,
                        projectCommands[projectID] != list {
@@ -297,6 +311,8 @@ extension ChatSession {
                 decide(chatID, requestID: id, decision: .deny, by: nil)
             case .result(let result):
                 record(.result(result), in: chatID)
+                if result.isError { run.closesAfterTurn = false }
+                askContextUsage(run)
                 run.cliTurnOpen = false
                 if run.outstanding.contains(where: { $0.state == "started" }) {
                     run.outstanding.removeAll { $0.state == "started" }
@@ -311,6 +327,7 @@ extension ChatSession {
                 compacting.insert(chatID)
             case .compactionEnded:
                 compacting.remove(chatID)
+                askContextUsage(run)
             case .ignored, .invalid:
                 break
             }
@@ -323,6 +340,11 @@ extension ChatSession {
         guard run.inTurn, run.outstanding.isEmpty, !run.cliTurnOpen else { return }
         run.inTurn = false
         change(run.chatID) { $0.updated = now() }
+        if run.closesAfterTurn {
+            run.closesAfterTurn = false
+            closeNow(run.chatID)
+            return
+        }
         run.idleTimer?.cancel()
         run.idleTimer = Task { [weak self, weak run] in
             try? await Task.sleep(for: Self.idleTimeout)
@@ -384,6 +406,7 @@ extension ChatSession {
     /// stop (SIGINT, SIGTERM, SIGKILL, 5 s apart).
     public func stop(_ chatID: String) {
         guard let run = runs[chatID], run.inTurn || !run.cliPermissions.isEmpty else { return }
+        run.closesAfterTurn = false
         for id in Array(run.cliPermissions.keys) {
             run.connection.write(ClaudeInput.deny(id, message: "The user stopped Claude."))
             run.cliPermissions[id] = nil
@@ -464,7 +487,7 @@ extension ChatSession {
         }
     }
 
-    private func cancelApprovals(of chatID: String, by device: String?) {
+    func cancelApprovals(of chatID: String, by device: String?) {
         for (id, continuation) in approvals[chatID] ?? [:] {
             continuation.resume(returning: false)
             decide(chatID, requestID: id, decision: .deny, by: device)

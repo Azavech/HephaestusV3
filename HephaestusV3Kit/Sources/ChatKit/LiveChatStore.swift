@@ -23,11 +23,23 @@ public final class LiveChatStore: ChatStore {
         conversation.turns = turns(session.transcripts[id] ?? [], streaming: session.streaming[id], root: session.root(ofChat: id), chatID: id,
                                    isRunning: session.state(of: id).isRunning)
         conversation.waitingQuestions = session.waitingQuestions(in: id).map(ChatQuestionSet.init)
+        conversation.compactions = session.compactions(in: id)
+        conversation.isCompacting = session.compacting.contains(id)
+        conversation.needsResume = session.needsResume(id)
         return conversation
     }
 
     func conversations(of projects: Set<Project.ID>) -> [ChatConversation] {
-        session.chats(of: projects).map(Self.conversation)
+        session.chats(of: projects).map { chat in
+            var conversation = Self.conversation(chat)
+            conversation.mark = switch session.state(of: chat.id) {
+            case .starting, .running: .working
+            case .waitingPermission, .waitingAnswers: .waiting
+            case .error: .error
+            case .idle: nil
+            }
+            return conversation
+        }
     }
 
     func open(_ id: ChatConversation.ID) async {
@@ -102,8 +114,32 @@ public final class LiveChatStore: ChatStore {
     // MARK: Turns
 
     static func conversation(_ chat: LoadedChat) -> ChatConversation {
-        ChatConversation(id: chat.id, projectID: chat.projectID, title: chat.file.title, origin: chat.file.origin.flatMap(ToolKind.init(rawValue:)),
-                         createdAt: chat.file.created, turns: [], updated: chat.file.updated)
+        var conversation = ChatConversation(id: chat.id, projectID: chat.projectID, title: chat.file.title,
+                                            origin: chat.file.origin.flatMap(ToolKind.init(rawValue:)), createdAt: chat.file.created, turns: [],
+                                            updated: chat.file.updated)
+        conversation.closed = chat.file.closed
+        conversation.contextUsage = chat.file.contextUsage
+        return conversation
+    }
+
+    func rename(_ id: ChatConversation.ID, to title: String) throws(ChatSendError) {
+        do throws(ChatError) { try session.rename(id, to: title) } catch { throw ChatSendError(message: error.description) }
+    }
+
+    func close(_ id: ChatConversation.ID) throws(ChatSendError) {
+        do throws(ChatError) { try session.close(id) } catch { throw ChatSendError(message: error.description) }
+    }
+
+    func reopen(_ id: ChatConversation.ID) throws(ChatSendError) {
+        do throws(ChatError) { try session.reopen(id) } catch { throw ChatSendError(message: error.description) }
+    }
+
+    func delete(_ id: ChatConversation.ID) throws(ChatSendError) {
+        do throws(ChatError) { try session.delete(id) } catch { throw ChatSendError(message: error.description) }
+    }
+
+    func resume(_ id: ChatConversation.ID) async throws(ChatSendError) {
+        do throws(ChatError) { try await session.resume(id) } catch { throw ChatSendError(message: error.description) }
     }
 
     /// The transcript as turns: each message a turn of the user's, then what follows it a turn of Claude's,

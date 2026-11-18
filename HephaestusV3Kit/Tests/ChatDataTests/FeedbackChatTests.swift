@@ -142,7 +142,7 @@ struct FeedbackChatTests {
             == #"{"name":"hephaestus-skills","version":"1.0.0"}"# + "\n")
         #expect(try String(contentsOf: plugin.appendingPathComponent("skills/report-feedback/SKILL.md"), encoding: .utf8)
             == "---\nname: report-feedback\ndescription: Feedback\n---\nMake a ticket of it.")
-        #expect(try FileManager.default.contentsOfDirectory(atPath: plugin.appendingPathComponent("skills").path) == ["report-feedback"],
+        #expect(try FileManager.default.contentsOfDirectory(atPath: plugin.appendingPathComponent("skills").path).sorted() == ["report-feedback", "resume-chat"],
                 "set-ticket-title, which the app runs itself, and folders of other names aren't in it")
         #expect(InternalSkill.reportFeedback.command == "/hephaestus-skills:report-feedback")
         #expect(ChatLaunch(cliPath: "/c", chatID: "C", resume: false, model: "default", effort: .high, mcpConfig: URL(fileURLWithPath: "/m.json"),

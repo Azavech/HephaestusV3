@@ -194,6 +194,7 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 | `read` | the `list_` and `get_` tools, `open_in_app` | runs | runs |
 | `renameChats` | `rename_chat` | runs | runs |
 | `askUser` | `ask_questions` | refused: only a chat's own Claude asks | runs |
+| `closeChats` | `close_chat` | runs on the chats it names | its own chat runs; naming another one shows a card first |
 | `startBuilds` | `rerun_run`, `cancel_run` | runs | Start builds: Ask First shows a card and waits; Never (the default) refuses |
 | `operateClusters` | `k8s_restart`, `k8s_scale`, `k8s_port_forward`, `k8s_stop_port_forward`, `argocd_sync` | runs | Operate deployments, as Change tickets |
 | `operateMachines` | `vm_set_account`, `vm_create`, `vm_start`, `vm_stop`, `vm_shell`, `vm_click`, `vm_drag`, `vm_scroll`, `vm_type`, `vm_key`, `vm_copy_in`, `vm_copy_out` | runs | Operate virtual machines, as Change tickets |
@@ -287,6 +288,7 @@ a project: Claude may read and change every project of this Mac, as the user can
 | `create_bundle`, `update_bundle`, `set_bundle_status`, `delete_bundle` | TicketsKit | changeTickets (`delete_bundle`: deleteTickets) | `TicketLibrary`, as Claude |
 | `list_chats`, `get_chat` | ChatKit | read | the chat session |
 | `rename_chat` | ChatKit | renameChats | `ChatSession.rename` |
+| `close_chat` | ChatKit | closeChats | `ChatSession.closeChats` |
 | `ask_questions` | ChatKit | askUser | `ChatSession.postQuestions` |
 | `list_runs`, `get_run`, `get_run_log`, `list_releases`, `get_release` | BuildsKit | read | gh ([Data › Builds](data.md#builds)) |
 | `rerun_run`, `cancel_run` | BuildsKit | startBuilds | gh |
@@ -1290,6 +1292,42 @@ Input schema:
     "chatID",
     "title"
   ],
+  "type" : "object"
+}
+```
+
+### close_chat
+
+- **Calls:** `ChatSession.closeChats(_:caller:)` ([Data › Closing and deleting chats](data.md#closing-and-deleting-chats)): the
+  calling chat closes once its turn ends; a listed chat of its project closes at once; one at work, of another
+  project, or unknown is refused, the others still close.
+- **Permission:** `closeChats`: only the calling chat runs without asking; naming another chat shows a card first
+  ([Permissions](#permissions)). The external token names the chats it closes.
+- **Result:** `{"closed": [<ids>], "closesAfterTurn": <bool>, "refused": [{"chatID", "reason"}]}`.
+- **Errors:** another token than a chat's without `chatIDs` (`forbidden`, `chatIDs: name the chats to close; only a
+  chat's own Claude closes its chat without them.`); the user didn't allow it (`forbidden`).
+
+Description:
+
+```text
+Closes chats. Without chatIDs, closes the calling chat once its current turn ends; the conversation stays, and a message reopens it. With chatIDs, closes those chats of the calling chat's project; a chat where Claude is at work, a chat of another project or an unknown one is refused, and the others still close. Closing another chat than the calling one asks the user first. Returns the chats closed, whether the calling chat closes after its turn, and each refusal with its reason.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "chatIDs" : {
+      "description" : "The chats to close, each an uppercase UUID; absent for the calling chat.",
+      "items" : {
+        "description" : "Chat id, an uppercase UUID.",
+        "type" : "string"
+      },
+      "type" : "array"
+    }
+  },
   "type" : "object"
 }
 ```

@@ -98,6 +98,8 @@ public final class ChatSession {
     @ObservationIgnored let runner: any ProcessRunning
     @ObservationIgnored let tokens: MCPTokens
     @ObservationIgnored let processEnvironment: [String: String]
+    /// Where a deleted chat's files go.
+    @ObservationIgnored let trash: Trash
     @ObservationIgnored let now: @Sendable () -> Date
     @ObservationIgnored let ownWrites = OwnWrites()
     /// Settings ▸ Chat › Edit the project's files, read when a process starts and when its CLI asks before an
@@ -128,7 +130,7 @@ public final class ChatSession {
 
     public init(projects: ProjectSession, tokens: MCPTokens, launcher: any ClaudeLaunching = SystemClaudeLauncher(),
                 runner: any ProcessRunning = SystemProcessRunner.shared, device: String,
-                processEnvironment: [String: String] = ProcessInfo.processInfo.environment,
+                processEnvironment: [String: String] = ProcessInfo.processInfo.environment, trash: Trash = .system,
                 now: @escaping @Sendable () -> Date = { ISODate.now() }) {
         self.projects = projects
         self.tokens = tokens
@@ -136,6 +138,7 @@ public final class ChatSession {
         self.runner = runner
         self.device = device
         self.processEnvironment = processEnvironment
+        self.trash = trash
         self.now = now
     }
 

@@ -42,18 +42,45 @@ On a Mac the list is the split view's sidebar column, the transcript (or prompt)
 | Title and subtitle | Window title | — | — | **Chat** and the project's path. Dropped below 760 pt wide. | Mac, iPad |
 | Sidebar | The split view's own button | System | System | Shows or hides the conversation list. | Mac, iPad |
 | **New Chat** | Button | `square.and.pencil` | ⇧⌘N (File ▸ New Chat) | Clears the selection and the draft, and shows the new-chat prompt in place. In the iPhone layout it opens the prompt as a page. Help: "New Chat (⇧⌘N)". | Mac, iPad, iPhone |
+| **More** | Menu | `ellipsis.circle` | — | While a conversation shows, as V2's chat header: **Rename…**, **Close** (or **Reopen** for a closed chat), **Copy Conversation**, then **Delete…** ([Managing chats](#managing-chats)). Help: "More". | Mac, iPad, iPhone |
 | **Inspector** | Button | `sidebar.right` | — | Shows or hides the inspector. In the iPhone layout it opens the inspector as a sheet. Help: "Show Inspector" or "Hide Inspector". | Mac, iPad, iPhone |
+| Find | The search field (`.searchable`, toolbar) | `magnifyingglass` | ⌘F | "Find in Conversation" ([Find](#find)). | Mac, iPad |
+| Closed chats filter | Button, in the list's column | `line.3.horizontal.decrease.circle`, filled while closed chats are hidden | — | Hides or shows the closed chats; hidden by default. Help: "Show Closed Chats" or "Hide Closed Chats". | Mac, iPad |
 
 The Chat window has no chat panel and no chat panel button. Its `sidebar.right` button belongs to the inspector.
 
 ## Conversation list
 
-- **Rows.** Each row shows the conversation's title on one line, then a caption in `textSecondary`: the date of its last turn (day, abbreviated month, hour and minute) and, for a conversation started in a tool's panel, "· from *Tool*" (for example "· from Builds"). The date and the origin are one sentence for translators. A row reads as one element.
+- **Rows.** Each row shows the conversation's title on one line (in `textSecondary` for a closed chat), then a caption in `textSecondary`: the date of its last turn (day, abbreviated month, hour and minute) and, for a conversation started in a tool's panel, "· from *Tool*" (for example "· from Builds"). The date and the origin are one sentence for translators. At its trailing edge, its state's mark, as V2's rows: a small spinner while Claude starts or works ("Working"), an orange dot while a card or questions wait ("Waiting for you"), a red dot after an error ("Stopped with an error"), nothing when idle. A row reads as one element.
 - **Order.** Latest first, by the date of the last turn. A new message moves its conversation to the top.
 - **Grouping.** For a project with sub projects, the list has one section per project that has conversations, in tree order, the project itself first. Each header shows the project's icon and name, and is a heading for VoiceOver. For a project without sub projects, the rows are not grouped.
-- **Selection.** Single selection. The selected conversation shows in the transcript. The list column is 220 to 340 pt wide, 260 pt ideally.
+- **Selection.** As V2's: click, ⌘-click and ⇧-click. One selected conversation shows in the transcript; several show "*n* Chats Selected" and **Close** in its place (`chat.severalSelected`), without a composer. The list column is 220 to 340 pt wide, 260 pt ideally.
+- **Closed chats** are hidden while the filter is on, as by default; a selected one stays listed until the selection moves. When the filter hides every chat, the list shows "No Open Chats" and "Closed chats are hidden." (`chat.list.noOpen`).
 - **Empty.** When neither the project nor its sub projects have a conversation, the list shows "No Chats" with the Chat symbol (`bubble.left.and.text.bubble.right`) and "Ask a question to start one."
-- There is no context menu, no drag, no rename and no delete.
+- **Context menu**, on the clicked row or the selection that holds it: with one chat, **Rename…**, **Close** or **Reopen**, **Copy Conversation**, then **Delete…**; with several, **Close** alone, enabled while one of them is open. ⌫ (Edit ▸ Delete) asks to delete the selected chat. There is no drag.
+
+### Managing chats
+
+As V2's Chats section and chat header did (the user's request to bring every V2 feature, 17 November 2026):
+
+- **Rename…** asks in an alert, "Rename Chat", with the title in a field (`chat.rename.field`), **Rename** and **Cancel**; the title is 1 to 100 characters on one line ([Data › Chat file](../data.md#chat-file)).
+- **Close** asks "Close the chat “*title*”?" or "Close *n* chats?", with **Close** and **Cancel**. A chat closes at once, its Claude CLI then ending as when idle; during a turn, once the turn ends well (a Stop, an error or an exit cancels it). The composer then gives way to "This conversation is over" with **Reopen** (`chat.closed`, `chat.reopen`), in the window and the panel. A message sent to a closed chat (the panel's, a feedback's) reopens it.
+- **Reopen** opens it again; the next message resumes its session.
+- **Copy Conversation** puts the conversation on the pasteboard as plain text: each turn's author, its text and its calls' actions after "· ".
+- **Delete…** asks "Delete the chat “*title*”?", "Its transcript and files move to the Trash.", **Delete** (destructive) and **Cancel**; the chat's process ends, then its file, its transcript and its folder of files move to the Trash ([Data › Closing and deleting chats](../data.md#closing-and-deleting-chats)).
+- A failure shows over the composer.
+- Claude closes chats too, with `close_chat` ([MCP › close_chat](../mcp.md#close_chat)): its own chat once its turn ends, another one after the user allows it in a card.
+
+### Resume
+
+![The bottom of a chat after an error: "Claude stopped with an error" in danger, Resume at its trailing edge, over the composer whose chips end with a ring and 72% left](images/chat-resume.png)
+*After an error: Resume, and the context left.*
+
+After an error, as V2's status line: while the chat's state is `error`, or it is idle and its newest result is an error other than a Stop, "Claude stopped with an error" in `danger` with `exclamationmark.triangle.fill` shows over the composer, then **Resume** (`arrow.uturn.forward`, `chat.resume`). Resume sends the message `/hephaestus-skills:resume-chat`, the call of the internal skill whose text tells Claude how to go on ([System Prompts](system-prompts.md)); the line goes as the chat starts. A closed chat shows none. Help: "Claude goes on from where it stopped, through the internal skill resume-chat."
+
+### Context indicator
+
+As V2's, at the end of the composer's chips, once the chat has a context usage ([Data › Context usage](../data.md#context-usage)): a ring 12 pt wide, filled clockwise from the top to the part used of the window less the autocompact buffer, `divider` for the rest, `success` from 20 % left, `warning` under 20 %, `danger` under 10 %; then "*n*% left" in `caption`, `textSecondary`. Its tooltip, also its VoiceOver label: "18.6K of 1M tokens used · 948.4K left before compaction", with a second line "Compacted once" or "Compacted *n* times" after compactions (tokens below 1,000 whole, then K and M with at most one decimal). While the CLI compacts, the ring fades to 30 % and back, 1 s a cycle. A chat without a value, or whose buffer isn't below its window, shows none (`chat.context`).
 
 ## Transcript
 
@@ -759,6 +786,11 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 | Questions in the transcript | `chat.questionSet.<set id>` | A container: each question, its options and its answer |
 | Add Files… | `chat.composer.addFiles` | A button, "Add Files…" |
 | A file waiting | `chat.composer.file.<name>`, its remove button `chat.composer.file.<name>.remove` | The file's name and size; "Remove *name*" |
+| List filter, menus | `chat.list.closedFilter`, `chat.more`, `chat.list.noOpen` | Buttons; a menu |
+| Several selected | `chat.severalSelected`, its Close `chat.closeSelected` | "3 Chats Selected"; a button |
+| Closed chat | `chat.closed`, `chat.reopen` | "This conversation is over"; a button |
+| Resume | `chat.resumeLine`, `chat.resume` | "Claude stopped with an error"; a button |
+| Context indicator | `chat.context` | Its tooltip's text |
 | Skill list | `chat.composer.completions` | A container, above the composer while it shows |
 | Skill in the list | `chat.composer.completion.<index>` | A button: the skill's name and description; the selected one has the selected trait |
 | Tool-call row | `chat.toolCall.<turn id>.<item id>`, or `.<block id>` for a call without an item | One element: label the action, value the detail; with an item, a button whose hint is "Open *item* in *Tool*" and whose action opens the item |
@@ -818,7 +850,7 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 
 ## Sample data and limits
 
-- **Chats.** The app's chats are the projects' `.hephaestus/chats/`. Chats of every kind are listed and shown; their items the app doesn't show (question pickers, images Claude showed) are skipped. There is no delete, and no rename in the window (Claude can rename with `rename_chat`).
+- **Chats.** The app's chats are the projects' `.hephaestus/chats/`. Chats of every kind are listed and shown; their items the app doesn't show (question pickers, images Claude showed) are skipped. They are renamed, closed, reopened and deleted from the window ([Managing chats](#managing-chats)).
 - **Claude.** The CLI runs with no system prompt from the app, no hooks, no skills but the internal skills chats call, and of its own tools only the file tools ([Decisions › What Claude reads](../decisions.md#what-claude-reads), [Files](#files)); the user's own Claude Code settings and CLAUDE.md files apply as they do in a terminal.
 - **Samples.** Previews and captures use five sample conversations, about Orders (three), Payments and Shop, and the sample engine. Their replies are written as if a model had answered, so they carry no **Sample reply** caption, and their reads are fixed text, not read live. Their Service Map reads were seen in Staging.
 

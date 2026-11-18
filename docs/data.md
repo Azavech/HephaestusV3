@@ -750,7 +750,7 @@ folders (attachments, agents) stay as they are.
 | closed | `closed` | `Bool` | no | `false` | Whether the chat is closed. A message sent sets it back to `false`. |
 | questionsBlocked | `questionsBlocked` | `Bool` | no | `false` | `ticket` chats only, kept as read ([Chat kinds](#chat-kinds)). Written only when `true`. |
 | origin | `origin` | `String?` | no | absent | The tool whose chat panel started the chat, a `ToolKind` value such as `tickets`; absent for a chat of the Chat window. Written only when set. |
-| unknownKeys | — | `YAMLMapping` | — | empty | Kept and written after the known keys, `contextUsage` among them ([Unknown keys](#unknown-keys)). The runtime keys `projectID`, `state`, `backgroundWork`, `compactingSince`, `costUSD` and `mentionedIDs` are ignored when read and never written. |
+| unknownKeys | — | `YAMLMapping` | — | empty | Kept and written after the known keys ([Unknown keys](#unknown-keys)); `contextUsage` among them, which V3 reads and writes there, as V2's layout had it ([Context usage](#context-usage)). The runtime keys `projectID`, `state`, `backgroundWork`, `compactingSince`, `costUSD` and `mentionedIDs` are ignored when read and never written. |
 
 A chat file is written back byte for byte. Example, a chat started from the Tickets window's panel:
 
@@ -917,6 +917,38 @@ C:
 
 A multiple question's answer, unless skipped, follows `<label>:` on its own lines. A set stays waiting across
 the CLI's exits and the app's restarts; messages typed meanwhile go to Claude as usual and change nothing in it.
+
+#### Context usage
+
+As V2 did, the app asks a chat's CLI how much of the context its conversation uses (`ChatSession.askContextUsage`),
+writing `{"type":"control_request","request_id":<id>,"request":{"subtype":"get_context_usage"}}`: after Claude's
+first `assistant` item of each message of the main conversation, after each `result`, and after a compaction.
+One request waits at most; a line that asks meanwhile asks once more when the answer comes, or after 30 s without
+one. A success answer gives `ContextUsage` (`ContextUsage.from`): `usedTokens` its `totalTokens` (0 or more),
+`windowTokens` its `maxTokens` (above 0), `bufferTokens` the `tokens` of its `categories` entry whose `id` is
+`autocompact_buffer` (0 without one, below the window), `received` the time read. It replaces the chat file's
+`contextUsage`, a mapping of those four keys (the date as the files write dates), kept after the process ends. A
+failure, or a value that breaks those rules, leaves it as it was. The UI shows it ([UI › Chat › Context
+indicator](ui/chat.md#context-indicator)); `left` is the window less the buffer and the tokens used, at least 0.
+
+#### Closing and deleting chats
+
+- **Close** (`ChatSession.close`, the window's Close, `close_chat`): without a turn in progress, `closed` becomes
+  true at once and the CLI ends as when idle (stdin closed, SIGTERM then SIGKILL 5 s apart). During a turn, the
+  run remembers it (`closesAfterTurn`); the turn's end closes the chat as above; a Stop, an error `result` or the
+  process's exit cancels it. A message delivered to a closed chat sets `closed` to false.
+- **Reopen** sets `closed` to false.
+- **`close_chat`** (`closeChats(_:caller:)`): without `chatIDs`, the calling chat (at once, or once its turn ends);
+  with them, each: the caller's own as above; a closed one stays closed and counts as closed; another chat of the
+  caller's project closes at once unless its state is starting, running or waitingPermission (refused, `Claude is
+  at work in chat <id>.`); an unknown id (`Chat <id> not found.`) and another project's chat (`Chat <id> belongs
+  to another project.`) are refused. The external token's list has no project to keep to.
+- **Delete** (`ChatSession.delete`): the chat's process ends (SIGTERM, then SIGKILL), its cards are cancelled, then
+  `<CHAT-ID>.yml`, `<CHAT-ID>.jsonl` and the folder `<CHAT-ID>/` move to the Trash (each only when it exists), and
+  the chat is forgotten. A file that can't be moved stops it (`storage`).
+- **Resume** (`needsResume`, `resume`): available while the chat isn't closed and its state is `error`, or idle with
+  its newest `result` an error other than `Stopped by the user.`; it sends `/hephaestus-skills:resume-chat`, the
+  call of the internal skill `resume-chat` ([Internal skills](#internal-skills)).
 
 #### Result images
 
@@ -1642,8 +1674,11 @@ content the user writes in [System Prompts](ui/system-prompts.md). A V3 addition
 - **Names**: Claude's skill name format, 1 to 64 characters of lowercase ASCII letters, digits and hyphens, not
   starting or ending with a hyphen, without two in a row (`InternalSkill.isValidName`). Today:
   `set-ticket-title`, which the app runs itself ([Running a skill](#internal-skills), below), and
-  `report-feedback`, which chats call (`isCalledFromChats`), through the [chat plugin](#chat-plugin): a feedback
-  chat's first message calls it ([Feedback chats](#feedback-chats)). Both empty by default.
+  `report-feedback` and `resume-chat`, which chats call (`isCalledFromChats`), through the [chat plugin](#chat-plugin):
+  a feedback chat's first message calls `report-feedback` ([Feedback chats](#feedback-chats)), Resume calls
+  `resume-chat` ([Closing and deleting chats](#closing-and-deleting-chats)). The first two are empty by default;
+  `resume-chat` holds V3's own text, which the user's saved file replaces. Every text the app has Claude act on
+  is an internal skill, never written in the code (the user's rule, 17 November 2026).
 - **File**: `<data folder>/skills/<name>/SKILL.md`, Claude's skill layout. Written atomically by
   `DataFolder.writeSkill(_:of:)`, its folder made when missing: a front matter with `name` (the code's),
   `model` and `effort`, then the other front matter lines read, in their order; then the content exactly as

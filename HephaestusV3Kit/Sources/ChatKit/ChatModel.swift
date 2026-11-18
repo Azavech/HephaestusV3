@@ -17,8 +17,39 @@ struct ChatConversation: Identifiable, Hashable {
     var updated: Date?
     /// Claude's questions waiting for the user's answers, which the card over the composer asks.
     var waitingQuestions: ChatQuestionSet?
+    /// Closed, as V2's Close left it: listed only while closed chats show, its composer replaced.
+    var closed = false
+    /// What the list's row marks: work, a wait for the user, or an error; nil when idle.
+    var mark: ChatMark?
+    /// How much of the context the conversation used, as the CLI last said.
+    var contextUsage: ContextUsage?
+    /// How many times the CLI compacted it.
+    var compactions = 0
+    /// The CLI compacts it now.
+    var isCompacting = false
+    /// It stopped with an error Resume goes on from.
+    var needsResume = false
 
     var updatedAt: Date { updated ?? turns.last?.date ?? createdAt }
+
+    /// The conversation as plain text, for Copy Conversation: each turn's author, then its text and its calls'
+    /// actions, turns a blank line apart.
+    var plainText: String {
+        turns.map { turn in
+            let author = turn.author == .user ? String(localized: "You", bundle: #bundle) : String(localized: "Claude", bundle: #bundle)
+            let lines = turn.blocks.compactMap { block -> String? in
+                switch block.content {
+                case .text(let text): text
+                case .call(let call): "· " + call.action
+                case .approval(let approval): "· " + approval.request
+                case .notice(let notice): "· " + notice.text
+                case .questions(let set): set.questions.map { "\($0.label). \($0.question)" }.joined(separator: "\n")
+                case .thinking: nil
+                }
+            }
+            return ([author] + lines).joined(separator: "\n")
+        }.joined(separator: "\n\n")
+    }
 
     /// Every item the conversation attached or read, in the order it first came up.
     var references: [ChatReference] {
@@ -35,6 +66,15 @@ struct ChatConversation: Identifiable, Hashable {
         }
         return result
     }
+}
+
+/// A chat's state, as the list marks it, as V2's rows did: a spinner, an orange dot or a red dot.
+enum ChatMark: Hashable {
+    /// Claude starts or works.
+    case working
+    /// A card or questions wait for the user.
+    case waiting
+    case error
 }
 
 /// One turn: the user's message with what it attached, or Claude's reply.

@@ -122,7 +122,7 @@ final class ChatWorld {
         projects = ProjectSession(dataFolder: data, runner: ChatRunner(), processEnvironment: [:])
         await projects.start()
         session = ChatSession(projects: projects, tokens: tokens, launcher: launcher, runner: ChatRunner(), device: "Studio",
-                              processEnvironment: [:])
+                              processEnvironment: [:], trash: .folder(root.appendingPathComponent("Trash")))
         await session.start(tools: ["list_tickets", "add_comment"], port: 47999)
         try await until { !self.session.status.checking && self.session.models != ClaudeModel.fallback }
     }

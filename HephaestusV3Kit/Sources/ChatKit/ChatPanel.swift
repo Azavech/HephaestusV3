@@ -47,6 +47,11 @@ public struct ChatPanel: View {
                     .padding(.horizontal, 12)
                     .padding(.top, 8)
             }
+            if model.conversation?.needsResume == true {
+                ResumeLine { Task { await model.resume() } }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 8)
+            }
             if let questions = model.conversation?.waitingQuestions {
                 QuestionsCard(questionSet: questions, compact: true) { label, text in
                     await model.answer(text, to: label, inSet: questions.id)
@@ -55,6 +60,10 @@ public struct ChatPanel: View {
                 .padding(.horizontal, 12)
                 .padding(.top, 8)
             }
+            if let conversation = model.conversation, conversation.closed {
+                ClosedNotice { model.reopen() }
+                    .padding(12)
+            } else {
             MessageComposer(
                 text: $model.draft,
                 prompt: Text("Ask about \(attachment?.title ?? project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
@@ -71,9 +80,13 @@ public struct ChatPanel: View {
                     ForEach(model.files, id: \.self) { url in
                         PendingFileChip(url: url) { model.removeFile(url) }
                     }
+                    if let conversation = model.conversation, let usage = conversation.contextUsage {
+                        ContextIndicator(usage: usage, compactions: conversation.compactions, isCompacting: conversation.isCompacting)
+                    }
                 }
             }
             .padding(12)
+            }
         }
         .background(.canvas)
         .fileImporter(isPresented: $choosesFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
@@ -334,6 +347,28 @@ public final class ChatPanelModel {
     func decide(_ approvalID: ChatApproval.ID, allow: Bool) {
         guard let conversationID else { return }
         store.decide(approvalID, in: conversationID, allow: allow)
+    }
+
+    /// Reopens the open conversation, closed.
+    func reopen() {
+        guard let conversationID else { return }
+        do throws(ChatSendError) {
+            try store.reopen(conversationID)
+            failure = nil
+        } catch {
+            failure = error.message
+        }
+    }
+
+    /// Resume: Claude goes on after an error, through the internal skill `resume-chat`.
+    func resume() async {
+        guard let conversationID else { return }
+        do throws(ChatSendError) {
+            try await store.resume(conversationID)
+            failure = nil
+        } catch {
+            failure = error.message
+        }
     }
 
     /// Leaves the conversation for a new one, with an empty draft and the subject attached.
