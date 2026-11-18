@@ -72,6 +72,28 @@ Under the name, in order:
 
 1. **Attachments.** The items the user's message carried, as chips (tool symbol and title; tooltip "*Tool*: *title*").
 2. **Blocks.** Text, tool-call rows and approval cards, in the order Claude produced them. Text is selectable.
+3. **Files.** The files the user's message carried, such as a feedback's screenshot ([Message files](#message-files)).
+
+### Message files
+
+![A feedback message: its text, the window's screenshot as a thumbnail with its name, a log as a capsule with its size, then Claude at work](images/chat-message-files.png)
+*A feedback chat's first message: the screenshot opens in Quick Look.*
+
+A message's files ([Data › Message files](../data.md#message-files)) follow its text, in their order, 8 pt
+apart and wrapping onto more lines (AZDesign's `FlowStack`). Each is AZDesign's `FileTile`:
+
+- An image (a type that conforms to `public.image`) shows as a thumbnail read at the size it shows, at most
+  320 × 200 pt in the Chat window and 220 × 140 pt in the side panel, with its name under it; until it is read,
+  or when it can't be (a missing file), the `photo` symbol stands in.
+- Another file shows as a capsule: its type's icon, its name and its size.
+- A click opens the file in Quick Look, whose arrows step through the message's other files. Tooltip "Open
+  *name*". The context menu has **Open**, **Open With Default App** and **Show in Finder**.
+- A file whose path breaks the rule of message files is shown dimmed and opens nothing.
+- A feedback message of V3 1.0.31 to 1.0.33 has no files of its own: its `- Screenshot:` and `- Attachment:`
+  lines that name a file of the chat's own folder show as its files (default chosen at design time).
+
+Only feedback chats send files for now: the composer has no way to add them ([Sample data and
+limits](#sample-data-and-limits)).
 
 Claude's text is Markdown, shown inline: emphasis, code and links, line breaks kept. The user's text shows as written. In previews, a reply of the sample engine adds a **Sample reply** caption after **Claude**, with the tooltip "No model is connected yet: the reply comes from the example's sample engine."
 
@@ -467,7 +489,9 @@ V2's prompts don't come over; nor does its permission mode menu (V3's chats have
 4. Sends its first message: `/hephaestus-skills:report-feedback`, the comment, then `Feedback context:` with
    the context, the stored screenshot's path and each stored file's path. The images among the stored files,
    the screenshot first, go before the text as images, so that Claude sees them; the paths let Claude attach
-   the files to a ticket.
+   the files to a ticket. The message keeps the stored files as its own, the screenshot first, and the
+   transcript shows them under its text: the screenshot as a thumbnail that opens in Quick Look ([Message
+   files](#message-files)).
 
 ```text
 /hephaestus-skills:report-feedback
@@ -589,6 +613,7 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 |---|---|---|
 | Turn | `chat.turn.<turn id>` | A container; the author's name is a heading |
 | Attachment of a turn | `chat.attachment.<turn id>.<item id>` | "*Tool*: *item*" |
+| File of a message | `chat.file.<turn id>.<file id>` | A button: the file's name, then its size when known |
 | Tool-call row | `chat.toolCall.<turn id>.<item id>`, or `.<block id>` for a call without an item | One element: label the action, value the detail; with an item, a button whose hint is "Open *item* in *Tool*" and whose action opens the item |
 | Approval card | `chat.approval.<approval id>` | A container; its title is a heading. The id is the request's (a UUID, or the CLI's request id); the sample's is `chat-checkout.comment` |
 | Allow | `chat.approval.<approval id>.allow` | "Allow" |

@@ -3,6 +3,7 @@ import SwiftUI
 import Foundation
 import MCPKit
 import ToolsFoundation
+import UniformTypeIdentifiers
 
 /// The app's chats, on the Claude CLI (docs/ui/chat.md): each conversation is a chat of `ChatSession`, its
 /// turns made from the chat's transcript, the tools' calls worded by the tools.
@@ -19,7 +20,7 @@ public final class LiveChatStore: ChatStore {
     func conversation(_ id: ChatConversation.ID?) -> ChatConversation? {
         guard let id, let chat = session.chats[id] else { return nil }
         var conversation = Self.conversation(chat)
-        conversation.turns = turns(session.transcripts[id] ?? [], streaming: session.streaming[id], root: session.root(ofChat: id))
+        conversation.turns = turns(session.transcripts[id] ?? [], streaming: session.streaming[id], root: session.root(ofChat: id), chatID: id)
         return conversation
     }
 
@@ -93,8 +94,9 @@ public final class LiveChatStore: ChatStore {
 
     /// The transcript as turns: each message a turn of the user's, then what follows it a turn of Claude's.
     /// Sub-agents' work, thinking, and the results of turns that ended well don't show.
-    /// `root` is the folder of the chat's project, which the file tools' rows and cards show paths from.
-    func turns(_ items: [ChatItem], streaming: StreamingText?, root: String? = nil) -> [ChatTurn] {
+    /// `root` is the folder of the chat's project, which the file tools' rows and cards show paths from and the
+    /// messages' files are read from; `chatID` finds the files of a feedback message that names them only.
+    func turns(_ items: [ChatItem], streaming: StreamingText?, root: String? = nil, chatID: String? = nil) -> [ChatTurn] {
         var turns: [ChatTurn] = []
         /// Where each call's row is, by the CLI's tool use id.
         var calls: [String: (turn: Int, block: Int)] = [:]
@@ -116,8 +118,10 @@ public final class LiveChatStore: ChatStore {
                     return ChatReference(tool: tool, projectID: reference.projectID, focus: reference.focus, title: reference.title,
                                          environment: reference.environment)
                 }
-                turns.append(ChatTurn(id: message.id, author: .user, date: message.created, attachments: attachments,
-                                      blocks: [ChatBlock(id: "\(message.id).text", .text(message.text))]))
+                var turn = ChatTurn(id: message.id, author: .user, date: message.created, attachments: attachments,
+                                    blocks: [ChatBlock(id: "\(message.id).text", .text(message.text))])
+                turn.files = Self.files(of: message, root: root, chatID: chatID)
+                turns.append(turn)
             case .assistant(let text) where text.parentToolUseID == nil:
                 add(ChatBlock(id: text.id, .text(text.text)), id: text.id, date: text.created)
             case .toolUse(let use) where use.parentToolUseID == nil:
@@ -155,6 +159,20 @@ public final class LiveChatStore: ChatStore {
             add(ChatBlock(id: streaming.itemID, .text(streaming.text)), id: streaming.itemID, date: Date())
         }
         return turns
+    }
+
+    /// A message's files, read from the project's `.hephaestus/`; those a feedback message of 1.0.31 to 1.0.33
+    /// names in its text when it has none.
+    static func files(of message: UserItem, root: String?, chatID: String?) -> [ChatMessageFile] {
+        guard let root else { return [] }
+        var attachments = message.attachments
+        if attachments.isEmpty, let chatID {
+            attachments = FeedbackReport.files(inMessage: message.text, chatID: chatID, root: root)
+        }
+        return attachments.map { attachment in
+            ChatMessageFile(id: attachment.id, name: attachment.name, contentType: UTType(mimeType: attachment.contentType),
+                            size: attachment.size > 0 ? Int64(attachment.size) : nil, url: attachment.url(inProject: root))
+        }
     }
 
     private func call(_ use: ToolUseItem, root: String?) -> ChatToolCall {

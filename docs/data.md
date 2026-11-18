@@ -822,7 +822,7 @@ with `null` written for an absent optional:
 
 | `type` | Keys | Id |
 | --- | --- | --- |
-| `user` | `text` (the message as written, without what V3 adds for Claude), `attachments` (kept as read), `sender` (the Mac's name), `linkedItems` (kept as read), `references` (`[{tool, project, focus, title, environment}]`, the item the message's chip carried; `tool` is a `ToolKind` value or `project`) | a new uppercase UUID, also the message's `uuid` for the CLI |
+| `user` | `text` (the message as written, without what V3 adds for Claude), `attachments` (the files the message carried, [Message files](#message-files)), `sender` (the Mac's name), `linkedItems` (kept as read), `references` (`[{tool, project, focus, title, environment}]`, the item the message's chip carried; `tool` is a `ToolKind` value or `project`) | a new uppercase UUID, also the message's `uuid` for the CLI |
 | `assistant` | `text`, `messageID`, `parentToolUseID`, `model` (the CLI's model id), `effort` | `<message id>#<block index>` |
 | `thinking` | `text`, `parentToolUseID` (kept; not shown) | `<message id>#<block index>` |
 | `toolUse` | `toolUseID`, `name` (without `mcp__<server>__`), `server` (`hephaestus` for the app's tools, `null` for the CLI's), `input`, `parentToolUseID` | `<message id>#<block index>` |
@@ -849,6 +849,31 @@ The `system` lines V3 writes:
 | Stop | info | `Stopped by the user.` |
 | The app quits during a turn | warning | `Stopped because Hephaestus quit.` |
 | A compaction | info | `Conversation compacted (<automatic or manual>, <tokens> tokens before)`, tokens as `24.6K`, `967K`, `1.2M` |
+
+#### Message files
+
+A user item's `attachments`, as V2's `Attachment` (`MessageAttachment` in ChatData): each file is copied once
+into the chat's folder, `.hephaestus/chats/<CHAT-ID>/<id>-<name>`, and never changed; it moves to the Trash with
+the chat's folder.
+
+| Key | Type | Required | Default | Rules |
+| --- | --- | --- | --- | --- |
+| `id` | `String` | yes | — | An uppercase UUID, unique in the chat; the stored file's name starts with it. |
+| `name` | `String` | yes | — | The name shown, one path component, such as `screenshot.png`. |
+| `path` | `String` | yes | — | Relative to `.hephaestus/`: `chats/<CHAT-ID>/<id>-<name>`. |
+| `contentType` | `String` | no | `application/octet-stream` | A MIME type: the name's extension's preferred one (`UTType(filenameExtension:)`), else the default. |
+| `size` | `Int` | no | `0` | In bytes; 0 when unknown. |
+
+- Other keys are kept and written back after these. An entry without `id`, `name` or `path` is skipped.
+- **Reading a file** (`MessageAttachment.url(inProject:)`): only a `path` of three parts, `chats`, a folder and
+  a name, none empty, `.` or `..`, whose real path, the links of its existing part resolved, lies inside the
+  project's `.hephaestus/` folder. Another path opens nothing. V2's own files of messages, tool results and shown
+  images follow the same form.
+- V3 writes them for a feedback chat's first message ([Feedback chats](#feedback-chats)). The composer adds none.
+- **1.0.31 to 1.0.33** stored a feedback's files without listing them on the message. For a user item without
+  `attachments`, the lines after its `Feedback context:` line that read `- Screenshot: <path>` or `- Attachment:
+  <path>`, whose path is a file `<UUID>-<name>` directly in the chat's own folder, are taken as its files, in
+  order, with an unknown size (`FeedbackReport.files(inMessage:chatID:root:)`). Nothing is written back.
 
 ### Stream mapping
 
@@ -1030,7 +1055,9 @@ Send Feedback's chat (`ChatSession.createFeedback`, [UI › Chat › Feedback](u
 3. Writes the [chat file](#chat-file): kind `feedback`, `ticket` null, the title the comment's first line that
    isn't empty, at most 80 characters, the sheet's model and effort, no `origin`.
 4. Sends the first message, its text below, the images among the stored files (by content type, else
-   extension) before it, the screenshot first; the user item stores the text.
+   extension) before it, the screenshot first; the user item stores the text, and the stored files as its
+   `attachments` ([Message files](#message-files)), the screenshot first as `screenshot.png`, each with the
+   UUID of its file name as `id`, its size, and its type from its name.
 
 ```
 /hephaestus-skills:report-feedback

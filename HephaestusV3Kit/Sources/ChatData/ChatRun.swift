@@ -112,10 +112,11 @@ extension ChatSession {
         return id
     }
 
-    /// Records the user's message in the chat, then writes it to the chat's process, starting one when none
-    /// runs.
-    func post(_ message: String, references: [ChatItemReference], images: [ClaudeImage], to id: String, cli: String) {
-        let item = UserItem(created: now(), text: message, sender: device, references: references)
+    /// Records the user's message in the chat, with the files it carries, then writes it to the chat's process,
+    /// starting one when none runs.
+    func post(_ message: String, references: [ChatItemReference], images: [ClaudeImage], attachments: [MessageAttachment] = [], to id: String,
+              cli: String) {
+        let item = UserItem(created: now(), text: message, sender: device, references: references, attachments: attachments)
         record(.user(item), in: id)
         change(id) {
             $0.updated = item.created

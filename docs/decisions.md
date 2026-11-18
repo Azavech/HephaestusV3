@@ -150,6 +150,8 @@ which rules the app enforces, and never tells Claude how to work.
 | In which language are the app's lines? | English, as stored in the transcript; the rows' and cards' wording is the tools', in the user's language. | [Data › Chat items](data.md#chat-items) |
 | How many transcripts stay in memory? | Those of chats open in a window and of running chats, plus at most 12 others, the oldest read dropped first (keep RAM low). | [Data › Chat transcript file](data.md#chat-transcript-file) |
 | What happens to the sample engine? | It stays for previews and the documentation's captures only. | [UI › Chat › Samples](ui/chat.md#samples) |
+| How do a message's files show? | Under its text, as V2's bubbles showed them, through AZDesign's `FileTile` (moved out of Tickets with its `FlowStack`, the second place that needs them): an image as a thumbnail at most 320 × 200 pt in the window and 220 × 140 pt in the panel, read at that size; a click opens Quick Look, which steps through the message's files (the user's request, 17 November 2026). | [UI › Chat › Message files](ui/chat.md#message-files) |
+| What of the feedback messages that named their files only in their text? | Their `- Screenshot:` and `- Attachment:` lines that name a file of the chat's own folder show as their files; nothing is rewritten. | [Data › Message files](data.md#message-files) |
 
 ## Builds
 

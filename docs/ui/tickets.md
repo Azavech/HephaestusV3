@@ -248,9 +248,11 @@ in the Shop window, ORD-142 reads Checkout reliability.
 
 The ticket's own files under **Attachments (*n*)**, with **Add Files…** (`paperclip`) at the heading's trailing
 edge, which opens a file panel for several files. Files dropped on the ticket, outside the comment field, are
-added too. Without files the section reads "Drop files here or click Add Files…". Images (png, jpeg, gif, heic,
-heif, tiff, bmp, webp) show as thumbnails at most 96 pt high and 192 pt wide with their name under them; other
-files as capsules with their type's icon, name and size. A click opens Quick Look. The context menu has
+added too. Without files the section reads "Drop files here or click Add Files…". Each file is AZDesign's
+`FileTile` in a `FlowStack` (8 pt apart, wrapping): a file whose type conforms to `public.image` shows as a
+thumbnail at most 96 pt high and 192 pt wide, read at that size, with its name under it (a format ImageIO can't
+read, such as SVG, shows the `photo` symbol instead); other files as capsules with their type's icon, name and
+size. A click opens Quick Look. The context menu has
 **Open**, **Open With Default App**, **Show in Finder** and **Remove…** ("Remove *name*?", "The file moves to
 the Trash."). Each file is at most 20 MB, and the files of one change at most 20 MB together
 ([Data › Attachments](../data.md#attachments)).

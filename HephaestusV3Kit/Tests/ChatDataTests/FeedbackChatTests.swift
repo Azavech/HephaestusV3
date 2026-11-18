@@ -65,6 +65,16 @@ struct FeedbackChatTests {
         let storedShot = try #require(stored.first { $0.hasSuffix("-screenshot.png") })
         let storedLog = try #require(stored.first { $0.hasSuffix("-app.log") })
 
+        // The message keeps its files, the screenshot first, so that the chat shows them.
+        await world.session.open(id)
+        guard case .user(let message)? = world.session.transcripts[id]?.first else { Issue.record("No message"); return }
+        #expect(message.attachments.map(\.name) == ["screenshot.png", "app.log"])
+        #expect(message.attachments.map(\.path) == ["chats/\(id)/\(storedShot)", "chats/\(id)/\(storedLog)"])
+        #expect(message.attachments[0].contentType == "image/png")
+        #expect(message.attachments[0].size == png.count && message.attachments[1].size == 3)
+        #expect(message.attachments[0].id == String(storedShot.prefix(36)))
+        #expect(message.attachments[0].url(inProject: world.repo.path)?.lastPathComponent == storedShot)
+
         let process = try #require(world.launcher.chats.last)
         let arguments = process.request.arguments
         let plugins = try #require(arguments.firstIndex(of: "--plugin-dir").map { arguments[$0 + 1] })

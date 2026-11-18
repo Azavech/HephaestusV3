@@ -269,7 +269,10 @@
 
     },
     "Open" : {
-      "comment" : "Opens an item in its tool's window"
+      "comment" : "Opens a file of a message in Quick Look\nOpens an item in its tool's window"
+    },
+    "Open %@" : {
+      "comment" : "Opens a file of a message in Quick Look"
     },
     "Open %@ in %@" : {
       "comment" : "An item, then its tool: Open ORD-142 in Tickets",
@@ -281,6 +284,9 @@
           }
         }
       }
+    },
+    "Open With Default App" : {
+
     },
     "Open in Chat Window" : {
 
@@ -373,6 +379,9 @@
     },
     "Show an example request for %@" : {
       "comment" : "A suggestion; the value is an API operation, such as createOrder"
+    },
+    "Show in Finder" : {
+
     },
     "Show the chat panel in tool windows" : {
 

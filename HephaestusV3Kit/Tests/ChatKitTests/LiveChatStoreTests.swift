@@ -70,6 +70,29 @@ struct LiveChatTurnsTests {
         #expect(blocks[5] == .notice(ChatNotice(text: "error_max_turns", level: .error)))
     }
 
+    @Test("A message's files show from the project's .hephaestus/; a feedback message of 1.0.31 to 1.0.33 gives those its lines name")
+    func messageFiles() {
+        let shot = MessageAttachment.stored(id: "8FF0CD02-5ECC-41D0-81AB-0995DF0C8767", name: "screenshot.png", chatID: "C1", size: 384_595)
+        let broken = MessageAttachment(id: "B", name: "x.txt", path: "../x.txt", contentType: "text/plain", size: 0)
+        let message = UserItem(id: "U1", created: date, text: "Look", sender: "Studio", attachments: [shot, broken])
+        let files = store.turns([.user(message)], streaming: nil, root: "/Users/you/Repo", chatID: "C1")[0].files
+        #expect(files.map(\.name) == ["screenshot.png", "x.txt"])
+        #expect(files[0].url?.path == "/Users/you/Repo/.hephaestus/chats/C1/8FF0CD02-5ECC-41D0-81AB-0995DF0C8767-screenshot.png")
+        #expect(files[0].contentType == .png && files[0].size == 384_595)
+        #expect(files[1].url == nil, "A path out of the chats' folders opens nothing")
+
+        let legacy = UserItem(id: "U2", created: date, text: """
+            /hephaestus-skills:report-feedback
+            Black sidebar
+
+            Feedback context:
+            - Screenshot: /Users/you/Repo/.hephaestus/chats/C1/8FF0CD02-5ECC-41D0-81AB-0995DF0C8767-screenshot.png
+            """, sender: "Studio")
+        let found = store.turns([.user(legacy)], streaming: nil, root: "/Users/you/Repo", chatID: "C1")[0].files
+        #expect(found.map(\.name) == ["screenshot.png"] && found[0].size == nil)
+        #expect(store.turns([.user(legacy)], streaming: nil)[0].files.isEmpty, "Without the project's folder, no files")
+    }
+
     @Test("Streamed text ends Claude's turn until its item comes")
     func streaming() {
         let streamed = store.turns(Array(items().prefix(1)), streaming: StreamingText(itemID: "m#9", text: "Wri"))

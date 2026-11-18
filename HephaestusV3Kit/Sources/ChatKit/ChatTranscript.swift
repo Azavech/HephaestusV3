@@ -169,6 +169,9 @@ struct ChatTurnView: View {
                     NoticeRow(notice: notice)
                 }
             }
+            if !turn.files.isEmpty {
+                MessageFiles(turnID: turn.id, files: turn.files, compact: compact)
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.turn.\(turn.id)")
@@ -177,6 +180,41 @@ struct ChatTurnView: View {
     /// Claude's Markdown: emphasis, code and links inline, line breaks kept.
     static func markdown(_ text: String) -> AttributedString {
         (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text)
+    }
+}
+
+/// The files a message carried, after its text: images as thumbnails, other files as chips. A click opens the
+/// file in Quick Look, which steps through the message's files.
+struct MessageFiles: View {
+    let turnID: ChatTurn.ID
+    let files: [ChatMessageFile]
+    let compact: Bool
+
+    @State private var previewed: URL?
+
+    var body: some View {
+        FlowStack(spacing: 8) {
+            ForEach(files) { file in
+                Button {
+                    previewed = file.url
+                } label: {
+                    FileTile(name: file.name, contentType: file.contentType, size: file.size, url: file.url,
+                             thumbnailSize: compact ? CGSize(width: 220, height: 140) : CGSize(width: 320, height: 200))
+                }
+                .buttonStyle(.plain)
+                .disabled(file.url == nil)
+                .help(String(localized: "Open \(file.name)", bundle: #bundle, comment: "Opens a file of a message in Quick Look"))
+                .contextMenu {
+                    if let url = file.url {
+                        Button(String(localized: "Open", bundle: #bundle, comment: "Opens a file of a message in Quick Look")) { previewed = url }
+                        Button(String(localized: "Open With Default App", bundle: #bundle)) { NSWorkspace.shared.open(url) }
+                        Button(String(localized: "Show in Finder", bundle: #bundle)) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                    }
+                }
+                .accessibilityIdentifier("chat.file.\(turnID).\(file.id)")
+            }
+        }
+        .quickLookPreview($previewed, in: files.compactMap(\.url))
     }
 }
 

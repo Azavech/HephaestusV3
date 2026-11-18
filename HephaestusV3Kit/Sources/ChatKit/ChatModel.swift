@@ -1,6 +1,7 @@
 import ChatData
 import Foundation
 import ToolsFoundation
+import UniformTypeIdentifiers
 
 /// A conversation with Claude about a project. Claude reads items through their tools and asks before
 /// it changes anything; the conversation keeps what it read, so the user sees it and can open it.
@@ -47,6 +48,8 @@ struct ChatTurn: Identifiable, Hashable {
     let date: Date
     var attachments: [ChatReference] = []
     var blocks: [ChatBlock]
+    /// The files the user's message carried, such as a feedback's screenshot.
+    var files: [ChatMessageFile] = []
     /// A reply of the sample engine, which stands in until a model is connected.
     var isSample = false
 
@@ -61,6 +64,17 @@ struct ChatTurn: Identifiable, Hashable {
         self.blocks = blocks
         self.isSample = isSample
     }
+}
+
+/// A file a message carried, as the turn shows it: an image as a thumbnail, another file as a chip.
+struct ChatMessageFile: Identifiable, Hashable {
+    let id: String
+    let name: String
+    let contentType: UTType?
+    /// Nil when unknown.
+    let size: Int64?
+    /// Nil when the message's path breaks the rule of message files; the file itself may be missing.
+    let url: URL?
 }
 
 /// A piece of a turn.

@@ -53,8 +53,8 @@ extension ChatSession {
     ///
     /// The chat is of kind `feedback`, named after the comment's first line, on the sheet's model and effort.
     /// The screenshot, then the files, are copied into `.hephaestus/chats/<chat id>/<uuid>-<name>` (the
-    /// screenshot as `screenshot.png`); the message gives their paths, and the images among them go before its
-    /// text as image blocks, so that Claude sees them.
+    /// screenshot as `screenshot.png`) and become the message's attachments, which the chat shows; the message
+    /// gives their paths, and the images among them go before its text as image blocks, so that Claude sees them.
     public func createFeedback(_ report: FeedbackReport) async throws(ChatError) -> String {
         let comment = report.comment.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !comment.isEmpty else { throw .invalid("comment: write what happened.") }
@@ -73,15 +73,19 @@ extension ChatSession {
         let folder = ProjectFolder(root: URL(fileURLWithPath: project.root, isDirectory: true)).chatsFolder
             .appendingPathComponent(id, isDirectory: true)
         var stored: [URL] = []
+        var recorded: [MessageAttachment] = []
         do {
             if !files.isEmpty {
                 try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             }
             for (index, file) in files.enumerated() {
                 let name = index == 0 && report.screenshot != nil ? "screenshot.png" : file.lastPathComponent
-                let target = folder.appendingPathComponent("\(UUID().uuidString)-\(name)")
+                let fileID = UUID().uuidString
+                let target = folder.appendingPathComponent("\(fileID)-\(name)")
                 try FileManager.default.copyItem(at: file, to: target)
                 stored.append(target)
+                let size = (try? target.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+                recorded.append(.stored(id: fileID, name: name, chatID: id, size: size))
             }
         } catch {
             try? FileManager.default.removeItem(at: folder)
@@ -98,7 +102,7 @@ extension ChatSession {
         let message = FeedbackReport.message(comment: comment, context: report.context, screenshot: screenshot?.path,
                                              attachments: attachments.map(\.path))
         let images = stored.filter { ClaudeImage.isImage(contentType: nil, url: $0) }.compactMap { ClaudeImage(contentsOf: $0) }
-        post(message, references: [], images: images, to: id, cli: cli)
+        post(message, references: [], images: images, attachments: recorded, to: id, cli: cli)
         return id
     }
 

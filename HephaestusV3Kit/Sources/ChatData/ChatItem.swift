@@ -48,8 +48,8 @@ public struct UserItem: Sendable, Hashable {
     /// The message as the user wrote it, without the lines V3 adds for Claude (docs/ui/chat.md › What Claude
     /// receives).
     public var text: String
-    /// Files sent with a message, kept as read.
-    public var attachments: JSONValue
+    /// The files sent with the message, stored in the chat's folder: a feedback chat's screenshot and files.
+    public var attachments: [MessageAttachment]
     /// The Mac whose user sent it.
     public var sender: String
     /// Linked items, kept as read.
@@ -57,11 +57,12 @@ public struct UserItem: Sendable, Hashable {
     /// V3 addition: the items the message carried, each a tool's item or the project.
     public var references: [ChatItemReference]
 
-    public init(id: String = UUID().uuidString, created: Date, text: String, sender: String, references: [ChatItemReference] = []) {
+    public init(id: String = UUID().uuidString, created: Date, text: String, sender: String, references: [ChatItemReference] = [],
+                attachments: [MessageAttachment] = []) {
         self.id = id
         self.created = created
         self.text = text
-        attachments = []
+        self.attachments = attachments
         self.sender = sender
         linkedItems = []
         self.references = references
@@ -267,7 +268,7 @@ extension ChatItem {
         switch self {
         case .user(let item):
             return ["type": "user", "id": .string(item.id), "created": date(item.created), "text": .string(item.text),
-                    "attachments": item.attachments, "sender": .string(item.sender), "linkedItems": item.linkedItems,
+                    "attachments": .array(item.attachments.map(\.json)), "sender": .string(item.sender), "linkedItems": item.linkedItems,
                     "references": .array(item.references.map(\.json))]
         case .assistant(let item):
             return ["type": "assistant", "id": .string(item.id), "created": date(item.created), "text": .string(item.text),
@@ -308,7 +309,7 @@ extension ChatItem {
             guard let text = string("text"), let sender = string("sender") else { return nil }
             var item = UserItem(id: id, created: created, text: text, sender: sender,
                                 references: (object["references"]?.arrayValue ?? []).compactMap(ChatItemReference.init(json:)))
-            item.attachments = object["attachments"] ?? []
+            item.attachments = (object["attachments"]?.arrayValue ?? []).compactMap(MessageAttachment.init(json:))
             item.linkedItems = object["linkedItems"] ?? []
             self = .user(item)
         case "assistant":

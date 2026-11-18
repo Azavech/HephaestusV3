@@ -662,59 +662,19 @@ private struct AttachmentStrip: View {
     }
 }
 
-/// One attachment: a thumbnail at most 96 pt high and 192 pt wide with its name, or a chip with its
-/// type's icon, its name and its size.
+/// One attachment as AZDesign's file tile: a thumbnail at most 96 pt high and 192 pt wide with its name, or a
+/// chip with its type's icon, its name and its size. Its file is found when it shows.
 private struct AttachmentView: View {
     let attachment: TicketAttachment
     let url: () async -> URL?
     @State private var file: URL?
 
     var body: some View {
-        Group {
-            if attachment.isImage {
-                VStack(alignment: .leading, spacing: 4) {
-                    Group {
-                        if let file, let image = NSImage(contentsOf: file) {
-                            Image(nsImage: image)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                        } else {
-                            Image(systemName: "photo")
-                                .foregroundStyle(.textSecondary)
-                                .frame(width: 96, height: 96)
-                        }
-                    }
-                    .frame(maxWidth: 192, maxHeight: 96)
-                    .clipShape(.rect(corners: .concentric(minimum: .fixed(6)), isUniform: true))
-                    Text(verbatim: attachment.name)
-                        .font(.caption)
-                        .foregroundStyle(.textSecondary)
-                        .lineLimit(1)
-                        .frame(maxWidth: 192, alignment: .leading)
-                }
-            } else {
-                HStack(spacing: 6) {
-                    Image(nsImage: NSWorkspace.shared.icon(for: UTType(mimeType: attachment.contentType) ?? .data))
-                        .resizable()
-                        .frame(width: 18, height: 18)
-                        .accessibilityHidden(true)
-                    Text(verbatim: attachment.name)
-                        .lineLimit(1)
-                    Text(Int64(attachment.size), format: .byteCount(style: .file))
-                        .foregroundStyle(.textSecondary)
-                }
-                .font(.callout)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-                .background(.surfaceSunken, in: .capsule)
+        FileTile(name: attachment.name, contentType: UTType(mimeType: attachment.contentType), size: Int64(attachment.size), url: file)
+            .task(id: attachment.id) {
+                if FileTile.isImage(UTType(mimeType: attachment.contentType)) { file = await url() }
             }
-        }
-        .contentShape(.rect)
-        .task(id: attachment.id) {
-            if attachment.isImage { file = await url() }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
+            .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -739,46 +699,6 @@ private struct PendingFileChip: View {
         .padding(.vertical, 4)
         .background(.surfaceSunken, in: .capsule)
         .accessibilityIdentifier("ticket.comment.file")
-    }
-}
-
-/// A row that wraps its items onto as many lines as they need.
-private struct FlowStack: Layout {
-    var spacing: CGFloat
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let rows = arrange(subviews, width: proposal.width ?? .infinity)
-        return CGSize(width: rows.map(\.width).max() ?? 0, height: rows.reduce(0) { $0 + $1.height } + spacing * CGFloat(max(rows.count - 1, 0)))
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var y = bounds.minY
-        for row in arrange(subviews, width: bounds.width) {
-            var x = bounds.minX
-            for index in row.items {
-                let size = subviews[index].sizeThatFits(.unspecified)
-                subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
-                x += size.width + spacing
-            }
-            y += row.height + spacing
-        }
-    }
-
-    private func arrange(_ subviews: Subviews, width: CGFloat) -> [(items: [Int], width: CGFloat, height: CGFloat)] {
-        var rows: [(items: [Int], width: CGFloat, height: CGFloat)] = []
-        var current: (items: [Int], width: CGFloat, height: CGFloat) = ([], 0, 0)
-        for index in subviews.indices {
-            let size = subviews[index].sizeThatFits(.unspecified)
-            let added = current.items.isEmpty ? size.width : current.width + spacing + size.width
-            if added > width, !current.items.isEmpty {
-                rows.append(current)
-                current = ([index], size.width, size.height)
-            } else {
-                current = (current.items + [index], added, max(current.height, size.height))
-            }
-        }
-        if !current.items.isEmpty { rows.append(current) }
-        return rows
     }
 }
 
