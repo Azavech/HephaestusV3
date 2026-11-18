@@ -239,6 +239,8 @@ extension ChatSession {
             case .item(let item):
                 if streaming[chatID]?.itemID == item.id { streaming[chatID] = nil }
                 record(item, in: chatID, op: self.item(item.id, in: chatID) == nil ? .add : .update)
+            case .toolResultImages(let toolUseID, let images):
+                storeResultImages(images, of: toolUseID, in: chatID)
             case .delta(let itemID, let text):
                 if streaming[chatID]?.itemID == itemID {
                     streaming[chatID]?.text += text
@@ -521,6 +523,28 @@ extension ChatSession {
         file.title = trimmed
         file.updated = now()
         try write(file, projectID: chat.projectID)
+    }
+
+    // MARK: Result images
+
+    /// Writes a tool result's images into the chat's folder, `<UUID>-image-<n>.<extension>` from 1, and lists
+    /// them on its item, as V2 did: the transcript shows them. An image that can't be written is left out.
+    func storeResultImages(_ images: [ResultImage], of toolUseID: String, in chatID: String) {
+        guard let folder = folder(of: chatID)?.chatsFolder.appendingPathComponent(chatID, isDirectory: true),
+              case .toolResult(var result)? = item("\(toolUseID)#result", in: chatID) else { return }
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        var files: [MessageAttachment] = []
+        for (index, image) in images.enumerated() {
+            let fileID = UUID().uuidString
+            let name = "image-\(index + 1).\(image.fileExtension)"
+            guard (try? image.data.write(to: folder.appendingPathComponent("\(fileID)-\(name)"), options: .atomic)) != nil else { continue }
+            var file = MessageAttachment.stored(id: fileID, name: name, chatID: chatID, size: image.data.count)
+            file.contentType = image.mediaType
+            files.append(file)
+        }
+        guard !files.isEmpty else { return }
+        result.images = .array(files.map(\.json))
+        record(.toolResult(result), in: chatID, op: .update)
     }
 
     // MARK: Models

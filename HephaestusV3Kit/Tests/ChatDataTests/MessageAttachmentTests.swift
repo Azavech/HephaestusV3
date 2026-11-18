@@ -120,3 +120,29 @@ struct MessageFilesTests {
         world.launcher.chats.forEach { $0.finish(.exited(0)) }
     }
 }
+
+@Suite("Result images")
+@MainActor
+struct ResultImagesTests {
+    @Test("A result's images come after its item, and the session stores them as image-<n> files of the chat's folder")
+    func images() async throws {
+        var mapper = StreamMapper(effort: .high, now: { Date() })
+        let png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+        let line = #"{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":[{"type":"text","text":"shot"},{"type":"image","source":{"type":"base64","media_type":"image/png","data":"\#(png)"}}]}]}}"#
+        let outputs = mapper.map(Data(line.utf8))
+        #expect(outputs.count == 2)
+        guard case .toolResultImages(let id, let images) = outputs[1] else { Issue.record("No images"); return }
+        #expect(id == "t1" && images.first?.mediaType == "image/png" && images.first?.data == Data(base64Encoded: png))
+
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        let chat = try await world.session.send("Look", references: [], to: nil, projectID: "ORD")
+        world.session.record(.toolResult(ToolResultItem(id: "t1#result", created: Date(), toolUseID: "t1", text: "shot", isError: false)), in: chat)
+        world.session.storeResultImages(images, of: "t1", in: chat)
+        guard case .toolResult(let result)? = world.items(chat).last else { Issue.record("No result"); return }
+        let file = try #require(result.imageFiles.first)
+        #expect(file.name == "image-1.png" && file.contentType == "image/png" && file.path == "chats/\(chat)/\(file.id)-image-1.png")
+        #expect(FileManager.default.fileExists(atPath: world.repo.appendingPathComponent(".hephaestus/\(file.path)").path))
+        world.launcher.chats.forEach { $0.finish(.exited(0)) }
+    }
+}

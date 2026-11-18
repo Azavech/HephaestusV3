@@ -36,17 +36,9 @@ public struct ChatPanel: View {
             header
             Divider()
             if let conversation = model.conversation {
-                ScrollView {
-                    ChatTranscript(conversation: conversation, activity: model.activity, compact: true, decide: { approval, allow in
-                        model.decide(approval, allow: allow)
-                    }, stop: model.stop)
-                    .padding(14)
-                }
-                // A short chat starts at the top; a long one opens on its end and follows new turns.
-                .defaultScrollAnchor(.top, for: .alignment)
-                .defaultScrollAnchor(.bottom, for: .initialOffset)
-                .defaultScrollAnchor(.bottom, for: .sizeChanges)
-                .id(conversation.id)
+                TranscriptScrollView(conversation: conversation, activity: model.activity, compact: true, padding: 14,
+                                     decide: { approval, allow in model.decide(approval, allow: allow) }, stop: model.stop)
+                    .id(conversation.id)
             } else {
                 emptyState(attachment)
             }

@@ -25,6 +25,12 @@ final class ChatWindowModel {
     var draft = ""
     /// The files going with the next message.
     var files: [URL] = []
+    /// What Find looks for in the shown conversation; empty for nothing.
+    var findQuery = ""
+    /// The find field shows (⌘F).
+    var isFinding = false
+    /// The match Find shows, counted from the first and wrapping either way.
+    var findIndex = 0
     /// Opened on a conversation: an iPhone's layout starts on its page.
     let opensSelection: Bool
     /// Why the last message wasn't sent; the next message clears it.

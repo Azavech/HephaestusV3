@@ -826,7 +826,7 @@ with `null` written for an absent optional:
 | `assistant` | `text`, `messageID`, `parentToolUseID`, `model` (the CLI's model id), `effort` | `<message id>#<block index>` |
 | `thinking` | `text`, `parentToolUseID` (kept; not shown) | `<message id>#<block index>` |
 | `toolUse` | `toolUseID`, `name` (without `mcp__<server>__`), `server` (`hephaestus` for the app's tools, `null` for the CLI's), `input`, `parentToolUseID` | `<message id>#<block index>` |
-| `toolResult` | `toolUseID`, `text`, `isError`, `images` (kept as read) | `<tool use id>#result` |
+| `toolResult` | `toolUseID`, `text`, `isError`, `images` (the result's images as files, [Result images](#result-images)) | `<tool use id>#result` |
 | `questions` | `questionSetID`, `questions`, `answers`, `completed` ([Questions](#questions)) | the set's id, a new uppercase UUID |
 | `permissionRequest` | `requestID`, `toolName` (the CLI's name, `mcp__hephaestus__add_comment`), `input`, `reason`, `decision` (`allow`, `allowAlways`, `deny`; `null` while it waits), `decidedBy` (the Mac whose user answered; `null` while it waits and when the app cancelled it) | `perm-<request id>` |
 | `system` | `text` (in English), `level` (`info`, `warning`, `error`) | a new uppercase UUID |
@@ -917,6 +917,15 @@ C:
 
 A multiple question's answer, unless skipped, follows `<label>:` on its own lines. A set stays waiting across
 the CLI's exits and the app's restarts; messages typed meanwhile go to Claude as usual and change nothing in it.
+
+#### Result images
+
+A tool's result that holds images (`tool_result` content parts `{"type":"image","source":{"type":"base64","media_type":…,"data":…}}`)
+gives `StreamOutput.toolResultImages` after its item, as V2 kept them: `storeResultImages` writes each into the
+chat's folder as `<UUID>-image-<n>.<extension>` (`n` from 1 in each result; the extension `png`, `jpg`, `gif`,
+`webp`, or the type's subtype), and rewrites the `toolResult` item with them as `images`, V2's `Attachment`s
+(`contentType` the image's type) ([Message files](#message-files)). An image that can't be written is left out.
+The images aren't sent back to Claude, which had them.
 
 #### Message files
 

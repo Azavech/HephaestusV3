@@ -26,6 +26,20 @@
         }
       }
     },
+    "%lld of %lld" : {
+      "comment" : "Find's place among its matches: 2 of 5",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "%lld steps" : {
+      "comment" : "The number of a sub-agent's steps in a call's row"
+    },
     "Add Files…" : {
       "comment" : "Adds files to the next message"
     },
@@ -169,11 +183,17 @@
     "Content" : {
 
     },
+    "Copy" : {
+      "comment" : "Copies a message's text"
+    },
     "Don't Allow" : {
 
     },
     "Done" : {
       "comment" : "Closes the inspector sheet"
+    },
+    "Done · %@" : {
+      "comment" : "The end of Claude's turn and how long it took"
     },
     "Edit the project's files" : {
 
@@ -190,11 +210,17 @@
     "Empty: Claude gets nothing from this skill." : {
 
     },
+    "Error" : {
+      "comment" : "Tags a call that failed"
+    },
     "Exclude Screenshot" : {
 
     },
     "Extra High" : {
       "comment" : "An effort level"
+    },
+    "Find in Conversation" : {
+
     },
     "Folders cannot be attached." : {
 
@@ -203,6 +229,9 @@
 
     },
     "Hide Chat" : {
+
+    },
+    "Hide Details" : {
 
     },
     "Hide Inspector" : {
@@ -220,10 +249,16 @@
     "Include Screenshot" : {
 
     },
+    "Input" : {
+      "comment" : "A call's input"
+    },
     "Inspector" : {
 
     },
     "Items Claude reads or you attach show here." : {
+
+    },
+    "Jump to Latest" : {
 
     },
     "Listed the chats of %@" : {
@@ -252,6 +287,9 @@
     "Low" : {
       "comment" : "An effort level"
     },
+    "MCP · %@" : {
+      "comment" : "Tags an MCP tool's call with its server"
+    },
     "Max" : {
       "comment" : "An effort level"
     },
@@ -270,6 +308,9 @@
     "Never" : {
       "comment" : "A permission: Claude may never do it"
     },
+    "New" : {
+      "comment" : "The text an edit writes"
+    },
     "New Chat" : {
       "comment" : "File menu item, ⇧⌘N"
     },
@@ -282,11 +323,17 @@
     "Next" : {
       "comment" : "Answers a question and shows the next one"
     },
+    "Next Match" : {
+
+    },
     "Next Question" : {
 
     },
     "No Chats" : {
 
+    },
+    "No Matches" : {
+      "comment" : "Find found nothing in the conversation"
     },
     "No Skill Selected" : {
 
@@ -299,6 +346,9 @@
     },
     "No model is connected yet: the reply comes from the example's sample engine." : {
 
+    },
+    "No result yet" : {
+      "comment" : "A call still waiting for its result"
     },
     "None connected" : {
       "comment" : "No model replies yet"
@@ -314,6 +364,9 @@
     },
     "Off, tool windows have no Chat button and no panel. The Chat window stays in the Window menu." : {
 
+    },
+    "Old" : {
+      "comment" : "The text an edit replaces"
     },
     "Open" : {
       "comment" : "Opens a file of a message in Quick Look\nOpens an item in its tool's window"
@@ -352,6 +405,9 @@
     },
     "Path" : {
       "comment" : "The Claude CLI's path"
+    },
+    "Previous Match" : {
+
     },
     "Previous Question" : {
 
@@ -403,8 +459,14 @@
     "Replies are samples until a model is connected." : {
 
     },
+    "Result" : {
+      "comment" : "A call's result"
+    },
     "Run %@" : {
       "comment" : "A run of Builds, as a chip names it"
+    },
+    "Running" : {
+      "comment" : "A call without its result yet"
     },
     "Sample reply" : {
 
@@ -441,6 +503,12 @@
     "Send Feedback" : {
 
     },
+    "Show All" : {
+      "comment" : "Shows a call's whole result"
+    },
+    "Show Details" : {
+
+    },
     "Show Inspector" : {
 
     },
@@ -467,6 +535,9 @@
     },
     "Status" : {
       "comment" : "The Claude CLI's status"
+    },
+    "Steps" : {
+      "comment" : "The work of a sub-agent, in its call's row"
     },
     "Stop" : {
       "comment" : "Stops Claude's turn"
@@ -497,6 +568,9 @@
     },
     "The window could not be captured." : {
 
+    },
+    "Thinking" : {
+      "comment" : "Claude's thinking, folded in the transcript"
     },
     "Through %@, as if you did it" : {
       "comment" : "How Claude would make a change: through a tool, such as Tickets"

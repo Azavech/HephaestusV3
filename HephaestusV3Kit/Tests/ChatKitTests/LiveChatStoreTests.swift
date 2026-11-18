@@ -3,6 +3,7 @@ import FileStorage
 import Foundation
 import MCPKit
 import ProjectData
+import SwiftUI
 import Testing
 import ToolsFoundation
 @testable import ChatKit
@@ -59,15 +60,54 @@ struct LiveChatTurnsTests {
         #expect(turns.map(\.author) == [.user, .claude])
         #expect(turns[0].attachments.map(\.title) == ["ORD-142"])
         let blocks = turns[1].blocks.map(\.content)
-        #expect(blocks.count == 6, "Sub-agents, thinking, a turn that ended well and a stop show nothing")
+        #expect(blocks.count == 8, "A stop shows nothing; a sub-agent's call is a step of its call")
         #expect(blocks[0] == .notice(ChatNotice(text: "Careful", level: .warning)))
-        #expect(blocks[1] == .call(ChatToolCall(action: "Read ticket ORD-142", reference: ChatReference(tool: .tickets, projectID: "ORD", focus: "ORD-142", title: "ORD-142"))))
-        #expect(blocks[2] == .call(ChatToolCall(action: "Used Bash", reference: nil, detail: "boom", failed: true)))
-        guard case .approval(let approval) = blocks[3] else { Issue.record("no card"); return }
+        #expect(blocks[1].row == .call(ChatToolCall(action: "Read ticket ORD-142", reference: ChatReference(tool: .tickets, projectID: "ORD", focus: "ORD-142", title: "ORD-142"))))
+        #expect(blocks[2].row == .call(ChatToolCall(action: "Used Bash", reference: nil, detail: "boom", failed: true)))
+        guard case .call(let bash) = blocks[2], let details = bash.details else { Issue.record("no details"); return }
+        #expect(details.name == "Bash" && details.server == nil && details.input == [ChatToolInput(text: "ls", language: "shell")])
+        #expect(details.result == "boom\nmore" && !details.isRunning)
+        #expect(details.steps.map(\.id) == ["a#0"], "The sub-agent's Grep is a step of the Bash call that started it")
+        #expect(blocks[3] == .thinking("Hmm"))
+        guard case .approval(let approval) = blocks[4] else { Issue.record("no card"); return }
         #expect(approval.request == "Claude wants to comment on ORD-142" && approval.preview == "Done" && approval.decision == nil)
         #expect(approval.channel == ChatApproval.Channel(.tickets) && approval.id == "r1")
-        #expect(blocks[4] == .text("**Done**"))
-        #expect(blocks[5] == .notice(ChatNotice(text: "error_max_turns", level: .error)))
+        #expect(blocks[5] == .text("**Done**"))
+        guard case .notice(let done) = blocks[6] else { Issue.record("no end"); return }
+        #expect(done.level == .done && done.text.hasPrefix("Done · "), "A turn that ended well says so, without its cost")
+        #expect(blocks[7] == .notice(ChatNotice(text: "error_max_turns", level: .error)))
+    }
+
+    @Test("A call's input: a command, an edit's two texts, a file's content, otherwise JSON; a call waiting shows it runs")
+    func inputs() {
+        func use(_ name: String, _ input: JSONValue, server: String? = nil) -> ToolUseItem {
+            ToolUseItem(id: name, created: date, toolUseID: name, name: name, server: server, input: input)
+        }
+        #expect(LiveChatStore.input(use("Edit", ["file_path": "/r/a.swift", "old_string": "a", "new_string": "b"]))
+                == [ChatToolInput(title: "Old", text: "a", language: "swift"), ChatToolInput(title: "New", text: "b", language: "swift")])
+        #expect(LiveChatStore.input(use("Write", ["file_path": "/r/notes", "content": "x"])) == [ChatToolInput(text: "x", language: nil)])
+        #expect(LiveChatStore.input(use("get_ticket", ["ticketID": "ORD-1"], server: "hephaestus"))
+                == [ChatToolInput(text: "{\n  \"ticketID\" : \"ORD-1\"\n}", language: "json")])
+        let waiting = store.turns([.toolUse(use("Bash", ["command": "sleep 9"]))], streaming: nil, isRunning: true)
+        guard case .call(let call)? = waiting.first?.blocks.first?.content else { Issue.record("no call"); return }
+        #expect(call.details?.isRunning == true && call.details?.result == nil)
+    }
+
+    @Test("Claude's turn is captioned with the model and effort of its first text")
+    func caption() {
+        let turns = store.turns([.assistant(AssistantItem(id: "m#0", created: date, text: "Hi", messageID: "m", model: "claude-opus-5-5", effort: .xhigh))],
+                                streaming: nil)
+        #expect(turns.first?.caption?.effort == "Extra High" && turns.first?.caption?.model != nil)
+        #expect(ChatAuthorRow<EmptyView>.caption(ChatTurnCaption(model: "Opus 5.5", effort: "Extra High")) == "(Opus 5.5 · Extra High)")
+        #expect(ChatAuthorRow<EmptyView>.caption(ChatTurnCaption()) == nil)
+    }
+
+    @Test("Find: the blocks that hold the query, ignoring case")
+    func find() {
+        let conversation = ChatConversation(id: "C", projectID: "ORD", title: "", origin: nil, createdAt: date, turns: store.turns(items(), streaming: nil))
+        #expect(ChatFind.matches(of: "DONE", in: conversation) == ["perm-r1", "m#3", "R1"], "The card's preview, the text, the Done line")
+        #expect(ChatFind.matches(of: "boom", in: conversation) == ["m#1"], "A call's result")
+        #expect(ChatFind.matches(of: "  ", in: conversation).isEmpty)
     }
 
     @Test("A message's files show from the project's .hephaestus/; a feedback message of 1.0.31 to 1.0.33 gives those its lines name")
@@ -131,11 +171,11 @@ struct LiveChatTurnsTests {
             .permissionRequest(PermissionRequestItem(requestID: "r2", created: date, toolName: "Read", input: ["file_path": "/etc/hosts"])),
         ], streaming: nil, root: root)
         let blocks = turns[0].blocks.map(\.content)
-        #expect(blocks[0] == .call(ChatToolCall(action: "Read Sources/App.swift", reference: nil, detail: "/Users/you/Repo/Sources/App.swift")))
-        #expect(blocks[1] == .call(ChatToolCall(action: "Searched for “screenshot”", reference: nil, detail: "Found 3 files")))
-        #expect(blocks[2] == .call(ChatToolCall(action: "Listed the files matching **/*.swift in Sources", reference: nil, detail: "/Users/you/Repo/Sources")))
-        #expect(blocks[3] == .call(ChatToolCall(action: "Edited Sources/App.swift", reference: nil, detail: "/Users/you/Repo/Sources/App.swift")))
-        #expect(blocks[4] == .call(ChatToolCall(action: "Wrote /tmp/x", reference: nil, detail: "/tmp/x")))
+        #expect(blocks[0].row == .call(ChatToolCall(action: "Read Sources/App.swift", reference: nil, detail: "/Users/you/Repo/Sources/App.swift")))
+        #expect(blocks[1].row == .call(ChatToolCall(action: "Searched for “screenshot”", reference: nil, detail: "Found 3 files")))
+        #expect(blocks[2].row == .call(ChatToolCall(action: "Listed the files matching **/*.swift in Sources", reference: nil, detail: "/Users/you/Repo/Sources")))
+        #expect(blocks[3].row == .call(ChatToolCall(action: "Edited Sources/App.swift", reference: nil, detail: "/Users/you/Repo/Sources/App.swift")))
+        #expect(blocks[4].row == .call(ChatToolCall(action: "Wrote /tmp/x", reference: nil, detail: "/tmp/x")))
         guard case .approval(let edit) = blocks[5], case .approval(let read) = blocks[6] else { Issue.record("no cards"); return }
         #expect(edit.request == "Claude wants to edit Sources/App.swift" && edit.preview == "- a\n- b\n+ c" && edit.channel == nil)
         #expect(read.request == "Claude wants to read /etc/hosts" && read.preview == nil)
@@ -190,5 +230,16 @@ struct ChatGateTests {
         #expect(tokens.caller(for: token)?.chatID == nil)
         tokens.revoke(token)
         #expect(tokens.caller(for: token) == nil)
+    }
+}
+
+private extension ChatBlock.Content {
+    /// A call's row without its details, to compare what the row says.
+    var row: ChatBlock.Content {
+        if case .call(var call) = self {
+            call.details = nil
+            return .call(call)
+        }
+        return self
     }
 }

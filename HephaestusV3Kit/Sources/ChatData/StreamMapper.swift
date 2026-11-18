@@ -20,6 +20,8 @@ public enum StreamOutput: Sendable, Hashable {
     case controlResponse(requestID: String, success: Bool, response: JSONValue?, error: String?)
     /// The CLI withdraws a permission request.
     case cancelRequest(requestID: String)
+    /// The images of a tool's result, after its item, to store as the result's files.
+    case toolResultImages(toolUseID: String, images: [ResultImage])
     /// The end of a CLI turn, after the open blocks were finished as items.
     case result(ResultItem)
     case compactionStarted
@@ -236,9 +238,10 @@ public struct StreamMapper: Sendable {
         guard let content = line["message"]?["content"]?.arrayValue else { return [.ignored("user")] }
         let results = content.filter { $0["type"]?.stringValue == "tool_result" }
         guard !results.isEmpty else { return [.ignored("user")] }
-        return results.compactMap { block in
-            guard let toolUseID = block["tool_use_id"]?.stringValue else { return nil }
+        return results.flatMap { block -> [StreamOutput] in
+            guard let toolUseID = block["tool_use_id"]?.stringValue else { return [] }
             let text: String
+            var images: [ResultImage] = []
             switch block["content"] {
             case .string(let value):
                 text = value
@@ -246,11 +249,17 @@ public struct StreamMapper: Sendable {
                 let texts = parts.filter { $0["type"]?.stringValue == "text" }.compactMap { $0["text"]?.stringValue }
                 let others = parts.filter { !["text", "image"].contains($0["type"]?.stringValue ?? "") }.map(\.text)
                 text = (texts + others).joined(separator: "\n")
+                images = parts.filter { $0["type"]?.stringValue == "image" }.compactMap { part in
+                    guard part["source"]?["type"]?.stringValue == "base64", let media = part["source"]?["media_type"]?.stringValue,
+                          let data = part["source"]?["data"]?.stringValue.flatMap({ Data(base64Encoded: $0) }) else { return nil }
+                    return ResultImage(mediaType: media, data: data)
+                }
             default:
                 text = ""
             }
-            return .item(.toolResult(ToolResultItem(id: "\(toolUseID)#result", created: now(), toolUseID: toolUseID,
-                                                    text: Self.truncated(text), isError: block["is_error"]?.boolValue ?? false)))
+            let item = StreamOutput.item(.toolResult(ToolResultItem(id: "\(toolUseID)#result", created: now(), toolUseID: toolUseID,
+                                                                    text: Self.truncated(text), isError: block["is_error"]?.boolValue ?? false)))
+            return images.isEmpty ? [item] : [item, .toolResultImages(toolUseID: toolUseID, images: images)]
         }
     }
 
@@ -327,6 +336,25 @@ public struct StreamMapper: Sendable {
         case .array(let values): .array(values.map(truncated))
         case .object(let values): .object(values.mapValues(truncated))
         default: value
+        }
+    }
+}
+
+/// An image of a tool's result, as the CLI wrote it: its MIME type and its bytes.
+public struct ResultImage: Sendable, Hashable {
+    public var mediaType: String
+    public var data: Data
+
+    public init(mediaType: String, data: Data) {
+        self.mediaType = mediaType
+        self.data = data
+    }
+
+    /// The extension of its file: `png`, `jpg`, `gif`, `webp`, or what the type's subtype says.
+    var fileExtension: String {
+        switch mediaType {
+        case "image/jpeg": "jpg"
+        default: mediaType.split(separator: "/").last.map(String.init) ?? "png"
         }
     }
 }

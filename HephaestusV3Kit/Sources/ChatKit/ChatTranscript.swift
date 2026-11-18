@@ -17,11 +17,17 @@ struct ChatTranscript: View {
     let decide: (ChatApproval.ID, Bool) -> Void
     /// Stops Claude's turn; nil where nothing can be stopped (the samples).
     var stop: (() -> Void)?
+    /// What Find looks for: the blocks that hold it are highlighted.
+    var findQuery = ""
+    /// The match Find shows, outlined.
+    var currentMatch: ChatBlock.ID?
 
     var body: some View {
+        let matches = Set(ChatFind.matches(of: findQuery, in: conversation))
         LazyVStack(alignment: .leading, spacing: compact ? 16 : 22) {
             ForEach(conversation.turns) { turn in
-                ChatTurnView(turn: turn, projectID: conversation.projectID, compact: compact, decide: decide)
+                ChatTurnView(turn: turn, projectID: conversation.projectID, compact: compact, decide: decide, matches: matches,
+                             currentMatch: currentMatch)
             }
             if let activity {
                 ChatAuthorRow(author: .claude, isSample: false) {
@@ -90,9 +96,16 @@ struct ChatActivityText: View {
 struct ChatAuthorRow<Content: View>: View {
     let author: ChatTurn.Author
     let isSample: Bool
+    /// When the turn began; nil for the activity line.
+    var date: Date?
+    /// Claude's model and effort, after its name.
+    var caption: ChatTurnCaption?
+    /// What Copy puts on the pasteboard: the turn's Markdown; nil for no Copy button.
+    var copyText: String?
     @ViewBuilder let content: Content
 
     @ScaledMetric private var badge = 24.0
+    @State private var isHovered = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -114,21 +127,52 @@ struct ChatAuthorRow<Content: View>: View {
                     .font(.headline)
                     .foregroundStyle(.textPrimary)
                     .accessibilityAddTraits(.isHeader)
+                    if let caption, let shown = Self.caption(caption) {
+                        Text(verbatim: shown)
+                            .font(.callout)
+                            .foregroundStyle(.textSecondary)
+                    }
+                    if let date {
+                        Text(date, format: .dateTime.hour().minute())
+                            .font(.caption)
+                            .foregroundStyle(.textSecondary)
+                            .help(date.formatted(date: .complete, time: .standard))
+                    }
                     if isSample {
                         Text("Sample reply", bundle: #bundle)
                             .font(.caption)
                             .foregroundStyle(.textSecondary)
                             .help(String(localized: "No model is connected yet: the reply comes from the example's sample engine.", bundle: #bundle))
                     }
+                    Spacer(minLength: 0)
+                    if let copyText {
+                        Button(String(localized: "Copy", bundle: #bundle, comment: "Copies a message's text"), systemImage: "doc.on.doc") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(copyText, forType: .string)
+                        }
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.borderless)
+                        .font(.caption)
+                        .opacity(isHovered ? 1 : 0)
+                        .help(String(localized: "Copy", bundle: #bundle, comment: "Copies a message's text"))
+                        .accessibilityIdentifier("chat.turn.copy")
+                    }
                 }
                 content
             }
             Spacer(minLength: 0)
         }
+        .onHover { isHovered = $0 }
     }
 
     private var color: Color {
         author == .user ? .info : .accentSecondary
+    }
+
+    /// "(Opus 5.5 · Extra High)", "(Opus 5.5)"; nil without either.
+    static func caption(_ caption: ChatTurnCaption) -> String? {
+        let parts = [caption.model, caption.effort].compactMap { $0 }
+        return parts.isEmpty ? nil : "(" + parts.joined(separator: " · ") + ")"
     }
 }
 
@@ -139,11 +183,15 @@ struct ChatTurnView: View {
     var projectID: Project.ID?
     let compact: Bool
     let decide: (ChatApproval.ID, Bool) -> Void
+    /// Find's matches, by block id: highlighted.
+    var matches: Set<ChatBlock.ID> = []
+    var currentMatch: ChatBlock.ID?
 
     @Environment(\.projectDirectory) private var directory
 
     var body: some View {
-        ChatAuthorRow(author: turn.author, isSample: turn.isSample) {
+        ChatAuthorRow(author: turn.author, isSample: turn.isSample, date: turn.isSample ? nil : turn.date, caption: turn.caption,
+                      copyText: copyText) {
             if !turn.attachments.isEmpty {
                 HStack(spacing: 6) {
                     ForEach(turn.attachments) { reference in
@@ -152,23 +200,15 @@ struct ChatTurnView: View {
                 }
             }
             ForEach(turn.blocks) { block in
-                switch block.content {
-                case .text(let text):
-                    // Markdown, as V2's bubbles: ids of the loaded projects are links; the user's line breaks stay.
-                    MarkdownView(text, projects: Set(directory.projects.map(\.id)), root: directory.project(projectID)?.path,
-                                 keepsLineBreaks: turn.author == .user)
-                        .foregroundStyle(.textPrimary)
-                case .call(let call):
-                    ToolCallRow(turnID: turn.id, blockID: block.id, call: call, compact: compact)
-                case .approval(let approval):
-                    ApprovalCard(approval: approval) { allow in
-                        decide(approval.id, allow)
+                blockView(block)
+                    .padding(matches.contains(block.id) ? 4 : 0)
+                    .background(matches.contains(block.id) ? Color.highlight : .clear, in: CardShape(minimum: 6))
+                    .overlay {
+                        if currentMatch == block.id {
+                            CardShape(minimum: 6).stroke(Color.accent, lineWidth: 2)
+                        }
                     }
-                case .notice(let notice):
-                    NoticeRow(notice: notice)
-                case .questions(let set):
-                    QuestionsSummary(questionSet: set)
-                }
+                    .id(block.id)
             }
             if !turn.files.isEmpty {
                 MessageFiles(turnID: turn.id, files: turn.files, compact: compact)
@@ -176,6 +216,37 @@ struct ChatTurnView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.turn.\(turn.id)")
+    }
+
+    @ViewBuilder private func blockView(_ block: ChatBlock) -> some View {
+        switch block.content {
+        case .text(let text):
+            // Markdown, as V2's bubbles: ids of the loaded projects are links; the user's line breaks stay.
+            MarkdownView(text, projects: Set(directory.projects.map(\.id)), root: directory.project(projectID)?.path,
+                         keepsLineBreaks: turn.author == .user)
+                .foregroundStyle(.textPrimary)
+        case .call(let call):
+            ToolCallRow(turnID: turn.id, blockID: block.id, call: call, compact: compact)
+        case .approval(let approval):
+            ApprovalCard(approval: approval) { allow in
+                decide(approval.id, allow)
+            }
+        case .notice(let notice):
+            NoticeRow(notice: notice)
+        case .questions(let set):
+            QuestionsSummary(questionSet: set)
+        case .thinking(let text):
+            ThinkingRow(text: text)
+        }
+    }
+
+    /// The turn's text, its blocks' Markdown one after the other; nil without text.
+    private var copyText: String? {
+        let texts = turn.blocks.compactMap { block -> String? in
+            if case .text(let text) = block.content { return text }
+            return nil
+        }
+        return texts.isEmpty ? nil : texts.joined(separator: "\n\n")
     }
 
     /// Claude's Markdown: emphasis, code and links inline, line breaks kept.
@@ -242,12 +313,13 @@ struct NoticeRow: View {
         case .info: "info.circle"
         case .warning: "exclamationmark.triangle"
         case .error: "xmark.octagon"
+        case .done: "checkmark.circle"
         }
     }
 
     private var color: Color {
         switch notice.level {
-        case .info: .textSecondary
+        case .info, .done: .textSecondary
         case .warning: .warning
         case .error: .danger
         }
@@ -264,8 +336,38 @@ struct ToolCallRow: View {
 
     @Environment(\.openRoute) private var openRoute
     @Environment(\.toolReader) private var toolReader
+    @State private var isExpanded: Bool
+
+    /// `expanded` opens the row on its details, for previews.
+    init(turnID: ChatTurn.ID, blockID: ChatBlock.ID, call: ChatToolCall, compact: Bool = false, expanded: Bool = false) {
+        self.turnID = turnID
+        self.blockID = blockID
+        self.call = call
+        self.compact = compact
+        _isExpanded = State(initialValue: expanded)
+    }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            header
+            if isExpanded, let details = call.details {
+                ToolCallDetailsView(turnID: turnID, details: details, compact: compact)
+                    .padding(8)
+                    .background(.surface, in: CardShape(minimum: 6))
+                    .transition(.opacity)
+            }
+        }
+        .font(.callout)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(.surfaceSunken, in: CardShape(minimum: 6))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("chat.toolCall.\(turnID).\(call.reference?.id ?? blockID)")
+    }
+
+    /// The icon, what the call did, its gist, then a spinner, the Error tag, the number of steps, Open and the
+    /// chevron. A click on it, outside Open, shows or hides the details.
+    private var header: some View {
         HStack(spacing: 8) {
             Image(systemName: call.failed ? "exclamationmark.triangle" : call.reference?.tool.symbol ?? "wrench.and.screwdriver")
                 .foregroundStyle(call.failed ? Color.danger : Color.accent)
@@ -287,24 +389,61 @@ struct ToolCallRow: View {
                     .help(detail)
             }
             Spacer(minLength: 8)
+            if let details = call.details {
+                if details.isRunning {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .accessibilityLabel(String(localized: "Running", bundle: #bundle, comment: "A call without its result yet"))
+                }
+                if call.failed {
+                    Text("Error", bundle: #bundle, comment: "Tags a call that failed")
+                        .font(.caption)
+                        .foregroundStyle(.danger)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 1)
+                        .background(Color.danger.opacity(0.14), in: .capsule)
+                }
+                if !details.steps.isEmpty, !isExpanded {
+                    Text(stepCount(details.steps))
+                        .font(.caption)
+                        .foregroundStyle(.textSecondary)
+                }
+            }
             if call.reference != nil {
                 Button(String(localized: "Open", bundle: #bundle, comment: "Opens an item in its tool's window"), action: open)
                     .buttonStyle(.borderless)
                     .help(openHelp)
             }
+            if call.details != nil {
+                Image(systemName: "chevron.right")
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .foregroundStyle(.textSecondary)
+                    .accessibilityHidden(true)
+            }
         }
-        .font(.callout)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(.surfaceSunken, in: CardShape(minimum: 6))
-        // One element: what was read, the tool's answer, and Open as its action.
+        .contentShape(.rect)
+        .onTapGesture {
+            guard call.details != nil else { return }
+            withMotion(.fade) { isExpanded.toggle() }
+        }
+        // One element: what was read, the tool's answer; Open and the details as its actions.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(call.action)
         .accessibilityValue(detail)
         .accessibilityHint(openHelp)
-        .accessibilityAddTraits(call.reference == nil ? [] : .isButton)
-        .accessibilityAction(.default, open)
-        .accessibilityIdentifier("chat.toolCall.\(turnID).\(call.reference?.id ?? blockID)")
+        .accessibilityAddTraits(call.reference == nil && call.details == nil ? [] : .isButton)
+        .accessibilityAction(.default) {
+            if call.reference != nil { open() } else if call.details != nil { isExpanded.toggle() }
+        }
+        .accessibilityAction(named: Text(isExpanded ? "Hide Details" : "Show Details", bundle: #bundle)) {
+            isExpanded.toggle()
+        }
+        .accessibilityIdentifier("chat.toolCall.\(turnID).\(call.reference?.id ?? blockID).header")
+    }
+
+    /// "1 step", "3 steps".
+    private func stepCount(_ steps: [ChatBlock]) -> String {
+        String(localized: "\(steps.count) steps", bundle: #bundle, comment: "The number of a sub-agent's steps in a call's row")
     }
 
     /// The call's own detail, else the item's tool's one-line answer.

@@ -20,7 +20,8 @@ public final class LiveChatStore: ChatStore {
     func conversation(_ id: ChatConversation.ID?) -> ChatConversation? {
         guard let id, let chat = session.chats[id] else { return nil }
         var conversation = Self.conversation(chat)
-        conversation.turns = turns(session.transcripts[id] ?? [], streaming: session.streaming[id], root: session.root(ofChat: id), chatID: id)
+        conversation.turns = turns(session.transcripts[id] ?? [], streaming: session.streaming[id], root: session.root(ofChat: id), chatID: id,
+                                   isRunning: session.state(of: id).isRunning)
         conversation.waitingQuestions = session.waitingQuestions(in: id).map(ChatQuestionSet.init)
         return conversation
     }
@@ -105,14 +106,25 @@ public final class LiveChatStore: ChatStore {
                          createdAt: chat.file.created, turns: [], updated: chat.file.updated)
     }
 
-    /// The transcript as turns: each message a turn of the user's, then what follows it a turn of Claude's.
-    /// Sub-agents' work, thinking, and the results of turns that ended well don't show.
-    /// `root` is the folder of the chat's project, which the file tools' rows and cards show paths from and the
-    /// messages' files are read from; `chatID` finds the files of a feedback message that names them only.
-    func turns(_ items: [ChatItem], streaming: StreamingText?, root: String? = nil, chatID: String? = nil) -> [ChatTurn] {
+    /// The transcript as turns: each message a turn of the user's, then what follows it a turn of Claude's,
+    /// captioned with the model and effort of its first text. A call's row carries its input, its result and the
+    /// work of the sub-agent it started (its steps); thinking shows folded; a turn that ended well ends with
+    /// "Done · <duration>". `root` is the folder of the chat's project, which the file tools' rows and cards show paths
+    /// from and the messages' files are read from; `chatID` finds the files of a feedback message that names
+    /// them only; `isRunning` shows a spinner on the calls without a result.
+    func turns(_ items: [ChatItem], streaming: StreamingText?, root: String? = nil, chatID: String? = nil, isRunning: Bool = false) -> [ChatTurn] {
         var turns: [ChatTurn] = []
-        /// Where each call's row is, by the CLI's tool use id.
-        var calls: [String: (turn: Int, block: Int)] = [:]
+        var results: [String: ToolResultItem] = [:]
+        var steps: [String: [ChatItem]] = [:]
+        for item in items {
+            switch item {
+            case .toolResult(let result): results[result.toolUseID] = result
+            case .toolUse(let use): if let parent = use.parentToolUseID { steps[parent, default: []].append(item) }
+            case .assistant(let text): if let parent = text.parentToolUseID { steps[parent, default: []].append(item) }
+            case .thinking(let thinking): if let parent = thinking.parentToolUseID { steps[parent, default: []].append(item) }
+            default: break
+            }
+        }
 
         func claude(_ id: String, _ date: Date) -> Int {
             if let last = turns.indices.last, turns[last].author == .claude { return last }
@@ -121,6 +133,35 @@ public final class LiveChatStore: ChatStore {
         }
         func add(_ block: ChatBlock, id: String, date: Date) {
             turns[claude(id, date)].blocks.append(block)
+        }
+        func fullCall(_ use: ToolUseItem) -> ChatToolCall {
+            var row = call(use, root: root)
+            let result = results[use.toolUseID]
+            if let result {
+                let firstLine = result.text.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+                if result.isError {
+                    row.failed = true
+                    row.detail = firstLine
+                } else if row.reference == nil, row.detail == nil {
+                    row.detail = firstLine
+                }
+            }
+            var details = ChatToolDetails(name: use.name, server: use.server, input: Self.input(use), result: result?.text)
+            details.resultImages = (result?.imageFiles ?? []).map { file in
+                ChatMessageFile(id: file.id, name: file.name, contentType: UTType(mimeType: file.contentType), size: Int64(file.size),
+                                url: root.flatMap { file.url(inProject: $0) })
+            }
+            details.isRunning = result == nil && isRunning
+            details.steps = (steps[use.toolUseID] ?? []).compactMap { step in
+                switch step {
+                case .assistant(let text): ChatBlock(id: text.id, .text(text.text))
+                case .thinking(let thinking): ChatBlock(id: thinking.id, .thinking(thinking.text))
+                case .toolUse(let child): ChatBlock(id: child.id, .call(fullCall(child)))
+                default: nil
+                }
+            }
+            row.details = details
+            return row
         }
 
         for item in items {
@@ -132,26 +173,20 @@ public final class LiveChatStore: ChatStore {
                                          environment: reference.environment)
                 }
                 var turn = ChatTurn(id: message.id, author: .user, date: message.created, attachments: attachments,
-                                    blocks: [ChatBlock(id: "\(message.id).text", .text(message.text))])
+                                    blocks: message.text.isEmpty ? [] : [ChatBlock(id: "\(message.id).text", .text(message.text))])
                 turn.files = Self.files(of: message, root: root, chatID: chatID)
                 turns.append(turn)
             case .assistant(let text) where text.parentToolUseID == nil:
                 add(ChatBlock(id: text.id, .text(text.text)), id: text.id, date: text.created)
-            case .toolUse(let use) where use.parentToolUseID == nil:
-                add(ChatBlock(id: use.id, .call(call(use, root: root))), id: use.id, date: use.created)
                 let turn = turns.count - 1
-                calls[use.toolUseID] = (turn, turns[turn].blocks.count - 1)
-            case .toolResult(let result):
-                guard let place = calls[result.toolUseID],
-                      case .call(var call) = turns[place.turn].blocks[place.block].content else { break }
-                let firstLine = result.text.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
-                if result.isError {
-                    call.failed = true
-                    call.detail = firstLine
-                } else if call.reference == nil, call.detail == nil {
-                    call.detail = firstLine
+                if turns[turn].caption == nil, text.model != nil || text.effort != nil {
+                    turns[turn].caption = ChatTurnCaption(model: text.model.map { ClaudeModel.name(of: $0, in: session.models) },
+                                                          effort: text.effort.map(ReplySettingsRows.title))
                 }
-                turns[place.turn].blocks[place.block].content = .call(call)
+            case .thinking(let thinking) where thinking.parentToolUseID == nil:
+                add(ChatBlock(id: thinking.id, .thinking(thinking.text)), id: thinking.id, date: thinking.created)
+            case .toolUse(let use) where use.parentToolUseID == nil:
+                add(ChatBlock(id: use.id, .call(fullCall(use))), id: use.id, date: use.created)
             case .permissionRequest(let request):
                 add(ChatBlock(id: request.id, .approval(approval(request, root: root))), id: request.id, date: request.created)
             case .questions(let set):
@@ -166,6 +201,12 @@ public final class LiveChatStore: ChatStore {
             case .result(let end) where end.isError && end.summary != "Stopped by the user.":
                 let text = end.summary ?? String(localized: "Claude's turn ended with an error.", bundle: #bundle)
                 add(ChatBlock(id: end.id, .notice(ChatNotice(text: text, level: .error))), id: end.id, date: end.created)
+            case .result(let end) where !end.isError:
+                // V2's footer, without the cost the owner left out: "Done · 34 s".
+                let duration = Duration.milliseconds(end.durationMs).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .abbreviated))
+                add(ChatBlock(id: end.id, .notice(ChatNotice(text: String(localized: "Done · \(duration)", bundle: #bundle,
+                                                                          comment: "The end of Claude's turn and how long it took"),
+                                                             level: .done))), id: end.id, date: end.created)
             default:
                 break
             }
@@ -174,6 +215,30 @@ public final class LiveChatStore: ChatStore {
             add(ChatBlock(id: streaming.itemID, .text(streaming.text)), id: streaming.itemID, date: Date())
         }
         return turns
+    }
+
+    /// A call's input as its row shows it, as V2's cards did: a shell command, an edit's old and new text, a
+    /// written file's content highlighted by its extension, otherwise the input as JSON.
+    static func input(_ use: ToolUseItem) -> [ChatToolInput] {
+        let input = use.input
+        func string(_ key: String) -> String? { input[key]?.stringValue }
+        let fileExtension = string("file_path").map { ($0 as NSString).pathExtension.lowercased() }.flatMap { $0.isEmpty ? nil : $0 }
+        if use.server == nil {
+            switch use.name {
+            case "Bash":
+                if let command = string("command") { return [ChatToolInput(text: command, language: "shell")] }
+            case "Edit":
+                if let old = string("old_string"), let new = string("new_string") {
+                    return [ChatToolInput(title: String(localized: "Old", bundle: #bundle, comment: "The text an edit replaces"), text: old, language: fileExtension),
+                            ChatToolInput(title: String(localized: "New", bundle: #bundle, comment: "The text an edit writes"), text: new, language: fileExtension)]
+                }
+            case "Write":
+                if let content = string("content") { return [ChatToolInput(text: content, language: fileExtension)] }
+            default:
+                break
+            }
+        }
+        return [ChatToolInput(text: pretty(input) ?? "{}", language: "json")]
     }
 
     /// A message's files, read from the project's `.hephaestus/`; those a feedback message of 1.0.31 to 1.0.33

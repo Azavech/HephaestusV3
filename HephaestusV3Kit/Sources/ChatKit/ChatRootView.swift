@@ -42,10 +42,13 @@ public struct ChatRootView: View {
         _model = State(initialValue: state.model)
     }
 
-    /// The window on the samples, for previews, with `files` waiting to go with the next message.
-    init(project: Project, focus: String? = nil, samples: SampleChatStore, files: [URL] = []) {
+    /// The window on the samples, for previews, with `files` waiting to go with the next message and Find
+    /// looking for `findQuery`.
+    init(project: Project, focus: String? = nil, samples: SampleChatStore, files: [URL] = [], findQuery: String = "") {
         let model = ChatWindowModel(project: project, focus: focus, store: samples)
         model.files = files
+        model.findQuery = findQuery
+        model.isFinding = !findQuery.isEmpty
         _model = State(initialValue: model)
     }
 
@@ -162,17 +165,15 @@ public struct ChatRootView: View {
     private var detail: some View {
         VStack(spacing: 0) {
             if let conversation = model.conversation {
-                ScrollView {
-                    ChatTranscript(conversation: conversation, activity: model.activity, decide: { approval, allow in
-                        model.decide(approval, allow: allow)
-                    }, stop: model.stop)
-                    .padding(layout == .phone ? 16 : 24)
+                let matches = ChatFind.matches(of: model.findQuery, in: conversation)
+                if !model.findQuery.trimmingCharacters(in: .whitespaces).isEmpty {
+                    FindBar(count: matches.count, index: model.findIndex, previous: { model.findIndex -= 1 }, next: { model.findIndex += 1 })
                 }
-                // A short chat starts at the top; a long one opens on its end and follows new turns.
-                .defaultScrollAnchor(.top, for: .alignment)
-                .defaultScrollAnchor(.bottom, for: .initialOffset)
-                .defaultScrollAnchor(.bottom, for: .sizeChanges)
-                .id(conversation.id)
+                TranscriptScrollView(conversation: conversation, activity: model.activity, padding: layout == .phone ? 16 : 24,
+                                     decide: { approval, allow in model.decide(approval, allow: allow) }, stop: model.stop,
+                                     findQuery: model.findQuery,
+                                     currentMatch: matches.isEmpty ? nil : matches[((model.findIndex % matches.count) + matches.count) % matches.count])
+                    .id(conversation.id)
             } else {
                 NewChatPrompt(projectName: model.project.name, suggestions: model.suggestions) { suggestion in
                     Task { await model.send(suggestion, reader: toolReader) }
@@ -212,6 +213,10 @@ public struct ChatRootView: View {
             .padding(layout == .phone ? 12 : 16)
         }
         .background(.canvas)
+        .searchable(text: $model.findQuery, isPresented: $model.isFinding, placement: .toolbar,
+                    prompt: Text("Find in Conversation", bundle: #bundle))
+        .onSubmit(of: .search) { model.findIndex += 1 }
+        .onChange(of: model.findQuery) { model.findIndex = 0 }
         .fileImporter(isPresented: $choosesFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             if case .success(let urls) = result { model.addFiles(urls) }
         }
@@ -462,4 +467,41 @@ private struct ChatInspector: View {
 #Preview("Composer, Files", traits: .appChrome, .fixedLayout(width: 1100, height: 720)) {
     ChatRootView(project: Project.samples[0], focus: "chat-checkout", samples: .transient(),
                  files: [URL(fileURLWithPath: "/System/Library/CoreServices/SystemVersion.plist")])
+}
+
+/// Find's count over the transcript, with the previous and next matches: "2 of 5", or "No Matches".
+private struct FindBar: View {
+    let count: Int
+    let index: Int
+    let previous: () -> Void
+    let next: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Spacer()
+            if count == 0 {
+                Text("No Matches", bundle: #bundle, comment: "Find found nothing in the conversation")
+            } else {
+                Text("\(((index % count) + count) % count + 1) of \(count)", bundle: #bundle, comment: "Find's place among its matches: 2 of 5")
+                    .monospacedDigit()
+            }
+            Button(String(localized: "Previous Match", bundle: #bundle), systemImage: "chevron.up", action: previous)
+                .keyboardShortcut("g", modifiers: [.command, .shift])
+                .disabled(count == 0)
+                .accessibilityIdentifier("chat.find.previous")
+            Button(String(localized: "Next Match", bundle: #bundle), systemImage: "chevron.down", action: next)
+                .keyboardShortcut("g", modifiers: .command)
+                .disabled(count == 0)
+                .accessibilityIdentifier("chat.find.next")
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.borderless)
+        .font(.callout)
+        .foregroundStyle(.textSecondary)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(.surfaceSunken)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("chat.find")
+    }
 }

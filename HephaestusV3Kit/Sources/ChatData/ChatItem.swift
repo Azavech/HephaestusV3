@@ -176,8 +176,13 @@ public struct ToolResultItem: Sendable, Hashable {
     public var toolUseID: String
     public var text: String
     public var isError: Bool
-    /// Images of a tool's result, kept as read.
+    /// The images of the result, V2's `Attachment`s: files `image-<n>.<extension>` of the chat's folder.
     public var images: JSONValue
+
+    /// `images` as files.
+    public var imageFiles: [MessageAttachment] {
+        (images.arrayValue ?? []).compactMap(MessageAttachment.init(json:))
+    }
 
     public init(id: String, created: Date, toolUseID: String, text: String, isError: Bool) {
         self.id = id

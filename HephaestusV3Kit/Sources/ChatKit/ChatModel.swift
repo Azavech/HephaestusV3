@@ -52,6 +52,8 @@ struct ChatTurn: Identifiable, Hashable {
     var blocks: [ChatBlock]
     /// The files the user's message carried, such as a feedback's screenshot.
     var files: [ChatMessageFile] = []
+    /// Claude's model and effort, for the turn's caption; nil for the user's turns and the samples.
+    var caption: ChatTurnCaption?
     /// A reply of the sample engine, which stands in until a model is connected.
     var isSample = false
 
@@ -92,6 +94,8 @@ struct ChatBlock: Identifiable, Hashable {
         case notice(ChatNotice)
         /// Questions Claude asked the user, with their answers so far.
         case questions(ChatQuestionSet)
+        /// Claude's thinking, shown folded.
+        case thinking(String)
 
         /// An item Claude read through its tool, and what the tool said.
         static func toolCall(_ reference: ChatReference, _ reading: ToolReading) -> Content {
@@ -117,6 +121,42 @@ struct ChatToolCall: Hashable {
     /// The gist: the tool's one-line answer, or the error. Nil asks the item's tool for its answer.
     var detail: String?
     var failed = false
+    /// What the row shows once expanded: its input, its result and its steps; nil when it has none (samples).
+    var details: ChatToolDetails?
+}
+
+/// A call as its expanded row shows it, as V2's tool cards did (docs/ui/chat.md › Tool-call rows).
+struct ChatToolDetails: Hashable {
+    /// The tool's own name: `Bash`, or `get_ticket` for an MCP tool.
+    var name: String
+    /// The MCP server, `hephaestus` for the app's tools; nil for a tool of the CLI.
+    var server: String?
+    /// The input, as one or more sections.
+    var input: [ChatToolInput]
+    /// Nil until the result comes.
+    var result: String?
+    /// The images the result returned.
+    var resultImages: [ChatMessageFile] = []
+    /// The work of the sub-agent the call started: its text, calls and thinking, in order.
+    var steps: [ChatBlock] = []
+    /// No result yet, and the chat is still working.
+    var isRunning = false
+}
+
+/// A section of a call's input: a title (`Old`, `New`) or none, the text, and the language that highlights it.
+struct ChatToolInput: Hashable {
+    var title: String?
+    var text: String
+    /// `shell`, `json`, a file's extension; nil for plain text.
+    var language: String?
+}
+
+/// What a turn's caption shows after the author: the model and effort of Claude's reply.
+struct ChatTurnCaption: Hashable {
+    /// `Opus 5.5`.
+    var model: String?
+    /// `Extra High`.
+    var effort: String?
 }
 
 /// Questions Claude asked with `ask_questions`, as a conversation shows them.
@@ -164,7 +204,8 @@ struct ChatQuestionSet: Identifiable, Hashable {
 /// A line from the app in a conversation.
 struct ChatNotice: Hashable {
     enum Level: Hashable {
-        case info, warning, error
+        /// `done` is the end of a turn that went well: a quiet line.
+        case info, warning, error, done
     }
 
     let text: String

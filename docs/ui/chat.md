@@ -61,7 +61,7 @@ The transcript scrolls. A short conversation starts at the top. A long one opens
 
 ### Turns
 
-Turns have no bubbles. Each turn starts with an author row: a circular badge, 24 pt and scaled with Dynamic Type, then the author's name in headline weight. The name is a heading for VoiceOver, so the rotor steps from turn to turn.
+Turns have no bubbles. Each turn starts with an author row: a circular badge, 24 pt and scaled with Dynamic Type, then the author's name in headline weight. The name is a heading for VoiceOver, so the rotor steps from turn to turn. After the name, as V2's captions had them: for Claude, the model and effort of the turn's first text in `textSecondary`, "(Opus 5.5 · Extra High)"; then the turn's time (hour and minute, `caption`, `textSecondary`), its full date as tooltip (samples show none). At the row's trailing edge, while the pointer is over the turn, **Copy** (`doc.on.doc`, `chat.turn.copy`) puts the turn's text on the pasteboard as its Markdown, its blocks a blank line apart; a turn without text has none.
 
 | Author | Badge symbol | Badge color | Name |
 |---|---|---|---|
@@ -71,7 +71,7 @@ Turns have no bubbles. Each turn starts with an author row: a circular badge, 24
 Under the name, in order:
 
 1. **Attachments.** The items the user's message carried, as chips (tool symbol and title; tooltip "*Tool*: *title*").
-2. **Blocks.** Text, tool-call rows, approval cards and Claude's questions ([Questions](#questions)), in the order Claude produced them. Text is selectable.
+2. **Blocks.** Text, Claude's thinking, tool-call rows, approval cards, Claude's questions ([Questions](#questions)) and the app's lines, in the order Claude produced them. Text is selectable. Thinking shows folded under **Thinking** (`brain`, `textSecondary`, `chat.thinking`); unfolded, its Markdown in `textSecondary`. A turn that went well ends with "Done · 34 s" (`checkmark.circle`, `textSecondary`), V2's footer without its cost.
 3. **Files.** The files the user's message carried, such as a feedback's screenshot ([Message files](#message-files)).
 
 ### Message files
@@ -123,7 +123,13 @@ Each call Claude makes to one of the app's tools shows as one row on a `surfaceS
 
 A file tool's path inside the project's folder is shown from that folder; another path, whole.
 
-- A call that failed (its result is an error, a refusal included) shows `exclamationmark.triangle` and its error's first line in `danger`.
+- A call that failed (its result is an error, a refusal included) shows `exclamationmark.triangle`, its error's first line in `danger`, and an **Error** tag (`caption`, `danger` on `danger` at 14 %, a capsule).
+- While the chat works and the call has no result yet, a small spinner shows at the row's trailing edge.
+- **Details.** As V2's tool cards did, a click on the row, outside **Open**, unfolds it (a `chevron.right` at its trailing edge turns down; VoiceOver: the "Show Details" and "Hide Details" actions), under the header on a `surface` card with 8 pt of padding:
+  - the tool's own name in the code font, with an "MCP · *server*" tag for an MCP tool;
+  - **Input**: `Bash`'s command as a shell code block; `Edit`'s **Old** and **New** texts; `Write`'s content, highlighted by the file's extension; any other call's input as JSON with two-space indentation. Each is a code block of [Text](../text.md), with its **Copy** button;
+  - **Result**: the result's text in the code font, selectable, its ticket and bundle ids links, its first 200 lines, then **Show All**; the images the result returned as thumbnails that open in Quick Look ([Data › Result images](../data.md#result-images)); "No result yet" before it comes;
+  - **Steps**: the work of the sub-agent the call started (its text, thinking and calls, each drawn as here, a call within a call); folded, the row says "*n* steps".
 - **Open** opens the item in its tool's window, with the item selected: the route `.tool(tool, project:, focus:)`; a window already showing it comes forward. Help: "Open ORD-142 in Tickets". A call without an item has no **Open**.
 - For VoiceOver the row is one element: its label is the action, its value the detail; with an item, it is a button whose hint is the help text and whose action opens the item.
 
@@ -174,6 +180,20 @@ While Claude works, the transcript ends with a **Claude** row showing a small pr
 | A sample reply on its way (previews) | Reading… |
 
 **Stop** (`stop.circle`, borderless, ⌘.) follows the text, except for the samples: it refuses the cards waiting, writes "Stopped by the user.", and interrupts the CLI, which ends the turn ([Data › Stop, end and quit](../data.md#stop-end-and-quit)). Help: "Stop (⌘.)".
+
+![A Claude turn captioned "(Opus 5.5 · Extra High)" and its time: Thinking folded, an Edit row unfolded on its Old and New code and its result, a Grep row folded, the reply, then Done · 34 s](images/chat-call-details.png)
+*A call unfolded: its input as code, its result with ORD-142 linked.*
+
+### Find
+
+![The Chat window searching for "payments": the bar reads 1 of 4, the matching blocks are highlighted, the first outlined](images/chat-find.png)
+*Find in the Chat window: four blocks hold "payments".*
+
+As V2's find bar did, **⌘F** (or the toolbar's search field, "Find in Conversation") looks for text in the shown conversation of the Chat window, ignoring case and diacritics: the blocks that hold it (text and thinking; a call's action, detail, input and result; a card's request and preview; a line; questions, options and answers) get a `highlight` background, and the current one an `accent` outline, scrolled to the middle. A bar over the transcript (`chat.find`) reads "2 of 5", or "No Matches", with **Previous Match** (`chevron.up`, ⇧⌘G) and **Next Match** (`chevron.down`, ⌘G, or Return in the field), wrapping. Typing starts again at the first match. The panel has no Find: the tool windows that host it use ⌘F for their own search field ([Ask when a request collides](../decisions.md)); its **Open in Chat Window** leads to it.
+
+### Jump to Latest
+
+Scrolled more than 40 pt from the transcript's end, **Jump to Latest** (`arrow.down`, a `surface` capsule with a `divider` outline and a light shadow, `chat.jumpToLatest`) shows at the bottom edge, in the Chat window and the panel; a click scrolls to the end. Near the end, new turns keep the transcript at its end.
 
 ## Composer
 
@@ -724,6 +744,11 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 |---|---|---|
 | Turn | `chat.turn.<turn id>` | A container; the author's name is a heading |
 | Attachment of a turn | `chat.attachment.<turn id>.<item id>` | "*Tool*: *item*" |
+| A call's row | `chat.toolCall.<turn id>.<item id or block id>`, its header `….header`, its result `chat.toolCall.<turn id>.result`, Show All `chat.toolCall.<turn id>.showAll` | The header is one element: the action, the detail |
+| Thinking | `chat.thinking` | A disclosure, "Thinking" |
+| Copy a turn | `chat.turn.copy` | A button, "Copy" |
+| Find | `chat.find`, `chat.find.previous`, `chat.find.next` | "2 of 5"; buttons |
+| Jump to Latest | `chat.jumpToLatest` | A button |
 | File of a message | `chat.file.<turn id>.<file id>` | A button: the file's name, then its size when known |
 | Questions card | `chat.questions` | A container over the composer |
 | Its header, arrows, minimize | `chat.questions.header`, `chat.questions.previous`, `chat.questions.next`, `chat.questions.minimize` | "Question A (1 of 3)"; buttons |
