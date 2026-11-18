@@ -754,6 +754,12 @@
     "Show the chat panel in tool windows" : {
 
     },
+    "Showed %lld images" : {
+      "comment" : "Claude showed the user several images; the value is their number"
+    },
+    "Showed an image" : {
+      "comment" : "Claude showed the user one image"
+    },
     "Skip" : {
       "comment" : "Skips one of Claude's questions"
     },

@@ -373,6 +373,16 @@ completes the call of one, `/<name> `. It works in the Chat window and in the ch
 | `/s` | `swift-testing`, then `hephaestus-skills:report-feedback`, `release-notes`, which hold `s` |
 | `/zzz`, `/re x`, `hello /re` | none: the list is closed |
 
+## Shown images
+
+![Claude's turn: Showed 2 images, the caption "The Tickets window, light then dark.", then the two thumbnails with their names](images/chat-shown-images.png)
+
+V2's shown images: Claude shows the user images it made or took with `show_image` ([MCP ›
+show_image](../mcp.md#show_image)). Their caption, as Markdown, then the images as the message files show them
+([Message files](#message-files)): thumbnails that open in Quick Look, in Claude's turn at the place of the call
+(`chat.images.<item id>`). They are copies in the chat's folder, so they stay after Claude's files are gone. Find
+searches the caption and the files' names; Copy Conversation lists the caption and the names after "· ".
+
 ## Questions
 
 ![The questions card over the composer: "Question A (1 of 2)", its arrows and minimize button, the question, two options with "Do nothing and beep" selected and tagged Recommended, "Answer another way", Skip and Next](images/chat-questions.png)

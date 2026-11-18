@@ -94,7 +94,7 @@ public enum ChatGate {
 public enum ChatTools {
     @MainActor
     public static func operations(chats: ChatSession, projects: ProjectSession) -> [ToolOperation] {
-        [listChats(chats, projects), getChat(chats), renameChat(chats), closeChat(chats), askQuestions(chats)]
+        [listChats(chats, projects), getChat(chats), renameChat(chats), closeChat(chats), askQuestions(chats), showImage(chats)]
     }
 
     static let chatID = ToolSchema.string("Chat id, an uppercase UUID.")
@@ -237,6 +237,40 @@ public enum ChatTools {
                 }
             }
             return ["questionSetID": .string(item.questionSetID), "shown": .int(item.questions.count)]
+        }
+    }
+
+    /// The refusal of `show_image` for a caller that isn't a chat's Claude.
+    static let showRefusal = "Only a chat's own Claude can show images."
+
+    static func showImage(_ chats: ChatSession) -> ToolOperation {
+        ToolOperation(
+            name: "show_image",
+            description: "Shows the user images in this chat, at the place of this call: an image you made or a screenshot you took. Give the paths of 1 to 10 PNG, JPEG, GIF or WebP files on this Mac (absolute, starting with ~/, or from the project's folder) and an optional Markdown caption shown above them. The app copies the images into the chat, so they stay after the files are deleted; the user can open each one. Any other file, or a path that can't be read, refuses the whole call. Asks the user nothing.",
+            inputSchema: .object(properties: [
+                ("paths", .array("1 to 10 image files, shown in this order.", of: .string())),
+                ("caption", .string("Text shown above the images, in Markdown; optional.")),
+            ], required: ["paths"]),
+            permission: .askUser,
+            describe: { arguments in
+                let count = arguments["paths"]?.arrayValue?.count ?? 0
+                return ToolCallText(action: count == 1
+                    ? String(localized: "Showed an image", bundle: #bundle, comment: "Claude showed the user one image")
+                    : String(localized: "Showed \(count) images", bundle: #bundle, comment: "Claude showed the user several images; the value is their number"))
+            }
+        ) { @MainActor arguments throws(ToolError) in
+            guard let chatID = MCPCaller.current.chatID else { throw ToolError(.forbidden, showRefusal) }
+            let paths = (arguments["paths"]?.arrayValue ?? []).compactMap(\.stringValue)
+            do throws(ChatError) {
+                try chats.postImages(chatID, paths: paths, caption: arguments["caption"]?.stringValue)
+            } catch {
+                switch error {
+                case .notFound(let message): throw ToolError(.notFound, message)
+                case .invalid(let message): throw ToolError(.invalid, message)
+                default: throw ToolError(.internal, error.description)
+                }
+            }
+            return .string("images shown in the chat")
         }
     }
 

@@ -193,7 +193,7 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 | --- | --- | --- | --- |
 | `read` | the `list_` and `get_` tools, `open_in_app` | runs | runs |
 | `renameChats` | `rename_chat` | runs | runs |
-| `askUser` | `ask_questions` | refused: only a chat's own Claude asks | runs |
+| `askUser` | `ask_questions`, `show_image` | refused: only a chat's own Claude asks or shows | runs |
 | `closeChats` | `close_chat` | runs on the chats it names | its own chat runs; naming another one shows a card first |
 | `startBuilds` | `rerun_run`, `cancel_run` | runs | Start builds: Ask First shows a card and waits; Never (the default) refuses |
 | `operateClusters` | `k8s_restart`, `k8s_scale`, `k8s_port_forward`, `k8s_stop_port_forward`, `argocd_sync` | runs | Operate deployments, as Change tickets |
@@ -295,6 +295,7 @@ a project: Claude may read and change every project of this Mac, as the user can
 | `rename_chat` | ChatKit | renameChats | `ChatSession.rename` |
 | `close_chat` | ChatKit | closeChats | `ChatSession.closeChats` |
 | `ask_questions` | ChatKit | askUser | `ChatSession.postQuestions` |
+| `show_image` | ChatKit | askUser | `ChatSession.postImages` |
 | `list_runs`, `get_run`, `get_run_log`, `list_releases`, `get_release` | BuildsKit | read | gh ([Data › Builds](data.md#builds)) |
 | `rerun_run`, `cancel_run` | BuildsKit | startBuilds | gh |
 | `api_operations` | ContractsKit | read | the project's contract ([Data › Contracts](data.md#contracts)) |
@@ -1434,6 +1435,48 @@ Input schema:
   },
   "required" : [
     "questions"
+  ],
+  "type" : "object"
+}
+```
+
+### show_image
+
+- **Calls:** `ChatSession.postImages` for the calling chat (the token's): V2's image rules in order, then the
+  images copied into the chat's folder and an `images` item at the place of the call ([Data › Images
+  item](data.md#images-item)), shown in the transcript ([UI › Chat › Shown images](ui/chat.md#shown-images)).
+- **Result:** the text `images shown in the chat`. The images aren't sent back to Claude, which has the files.
+- **Errors:** another token than a chat's (`forbidden`, `Only a chat's own Claude can show images.`), before the
+  arguments are checked; a broken rule (`invalid`): `show_image needs 1 to 10 images.`, `<path> is not a
+  readable file.`, `<name> is larger than 20 MB.`, `The attachments of one request exceed 20 MB.`, `<path> is not a
+  PNG, JPEG, GIF or WebP image.`; a chat gone (`notFound`). Nothing is stored when a rule fails.
+
+Description:
+
+```text
+Shows the user images in this chat, at the place of this call: an image you made or a screenshot you took. Give the paths of 1 to 10 PNG, JPEG, GIF or WebP files on this Mac (absolute, starting with ~/, or from the project's folder) and an optional Markdown caption shown above them. The app copies the images into the chat, so they stay after the files are deleted; the user can open each one. Any other file, or a path that can't be read, refuses the whole call. Asks the user nothing.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "caption" : {
+      "description" : "Text shown above the images, in Markdown; optional.",
+      "type" : "string"
+    },
+    "paths" : {
+      "description" : "1 to 10 image files, shown in this order.",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    }
+  },
+  "required" : [
+    "paths"
   ],
   "type" : "object"
 }

@@ -182,6 +182,7 @@ which rules the app enforces, and never tells Claude how to work.
 | Which chats are listed? | Every loaded chat that mentions the id, closed ones included, as V2; V2's exclusion of the ticket's own chats has no V3 equivalent. | same |
 | How are mentions found without keeping every transcript? | Each transcript is read once at launch, off the main actor, one at a time, keeping only its ids; new items add theirs. V2's engine replayed them all. | [Data › Mentioned ids](data.md#mentioned-ids) |
 | Is background work followed? | Yes, as V2: the shell's background commands, background agents and workflows keep their process alive past the idle timer, and the status bar counts the chat as running, "Running in background"; the chat's state stays idle. | [Data › Background work](data.md#background-work) |
+| Can Claude show images? | Yes, with V2's `show_image`, in the `askUser` group: it runs for a chat's Claude without asking, as V2's pre-approved call; V2's rules and item, V3's own description. | [MCP › show_image](mcp.md#show_image) |
 
 ## Builds
 

@@ -53,6 +53,7 @@ struct ChatConversation: Identifiable, Hashable {
                 case .notice(let notice): "· " + notice.text
                 case .questions(let set): set.questions.map { "\($0.label). \($0.question)" }.joined(separator: "\n")
                 case .thinking: nil
+                case .images(let caption, let files): ([caption].compactMap { $0 } + files.map { "· " + $0.name }).joined(separator: "\n")
                 }
             }
             return ([author] + lines).joined(separator: "\n")
@@ -144,6 +145,8 @@ struct ChatBlock: Identifiable, Hashable {
         case questions(ChatQuestionSet)
         /// Claude's thinking, shown folded.
         case thinking(String)
+        /// Images Claude showed with `show_image`, under their Markdown caption.
+        case images(caption: String?, files: [ChatMessageFile])
 
         /// An item Claude read through its tool, and what the tool said.
         static func toolCall(_ reference: ChatReference, _ reading: ToolReading) -> Content {

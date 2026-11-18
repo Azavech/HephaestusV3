@@ -237,6 +237,16 @@ struct ChatTurnView: View {
             QuestionsSummary(questionSet: set)
         case .thinking(let text):
             ThinkingRow(text: text)
+        case .images(let caption, let files):
+            VStack(alignment: .leading, spacing: 8) {
+                if let caption {
+                    MarkdownView(caption, projects: Set(directory.projects.map(\.id)), root: directory.project(projectID)?.path, keepsLineBreaks: false)
+                        .foregroundStyle(.textPrimary)
+                }
+                MessageFiles(turnID: turn.id, files: files, compact: compact)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("chat.images.\(block.id)")
         }
     }
 

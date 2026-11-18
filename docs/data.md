@@ -831,8 +831,9 @@ with `null` written for an absent optional:
 | `permissionRequest` | `requestID`, `toolName` (the CLI's name, `mcp__hephaestus__add_comment`), `input`, `reason`, `decision` (`allow`, `allowAlways`, `deny`; `null` while it waits), `decidedBy` (the Mac whose user answered; `null` while it waits and when the app cancelled it) | `perm-<request id>` |
 | `system` | `text` (in English), `level` (`info`, `warning`, `error`) | a new uppercase UUID |
 | `result` | `durationMs`, `costUSD` (kept; not shown), `isError`, `summary` | a new uppercase UUID |
+| `images` | `caption`, `images` ([Images item](#images-item)) | a new uppercase UUID |
 
-The items `symbol`, `color`, `sound`, `shortcut`, `font`, `animation` and `images` are skipped
+The items `symbol`, `color`, `sound`, `shortcut`, `font` and `animation` are skipped
 when a transcript is read, and stay in the file. A string
 longer than 100,000 characters in a call's input or a result's text is cut, followed by `… [truncated <n>
 characters]`.
@@ -958,6 +959,33 @@ chat's folder as `<UUID>-image-<n>.<extension>` (`n` from 1 in each result; the 
 `webp`, or the type's subtype), and rewrites the `toolResult` item with them as `images`, V2's `Attachment`s
 (`contentType` the image's type) ([Message files](#message-files)). An image that can't be written is left out.
 The images aren't sent back to Claude, which had them.
+
+#### Images item
+
+The images Claude shows with `show_image` ([MCP › show_image](mcp.md#show_image)), as V2's item (`ImagesItem`,
+`ChatSession.postImages`):
+
+| Key | Type | Rules |
+| --- | --- | --- |
+| `caption` | `String?` | Markdown shown above the images, trimmed; `null` when Claude gave none or it is blank. |
+| `images` | `[Attachment]` | 1 to 10 images stored in `.hephaestus/chats/<CHAT-ID>/` as `<UUID>-<name>`, in the order of the paths ([Message files](#message-files)). |
+
+```json
+{"type":"images","id":"9F0A1B2C-3D4E-4F5A-8B6C-7D8E9F0A1B2C","created":"2026-11-03T22:10:04Z","caption":"The new icon at 1024 px.","images":[{"id":"1A2B3C4D-5E6F-4A7B-8C9D-0E1F2A3B4C5D","name":"icon-1024.png","path":"chats/3F2504E0-4F89-11D3-9A0C-0305E82C3301/1A2B3C4D-5E6F-4A7B-8C9D-0E1F2A3B4C5D-icon-1024.png","contentType":"image/png","size":98418}]}
+```
+
+The rules, in this order, refuse the whole call (`invalid`) and store nothing:
+
+| Rule | Message |
+| --- | --- |
+| 1 to 10 paths | `show_image needs 1 to 10 images.` |
+| Each path (absolute, from `~/`, or from the project's folder) names a regular file that can be read | `<path> is not a readable file.` |
+| Each file is at most 20 MB, and all together | `<name> is larger than 20 MB.`, `The attachments of one request exceed 20 MB.` |
+| Each file starts with a PNG (`89 50 4E 47 0D 0A 1A 0A`), JPEG (`FF D8 FF`), GIF (`GIF87a`, `GIF89a`) or WebP (`RIFF`, 4 bytes, `WEBP`) signature | `<path> is not a PNG, JPEG, GIF or WebP image.` |
+
+The signature decides the stored `contentType` (`image/png`, `image/jpeg`, `image/gif`, `image/webp`), whatever
+the extension. The same path twice is stored twice. The item is the main conversation's, whatever agent made the
+call. A copy that fails removes those made (`unavailable`, `The images couldn't be stored: <reason>`).
 
 #### Message files
 

@@ -255,6 +255,13 @@ public final class LiveChatStore: ChatStore {
                 add(ChatBlock(id: request.id, .approval(approval(request, root: root))), id: request.id, date: request.created)
             case .questions(let set):
                 add(ChatBlock(id: set.id, .questions(ChatQuestionSet(set))), id: set.id, date: set.created)
+            case .images(let shown):
+                // At the place of the call, in the main conversation whatever agent made it, as V2.
+                let files = shown.images.map { image in
+                    ChatMessageFile(id: image.id, name: image.name, contentType: UTType(mimeType: image.contentType),
+                                    size: image.size > 0 ? Int64(image.size) : nil, url: root.flatMap(image.url(inProject:)))
+                }
+                add(ChatBlock(id: shown.id, .images(caption: shown.caption, files: files)), id: shown.id, date: shown.created)
             case .system(let line):
                 let level: ChatNotice.Level = switch line.level {
                 case .info: .info
