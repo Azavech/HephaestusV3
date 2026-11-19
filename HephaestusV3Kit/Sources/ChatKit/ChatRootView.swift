@@ -251,42 +251,44 @@ public struct ChatRootView: View {
                     Task { await model.send(suggestion, reader: toolReader) }
                 }
             }
-            if let status = model.store.cliStatus, ClaudeCLILine.shows(status), model.conversation?.closed != true, model.selectedIDs.count <= 1 {
-                ClaudeCLILine(status: status)
-                    .padding(.horizontal, layout == .phone ? 12 : 16)
-                    .padding(.top, 8)
-            }
-            if let failure = model.failure, failure != model.store.cliStatus?.error {
-                ChatFailure(message: failure)
-                    .padding(.horizontal, layout == .phone ? 12 : 16)
-                    .padding(.top, 8)
-            }
-            if model.conversation?.needsResume == true {
-                ResumeLine { Task { await model.resume() } }
-                    .padding(.horizontal, layout == .phone ? 12 : 16)
-                    .padding(.top, 8)
-            }
-            if let pending = model.conversation?.pendingApprovals, !pending.isEmpty {
-                PermissionCard(approvals: pending) { id, answer in model.decide(id, answer: answer) }
-                    .padding(.horizontal, layout == .phone ? 12 : 16)
-                    .padding(.top, 8)
-            }
-            if let questions = model.conversation?.waitingQuestions {
-                QuestionsCard(questionSet: questions, projectID: model.conversation?.projectID, compact: layout == .phone, allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { label, text in
-                    await model.answer(text, to: label, inSet: questions.id)
+            OverComposer {
+                if let status = model.store.cliStatus, ClaudeCLILine.shows(status), model.conversation?.closed != true, model.selectedIDs.count <= 1 {
+                    ClaudeCLILine(status: status)
+                        .padding(.horizontal, layout == .phone ? 12 : 16)
+                        .padding(.top, 8)
                 }
-                .id(questions.id)
-                .padding(.horizontal, layout == .phone ? 12 : 16)
-                .padding(.top, 8)
-            }
-            if let request = model.conversation?.waitingPicker, let catalogs = model.pickerCatalogs {
-                PickerCard(request: request, projectID: model.conversation?.projectID ?? model.project.id, catalogs: catalogs, compact: layout == .phone,
-                           allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { answer in
-                    await model.answerPicker(answer, request: request.requestID)
+                if let failure = model.failure, failure != model.store.cliStatus?.error {
+                    ChatFailure(message: failure)
+                        .padding(.horizontal, layout == .phone ? 12 : 16)
+                        .padding(.top, 8)
                 }
-                .id(request.requestID)
-                .padding(.horizontal, layout == .phone ? 12 : 16)
-                .padding(.top, 8)
+                if model.conversation?.needsResume == true {
+                    ResumeLine { Task { await model.resume() } }
+                        .padding(.horizontal, layout == .phone ? 12 : 16)
+                        .padding(.top, 8)
+                }
+                if let pending = model.conversation?.pendingApprovals, !pending.isEmpty {
+                    PermissionCard(approvals: pending) { id, answer in model.decide(id, answer: answer) }
+                        .padding(.horizontal, layout == .phone ? 12 : 16)
+                        .padding(.top, 8)
+                }
+                if let questions = model.conversation?.waitingQuestions {
+                    QuestionsCard(questionSet: questions, projectID: model.conversation?.projectID, compact: layout == .phone, allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { label, text in
+                        await model.answer(text, to: label, inSet: questions.id)
+                    }
+                    .id(questions.id)
+                    .padding(.horizontal, layout == .phone ? 12 : 16)
+                    .padding(.top, 8)
+                }
+                if let request = model.conversation?.waitingPicker, let catalogs = model.pickerCatalogs {
+                    PickerCard(request: request, projectID: model.conversation?.projectID ?? model.project.id, catalogs: catalogs, compact: layout == .phone,
+                               allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { answer in
+                        await model.answerPicker(answer, request: request.requestID)
+                    }
+                    .id(request.requestID)
+                    .padding(.horizontal, layout == .phone ? 12 : 16)
+                    .padding(.top, 8)
+                }
             }
             if let conversation = model.conversation, conversation.closed {
                 ClosedNotice { model.reopen(conversation.id) }

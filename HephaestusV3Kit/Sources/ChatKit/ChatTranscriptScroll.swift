@@ -76,6 +76,30 @@ private struct Place: Equatable {
     var fromEnd: CGFloat
 }
 
+/// What shows over the composer, in the Chat window, the panels and chat windows: the Claude CLI line, the reason a
+/// message wasn't sent, Resume and the cards waiting (docs/ui/chat.md › Over the composer). It takes the height it
+/// needs, at most half of what the composer leaves, and scrolls past that: the column's stack gives its least
+/// flexible views their room first, then this view half of what is left, then the transcript the rest. A tall card
+/// can't make the column taller than its window, which pushed the window's content under the toolbar and its
+/// composer out of the window.
+struct OverComposer<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    @State private var contentHeight: CGFloat = 0
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                content
+            }
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(maxHeight: contentHeight)
+        .accessibilityHidden(contentHeight == 0)
+    }
+}
+
 /// Find in a conversation (docs/ui/chat.md › Find): the blocks that hold the query, in order.
 enum ChatFind {
     /// The ids of the blocks of `conversation` whose text holds `query`, ignoring case and diacritics: text and
