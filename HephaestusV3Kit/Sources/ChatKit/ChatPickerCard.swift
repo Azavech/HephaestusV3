@@ -134,7 +134,9 @@ struct PickerCardChrome<Content: View, Leading: View>: View {
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
                     }
                     .scrollBounceBehavior(.basedOnSize)
-                    .frame(height: min(contentHeight, compact ? 340 : 460))
+                    // Short of room over the composer, it shrinks to about two lines (docs/ui/chat.md › Over the composer).
+                    .frame(minHeight: min(contentHeight, scrollingCardMinimum), idealHeight: min(contentHeight, compact ? 340 : 460),
+                           maxHeight: min(contentHeight, compact ? 340 : 460))
                     HStack {
                         leading()
                         Spacer()

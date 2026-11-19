@@ -121,7 +121,14 @@ struct LiveChatTurnsTests {
     @Test("Find: the blocks that hold the query, ignoring case")
     func find() {
         let conversation = ChatConversation(id: "C", projectID: "ORD", title: "", origin: nil, createdAt: date, turns: store.turns(items(), streaming: nil))
-        #expect(ChatFind.matches(of: "DONE", in: conversation) == ["perm-r1", "m#3", "R1"], "The card's preview, the text, the Done line")
+        #expect(ChatFind.matches(of: "DONE", in: conversation) == ["m#3", "R1"], "The text, the Done line; the card waiting is over the composer, not in the transcript")
+        let answered = items().map { item -> ChatItem in
+            guard case .permissionRequest(var request) = item else { return item }
+            request.decision = .allow
+            return .permissionRequest(request)
+        }
+        let decided = ChatConversation(id: "C", projectID: "ORD", title: "", origin: nil, createdAt: date, turns: store.turns(answered, streaming: nil))
+        #expect(ChatFind.matches(of: "DONE", in: decided) == ["perm-r1", "m#3", "R1"], "The answered card's preview, the text, the Done line")
         #expect(ChatFind.matches(of: "boom", in: conversation) == ["m#1"], "A call's result")
         #expect(ChatFind.matches(of: "  ", in: conversation).isEmpty)
     }

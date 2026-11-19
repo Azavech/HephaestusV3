@@ -16,6 +16,8 @@ struct PermissionCard: View {
     @State private var showsAll = false
     /// The keys act once the card has shown for a second, so a key meant for something else doesn't answer it.
     @State private var armed = false
+    /// The preview's whole height, which its box takes when the room over the composer allows.
+    @State private var previewHeight: CGFloat = 0
 
     private var approval: ChatApproval { approvals[0] }
 
@@ -91,12 +93,15 @@ struct PermissionCard: View {
     }
 
     /// An edit as V2's diff: the replaced text on red, the new on green; another preview in the code font, its first
-    /// 20 lines until Show All.
+    /// 20 lines until Show All. Short of room over the composer, the box scrolls, down to about two lines, so that the
+    /// title, the field and the answers show (docs/ui/chat.md › Over the composer).
     @ViewBuilder private var preview: some View {
         if let edit = approval.edit {
-            VStack(alignment: .leading, spacing: 0) {
-                diffText(edit.old, color: .danger)
-                diffText(edit.new, color: .success)
+            scrolling {
+                VStack(alignment: .leading, spacing: 0) {
+                    diffText(edit.old, color: .danger)
+                    diffText(edit.new, color: .success)
+                }
             }
             .clipShape(CardShape(minimum: 6))
             .accessibilityIdentifier("chat.permission.diff")
@@ -104,11 +109,15 @@ struct PermissionCard: View {
             let lines = preview.split(separator: "\n", omittingEmptySubsequences: false)
             let cut = !showsAll && lines.count > Self.shownLines
             VStack(alignment: .leading, spacing: 4) {
-                IDLinkedText(text: cut ? lines.prefix(Self.shownLines).joined(separator: "\n") : preview)
-                    .font(.code(.callout))
-                    .padding(10)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(.surfaceSunken, in: CardShape(minimum: 6))
+                scrolling {
+                    IDLinkedText(text: cut ? lines.prefix(Self.shownLines).joined(separator: "\n") : preview)
+                        .font(.code(.callout))
+                        .padding(10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .background(.surfaceSunken, in: CardShape(minimum: 6))
+                .clipShape(CardShape(minimum: 6))
+                .accessibilityIdentifier("chat.permission.preview")
                 if cut {
                     Button(String(localized: "Show All", bundle: #bundle, comment: "Shows a card's whole preview")) { showsAll = true }
                         .buttonStyle(.borderless)
@@ -116,6 +125,16 @@ struct PermissionCard: View {
                 }
             }
         }
+    }
+
+    /// The preview's box: as tall as the preview while there is room, then scrolling.
+    private func scrolling(@ViewBuilder _ content: () -> some View) -> some View {
+        ScrollView {
+            content()
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { previewHeight = $0 }
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .frame(minHeight: min(previewHeight, scrollingCardMinimum), idealHeight: previewHeight, maxHeight: previewHeight)
     }
 
     private func diffText(_ text: String, color: Color) -> some View {

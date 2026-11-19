@@ -21,13 +21,15 @@ struct ChatTranscript: View {
     var findQuery = ""
     /// The match Find shows, outlined.
     var currentMatch: ChatBlock.ID?
+    /// Leaves out the cards still waiting, which show over the composer: each shows once, then here with its answer.
+    var hidesWaitingApprovals = false
 
     var body: some View {
         let matches = Set(ChatFind.matches(of: findQuery, in: conversation))
         LazyVStack(alignment: .leading, spacing: compact ? 16 : 22) {
             ForEach(conversation.turns) { turn in
                 ChatTurnView(turn: turn, projectID: conversation.projectID, compact: compact, decide: decide, matches: matches,
-                             currentMatch: currentMatch)
+                             currentMatch: currentMatch, hidesWaitingApprovals: hidesWaitingApprovals)
             }
             if let activity {
                 ChatAuthorRow(author: .claude, isSample: false) {
@@ -186,6 +188,8 @@ struct ChatTurnView: View {
     /// Find's matches, by block id: highlighted.
     var matches: Set<ChatBlock.ID> = []
     var currentMatch: ChatBlock.ID?
+    /// Leaves out the cards still waiting, which show over the composer.
+    var hidesWaitingApprovals = false
 
     @Environment(\.projectDirectory) private var directory
 
@@ -199,7 +203,7 @@ struct ChatTurnView: View {
                     }
                 }
             }
-            ForEach(turn.blocks) { block in
+            ForEach(hidesWaitingApprovals ? turn.blocks.filter { !$0.isWaitingApproval } : turn.blocks) { block in
                 blockView(block)
                     .padding(matches.contains(block.id) ? 4 : 0)
                     .background(matches.contains(block.id) ? Color.highlight : .clear, in: CardShape(minimum: 6))

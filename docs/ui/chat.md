@@ -184,9 +184,9 @@ A change Claude wants to make shows as a card, when the user's permissions say A
   | Another tool of the CLI (its own request)            | Claude wants to use Bash                                                                                                         |
 
 - **Reason.** Why the CLI asks, as it says (its `decision_reason`), in `textSecondary`, when it gives one.
-- **Preview.** What it would write, selectable, its ticket and bundle ids links, on a `surfaceSunken` box in the code font, its first 20 lines then **Show All**: a comment's text; a new ticket's title and description; a ticket change's new title, priority, labels and description; a bundle's title and tickets; a project's identifier and folder, or the settings it changes; for a removal, "The project's folder and files stay on this Mac."; for an edit, as V2's diff, the text it replaces on `danger` at 16 % and the new text on `success` at 16 % (the transcript's copy keeps the `- ` and `+ ` lines); for a whole file, its content; for a search or a listing, its pattern; for `Bash`, its command then its description; for `WebFetch`, its URL then its prompt; for `ExitPlanMode`, its plan; for another request of the CLI, its input as JSON. None for a deletion or a status change.
+- **Preview.** What it would write, selectable, its ticket and bundle ids links, on a `surfaceSunken` box in the code font, its first 20 lines then **Show All**: a comment's text; a new ticket's title and description; a ticket change's new title, priority, labels and description; a bundle's title and tickets; a project's identifier and folder, or the settings it changes; for a removal, "The project's folder and files stay on this Mac."; for an edit, as V2's diff, the text it replaces on `danger` at 16 % and the new text on `success` at 16 % (the transcript's copy keeps the `- ` and `+ ` lines); for a whole file, its content; for a search or a listing, its pattern; for `Bash`, its command then its description; for `WebFetch`, its URL then its prompt; for `ExitPlanMode`, its plan; for another request of the CLI, its input as JSON. None for a deletion or a status change. Over the composer, the box is as tall as the preview while there is room, then scrolls, down to about two lines (44 pt), so that the title, the field and the answers show ([Over the composer](#over-the-composer)).
 - **Note.** The tool's symbol and "Through *Tickets*, as if you did it" (Projects, with `folder`, for a project's change); "Through the Claude CLI" for a request of the CLI.
-- **Where.** As V2's pinned card, the oldest card waiting shows over the composer of the Chat window and the panel (`PermissionCard`, `chat.permission`), with "1 of *n*" while several wait; its answer shows the next. The transcript keeps each card where Claude asked: "Waiting for your answer" (`hourglass`, `warning`) while it waits, then its answer.
+- **Where.** As V2's pinned card, the oldest card waiting shows over the composer of the Chat window and the panel (`PermissionCard`, `chat.permission`), with "1 of *n*" while several wait; its answer shows the next. A card shows once: while it waits, only over the composer, the transcript ending on the activity line "Waiting for your answer" with **Stop**; once answered, in the transcript where Claude asked, with its answer. Before 18 November 2026 the transcript also showed the waiting card, with "Waiting for your answer" (`hourglass`, `warning`), which doubled it (the user's report).
 - **Answer.** On the pinned card, a field "Message for Claude (optional)" (`chat.permission.message`), then **Don't Allow** (⇧⌘↩), **Always Allow** (⌥⌘↩, for a request of the CLI only) and **Allow** (⌘↩, prominent). The keys act once the card has shown for a second, and the questions card's ⌘↩ waits while a permission card shows. Allow lets the call run. Always Allow lets it run and passes the CLI's own suggestions back, the rules it then keeps for the session or the project, as the CLI said ([Data › Permissions](../data.md#permissions)). Don't Allow refuses it: Claude reads the message, or "Permission denied by the user." (for the app's cards, "The user didn't allow this call."). Stop, the CLI's end and quitting refuse the cards still waiting.
 - **The transcript's answer**: **Allowed by *Mac*** or **Always allowed by *Mac*** (`checkmark.circle.fill`, `success`), **Not allowed by *Mac*** (`xmark.circle`, `textSecondary`), or **Cancelled** (`minus.circle`) for a card the app refused; without the Mac's name for answers recorded without one.
 - **Outline.** `warning` at 50 % opacity while the card waits; `divider` once answered.
@@ -237,7 +237,7 @@ While Claude works, the transcript ends with a **Claude** row showing a small pr
 ![The Chat window searching for "payments": the bar reads 1 of 4, the matching blocks are highlighted, the first outlined](images/chat-find.png)
 *Find in the Chat window: four blocks hold "payments".*
 
-As V2's find bar did, **⌘F** (or the toolbar's search field, "Find in Conversation") looks for text in the shown conversation of the Chat window, ignoring case and diacritics: the blocks that hold it (text and thinking; a call's action, detail, input and result; a card's request and preview; a line; questions, options and answers) get a `highlight` background, and the current one an `accent` outline, scrolled to the middle. A bar over the transcript (`chat.find`) reads "2 of 5", or "No Matches", with **Previous Match** (`chevron.up`, ⇧⌘G) and **Next Match** (`chevron.down`, ⌘G, or Return in the field), wrapping. Typing starts again at the first match. The panel has no Find: the tool windows that host it use ⌘F for their own search field ([Ask when a request collides](../decisions.md)); its **Open in Chat Window** leads to it.
+As V2's find bar did, **⌘F** (or the toolbar's search field, "Find in Conversation") looks for text in the shown conversation of the Chat window, ignoring case and diacritics: the blocks that hold it (text and thinking; a call's action, detail, input and result; an answered card's request and preview (a card waiting isn't in the transcript); a line; questions, options and answers) get a `highlight` background, and the current one an `accent` outline, scrolled to the middle. A bar over the transcript (`chat.find`) reads "2 of 5", or "No Matches", with **Previous Match** (`chevron.up`, ⇧⌘G) and **Next Match** (`chevron.down`, ⌘G, or Return in the field), wrapping. Typing starts again at the first match. The panel has no Find: the tool windows that host it use ⌘F for their own search field ([Ask when a request collides](../decisions.md)); its **Open in Chat Window** leads to it.
 
 ### Jump to Latest
 
@@ -260,13 +260,17 @@ Sending adds the message to the selected conversation. With no conversation sele
 
 ### Over the composer
 
-What shows between the transcript and the composer, in the Chat window, the panels and chat windows, scrolls as one
-area (`OverComposer`): the [Claude CLI line](#claude-cli-line), the reason a message wasn't sent, [Resume](#resume),
+What shows between the transcript and the composer, in the Chat window, the panels and chat windows, is one area
+(`OverComposer`): the [Claude CLI line](#claude-cli-line), the reason a message wasn't sent, [Resume](#resume),
 the [permission card](#approval-cards), the [questions card](#questions) and a [picker card](#picker-cards), in
-this order. The area is as tall as what it shows, at most half the height the composer leaves in the column, and
-scrolls past that, starting at its top; the transcript takes the rest. A tall card, such as a long Bash command,
-never makes the column taller than its window: before this rule (18 November 2026), it pushed the window's
-content under the toolbar and the composer out of the window.
+this order. It gets its room before the transcript: as tall as what it shows, at most 70 % of the height the
+composer leaves in the column; the transcript takes the rest. Short of room, the permission card's preview and the
+questions and picker cards' contents scroll inside their cards, down to about two lines (44 pt), so that the cards'
+titles, fields and answers show; what still doesn't fit, in a window near its smallest height, is cut at the
+area's bottom, and the keys still answer. The area is never taller than the room there is, so a card never makes
+the column taller than its window: before 18 November 2026, a long Bash command's card pushed the window's content
+under the toolbar and the composer out of the window, and then, scrolling as a whole at half the room, needed
+scrolling to reach its answers.
 
 ### Drafts
 
@@ -462,7 +466,8 @@ the Chat window and of the panel, under the reason a message wasn't sent. It sho
   the shown one and wrapping; Submit sends the answers to Claude and the card goes ([Data ›
   Questions](../data.md#questions)). An answer not taken shows why over the composer.
 - **Size.** The question and its options scroll inside the card past 380 pt (300 pt in the panel and the iPhone
-  layout). Card: 12 pt of padding, `surface`, `CardShape(minimum: 10)`, a 1 pt outline in `accent` at 50 %.
+  layout), or sooner, down to about two lines (44 pt), when the room over the composer is short ([Over the
+  composer](#over-the-composer)). Card: 12 pt of padding, `surface`, `CardShape(minimum: 10)`, a 1 pt outline in `accent` at 50 %.
 - **Minimized.** One line: the header text and `chevron.up`; a click opens the card again. It lasts while the
   conversation stays shown (default chosen at design time; V2 kept it across restarts).
 
@@ -501,7 +506,8 @@ Every card shares its frame (`PickerCardChrome`), as the questions card's:
   cases below. Once answered, the card goes and Claude gets `<Kind>: <answer>`; an answer not taken shows why over
   the composer. The animation card puts **Play All** at the leading edge.
 - **Size.** The question and the rows scroll inside the card past 460 pt (340 pt in the panel and the iPhone
-  layout). Card: 12 pt of padding, `surface`, `CardShape(minimum: 10)`, a 1 pt outline in `accent` at 50 %.
+  layout), or sooner, down to about two lines (44 pt), when the room over the composer is short ([Over the
+  composer](#over-the-composer)). Card: 12 pt of padding, `surface`, `CardShape(minimum: 10)`, a 1 pt outline in `accent` at 50 %.
 - **Selection.** A chosen cell or row has `accent` at 20 % behind it and a 1.5 pt `accent` outline
   (`pickerSelection`), so its content keeps its own colors; the recommended suggestion carries a star (`star.fill`,
   8 pt, `accent`) at its top trailing corner, or at a row's trailing end.
@@ -1162,7 +1168,7 @@ Identifiers are qualified by an id, never by a position in a list. An *item id* 
 | Resume                         | `chat.resumeLine`, `chat.resume`                                                                                                                                                                       | "Claude stopped with an error"; a button                                                                                                      |
 | Context indicator              | `chat.context`                                                                                                                                                                                         | Its tooltip's text                                                                                                                            |
 | Pinned card                    | `chat.permission`, `chat.permission.message`, `chat.permission.deny`, `chat.permission.always`, `chat.permission.allow`, `chat.permission.diff`, `chat.permission.showAll`                             | The request's sentence is a heading; buttons                                                                                                  |
-| Card in the transcript         | `chat.approval.<id>.waiting`, `chat.approval.<id>.decision`                                                                                                                                            | "Waiting for your answer"; the answer                                                                                                         |
+| Card in the transcript         | `chat.approval.<id>.decision` (`chat.approval.<id>.waiting` only in the card's previews)                                                                                                               | The answer; a card waiting is over the composer (`chat.permission`)                                                                           |
 | Chat settings                  | `chat.inspector.permissionMode`, `chat.inspector.ultracode`, `chat.inspector.contextWindow`, `chat.panel.settings`, `chat.allowAll`                                                                    | Pickers, a toggle, a menu, a badge                                                                                                            |
 | Skill list                     | `chat.composer.completions`                                                                                                                                                                            | A container, above the composer while it shows                                                                                                |
 | Skill in the list              | `chat.composer.completion.<index>`                                                                                                                                                                     | A button: the skill's name and description; the selected one has the selected trait                                                           |
