@@ -1,6 +1,28 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ depends on %@, which are not done. Implement it anyway?" : {
+      "comment" : "The first value is a ticket id, the second other tickets' ids separated by commas",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ depends on %2$@, which are not done. Implement it anyway?"
+          }
+        }
+      }
+    },
+    "%@ depends on %@, which is not done. Implement it anyway?" : {
+      "comment" : "The first value is a ticket id, the second another ticket's id",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ depends on %2$@, which is not done. Implement it anyway?"
+          }
+        }
+      }
+    },
     "%@ has no ticket with the id %@." : {
       "localizations" : {
         "en" : {
@@ -103,6 +125,9 @@
     },
     "Changed bundle %@" : {
 
+    },
+    "Chats" : {
+      "comment" : "A ticket's own chats"
     },
     "Chats that mention this ticket appear here." : {
 
@@ -228,6 +253,9 @@
     "Create Ticket (⇧⌘↩)" : {
 
     },
+    "Create the ticket to implement it." : {
+
+    },
     "Created On" : {
       "comment" : "A ticket's property"
     },
@@ -305,6 +333,21 @@
     },
     "High" : {
       "comment" : "A ticket's priority"
+    },
+    "Implement" : {
+      "comment" : "Implements a ticket whose dependencies aren't done"
+    },
+    "Implement All…" : {
+      "comment" : "Starts a chat in which Claude implements a bundle"
+    },
+    "Implement starts a chat in which Claude implements this ticket." : {
+
+    },
+    "Implement the Ticket with Claude (⇧⌘I)" : {
+
+    },
+    "Implement…" : {
+      "comment" : "Starts a chat in which Claude implements the ticket"
     },
     "In Progress" : {
       "comment" : "A bundle's status\nA ticket's status"
@@ -414,6 +457,9 @@
       "comment" : "File menu item, ⇧⌘N"
     },
     "Next Step" : {
+
+    },
+    "No Chats" : {
 
     },
     "No Matching Tickets" : {
@@ -540,6 +586,9 @@
       "comment" : "The kind of an item a ticket links to"
     },
     "Set Status" : {
+
+    },
+    "Set another status to implement this ticket." : {
 
     },
     "Show" : {

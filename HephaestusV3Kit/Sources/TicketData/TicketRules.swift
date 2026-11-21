@@ -33,6 +33,8 @@ public enum TicketError: Error, Sendable, Hashable, CustomStringConvertible {
     case notFound(String)
     /// The actor may not make this change.
     case forbidden(String)
+    /// The item's state refuses it: Implement on a done ticket, Implement All on a bundle in progress.
+    case conflict(String)
     /// A file can't be read, written or moved to the Trash.
     case storage(StorageError)
     /// The project's file can't take the new number.
@@ -40,7 +42,7 @@ public enum TicketError: Error, Sendable, Hashable, CustomStringConvertible {
 
     public var description: String {
         switch self {
-        case let .invalid(message), let .notFound(message), let .forbidden(message): message
+        case let .invalid(message), let .notFound(message), let .forbidden(message), let .conflict(message): message
         case let .storage(error): error.description + "."
         case let .project(error): error.description
         }
@@ -146,4 +148,28 @@ public enum TicketRules {
     /// Image content types, shown as thumbnails.
     public static let imageTypes: Set<String> = ["image/png", "image/jpeg", "image/gif", "image/heic", "image/heif", "image/tiff",
                                                  "image/bmp", "image/webp"]
+}
+
+/// The checks of Implement and Implement All (docs/data.md › Implement chats), as V2's: a ticket neither done nor a
+/// draft (Claude can't move a draft); a bundle To Do that lists a ticket that is loaded and isn't done.
+public enum ImplementRules {
+    /// Why the ticket can't be implemented; nil when it can.
+    public static func refusal(of ticket: TicketFile) -> String? {
+        switch ticket.status {
+        case .done: "\(ticket.id) is done; set another status to implement it."
+        case .draft: "\(ticket.id) is a draft; create it to implement it."
+        case .todo, .inProgress, .review: nil
+        }
+    }
+
+    /// Why the bundle can't be implemented; nil when it can. `ticket` gives a listed ticket, nil when it isn't loaded.
+    public static func refusal(of bundle: BundleFile, ticket: (String) -> TicketFile?) -> String? {
+        switch bundle.status {
+        case .inProgress: return "\(bundle.id) is in progress; set it to To Do to implement it."
+        case .done: return "\(bundle.id) is done; set it to To Do to implement it."
+        case .todo: break
+        }
+        let left = bundle.ticketIDs.contains { ticket($0).map { $0.status != .done } ?? false }
+        return left ? nil : "\(bundle.id) has no ticket left to implement."
+    }
 }

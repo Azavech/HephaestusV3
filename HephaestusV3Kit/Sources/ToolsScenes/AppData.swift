@@ -115,20 +115,44 @@ final class AppData {
 
     // MARK: Mentioned In (docs/ui/tickets.md › Mentioned In)
 
-    /// The chats that mention a ticket or bundle, as the Tickets window lists them.
+    /// The chats that mention a ticket or bundle, as the Tickets window lists them: its own chats are in its Chats.
     var chatMentions: ChatMentionsReader {
         ChatMentionsReader { [chats] id in
-            chats.chats(mentioning: id).map { chat in
-                let state: MentioningChat.State = switch chats.state(of: chat.id) {
-                case .starting, .running: .working
-                case .waitingPermission, .waitingAnswers: .waiting
-                case .error: .error
-                case .idle: .idle
-                }
-                return MentioningChat(id: chat.id, title: chat.file.title, projectID: chat.projectID, updated: chat.file.updated,
-                                      state: state, closed: chat.file.closed)
-            }
+            let own = Set((chats.chats(ofTicket: id) + chats.chats(ofBundle: id)).map(\.id))
+            return chats.chats(mentioning: id).filter { !own.contains($0.id) }.map { Self.row($0, chats) }
         }
+    }
+
+    /// A ticket's or bundle's own chats (docs/ui/tickets.md › Chats).
+    var itemChats: ItemChatsReader {
+        ItemChatsReader { [chats] id in
+            let list = TicketIDs.parseBundle(id) != nil ? chats.chats(ofBundle: id) : chats.chats(ofTicket: id)
+            return list.map { Self.row($0, chats) }
+        }
+    }
+
+    /// A chat as the Tickets window lists it.
+    private static func row(_ chat: LoadedChat, _ chats: ChatSession) -> MentioningChat {
+        let state: MentioningChat.State = switch chats.state(of: chat.id) {
+        case .starting, .running: .working
+        case .waitingPermission, .waitingAnswers: .waiting
+        case .error: .error
+        case .idle: .idle
+        }
+        let kind: MentioningChat.Kind = switch chat.file.kind {
+        case .ticket, .bundle: .implement
+        case .feedback: .feedback
+        case .project, .ci, .setup: .chat
+        }
+        return MentioningChat(id: chat.id, title: chat.file.title, projectID: chat.projectID, updated: chat.file.updated,
+                              state: state, closed: chat.file.closed, kind: kind)
+    }
+
+    // MARK: Implement (docs/ui/tickets.md › Implement)
+
+    /// What starts the implement chats: the sheet's Start, and the tools `implement_ticket` and `implement_bundle`.
+    var implementer: Implementer {
+        Implementer(tickets: tickets, chats: chats)
     }
 
     // MARK: Notifications (docs/ui/navigation.md › Settings ▸ Notifications)
@@ -297,7 +321,7 @@ final class AppData {
         externalToken = try? folder.externalToken(make: MCPTokens.generate)
         tokens.replace(with: Set([externalToken].compactMap { $0 }))
         let registry = AppTools.registry(session: session, tickets: tickets, chats: chats, contracts: contractStore, maps: serviceMapStore,
-                                          machines: machineHost) { [weak self] route in
+                                          machines: machineHost, implementer: implementer) { [weak self] route in
             guard let open = self?.openRoute else { return false }
             open(route)
             return true
@@ -305,9 +329,13 @@ final class AppData {
         operations.registry = registry
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
         let chats = chats
-        // A chat's Claude makes a change only as Settings ▸ Chat allows, asking first where it says so.
+        let tickets = tickets
+        // A chat's Claude makes a change only as Settings ▸ Chat allows, asking first where it says so; an implement
+        // chat's changes to its own items don't ask (docs/mcp.md › Permissions).
         let gate: MCPProtocol.Gate = { caller, operation, arguments in
-            await ChatGate.check(caller, operation, arguments, chats: chats)
+            await ChatGate.check(caller, operation, arguments, chats: chats, bundleTickets: { @MainActor id in
+                tickets.snapshot.bundle(id)?.ticketIDs
+            })
         }
         let server = MCPServer(protocol: MCPProtocol(registry: registry, version: version, gate: gate), tokens: tokens)
         self.server = server

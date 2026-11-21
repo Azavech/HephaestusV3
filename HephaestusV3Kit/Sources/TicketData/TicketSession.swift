@@ -127,6 +127,16 @@ public final class TicketSession {
         apply(try await readyLibrary().deleteBundle(id))
     }
 
+    /// Implement: appends the chat to the ticket's `chats` (docs/data.md › Implement chats).
+    public func linkChat(_ chatID: String, toTicket id: String) async throws(TicketError) {
+        apply(try await readyLibrary().linkChat(chatID, toTicket: id))
+    }
+
+    /// Implement All: the bundle lists the chat and is In Progress, once its checks pass again.
+    public func startImplementation(of id: String, chat chatID: String) async throws(TicketError) {
+        apply(try await readyLibrary().startImplementation(of: id, chat: chatID))
+    }
+
     // MARK: Private
 
     private func readyLibrary() throws(TicketError) -> TicketLibrary {

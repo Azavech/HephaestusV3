@@ -14,27 +14,28 @@ are.
 
 ## Files at a glance
 
-| File | Path | Swift type | Since |
-| --- | --- | --- | --- |
-| Project file | `<project>/.hephaestus/project.yml` | `ProjectFile` | Foundation |
-| Git ignore file | `<project>/.hephaestus/.gitignore` | — (text) | Foundation |
-| Registry file | `<data folder>/registry.yml` | `RegistryFile` | Foundation |
-| Current environments file | `<data folder>/current-environments.yml` | `CurrentEnvironmentsFile` | Foundation |
-| Settings file | `<data folder>/settings.yml` | `SettingsFile` | MCP server |
-| Secrets file | `<data folder>/secrets.json` | — (JSON object) | MCP server |
-| Ticket file | `<project>/.hephaestus/ticket/<TICKET-ID>.yml` | `TicketFile` | Tickets |
-| Bundle file | `<project>/.hephaestus/bundle/<BUNDLE-ID>.yml` | `BundleFile` | Tickets |
-| Attachments | `<project>/.hephaestus/attachments/<TICKET-ID>/<id>-<name>` | — (any file) | Tickets |
-| Chat file | `<project>/.hephaestus/chats/<CHAT-ID>.yml` | `ChatFile` | Chat |
-| Builds | — (read from GitHub with gh, never stored) | — | Builds |
-| Contract | `<project>/openapi/contract.yaml` (read only) | `OpenAPIContract` | Contracts |
-| Stored request values | `<data folder>/openapi-requests.json` | `StoredContract` | Contracts |
-| Chat transcript | `<project>/.hephaestus/chats/<CHAT-ID>.jsonl` | `ChatItem` on each line | Chat |
-| Chat MCP configuration | `<data folder>/Runtime/mcp/<CHAT-ID>.json` | — (JSON) | Chat |
-| Skill run MCP configuration | `<data folder>/Runtime/mcp/skill-<UUID>.json` | — (JSON) | System Prompts |
-| Chat log | `<data folder>/Logs/claude-<CHAT-ID>.log` | — (text) | Chat |
-| Image file | `<data folder>/VirtualMachines/Images/<IMAGE-ID>/image.yml` | `ImageFile` | Virtual Machines |
-| Machine file | `<data folder>/VirtualMachines/Machines/<VM-ID>/vm.yml` | `MachineFile` | Virtual Machines |
+| File                        | Path                                                        | Swift type                | Since            |
+|-----------------------------|-------------------------------------------------------------|---------------------------|------------------|
+| Project file                | `<project>/.hephaestus/project.yml`                         | `ProjectFile`             | Foundation       |
+| Git ignore file             | `<project>/.hephaestus/.gitignore`                          | — (text)                  | Foundation       |
+| Registry file               | `<data folder>/registry.yml`                                | `RegistryFile`            | Foundation       |
+| Current environments file   | `<data folder>/current-environments.yml`                    | `CurrentEnvironmentsFile` | Foundation       |
+| Settings file               | `<data folder>/settings.yml`                                | `SettingsFile`            | MCP server       |
+| Secrets file                | `<data folder>/secrets.json`                                | — (JSON object)           | MCP server       |
+| Ticket file                 | `<project>/.hephaestus/ticket/<TICKET-ID>.yml`              | `TicketFile`              | Tickets          |
+| Bundle file                 | `<project>/.hephaestus/bundle/<BUNDLE-ID>.yml`              | `BundleFile`              | Tickets          |
+| Attachments                 | `<project>/.hephaestus/attachments/<TICKET-ID>/<id>-<name>` | — (any file)              | Tickets          |
+| Chat file                   | `<project>/.hephaestus/chats/<CHAT-ID>.yml`                 | `ChatFile`                | Chat             |
+| Builds                      | — (read from GitHub with gh, never stored)                  | —                         | Builds           |
+| Contract                    | `<project>/openapi/contract.yaml` (read only)               | `OpenAPIContract`         | Contracts        |
+| Stored request values       | `<data folder>/openapi-requests.json`                       | `StoredContract`          | Contracts        |
+| Chat transcript             | `<project>/.hephaestus/chats/<CHAT-ID>.jsonl`               | `ChatItem` on each line   | Chat             |
+| Chat MCP configuration      | `<data folder>/Runtime/mcp/<CHAT-ID>.json`                  | — (JSON)                  | Chat             |
+| Skill run MCP configuration | `<data folder>/Runtime/mcp/skill-<UUID>.json`               | — (JSON)                  | System Prompts   |
+| Chat log                    | `<data folder>/Logs/claude-<CHAT-ID>.log`                   | — (text)                  | Chat             |
+| Ticket chat worktree        | `<data folder>/Worktrees/<project id>/<ticket id>/`         | — (a git worktree)        | Tickets, Chat    |
+| Image file                  | `<data folder>/VirtualMachines/Images/<IMAGE-ID>/image.yml` | `ImageFile`               | Virtual Machines |
+| Machine file                | `<data folder>/VirtualMachines/Machines/<VM-ID>/vm.yml`     | `MachineFile`             | Virtual Machines |
 
 `<data folder>` is `~/Library/Application Support/HephaestusV3/`, or the folder `HEPHAESTUS_DATA_DIR` names ([Data
 folder](#data-folder)).
@@ -93,12 +94,12 @@ folder](#data-folder)).
 
 ### Ids
 
-| Id | Format | Example | Chosen by |
-| --- | --- | --- | --- |
-| Project identifier | `^[A-Z]{2,8}$` | `ORD` | the user, when creating the project |
-| Ticket id | `^[A-Z]{2,8}-[1-9][0-9]*$` | `ORD-142` | V3, from the project's `nextTicketNumber` ([Ticket rules](#ticket-rules)) |
-| Bundle id | `^[A-Z]{2,8}-B[1-9][0-9]*$` | `ORD-B3` | V3, from the project's `nextBundleNumber` |
-| Attachment and comment id | uppercase UUID | `5F2B6A1C-3D4E-4F50-8A6B-7C8D9E0F1A2B` | V3, at random |
+| Id                        | Format                      | Example                                | Chosen by                                                                 |
+|---------------------------|-----------------------------|----------------------------------------|---------------------------------------------------------------------------|
+| Project identifier        | `^[A-Z]{2,8}$`              | `ORD`                                  | the user, when creating the project                                       |
+| Ticket id                 | `^[A-Z]{2,8}-[1-9][0-9]*$`  | `ORD-142`                              | V3, from the project's `nextTicketNumber` ([Ticket rules](#ticket-rules)) |
+| Bundle id                 | `^[A-Z]{2,8}-B[1-9][0-9]*$` | `ORD-B3`                               | V3, from the project's `nextBundleNumber`                                 |
+| Attachment and comment id | uppercase UUID              | `5F2B6A1C-3D4E-4F50-8A6B-7C8D9E0F1A2B` | V3, at random                                                             |
 
 The identifier is unique among the projects of this Mac, sub projects included. It prefixes the project's
 tickets (`ORD-142`). A name suggests one from its ASCII letters, accents removed
@@ -129,20 +130,21 @@ The files that belong to this Mac rather than to a project.
 - **Invalid files**: a data folder file that is invalid when the app starts is renamed `<file>.invalid`,
   replacing an older one, and the app starts from its defaults. (Applied by the loading of the projects.)
 
-| File | Content |
-| --- | --- |
-| `registry.yml` | The top-level projects ([Registry file](#registry-file)). |
-| `current-environments.yml` | The environment chosen for each service ([Current environments file](#current-environments-file)); absent until a first choice. |
-| `settings.yml`, `secrets.json` | The app's settings and the MCP server's token ([Settings file](#settings-file), [Secrets file](#secrets-file)). |
-| `skills/<name>/SKILL.md` | An internal skill's content, once the user wrote it ([Internal skills](#internal-skills)). |
-| `Runtime/mcp/<CHAT-ID>.json` | A running chat's MCP configuration, mode 0600, deleted when its process ends ([Chat processes](#chat-processes)). |
-| `Runtime/mcp/skill-<UUID>.json` | A running internal skill's MCP configuration, mode 0600, deleted when the run ends ([Internal skills](#internal-skills)). |
-| `Runtime/claude-cwd/` | The empty folder the CLI's model probe runs in. |
-| `Runtime/plugins/hephaestus-skills/` | The internal skills chats call, as a Claude Code plugin, written before each chat process starts ([Chat plugin](#chat-plugin)). |
-| `Runtime/downloads/<UUID>/` | A release file gh downloads, before it moves into the Downloads folder; removed afterwards ([Builds › Downloads](#downloads)). |
-| `VirtualMachines/` | The images and machines ([Virtual machines › Storage](#storage)). |
-| `Runtime/guest/` | The guest agent and its install script, shared with a setup machine ([Virtual machines › Setup](#setup)). |
-| `Logs/claude-<CHAT-ID>.log` | A chat's CLI log: a line per launch, then the CLI's standard error; emptied at a launch once over 10 MB. |
+| File                                  | Content                                                                                                                                   |
+|---------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| `registry.yml`                        | The top-level projects ([Registry file](#registry-file)).                                                                                 |
+| `current-environments.yml`            | The environment chosen for each service ([Current environments file](#current-environments-file)); absent until a first choice.           |
+| `settings.yml`, `secrets.json`        | The app's settings and the MCP server's token ([Settings file](#settings-file), [Secrets file](#secrets-file)).                           |
+| `skills/<name>/SKILL.md`              | An internal skill's content, once the user wrote it ([Internal skills](#internal-skills)).                                                |
+| `Runtime/mcp/<CHAT-ID>.json`          | A running chat's MCP configuration, mode 0600, deleted when its process ends ([Chat processes](#chat-processes)).                         |
+| `Runtime/mcp/skill-<UUID>.json`       | A running internal skill's MCP configuration, mode 0600, deleted when the run ends ([Internal skills](#internal-skills)).                 |
+| `Runtime/claude-cwd/`                 | The empty folder the CLI's model probe runs in.                                                                                           |
+| `Worktrees/<project id>/<ticket id>/` | The git worktree of a ticket chat a bundle's chat started, on the branch `<bundle id>/<ticket id>` ([Implement chats](#implement-chats)). |
+| `Runtime/plugins/hephaestus-skills/`  | The internal skills chats call, as a Claude Code plugin, written before each chat process starts ([Chat plugin](#chat-plugin)).           |
+| `Runtime/downloads/<UUID>/`           | A release file gh downloads, before it moves into the Downloads folder; removed afterwards ([Builds › Downloads](#downloads)).            |
+| `VirtualMachines/`                    | The images and machines ([Virtual machines › Storage](#storage)).                                                                         |
+| `Runtime/guest/`                      | The guest agent and its install script, shared with a setup machine ([Virtual machines › Setup](#setup)).                                 |
+| `Logs/claude-<CHAT-ID>.log`           | A chat's CLI log: a line per launch, then the CLI's standard error; emptied at a launch once over 10 MB.                                  |
 
 ## Project folder
 
@@ -172,33 +174,33 @@ page, sub projects and environments. Swift type `ProjectFile`. The keys marked *
 use, kept as read at their place in the table's order ([Unknown keys](#unknown-keys)): `webTabs`, `skills`,
 `chatDefaults`, `deletedChats`, `commentAnswers`.
 
-| Swift name | Key | Type | Required | Default | Rules |
-| --- | --- | --- | --- | --- | --- |
-| schema | `schema` | `Int` | no | `1` | [Keys and values](#keys-and-values). |
-| id | `id` | `String` | yes | — | The project identifier ([Ids](#ids)). Set at creation, never changed. Read rule: `id: "<id>" is not a valid project identifier`. |
-| name | `name` | `String` | yes | — | One line, 1–100 characters. Names need not be unique. |
-| created | `created` | `Date` | yes | — | When the project was created. Never changed. |
-| type | `type` | `ProjectKind` | no | `none` | [Project kind](#project-kind). |
-| color | `color` | `String?` | no | `null` | `#` and six hex digits, uppercased when read, or the name of a tint ([Project color](#project-color)). Any other value makes the file invalid (`color: "<text>" is not a color of the form #RRGGBB, nor a tint`). Left out of the file when there is none. |
-| icon | `icon` | `String?` | no | `null` | An SF Symbol name, such as `hammer`. Read trimmed, an empty value being none. Left out of the file when there is none. |
-| nextTicketNumber | `nextTicketNumber` | `Int` | no | `1` | The first number tried for the next ticket. |
-| nextBundleNumber | `nextBundleNumber` | `Int` | no | `1` | The first number tried for the next bundle. |
-| docsPath | `docsPath` | `String` | no | `docs` | Relative path of the documentation folder, which may be missing. |
-| githubPage | `githubPage` | `String?` | no | `null` | The page typed in the GitHub page field, `https://github.com/<owner>/<name>`: read trimmed and without a trailing `/`; any other value makes the file invalid ([GitHub page](#github-page)). Left out of the file when there is none. |
-| — | `useParentSettings` | kept | no | absent | V2's switch for a sub project to use its parent's settings. No effect in V3, where a sub project takes every value it leaves empty from its parent ([Resolution](#resolution)); kept as read, never added. |
-| subprojects | `subprojects` | `[String]` | no | `[]` | Relative paths of the direct sub projects, in the order they were added, each once. Each names a folder inside this project's folder that holds `.hephaestus/project.yml`. An entry whose folder or file is missing or invalid is kept. |
-| — | `webTabs` | kept | no | absent | Web tabs; not used. |
-| — | `skills` | kept | no | absent | Enabled skills; not used. |
-| — | `chatDefaults` | kept | no | absent | Settings of new chats; not used. |
-| graphEnabled | `graphEnabled` | `Bool?` | no | `null` | Whether the graph is enabled: the project overview then shows the Service Map's graph ([UI › Projects › Graph](ui/projects.md#graph)); `null` takes the parent's value, `false` for a top-level project ([Resolution](#resolution)). V3 writes `false` too, while set; left out of the file while `null`. |
-| environments | `environments` | `[EnvironmentEntry]` | no | `[]` | The project's own environments, whatever its type, in the order they were added; names unique, letter case included ([Project environment](#project-environment)). |
-| environmentOverrides | `environmentOverrides` | `[String: EnvironmentOverride]` | no | `{}` | A sub project's changes to the environments it inherits, by environment name, written in Unicode code point order ([Environment override](#environment-override)). A change for a name no inherited environment has is kept and ignored. |
-| dashboardWidgets | `dashboardWidgets` | `[DashboardWidgetEntry]?` | no | `null` | The widgets of the project's [Dashboard](ui/dashboard.md), in their order ([Dashboard widget](#dashboard-widget)). `null` shows the default list and `[]` no widget. Left out of the file while the project has no stored list. |
-| dashboardGraphWindow | `dashboardGraphWindow` | `DashboardGraphWindow?` | no | `null` | The time window of the Dashboard's service widgets: `fiveMinutes`, `hour`, `day` or `week`; `null` is `hour`. Any other value makes the file invalid. Left out of the file while `null`. V3 has no `week` window yet: a stored `week` is kept, and the Dashboard shows the last hour. |
-| — | `deletedChats` | kept | no | absent | Costs of deleted chats; not used. |
-| — | `commentAnswers` | kept | no | absent | Costs of comment answers; not used. |
-| keptKeys | — | `YAMLMapping` | — | empty | The kept keys present in the file, as read. |
-| unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
+| Swift name           | Key                    | Type                            | Required | Default | Rules                                                                                                                                                                                                                                                                                                     |
+|----------------------|------------------------|---------------------------------|----------|---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| schema               | `schema`               | `Int`                           | no       | `1`     | [Keys and values](#keys-and-values).                                                                                                                                                                                                                                                                      |
+| id                   | `id`                   | `String`                        | yes      | —       | The project identifier ([Ids](#ids)). Set at creation, never changed. Read rule: `id: "<id>" is not a valid project identifier`.                                                                                                                                                                          |
+| name                 | `name`                 | `String`                        | yes      | —       | One line, 1–100 characters. Names need not be unique.                                                                                                                                                                                                                                                     |
+| created              | `created`              | `Date`                          | yes      | —       | When the project was created. Never changed.                                                                                                                                                                                                                                                              |
+| type                 | `type`                 | `ProjectKind`                   | no       | `none`  | [Project kind](#project-kind).                                                                                                                                                                                                                                                                            |
+| color                | `color`                | `String?`                       | no       | `null`  | `#` and six hex digits, uppercased when read, or the name of a tint ([Project color](#project-color)). Any other value makes the file invalid (`color: "<text>" is not a color of the form #RRGGBB, nor a tint`). Left out of the file when there is none.                                                |
+| icon                 | `icon`                 | `String?`                       | no       | `null`  | An SF Symbol name, such as `hammer`. Read trimmed, an empty value being none. Left out of the file when there is none.                                                                                                                                                                                    |
+| nextTicketNumber     | `nextTicketNumber`     | `Int`                           | no       | `1`     | The first number tried for the next ticket.                                                                                                                                                                                                                                                               |
+| nextBundleNumber     | `nextBundleNumber`     | `Int`                           | no       | `1`     | The first number tried for the next bundle.                                                                                                                                                                                                                                                               |
+| docsPath             | `docsPath`             | `String`                        | no       | `docs`  | Relative path of the documentation folder, which may be missing.                                                                                                                                                                                                                                          |
+| githubPage           | `githubPage`           | `String?`                       | no       | `null`  | The page typed in the GitHub page field, `https://github.com/<owner>/<name>`: read trimmed and without a trailing `/`; any other value makes the file invalid ([GitHub page](#github-page)). Left out of the file when there is none.                                                                     |
+| —                    | `useParentSettings`    | kept                            | no       | absent  | V2's switch for a sub project to use its parent's settings. No effect in V3, where a sub project takes every value it leaves empty from its parent ([Resolution](#resolution)); kept as read, never added.                                                                                                |
+| subprojects          | `subprojects`          | `[String]`                      | no       | `[]`    | Relative paths of the direct sub projects, in the order they were added, each once. Each names a folder inside this project's folder that holds `.hephaestus/project.yml`. An entry whose folder or file is missing or invalid is kept.                                                                   |
+| —                    | `webTabs`              | kept                            | no       | absent  | Web tabs; not used.                                                                                                                                                                                                                                                                                       |
+| —                    | `skills`               | kept                            | no       | absent  | Enabled skills; not used.                                                                                                                                                                                                                                                                                 |
+| —                    | `chatDefaults`         | kept                            | no       | absent  | Settings of new chats; not used.                                                                                                                                                                                                                                                                          |
+| graphEnabled         | `graphEnabled`         | `Bool?`                         | no       | `null`  | Whether the graph is enabled: the project overview then shows the Service Map's graph ([UI › Projects › Graph](ui/projects.md#graph)); `null` takes the parent's value, `false` for a top-level project ([Resolution](#resolution)). V3 writes `false` too, while set; left out of the file while `null`. |
+| environments         | `environments`         | `[EnvironmentEntry]`            | no       | `[]`    | The project's own environments, whatever its type, in the order they were added; names unique, letter case included ([Project environment](#project-environment)).                                                                                                                                        |
+| environmentOverrides | `environmentOverrides` | `[String: EnvironmentOverride]` | no       | `{}`    | A sub project's changes to the environments it inherits, by environment name, written in Unicode code point order ([Environment override](#environment-override)). A change for a name no inherited environment has is kept and ignored.                                                                  |
+| dashboardWidgets     | `dashboardWidgets`     | `[DashboardWidgetEntry]?`       | no       | `null`  | The widgets of the project's [Dashboard](ui/dashboard.md), in their order ([Dashboard widget](#dashboard-widget)). `null` shows the default list and `[]` no widget. Left out of the file while the project has no stored list.                                                                           |
+| dashboardGraphWindow | `dashboardGraphWindow` | `DashboardGraphWindow?`         | no       | `null`  | The time window of the Dashboard's service widgets: `fiveMinutes`, `hour`, `day` or `week`; `null` is `hour`. Any other value makes the file invalid. Left out of the file while `null`. V3 has no `week` window yet: a stored `week` is kept, and the Dashboard shows the last hour.                     |
+| —                    | `deletedChats`         | kept                            | no       | absent  | Costs of deleted chats; not used.                                                                                                                                                                                                                                                                         |
+| —                    | `commentAnswers`       | kept                            | no       | absent  | Costs of comment answers; not used.                                                                                                                                                                                                                                                                       |
+| keptKeys             | —                      | `YAMLMapping`                   | —        | empty   | The kept keys present in the file, as read.                                                                                                                                                                                                                                                               |
+| unknownKeys          | —                      | `YAMLMapping`                   | —        | empty   | [Unknown keys](#unknown-keys).                                                                                                                                                                                                                                                                            |
 
 A `commands` key is an unknown key, not a kept one.
 
@@ -206,12 +208,12 @@ A `commands` key is an unknown key, not a kept one.
 
 Swift type `ProjectKind`, key `type`: a string enumeration. Any other value makes the file invalid.
 
-| Value | Name |
-| --- | --- |
-| `none` | Other |
-| `goService` | Service |
-| `swiftApplication` | App |
-| `library` | Library |
+| Value              | Name    |
+|--------------------|---------|
+| `none`             | Other   |
+| `goService`        | Service |
+| `swiftApplication` | App     |
+| `library`          | Library |
 
 ### Project color
 
@@ -242,22 +244,22 @@ Swift type `DashboardWidgetEntry`, one element of `dashboardWidgets`: a widget o
 its position and size on the Dashboard's grid and its settings ([UI › Dashboard](ui/dashboard.md)). The
 Dashboard changes the list through [Update](#changes) and `ProjectChange.dashboardWidgets`.
 
-| Swift name | Key | Type | Required | Default | Rules |
-| --- | --- | --- | --- | --- | --- |
-| id | `id` | `UUID` | yes | — | Unique within the list. |
-| kind | `kind` | `Kind` | yes | — | `project`, `tickets`, `recentChats`, `cost`, `instances`, `serviceGraph`, `busiestCalls`, `failedRequests`, `requestsPerMinute` or `recentBuilds`. Any other value makes the file invalid. |
-| title | `title` | `String` | no | `""` | The Title setting: one line, at most 100 characters, trimmed; empty means the title of the kind. |
-| column | `column` | `Int?` | no | `null` | The first column the widget covers, 0–23. |
-| row | `row` | `Int?` | no | `null` | The first row it covers, from 0. |
-| width | `width` | `Int?` | no | `null` | The columns it covers, 1–24; `column` + `width` is at most 24. |
-| height | `height` | `Int?` | no | `null` | The rows it covers, from 1. |
-| fields | `fields` | `[Field]` | no | all four | `project`: the fields shown, among `name`, `identifier`, `type` and `folder`. At least one, each once. |
-| statuses | `statuses` | `[Status]` | no | the first four | `tickets`: the counts shown, among `todo`, `in_progress`, `review`, `done` and `draft`. At least one, each once. The default is the first four; a widget V3 adds starts with all five, written in the file. |
-| includeSubprojects | `includeSubprojects` | `Bool` | no | `true` | `tickets` and `cost`: whether the counts or the total cover the loaded sub projects. |
-| chatCount | `chatCount` | `Int` | no | `5` | `recentChats`: the most chats listed, 1–20. |
-| chatKinds | `chatKinds` | `[ChatKind]` | no | all four | `recentChats`: `project`, `ticket`, `bundle`, `feedback`. At least one, each once. |
-| count | `count` | `Int` | no | `5` | `busiestCalls`, `failedRequests` and `recentBuilds`: the most rows listed, 1–20. |
-| unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
+| Swift name         | Key                  | Type          | Required | Default        | Rules                                                                                                                                                                                                       |
+|--------------------|----------------------|---------------|----------|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| id                 | `id`                 | `UUID`        | yes      | —              | Unique within the list.                                                                                                                                                                                     |
+| kind               | `kind`               | `Kind`        | yes      | —              | `project`, `tickets`, `recentChats`, `cost`, `instances`, `serviceGraph`, `busiestCalls`, `failedRequests`, `requestsPerMinute` or `recentBuilds`. Any other value makes the file invalid.                  |
+| title              | `title`              | `String`      | no       | `""`           | The Title setting: one line, at most 100 characters, trimmed; empty means the title of the kind.                                                                                                            |
+| column             | `column`             | `Int?`        | no       | `null`         | The first column the widget covers, 0–23.                                                                                                                                                                   |
+| row                | `row`                | `Int?`        | no       | `null`         | The first row it covers, from 0.                                                                                                                                                                            |
+| width              | `width`              | `Int?`        | no       | `null`         | The columns it covers, 1–24; `column` + `width` is at most 24.                                                                                                                                              |
+| height             | `height`             | `Int?`        | no       | `null`         | The rows it covers, from 1.                                                                                                                                                                                 |
+| fields             | `fields`             | `[Field]`     | no       | all four       | `project`: the fields shown, among `name`, `identifier`, `type` and `folder`. At least one, each once.                                                                                                      |
+| statuses           | `statuses`           | `[Status]`    | no       | the first four | `tickets`: the counts shown, among `todo`, `in_progress`, `review`, `done` and `draft`. At least one, each once. The default is the first four; a widget V3 adds starts with all five, written in the file. |
+| includeSubprojects | `includeSubprojects` | `Bool`        | no       | `true`         | `tickets` and `cost`: whether the counts or the total cover the loaded sub projects.                                                                                                                        |
+| chatCount          | `chatCount`          | `Int`         | no       | `5`            | `recentChats`: the most chats listed, 1–20.                                                                                                                                                                 |
+| chatKinds          | `chatKinds`          | `[ChatKind]`  | no       | all four       | `recentChats`: `project`, `ticket`, `bundle`, `feedback`. At least one, each once.                                                                                                                          |
+| count              | `count`              | `Int`         | no       | `5`            | `busiestCalls`, `failedRequests` and `recentBuilds`: the most rows listed, 1–20.                                                                                                                            |
+| unknownKeys        | —                    | `YAMLMapping` | —        | empty          | [Unknown keys](#unknown-keys).                                                                                                                                                                              |
 
 - A widget has the keys `id`, `kind` and `title`, then the four position keys while it has a stored position,
   then the keys of its kind only, in the order of the table: `fields` for `project`; `statuses` and
@@ -288,18 +290,18 @@ Dashboard changes the list through [Update](#changes) and `ProjectChange.dashboa
 Swift type `EnvironmentEntry`, one element of `environments`: a place where a service runs, with the
 Kubernetes resources it runs on.
 
-| Swift name | Key | Type | Required | Default | Rules |
-| --- | --- | --- | --- | --- | --- |
-| name | `name` | `String` | yes | — | One line, 1–100 characters, trimmed. Unique within the project, letter case included. |
-| url | `url` | `String?` | no | `null` | The address of the environment's API: an absolute `http` or `https` URL with a host. |
-| port | `port` | `Int?` | no | `null` | 1–65535. Replaces the URL's port in the base URL. |
-| allowInvalidCertificates | `allowInvalidCertificates` | `Bool` | no | `false` | Requests to the environment accept an invalid server certificate. |
-| namespace | `namespace` | `String?` | no | `null` | The Kubernetes namespace of the deployment; `null` uses the current context's. |
-| deployment | `deployment` | `String?` | no | `null` | The Kubernetes Deployment that runs the service. |
-| jaeger | `jaeger` | `String?` | no | `null` | The Kubernetes Service of the environment's Jaeger, `<namespace>/<name>`: one `/`, parts not empty, no white space. |
-| argoCDApplication | `argoCDApplication` | `String?` | no | `null` | The Argo CD Application: `<name>`, in the namespace `argocd`, or `<namespace>/<name>`; one `/` at most, parts not empty, no white space. |
-| kubeconfig | `kubeconfig` | `String?` | no | `null` | The kubeconfig file: an absolute path or one starting with `~/`; `null` uses kubectl's default (`KUBECONFIG` of the login shell, else `~/.kube/config`). |
-| unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). A `context` key is one: kubectl always uses the kubeconfig file's current context. |
+| Swift name               | Key                        | Type          | Required | Default | Rules                                                                                                                                                    |
+|--------------------------|----------------------------|---------------|----------|---------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| name                     | `name`                     | `String`      | yes      | —       | One line, 1–100 characters, trimmed. Unique within the project, letter case included.                                                                    |
+| url                      | `url`                      | `String?`     | no       | `null`  | The address of the environment's API: an absolute `http` or `https` URL with a host.                                                                     |
+| port                     | `port`                     | `Int?`        | no       | `null`  | 1–65535. Replaces the URL's port in the base URL.                                                                                                        |
+| allowInvalidCertificates | `allowInvalidCertificates` | `Bool`        | no       | `false` | Requests to the environment accept an invalid server certificate.                                                                                        |
+| namespace                | `namespace`                | `String?`     | no       | `null`  | The Kubernetes namespace of the deployment; `null` uses the current context's.                                                                           |
+| deployment               | `deployment`               | `String?`     | no       | `null`  | The Kubernetes Deployment that runs the service.                                                                                                         |
+| jaeger                   | `jaeger`                   | `String?`     | no       | `null`  | The Kubernetes Service of the environment's Jaeger, `<namespace>/<name>`: one `/`, parts not empty, no white space.                                      |
+| argoCDApplication        | `argoCDApplication`        | `String?`     | no       | `null`  | The Argo CD Application: `<name>`, in the namespace `argocd`, or `<namespace>/<name>`; one `/` at most, parts not empty, no white space.                 |
+| kubeconfig               | `kubeconfig`               | `String?`     | no       | `null`  | The kubeconfig file: an absolute path or one starting with `~/`; `null` uses kubectl's default (`KUBECONFIG` of the login shell, else `~/.kube/config`). |
+| unknownKeys              | —                          | `YAMLMapping` | —        | empty   | [Unknown keys](#unknown-keys). A `context` key is one: kubectl always uses the kubeconfig file's current context.                                        |
 
 - `url` and the five Kubernetes keys are single lines, read and written trimmed, an empty value being `null`.
 - The **base URL** is `url` with its port replaced by `port` when set, without a trailing `/`; none without
@@ -312,17 +314,17 @@ changes. A key with a value replaces the parent's; `null` keeps the parent's, so
 parent's value. Every field of the environment but its name can change: V3 adds `namespace` and
 `kubeconfig` to V2's six keys.
 
-| Swift name | Key | Type | Default | Rules |
-| --- | --- | --- | --- | --- |
-| url | `url` | `String?` | `null` | As `EnvironmentEntry.url`. |
-| port | `port` | `Int?` | `null` | 1–65535. |
-| allowInvalidCertificates | `allowInvalidCertificates` | `Bool?` | `null` | Stored only while it differs from the parent's. |
-| namespace | `namespace` | `String?` | `null` | V3's addition. One line. Left out of the file while `null`. |
-| deployment | `deployment` | `String?` | `null` | |
-| jaeger | `jaeger` | `String?` | `null` | `<namespace>/<name>`. |
-| argoCDApplication | `argoCDApplication` | `String?` | `null` | `<name>` or `<namespace>/<name>`. |
-| kubeconfig | `kubeconfig` | `String?` | `null` | V3's addition. As `EnvironmentEntry.kubeconfig`. Left out of the file while `null`. |
-| unknownKeys | — | `YAMLMapping` | empty | [Unknown keys](#unknown-keys). |
+| Swift name               | Key                        | Type          | Default | Rules                                                                               |
+|--------------------------|----------------------------|---------------|---------|-------------------------------------------------------------------------------------|
+| url                      | `url`                      | `String?`     | `null`  | As `EnvironmentEntry.url`.                                                          |
+| port                     | `port`                     | `Int?`        | `null`  | 1–65535.                                                                            |
+| allowInvalidCertificates | `allowInvalidCertificates` | `Bool?`       | `null`  | Stored only while it differs from the parent's.                                     |
+| namespace                | `namespace`                | `String?`     | `null`  | V3's addition. One line. Left out of the file while `null`.                         |
+| deployment               | `deployment`               | `String?`     | `null`  |                                                                                     |
+| jaeger                   | `jaeger`                   | `String?`     | `null`  | `<namespace>/<name>`.                                                               |
+| argoCDApplication        | `argoCDApplication`        | `String?`     | `null`  | `<name>` or `<namespace>/<name>`.                                                   |
+| kubeconfig               | `kubeconfig`               | `String?`     | `null`  | V3's addition. As `EnvironmentEntry.kubeconfig`. Left out of the file while `null`. |
+| unknownKeys              | —                          | `YAMLMapping` | empty   | [Unknown keys](#unknown-keys).                                                      |
 
 V2's six keys are written in this order, `null` included; V3's two only when set. The string keys are read
 and written trimmed, an empty value being `null`. Names are compared with the
@@ -439,11 +441,11 @@ environmentOverrides:
 `<data folder>/registry.yml`: the top-level projects of this Mac. Sub projects aren't listed: their parent's
 `subprojects` lists them. Swift type `RegistryFile`.
 
-| Swift name | Key | Type | Required | Default | Rules |
-| --- | --- | --- | --- | --- | --- |
-| schema | `schema` | `Int` | no | `1` | |
-| projects | `projects` | `[String]` | no | `[]` | Absolute paths of the projects' folders ([Paths](#paths)), in the order they were added, each once. An entry that isn't an absolute path is skipped when loading (`loadableEntries`). |
-| unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
+| Swift name  | Key        | Type          | Required | Default | Rules                                                                                                                                                                                 |
+|-------------|------------|---------------|----------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| schema      | `schema`   | `Int`         | no       | `1`     |                                                                                                                                                                                       |
+| projects    | `projects` | `[String]`    | no       | `[]`    | Absolute paths of the projects' folders ([Paths](#paths)), in the order they were added, each once. An entry that isn't an absolute path is skipped when loading (`loadableEntries`). |
+| unknownKeys | —          | `YAMLMapping` | —        | empty   | [Unknown keys](#unknown-keys).                                                                                                                                                        |
 
 ```yaml
 schema: 1
@@ -458,11 +460,11 @@ projects:
 out of `project.yml` so that choosing one changes no committed file. The file doesn't exist before the first
 choice. Swift type `CurrentEnvironmentsFile`.
 
-| Swift name | Key | Type | Required | Default | Rules |
-| --- | --- | --- | --- | --- | --- |
-| schema | `schema` | `Int` | no | `1` | |
-| projects | `projects` | `[String: String]` | no | `{}` | The chosen environment's name, by project identifier, written in Unicode code point order of the identifiers. A project without an entry, or whose entry names none of its environments, works in its first environment. |
-| unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
+| Swift name  | Key        | Type               | Required | Default | Rules                                                                                                                                                                                                                    |
+|-------------|------------|--------------------|----------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| schema      | `schema`   | `Int`              | no       | `1`     |                                                                                                                                                                                                                          |
+| projects    | `projects` | `[String: String]` | no       | `{}`    | The chosen environment's name, by project identifier, written in Unicode code point order of the identifiers. A project without an entry, or whose entry names none of its environments, works in its first environment. |
+| unknownKeys | —          | `YAMLMapping`      | —        | empty   | [Unknown keys](#unknown-keys).                                                                                                                                                                                           |
 
 ```yaml
 schema: 1
@@ -483,13 +485,13 @@ When the app starts (`ProjectSession.start`, [Architecture › ProjectData](arch
    `subprojects` order. Temporary files a crash left in a `.hephaestus/` folder are deleted. An entry is
    skipped, and reported with its reason (`ProjectIssue`), when:
 
-   | Reason | When |
-   | --- | --- |
-   | `invalidEntry` | A registry entry isn't an absolute path, or a `subprojects` entry isn't a relative path. |
-   | `folderMissing` | The folder doesn't exist. |
-   | `fileMissing` | The folder has no `.hephaestus/project.yml`. |
-   | `invalidFile(reason:)` | The project file breaks a read rule ([Validation](#validation)). |
-   | `identifierInUse(identifier:by:)` | A project loaded before it has its identifier. It loads once that project is removed. |
+   | Reason                            | When                                                                                     |
+   |-----------------------------------|------------------------------------------------------------------------------------------|
+   | `invalidEntry`                    | A registry entry isn't an absolute path, or a `subprojects` entry isn't a relative path. |
+   | `folderMissing`                   | The folder doesn't exist.                                                                |
+   | `fileMissing`                     | The folder has no `.hephaestus/project.yml`.                                             |
+   | `invalidFile(reason:)`            | The project file breaks a read rule ([Validation](#validation)).                         |
+   | `identifierInUse(identifier:by:)` | A project loaded before it has its identifier. It loads once that project is removed.    |
 
    The entry stays where it is: the project loads as soon as its folder and file are fine. A folder reached
    twice (through a symbolic link) loads once.
@@ -504,13 +506,13 @@ Invalid project files are never renamed or rewritten at load: they belong to the
 Every change goes through `ProjectLibrary`, one at a time, and gives a new snapshot. Files are written with
 [Atomic writes](#atomic-writes), a referenced file before the file that refers to it.
 
-| Change | Rules | Order of the writes |
-| --- | --- | --- |
-| **Create** (`NewProject`) | Name: one line, 1–100 characters, trimmed. Identifier: uppercased, 2–8 letters A–Z, used by no loaded project. With a parent: the folder is strictly inside the parent's folder (`Choose a folder inside “<parent name>”.`), checked before anything is written. The folder is created when missing and `createsFolder` is set; otherwise it must exist. A folder that already holds a project is refused: open it instead. The new file has `created` = now, the name, the identifier and the type; every other key takes its default. | 1. the project file and `.gitignore` 2. the parent's `subprojects` (the given parent, else the innermost loaded project whose folder holds it), or the registry |
-| **Open** (a folder) | A folder already loaded gives its project. Otherwise it must hold a valid project file whose identifier no loaded project uses. Registry entries that its file lists as its descendants, at any depth, leave the registry: they load under it. | 1. `.gitignore` 2. the innermost loaded project's `subprojects`, or the registry |
-| **Update** (`ProjectChange`) | Only the values the change sets: name; type; color (a tint, or `#RRGGBB` uppercased, or none); icon (trimmed, none when empty); docs folder (a relative path, not `.hephaestus` or inside it); GitHub page (validated, none when empty); graph (on, off or none, which takes the parent's); the whole list of the project's own environments; all its changes to inherited environments; the whole list of Dashboard widgets ([Dashboard widget](#dashboard-widget) › Write rules); the Dashboard's time window. An environment or a change equal to a stored one is written back as it is, even when a hand edit made it break a rule (each stored environment keeps at most one equal environment: a copy is checked); any other is checked ([Validation](#validation)), its names trimmed, a change that sets nothing dropped. An own environment can't take a name another environment has, inherited ones included. | the project file, then `current-environments.yml` when a choice follows a rename or is forgotten |
-| **Remove** | The project and its loaded sub projects leave the app: its entry leaves the parent's `subprojects` or the registry, and their chosen environments are forgotten. No file of theirs changes. | 1. the parent's project file, or the registry 2. `current-environments.yml` |
-| **Choose the current environment** | One of the project's environments as they apply. | `current-environments.yml` |
+| Change                             | Rules                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Order of the writes                                                                                                                                             |
+|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Create** (`NewProject`)          | Name: one line, 1–100 characters, trimmed. Identifier: uppercased, 2–8 letters A–Z, used by no loaded project. With a parent: the folder is strictly inside the parent's folder (`Choose a folder inside “<parent name>”.`), checked before anything is written. The folder is created when missing and `createsFolder` is set; otherwise it must exist. A folder that already holds a project is refused: open it instead. The new file has `created` = now, the name, the identifier and the type; every other key takes its default.                                                                                                                                                                                                                                                                                                                                                                                  | 1. the project file and `.gitignore` 2. the parent's `subprojects` (the given parent, else the innermost loaded project whose folder holds it), or the registry |
+| **Open** (a folder)                | A folder already loaded gives its project. Otherwise it must hold a valid project file whose identifier no loaded project uses. Registry entries that its file lists as its descendants, at any depth, leave the registry: they load under it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | 1. `.gitignore` 2. the innermost loaded project's `subprojects`, or the registry                                                                                |
+| **Update** (`ProjectChange`)       | Only the values the change sets: name; type; color (a tint, or `#RRGGBB` uppercased, or none); icon (trimmed, none when empty); docs folder (a relative path, not `.hephaestus` or inside it); GitHub page (validated, none when empty); graph (on, off or none, which takes the parent's); the whole list of the project's own environments; all its changes to inherited environments; the whole list of Dashboard widgets ([Dashboard widget](#dashboard-widget) › Write rules); the Dashboard's time window. An environment or a change equal to a stored one is written back as it is, even when a hand edit made it break a rule (each stored environment keeps at most one equal environment: a copy is checked); any other is checked ([Validation](#validation)), its names trimmed, a change that sets nothing dropped. An own environment can't take a name another environment has, inherited ones included. | the project file, then `current-environments.yml` when a choice follows a rename or is forgotten                                                                |
+| **Remove**                         | The project and its loaded sub projects leave the app: its entry leaves the parent's `subprojects` or the registry, and their chosen environments are forgotten. No file of theirs changes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | 1. the parent's project file, or the registry 2. `current-environments.yml`                                                                                     |
+| **Choose the current environment** | One of the project's environments as they apply.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `current-environments.yml`                                                                                                                                      |
 
 ## Resolution
 
@@ -550,23 +552,23 @@ project. `TicketData` reads and writes them ([Architecture › TicketData](archi
 
 `.hephaestus/ticket/<TICKET-ID>.yml`, Swift type `TicketFile`. Keys in this order:
 
-| Key | Type | Required | Default | Rules |
-| --- | --- | --- | --- | --- |
-| `schema` | `Int` | no | `1` | [Keys and values](#keys-and-values). |
-| `id` | ticket id | yes | — | Equals the file name without `.yml`; its identifier part is the project's `id`. A file whose `id` differs is invalid. |
-| `title` | `String` | yes | — | One line, 1–200 characters once trimmed. |
-| `status` | `TicketFileStatus` | no | `todo` | `draft`, `todo`, `in_progress`, `review`, `done` ([Ticket rules](#ticket-rules)). |
-| `created` | date | yes | — | Never changed. |
-| `updated` | date | no | `created` | Set to now by every write of the file by V3. |
-| `createdBy` | `user` or `claude` | no | `user` | Who created the ticket. |
-| `description` | `String` | no | `""` | Markdown, line breaks LF. |
-| `attachments` | `[AttachmentEntry]` | no | `[]` | The ticket's own files, in the order added ([Attachments](#attachments)). |
-| `comments` | `[CommentEntry]` | no | `[]` | Oldest first; ids unique within the ticket. |
-| `chats` | `[String]` | no | `[]` | The chats linked to the ticket, uppercase UUIDs; kept as read. |
-| `links` | `[TicketLinkEntry]` | no | `[]` | The links this ticket declares, in the order given ([Link rules](#link-rules)). |
-| `history` | `[HistoryEntry]` | no | one creation entry | Oldest first, only appended to. A file without history reads with one `created` entry made from `created` and `createdBy`, `to: todo`, without device or chat. |
-| `priority` | `low`, `medium`, `high`, `urgent` | no | none | Written after `history` only when set. |
-| `labels` | `[String]` | no | `[]` | Written after `history` (and `priority`) only when not empty; trimmed, empty ones dropped, each once. |
+| Key           | Type                              | Required | Default            | Rules                                                                                                                                                          |
+|---------------|-----------------------------------|----------|--------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `schema`      | `Int`                             | no       | `1`                | [Keys and values](#keys-and-values).                                                                                                                           |
+| `id`          | ticket id                         | yes      | —                  | Equals the file name without `.yml`; its identifier part is the project's `id`. A file whose `id` differs is invalid.                                          |
+| `title`       | `String`                          | yes      | —                  | One line, 1–200 characters once trimmed.                                                                                                                       |
+| `status`      | `TicketFileStatus`                | no       | `todo`             | `draft`, `todo`, `in_progress`, `review`, `done` ([Ticket rules](#ticket-rules)).                                                                              |
+| `created`     | date                              | yes      | —                  | Never changed.                                                                                                                                                 |
+| `updated`     | date                              | no       | `created`          | Set to now by every write of the file by V3.                                                                                                                   |
+| `createdBy`   | `user` or `claude`                | no       | `user`             | Who created the ticket.                                                                                                                                        |
+| `description` | `String`                          | no       | `""`               | Markdown, line breaks LF.                                                                                                                                      |
+| `attachments` | `[AttachmentEntry]`               | no       | `[]`               | The ticket's own files, in the order added ([Attachments](#attachments)).                                                                                      |
+| `comments`    | `[CommentEntry]`                  | no       | `[]`               | Oldest first; ids unique within the ticket.                                                                                                                    |
+| `chats`       | `[String]`                        | no       | `[]`               | The chats linked to the ticket, uppercase UUIDs: Implement and a feedback chat append theirs ([Implement chats](#implement-chats)); kept as read.              |
+| `links`       | `[TicketLinkEntry]`               | no       | `[]`               | The links this ticket declares, in the order given ([Link rules](#link-rules)).                                                                                |
+| `history`     | `[HistoryEntry]`                  | no       | one creation entry | Oldest first, only appended to. A file without history reads with one `created` entry made from `created` and `createdBy`, `to: todo`, without device or chat. |
+| `priority`    | `low`, `medium`, `high`, `urgent` | no       | none               | Written after `history` only when set.                                                                                                                         |
+| `labels`      | `[String]`                        | no       | `[]`               | Written after `history` (and `priority`) only when not empty; trimmed, empty ones dropped, each once.                                                          |
 
 The runtime-only keys `inverseLinks` (on a ticket) and `answer` (on a comment) are ignored when read and never
 written. Every other unknown key is kept ([Unknown keys](#unknown-keys)).
@@ -583,15 +585,15 @@ declaring ticket).
 
 **History entry** (`HistoryEntry`):
 
-| Key | Rules |
-| --- | --- |
-| `kind` | `created`, `status`, `title`, `linkAdded`, `linkRemoved`, `description`. |
-| `date` | When the change was made. |
-| `from` | The previous status (`status`) or title (`title`); required for those two, `null` for the others. |
-| `to` | The new status (`created`: the status it was created with), the new title, or the link as `<kind> <ticket id>`; not written for `description`. |
+| Key      | Rules                                                                                                                                                                                                                                       |
+|----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `kind`   | `created`, `status`, `title`, `linkAdded`, `linkRemoved`, `description`.                                                                                                                                                                    |
+| `date`   | When the change was made.                                                                                                                                                                                                                   |
+| `from`   | The previous status (`status`) or title (`title`); required for those two, `null` for the others.                                                                                                                                           |
+| `to`     | The new status (`created`: the status it was created with), the new title, or the link as `<kind> <ticket id>`; not written for `description`.                                                                                              |
 | `author` | `user`, `claude` or `automatic`; V3 writes `automatic` for the title `set-ticket-title` gives a ticket created without one ([UI › Tickets › Titles written by Claude](ui/tickets.md#titles-written-by-claude)), with no `device` or `chat`. |
-| `device` | For `user`: the Mac's computer name at the time (`TicketSession.computerName()`). |
-| `chat` | For `claude`: the chat's id, or `external` for a terminal session. |
+| `device` | For `user`: the Mac's computer name at the time (`TicketSession.computerName()`).                                                                                                                                                           |
+| `chat`   | For `claude`: the chat's id, or `external` for a terminal session.                                                                                                                                                                          |
 
 A file breaking these rules (a `status` entry without two statuses, a link entry not shaped `<kind> <id>`) is
 invalid.
@@ -601,7 +603,7 @@ invalid.
 `.hephaestus/bundle/<BUNDLE-ID>.yml`, Swift type `BundleFile`: `schema`, `id` (bundle id, equal to the file
 name), `title` (one line, 1–200 characters), `status` (`todo`, `in_progress` or `done`; default `todo`),
 `created`, `updated` (default `created`), `tickets` (ticket ids of the project, in implementation order, each
-once; default `[]`), `chats` (kept as read; default `[]`), then unknown keys. A ticket may belong to several
+once; default `[]`), `chats` (Implement All appends its chat, [Implement chats](#implement-chats); kept as read; default `[]`), then unknown keys. A ticket may belong to several
 bundles.
 
 ### Attachments
@@ -686,21 +688,21 @@ Each change is made by an actor (`TicketActor`): the user on this Mac (`.user(de
 (`.claude(chat:)`). Every change runs on the `TicketLibrary` actor, one at a time, writes with [Atomic
 writes](#atomic-writes) and returns a new snapshot.
 
-| Change | Rules | Order of the writes |
-| --- | --- | --- |
-| **Create a ticket** (`NewTicket`) | The project is loaded (`Project <ID> not found.`). Title, description, status (`todo` or `draft`: `A new ticket is To Do or a draft.`), files and links are checked before a number is taken. `created` and `updated` now, `createdBy` the actor, the history one `created` entry. | 1. project file (counter) 2. attachment files 3. ticket file; when 2 or 3 fails, the copied files are removed |
-| **Change a ticket** (`TicketChange`) | Title, description, priority, labels, the whole list of links. History entries in this order: rename, description edit, one `linkRemoved` per link no longer declared (in the old order), one `linkAdded` per new link (in the given order); a link whose kind changes is removed, then added. Priority and labels add no entry. A change that changes nothing writes nothing. | ticket file |
-| **Set a ticket's status** | [Ticket rules › Status](#ticket-rules); one `status` entry. | 1. ticket file 2. each bundle file the automatic rules change, in bundle number order |
-| **Delete tickets** | Their ids leave every bundle (the automatic rules apply in the same write), and every link to them leaves the other tickets of the project, with no history entry. | 1. each bundle file listing them 2. each ticket file linking to them 3. the ticket files and their `attachments/<ID>/` folders, moved to the Trash |
-| **Add a comment** | Text or files; the comment's author is the actor. | 1. attachment files 2. ticket file |
-| **Edit a comment** | Its text, with the same rule; sets the comment's `updated`. Its files can't change. Anyone may edit any comment. | ticket file |
-| **Delete a comment** | `Comment <id> not found.` for an unknown one. | 1. ticket file 2. its files, moved to the Trash |
-| **Add attachments** | To the ticket's own files. | 1. attachment files 2. ticket file |
-| **Remove an attachment** | A ticket attachment only (`Attachment <id> not found.`). | 1. ticket file 2. the file, moved to the Trash |
-| **Create a bundle** | At least one ticket (`A bundle needs at least one ticket.`), each of the project (`<ID> does not belong to project <IDENT>.`), existing (`Ticket <ID> not found.`), once (`<ID> is listed more than once.`). Starts `done` when they all are. | 1. project file (counter) 2. bundle file |
-| **Change a bundle** | Title; the whole list of tickets, which may be empty, where an id the bundle already lists may name a missing ticket. | bundle file |
-| **Set a bundle's status** | [Ticket rules › Bundle status](#ticket-rules). | bundle file |
-| **Delete a bundle** | Its tickets stay. | the bundle file, moved to the Trash |
+| Change                               | Rules                                                                                                                                                                                                                                                                                                                                                                          | Order of the writes                                                                                                                                |
+|--------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Create a ticket** (`NewTicket`)    | The project is loaded (`Project <ID> not found.`). Title, description, status (`todo` or `draft`: `A new ticket is To Do or a draft.`), files and links are checked before a number is taken. `created` and `updated` now, `createdBy` the actor, the history one `created` entry.                                                                                             | 1. project file (counter) 2. attachment files 3. ticket file; when 2 or 3 fails, the copied files are removed                                      |
+| **Change a ticket** (`TicketChange`) | Title, description, priority, labels, the whole list of links. History entries in this order: rename, description edit, one `linkRemoved` per link no longer declared (in the old order), one `linkAdded` per new link (in the given order); a link whose kind changes is removed, then added. Priority and labels add no entry. A change that changes nothing writes nothing. | ticket file                                                                                                                                        |
+| **Set a ticket's status**            | [Ticket rules › Status](#ticket-rules); one `status` entry.                                                                                                                                                                                                                                                                                                                    | 1. ticket file 2. each bundle file the automatic rules change, in bundle number order                                                              |
+| **Delete tickets**                   | Their ids leave every bundle (the automatic rules apply in the same write), and every link to them leaves the other tickets of the project, with no history entry.                                                                                                                                                                                                             | 1. each bundle file listing them 2. each ticket file linking to them 3. the ticket files and their `attachments/<ID>/` folders, moved to the Trash |
+| **Add a comment**                    | Text or files; the comment's author is the actor.                                                                                                                                                                                                                                                                                                                              | 1. attachment files 2. ticket file                                                                                                                 |
+| **Edit a comment**                   | Its text, with the same rule; sets the comment's `updated`. Its files can't change. Anyone may edit any comment.                                                                                                                                                                                                                                                               | ticket file                                                                                                                                        |
+| **Delete a comment**                 | `Comment <id> not found.` for an unknown one.                                                                                                                                                                                                                                                                                                                                  | 1. ticket file 2. its files, moved to the Trash                                                                                                    |
+| **Add attachments**                  | To the ticket's own files.                                                                                                                                                                                                                                                                                                                                                     | 1. attachment files 2. ticket file                                                                                                                 |
+| **Remove an attachment**             | A ticket attachment only (`Attachment <id> not found.`).                                                                                                                                                                                                                                                                                                                       | 1. ticket file 2. the file, moved to the Trash                                                                                                     |
+| **Create a bundle**                  | At least one ticket (`A bundle needs at least one ticket.`), each of the project (`<ID> does not belong to project <IDENT>.`), existing (`Ticket <ID> not found.`), once (`<ID> is listed more than once.`). Starts `done` when they all are.                                                                                                                                  | 1. project file (counter) 2. bundle file                                                                                                           |
+| **Change a bundle**                  | Title; the whole list of tickets, which may be empty, where an id the bundle already lists may name a missing ticket.                                                                                                                                                                                                                                                          | bundle file                                                                                                                                        |
+| **Set a bundle's status**            | [Ticket rules › Bundle status](#ticket-rules).                                                                                                                                                                                                                                                                                                                                 | bundle file                                                                                                                                        |
+| **Delete a bundle**                  | Its tickets stay.                                                                                                                                                                                                                                                                                                                                                              | the bundle file, moved to the Trash                                                                                                                |
 
 A ticket or bundle id that isn't well formed fails with `"<value>" is not a valid ticket id.` (or `bundle
 id`); an unknown one with `Ticket <ID> not found.` (or `Bundle <ID> not found.`). A file that can't be moved to
@@ -733,24 +735,24 @@ folders (attachments, agents) stay as they are.
 
 `.hephaestus/chats/<CHAT-ID>.yml`, Swift type `ChatFile`, keys in this order:
 
-| Swift name | Key | Type | Required | Default | Rules |
-| --- | --- | --- | --- | --- | --- |
-| schema | `schema` | `Int` | no | `1` | |
-| id | `id` | `String` | yes | — | An uppercase UUID (`ChatIDs.isChatID`), equal to the file's name. |
-| title | `title` | `String` | no | `New Chat` | One line. V3 titles a new chat with the first line of its first message that isn't empty, at most 80 characters; a rename takes 1 to 100 characters on one line. |
-| kind | `kind` | `ChatFile.Kind` | yes | — | `project`, `ticket`, `bundle`, `feedback`, `ci` or `setup` ([Chat kinds](#chat-kinds)). V3 makes `project` chats, and `feedback` chats from Send Feedback ([Feedback chats](#feedback-chats)). |
-| ticketID | `ticket` | `String?` | no | `null` | Always written, `null` when absent. |
-| bundleID | `bundle` | `String?` | no | `null` | Always written, `null` when absent. |
-| orchestratorChatID | `orchestrator` | `String?` | no | absent | A `ticket` or `ci` chat's orchestrator, kept as read ([Chat kinds](#chat-kinds)). Written only when set. |
-| imageID | `image` | `String?` | no | absent | A `setup` chat's image, kept as read ([Chat kinds](#chat-kinds)). Written only when set. |
-| created | `created` | `Date` | yes | — | Never changed. |
-| updated | `updated` | `Date` | no | `created` | Set by a message sent, a turn's end, a rename, a settings change. The Chat window lists chats by it, the latest first. |
-| settings | `settings` | `ChatSettings` | no | defaults | [Chat settings](#chat-settings). |
-| sessionStarted | `sessionStarted` | `Bool` | no | `false` | True once the CLI has started the session (its first `system/init`): later launches resume it. |
-| closed | `closed` | `Bool` | no | `false` | Whether the chat is closed. A message sent sets it back to `false`. |
-| questionsBlocked | `questionsBlocked` | `Bool` | no | `false` | `ticket` chats only, kept as read ([Chat kinds](#chat-kinds)). Written only when `true`. |
-| origin | `origin` | `String?` | no | absent | The tool whose chat panel started the chat, a `ToolKind` value such as `tickets`; absent for a chat of the Chat window. Written only when set. |
-| unknownKeys | — | `YAMLMapping` | — | empty | Kept and written after the known keys ([Unknown keys](#unknown-keys)); `contextUsage` among them, which V3 reads and writes there, as V2's layout had it ([Context usage](#context-usage)). The runtime keys `projectID`, `state`, `backgroundWork`, `compactingSince`, `costUSD` and `mentionedIDs` are ignored when read and never written. |
+| Swift name         | Key                | Type            | Required | Default    | Rules                                                                                                                                                                                                                                                                                                                                         |
+|--------------------|--------------------|-----------------|----------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| schema             | `schema`           | `Int`           | no       | `1`        |                                                                                                                                                                                                                                                                                                                                               |
+| id                 | `id`               | `String`        | yes      | —          | An uppercase UUID (`ChatIDs.isChatID`), equal to the file's name.                                                                                                                                                                                                                                                                             |
+| title              | `title`            | `String`        | no       | `New Chat` | One line. V3 titles a new chat with the first line of its first message that isn't empty, at most 80 characters; a rename takes 1 to 100 characters on one line.                                                                                                                                                                              |
+| kind               | `kind`             | `ChatFile.Kind` | yes      | —          | `project`, `ticket`, `bundle`, `feedback`, `ci` or `setup` ([Chat kinds](#chat-kinds)). V3 makes `project` chats, `feedback` chats from Send Feedback ([Feedback chats](#feedback-chats)), and `ticket` and `bundle` chats from Implement ([Implement chats](#implement-chats)).                                                              |
+| ticketID           | `ticket`           | `String?`       | no       | `null`     | Always written, `null` when absent.                                                                                                                                                                                                                                                                                                           |
+| bundleID           | `bundle`           | `String?`       | no       | `null`     | Always written, `null` when absent.                                                                                                                                                                                                                                                                                                           |
+| orchestratorChatID | `orchestrator`     | `String?`       | no       | absent     | A `ticket` or `ci` chat's orchestrator: the bundle chat that started a ticket chat with `implement_ticket` ([Implement chats](#implement-chats)). Never changed. Written only when set.                                                                                                                                                       |
+| imageID            | `image`            | `String?`       | no       | absent     | A `setup` chat's image, kept as read ([Chat kinds](#chat-kinds)). Written only when set.                                                                                                                                                                                                                                                      |
+| created            | `created`          | `Date`          | yes      | —          | Never changed.                                                                                                                                                                                                                                                                                                                                |
+| updated            | `updated`          | `Date`          | no       | `created`  | Set by a message sent, a turn's end, a rename, a settings change. The Chat window lists chats by it, the latest first.                                                                                                                                                                                                                        |
+| settings           | `settings`         | `ChatSettings`  | no       | defaults   | [Chat settings](#chat-settings).                                                                                                                                                                                                                                                                                                              |
+| sessionStarted     | `sessionStarted`   | `Bool`          | no       | `false`    | True once the CLI has started the session (its first `system/init`): later launches resume it.                                                                                                                                                                                                                                                |
+| closed             | `closed`           | `Bool`          | no       | `false`    | Whether the chat is closed. A message sent sets it back to `false`.                                                                                                                                                                                                                                                                           |
+| questionsBlocked   | `questionsBlocked` | `Bool`          | no       | `false`    | `ticket` chats only: set by Implement, cleared by the user's first message ([Implement chats](#implement-chats)). Written only when `true`.                                                                                                                                                                                                   |
+| origin             | `origin`           | `String?`       | no       | absent     | The tool whose chat panel started the chat, a `ToolKind` value such as `tickets`; absent for a chat of the Chat window. Written only when set.                                                                                                                                                                                                |
+| unknownKeys        | —                  | `YAMLMapping`   | —        | empty      | Kept and written after the known keys ([Unknown keys](#unknown-keys)); `contextUsage` among them, which V3 reads and writes there, as V2's layout had it ([Context usage](#context-usage)). The runtime keys `projectID`, `state`, `backgroundWork`, `compactingSince`, `costUSD` and `mentionedIDs` are ignored when read and never written. |
 
 A chat file is written back byte for byte. Example, a chat started from the Tickets window's panel:
 
@@ -778,14 +780,14 @@ origin: tickets
 
 A file that breaks these rules is invalid and isn't listed:
 
-| Kind | `ticket` | `bundle` | Other |
-| --- | --- | --- | --- |
-| `project` | `null` | `null` | |
-| `ticket` | required | `null` | may have an `orchestrator` |
-| `bundle` | `null` | required | |
-| `feedback` | `null`, or the first ticket it made ([Feedback chats](#feedback-chats)) | `null` | its files in `chats/<CHAT-ID>/` |
-| `ci` | exactly one of `ticket` and `bundle` | | `orchestrator` required |
-| `setup` | `null` | `null` | `image` required |
+| Kind       | `ticket`                                                                | `bundle` | Other                           |
+|------------|-------------------------------------------------------------------------|----------|---------------------------------|
+| `project`  | `null`                                                                  | `null`   |                                 |
+| `ticket`   | required                                                                | `null`   | may have an `orchestrator`      |
+| `bundle`   | `null`                                                                  | required |                                 |
+| `feedback` | `null`, or the first ticket it made ([Feedback chats](#feedback-chats)) | `null`   | its files in `chats/<CHAT-ID>/` |
+| `ci`       | exactly one of `ticket` and `bundle`                                    |          | `orchestrator` required         |
+| `setup`    | `null`                                                                  | `null`   | `image` required                |
 
 Only `ticket` and `ci` chats have an `orchestrator`, only `setup` chats an `image`, only `ticket` chats
 `questionsBlocked`.
@@ -820,19 +822,19 @@ appended and never rewritten.
 Every item has `type`, `id` (unique in the transcript) and `created` (ISO 8601, UTC, seconds). The other keys,
 with `null` written for an absent optional:
 
-| `type` | Keys | Id |
-| --- | --- | --- |
-| `user` | `text` (the message as written, without what V3 adds for Claude), `attachments` (the files the message carried, [Message files](#message-files)), `sender` (the Mac's name), `linkedItems` (kept as read), `references` (`[{tool, project, focus, title, environment}]`, the item the message's chip carried; `tool` is a `ToolKind` value or `project`) | a new uppercase UUID, also the message's `uuid` for the CLI |
-| `assistant` | `text`, `messageID`, `parentToolUseID`, `model` (the CLI's model id), `effort` | `<message id>#<block index>` |
-| `thinking` | `text`, `parentToolUseID` (kept; not shown) | `<message id>#<block index>` |
-| `toolUse` | `toolUseID`, `name` (without `mcp__<server>__`), `server` (`hephaestus` for the app's tools, `null` for the CLI's), `input`, `parentToolUseID` | `<message id>#<block index>` |
-| `toolResult` | `toolUseID`, `text`, `isError`, `images` (the result's images as files, [Result images](#result-images)) | `<tool use id>#result` |
-| `questions` | `questionSetID`, `questions`, `answers`, `completed` ([Questions](#questions)) | the set's id, a new uppercase UUID |
-| `permissionRequest` | `requestID`, `toolName` (the CLI's name, `mcp__hephaestus__add_comment`), `input`, `reason`, `decision` (`allow`, `allowAlways`, `deny`; `null` while it waits), `decidedBy` (the Mac whose user answered; `null` while it waits and when the app cancelled it) | `perm-<request id>` |
-| `system` | `text` (in English), `level` (`info`, `warning`, `error`) | a new uppercase UUID |
-| `result` | `durationMs`, `costUSD` (kept; not shown), `isError`, `summary` | a new uppercase UUID |
-| `images` | `caption`, `images` ([Images item](#images-item)) | a new uppercase UUID |
-| `symbol`, `color`, `sound`, `shortcut`, `font`, `animation` | `requestID`, `question`, `suggestions`, `recommended`, `answer`; `lightAndDark` for a color, `sample` for a font, `inUse` for a shortcut, and the keys V3 doesn't read, kept ([Picker requests](#picker-requests)) | the request's id, a new uppercase UUID |
+| `type`                                                      | Keys                                                                                                                                                                                                                                                                                                                                                     | Id                                                          |
+|-------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------|
+| `user`                                                      | `text` (the message as written, without what V3 adds for Claude), `attachments` (the files the message carried, [Message files](#message-files)), `sender` (the Mac's name), `linkedItems` (kept as read), `references` (`[{tool, project, focus, title, environment}]`, the item the message's chip carried; `tool` is a `ToolKind` value or `project`) | a new uppercase UUID, also the message's `uuid` for the CLI |
+| `assistant`                                                 | `text`, `messageID`, `parentToolUseID`, `model` (the CLI's model id), `effort`                                                                                                                                                                                                                                                                           | `<message id>#<block index>`                                |
+| `thinking`                                                  | `text`, `parentToolUseID` (kept; not shown)                                                                                                                                                                                                                                                                                                              | `<message id>#<block index>`                                |
+| `toolUse`                                                   | `toolUseID`, `name` (without `mcp__<server>__`), `server` (`hephaestus` for the app's tools, `null` for the CLI's), `input`, `parentToolUseID`                                                                                                                                                                                                           | `<message id>#<block index>`                                |
+| `toolResult`                                                | `toolUseID`, `text`, `isError`, `images` (the result's images as files, [Result images](#result-images))                                                                                                                                                                                                                                                 | `<tool use id>#result`                                      |
+| `questions`                                                 | `questionSetID`, `questions`, `answers`, `completed` ([Questions](#questions))                                                                                                                                                                                                                                                                           | the set's id, a new uppercase UUID                          |
+| `permissionRequest`                                         | `requestID`, `toolName` (the CLI's name, `mcp__hephaestus__add_comment`), `input`, `reason`, `decision` (`allow`, `allowAlways`, `deny`; `null` while it waits), `decidedBy` (the Mac whose user answered; `null` while it waits and when the app cancelled it)                                                                                          | `perm-<request id>`                                         |
+| `system`                                                    | `text` (in English), `level` (`info`, `warning`, `error`)                                                                                                                                                                                                                                                                                                | a new uppercase UUID                                        |
+| `result`                                                    | `durationMs`, `costUSD` (kept; not shown), `isError`, `summary`                                                                                                                                                                                                                                                                                          | a new uppercase UUID                                        |
+| `images`                                                    | `caption`, `images` ([Images item](#images-item))                                                                                                                                                                                                                                                                                                        | a new uppercase UUID                                        |
+| `symbol`, `color`, `sound`, `shortcut`, `font`, `animation` | `requestID`, `question`, `suggestions`, `recommended`, `answer`; `lightAndDark` for a color, `sample` for a font, `inUse` for a shortcut, and the keys V3 doesn't read, kept ([Picker requests](#picker-requests))                                                                                                                                       | the request's id, a new uppercase UUID                      |
 
 A string
 longer than 100,000 characters in a call's input or a result's text is cut, followed by `… [truncated <n>
@@ -840,29 +842,29 @@ characters]`.
 
 The `system` lines V3 writes:
 
-| When | Level | Text |
-| --- | --- | --- |
-| The CLI can't be started | error | `Claude failed to start: <reason>` |
-| No `system/init` within 60 s | error | `Claude did not start within 60 seconds.` |
-| The CLI exits during a turn, not ended by the app | error | `Claude exited with code <n>: <last line of its standard error>`, or `Claude exited with code <n>.`, or `Claude was terminated by signal <n>.` |
-| The first `system/init` lists no usable `hephaestus` server | warning | `The Hephaestus tools aren't available in this session: the app's MCP server is <failed, needs-auth, disabled or missing>.` |
-| A resumed session the CLI doesn't find | warning | `Claude's session for this chat was not found. A new session started: Claude doesn't remember this chat's earlier messages.` |
-| The CLI refuses a model or effort change | warning | `Claude did not accept the new <model or effort> now: <reason>. It applies the next time Claude starts.` |
-| Stop | info | `Stopped by the user.` |
-| The app quits during a turn | warning | `Stopped because Hephaestus quit.` |
-| A compaction | info | `Conversation compacted (<automatic or manual>, <tokens> tokens before)`, tokens as `24.6K`, `967K`, `1.2M` |
+| When                                                        | Level   | Text                                                                                                                                           |
+|-------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| The CLI can't be started                                    | error   | `Claude failed to start: <reason>`                                                                                                             |
+| No `system/init` within 60 s                                | error   | `Claude did not start within 60 seconds.`                                                                                                      |
+| The CLI exits during a turn, not ended by the app           | error   | `Claude exited with code <n>: <last line of its standard error>`, or `Claude exited with code <n>.`, or `Claude was terminated by signal <n>.` |
+| The first `system/init` lists no usable `hephaestus` server | warning | `The Hephaestus tools aren't available in this session: the app's MCP server is <failed, needs-auth, disabled or missing>.`                    |
+| A resumed session the CLI doesn't find                      | warning | `Claude's session for this chat was not found. A new session started: Claude doesn't remember this chat's earlier messages.`                   |
+| The CLI refuses a model or effort change                    | warning | `Claude did not accept the new <model or effort> now: <reason>. It applies the next time Claude starts.`                                       |
+| Stop                                                        | info    | `Stopped by the user.`                                                                                                                         |
+| The app quits during a turn                                 | warning | `Stopped because Hephaestus quit.`                                                                                                             |
+| A compaction                                                | info    | `Conversation compacted (<automatic or manual>, <tokens> tokens before)`, tokens as `24.6K`, `967K`, `1.2M`                                    |
 
 #### Questions
 
 Claude asks the user with the MCP tool `ask_questions` ([MCP](mcp.md#ask_questions)); the chat shows them in a
 card over the composer ([UI › Chat › Questions](ui/chat.md#questions)). The `questions` item is V2's:
 
-| Key | Type | Rules |
-| --- | --- | --- |
-| `questionSetID` | `String` | The set's id; the item's `id` too. |
-| `questions` | `[Question]` | 1 to 26, labelled `A`, `B`… in order. |
-| `answers` | `{String: String}` | By label: the chosen option's label, the user's own text, `Skipped`, or for a multiple question one line `- <choice>` per choice. `{}` at first. |
-| `completed` | `Bool` | Every question has an answer, and the answers went to Claude. |
+| Key             | Type               | Rules                                                                                                                                            |
+|-----------------|--------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| `questionSetID` | `String`           | The set's id; the item's `id` too.                                                                                                               |
+| `questions`     | `[Question]`       | 1 to 26, labelled `A`, `B`… in order.                                                                                                            |
+| `answers`       | `{String: String}` | By label: the chosen option's label, the user's own text, `Skipped`, or for a multiple question one line `- <choice>` per choice. `{}` at first. |
+| `completed`     | `Bool`             | Every question has an answer, and the answers went to Claude.                                                                                    |
 
 A `Question` (`ChatQuestion`): `label`, `question` (Markdown), `kind` (`single`, the default when absent, or
 `multiple`), `options` (`[{label, description}]`, `description` `null` when absent; the recommended ones first),
@@ -872,20 +874,20 @@ and for a multiple question `minChoices` and `maxChoices` (`null` when absent: 1
 **Rules** (`QuestionsItem.questions(from:)`), checked in this order; the first one broken refuses the whole set
 with `invalid` and nothing shows:
 
-| Rule | Message |
-| --- | --- |
-| 1 to 26 questions | `questions: give 1 to 26 questions.` |
-| Question *n* has the *n*-th letter as label | `questions: question <n> has the label "<letter>".` |
-| A question's text isn't empty, trimmed | `questions: question <label> has no text.` |
-| 2 to 10 options | `questions: question <label> has 2 to 10 options.` |
-| Option labels not empty, trimmed, and distinct ignoring case | `questions: question <label> has an empty option label, or two the same.` |
-| Option labels one line of at most 200 characters | `questions: question <label> has an option label of several lines or over 200 characters.` |
-| `minChoices` and `maxChoices` only on a multiple question | `questions: question <label> has minChoices or maxChoices without the kind multiple.` |
-| A single question recommends exactly one of its option labels | `questions: question <label> recommends exactly one of its option labels.` |
-| A multiple question recommends one or more of its labels, each once | `questions: question <label> recommends one or more of its option labels, each once.` |
-| `minChoices` and `maxChoices` at least 1 | `questions: question <label> has a minChoices under 1.` (or `maxChoices`) |
-| `minChoices` (1 when absent) at most `maxChoices` | `questions: question <label> has a minChoices over its maxChoices.` |
-| At most `maxChoices` recommended | `questions: question <label> recommends more options than its maxChoices.` |
+| Rule                                                                | Message                                                                                    |
+|---------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+| 1 to 26 questions                                                   | `questions: give 1 to 26 questions.`                                                       |
+| Question *n* has the *n*-th letter as label                         | `questions: question <n> has the label "<letter>".`                                        |
+| A question's text isn't empty, trimmed                              | `questions: question <label> has no text.`                                                 |
+| 2 to 10 options                                                     | `questions: question <label> has 2 to 10 options.`                                         |
+| Option labels not empty, trimmed, and distinct ignoring case        | `questions: question <label> has an empty option label, or two the same.`                  |
+| Option labels one line of at most 200 characters                    | `questions: question <label> has an option label of several lines or over 200 characters.` |
+| `minChoices` and `maxChoices` only on a multiple question           | `questions: question <label> has minChoices or maxChoices without the kind multiple.`      |
+| A single question recommends exactly one of its option labels       | `questions: question <label> recommends exactly one of its option labels.`                 |
+| A multiple question recommends one or more of its labels, each once | `questions: question <label> recommends one or more of its option labels, each once.`      |
+| `minChoices` and `maxChoices` at least 1                            | `questions: question <label> has a minChoices under 1.` (or `maxChoices`)                  |
+| `minChoices` (1 when absent) at most `maxChoices`                   | `questions: question <label> has a minChoices over its maxChoices.`                        |
+| At most `maxChoices` recommended                                    | `questions: question <label> recommends more options than its maxChoices.`                 |
 
 Options and recommended labels are trimmed of spaces. A set that passes gets each question's recommended options
 moved first, in their order among the options, the others keeping theirs; `recommended` is stored in that order.
@@ -927,16 +929,16 @@ Symbol, a color, a sound, a keyboard shortcut, a font or an animation with the M
 shows the request in its card over the composer ([UI › Chat › Picker cards](ui/chat.md#picker-cards)). Each is a
 transcript item whose `type` is its kind (`PickerItem`, `PickerKind`, ChatPickers.swift), with V2's keys:
 
-| Key | Type | Kinds | Rules |
-| --- | --- | --- | --- |
-| `requestID` | `String` | all | The request's id, a new uppercase UUID; the item's `id` too. |
-| `question` | `String` | all | Markdown, trimmed, not empty. |
-| `suggestions` | `[String]`, or `[{light, dark}]` | all | 2 to 10, distinct, trimmed, in Claude's order. A color request asked with `lightAndDark` has pairs `{"light": <color>, "dark": <color>}`; every other suggestion is a string. |
-| `recommended` | `String`, or `{light, dark}` | all | One of `suggestions`, as Claude wrote it. |
-| `answer` | `String?` | all | `null` until the user answers, then set once: the card's marker, the user's own text, or `Skipped`. |
-| `lightAndDark` | `Bool` | `color` | Claude asked for a light and dark pair; written for a color request only, `false` when absent. |
-| `sample` | `String` | `font` | The text the card draws in the chosen font, trimmed, not empty. |
-| `inUse` | `[{shortcut, command}]` | `shortcut` | The app's own shortcuts, in Claude's order, each trimmed: `shortcut` in menu notation, `command` one line of 1 to 200 characters; no shortcut twice; at most 500; may be empty. |
+| Key            | Type                             | Kinds      | Rules                                                                                                                                                                           |
+|----------------|----------------------------------|------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `requestID`    | `String`                         | all        | The request's id, a new uppercase UUID; the item's `id` too.                                                                                                                    |
+| `question`     | `String`                         | all        | Markdown, trimmed, not empty.                                                                                                                                                   |
+| `suggestions`  | `[String]`, or `[{light, dark}]` | all        | 2 to 10, distinct, trimmed, in Claude's order. A color request asked with `lightAndDark` has pairs `{"light": <color>, "dark": <color>}`; every other suggestion is a string.   |
+| `recommended`  | `String`, or `{light, dark}`     | all        | One of `suggestions`, as Claude wrote it.                                                                                                                                       |
+| `answer`       | `String?`                        | all        | `null` until the user answers, then set once: the card's marker, the user's own text, or `Skipped`.                                                                             |
+| `lightAndDark` | `Bool`                           | `color`    | Claude asked for a light and dark pair; written for a color request only, `false` when absent.                                                                                  |
+| `sample`       | `String`                         | `font`     | The text the card draws in the chosen font, trimmed, not empty.                                                                                                                 |
+| `inUse`        | `[{shortcut, command}]`          | `shortcut` | The app's own shortcuts, in Claude's order, each trimmed: `shortcut` in menu notation, `command` one line of 1 to 200 characters; no shortcut twice; at most 500; may be empty. |
 
 Keys V3 doesn't read are kept (`otherKeys`) and written back with the item. An item without `question`,
 `suggestions` (one at least that reads as a string or a pair) or `recommended` is skipped.
@@ -950,32 +952,32 @@ Keys V3 doesn't read are kept (`otherKeys`) and written back with the item. An i
 the sample, each suggestion and the recommendation (and each `shortcut` and `command` of `inUse`); the first one
 broken refuses the call with `invalid`, and nothing shows. `<tool>` is the tool's name.
 
-| Rule | Message |
-| --- | --- |
-| The question isn't empty | `<tool> needs a question.` |
-| A font request's sample isn't empty | `ask_font needs a sample text.` |
-| 2 to 10 suggestions | `<tool> needs 2 to 10 suggestions.` |
-| Color: without `lightAndDark`, each suggestion and the recommendation are one color (a string) | `ask_color needs one color per suggestion, or lightAndDark for light and dark pairs.` |
-| Color: with `lightAndDark`, each suggestion and the recommendation are a pair | `ask_color needs a light and dark pair per suggestion.` |
-| Color: each color is a hex color `#RRGGBB`, its digits in either case, or a system color name with its case ([Text › System colors](text.md#system-colors)), checked in order, a pair's light before its dark | `<color> is not a hex color #RRGGBB or a system color name.` |
-| Color: the suggestions are distinct, colors compared as [Text › System colors](text.md#system-colors) says | `ask_color has a repeated suggestion.` |
-| Color: the recommendation is one of them | `ask_color: the recommended color must be one of the suggestions.` |
-| Other kinds: no suggestion is empty, none twice | `<tool> has an empty or repeated suggestion.` |
-| Symbol: each one is in the Mac's SF Symbols, localized variants included ([Picker catalogues](#picker-catalogues)) | `<name> is not an SF Symbol of this Mac.` |
-| Sound: each one is in the project's sound catalogue | `<name> is not a sound of this Mac or of the project.` |
-| Shortcut: each one is in menu notation ([Text › Shortcut notation](text.md#shortcut-notation)) | `<shortcut> is not a shortcut in menu notation: the modifiers ⌃⌥⇧⌘ in this order, then one key.` |
-| Font: each one is a text style or three parts separated by `/` ([Text › Font notation](text.md#font-notation)) | `<font> is not a font: write a text style such as .headline, or <family>/<weight>/<size> such as System Rounded/Semibold/17.` |
-| Font: a family font's size is 1 to 999 pt with at most one decimal | `<font>: the size must be 1 to 999 pt, with at most one decimal.` |
-| Font: its family is in the project's font catalogue, with that weight | `<font> is not a font of this Mac.` |
-| Animation: `.`, a name of letters, optionally parameters in parentheses ([Text › Animation expressions](text.md#animation-expressions)) | `<suggestion> is not a SwiftUI animation expression.` |
-| Animation: the name is a preset | `<suggestion>: use .smooth, .snappy, .bouncy, .spring, .easeIn, .easeOut, .easeInOut or .linear.` |
-| Animation: the preset's parameters, each once, in its order | `<suggestion>: .<preset> takes (<labels>).`, such as `.spring takes (duration:bounce:).` |
-| Animation: each value within its range | `<suggestion>: <label> must be from <minimum> to <maximum>.` |
-| Other kinds: the recommendation is one of the suggestions | `<tool>: the recommended <kind> must be one of the suggestions.` |
-| Shortcut: at most 500 entries in `inUse` | `ask_shortcut accepts at most 500 inUse entries.` |
-| Shortcut: each `inUse` shortcut is in menu notation | as for the suggestions |
-| Shortcut: each command is one line of 1 to 200 characters | `ask_shortcut: the command of <shortcut> in inUse must be one line of 1 to 200 characters.` |
-| Shortcut: no shortcut twice in `inUse` | `ask_shortcut: <shortcut> appears twice in inUse.` |
+| Rule                                                                                                                                                                                                          | Message                                                                                                                       |
+|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| The question isn't empty                                                                                                                                                                                      | `<tool> needs a question.`                                                                                                    |
+| A font request's sample isn't empty                                                                                                                                                                           | `ask_font needs a sample text.`                                                                                               |
+| 2 to 10 suggestions                                                                                                                                                                                           | `<tool> needs 2 to 10 suggestions.`                                                                                           |
+| Color: without `lightAndDark`, each suggestion and the recommendation are one color (a string)                                                                                                                | `ask_color needs one color per suggestion, or lightAndDark for light and dark pairs.`                                         |
+| Color: with `lightAndDark`, each suggestion and the recommendation are a pair                                                                                                                                 | `ask_color needs a light and dark pair per suggestion.`                                                                       |
+| Color: each color is a hex color `#RRGGBB`, its digits in either case, or a system color name with its case ([Text › System colors](text.md#system-colors)), checked in order, a pair's light before its dark | `<color> is not a hex color #RRGGBB or a system color name.`                                                                  |
+| Color: the suggestions are distinct, colors compared as [Text › System colors](text.md#system-colors) says                                                                                                    | `ask_color has a repeated suggestion.`                                                                                        |
+| Color: the recommendation is one of them                                                                                                                                                                      | `ask_color: the recommended color must be one of the suggestions.`                                                            |
+| Other kinds: no suggestion is empty, none twice                                                                                                                                                               | `<tool> has an empty or repeated suggestion.`                                                                                 |
+| Symbol: each one is in the Mac's SF Symbols, localized variants included ([Picker catalogues](#picker-catalogues))                                                                                            | `<name> is not an SF Symbol of this Mac.`                                                                                     |
+| Sound: each one is in the project's sound catalogue                                                                                                                                                           | `<name> is not a sound of this Mac or of the project.`                                                                        |
+| Shortcut: each one is in menu notation ([Text › Shortcut notation](text.md#shortcut-notation))                                                                                                                | `<shortcut> is not a shortcut in menu notation: the modifiers ⌃⌥⇧⌘ in this order, then one key.`                              |
+| Font: each one is a text style or three parts separated by `/` ([Text › Font notation](text.md#font-notation))                                                                                                | `<font> is not a font: write a text style such as .headline, or <family>/<weight>/<size> such as System Rounded/Semibold/17.` |
+| Font: a family font's size is 1 to 999 pt with at most one decimal                                                                                                                                            | `<font>: the size must be 1 to 999 pt, with at most one decimal.`                                                             |
+| Font: its family is in the project's font catalogue, with that weight                                                                                                                                         | `<font> is not a font of this Mac.`                                                                                           |
+| Animation: `.`, a name of letters, optionally parameters in parentheses ([Text › Animation expressions](text.md#animation-expressions))                                                                       | `<suggestion> is not a SwiftUI animation expression.`                                                                         |
+| Animation: the name is a preset                                                                                                                                                                               | `<suggestion>: use .smooth, .snappy, .bouncy, .spring, .easeIn, .easeOut, .easeInOut or .linear.`                             |
+| Animation: the preset's parameters, each once, in its order                                                                                                                                                   | `<suggestion>: .<preset> takes (<labels>).`, such as `.spring takes (duration:bounce:).`                                      |
+| Animation: each value within its range                                                                                                                                                                        | `<suggestion>: <label> must be from <minimum> to <maximum>.`                                                                  |
+| Other kinds: the recommendation is one of the suggestions                                                                                                                                                     | `<tool>: the recommended <kind> must be one of the suggestions.`                                                              |
+| Shortcut: at most 500 entries in `inUse`                                                                                                                                                                      | `ask_shortcut accepts at most 500 inUse entries.`                                                                             |
+| Shortcut: each `inUse` shortcut is in menu notation                                                                                                                                                           | as for the suggestions                                                                                                        |
+| Shortcut: each command is one line of 1 to 200 characters                                                                                                                                                     | `ask_shortcut: the command of <shortcut> in inUse must be one line of 1 to 200 characters.`                                   |
+| Shortcut: no shortcut twice in `inUse`                                                                                                                                                                        | `ask_shortcut: <shortcut> appears twice in inUse.`                                                                            |
 
 The checks of a suggestion run in the order of `suggestions`, every check on one suggestion before the next, and
 name the first that fails.
@@ -1111,10 +1113,10 @@ The images aren't sent back to Claude, which had them.
 The images Claude shows with `show_image` ([MCP › show_image](mcp.md#show_image)), as V2's item (`ImagesItem`,
 `ChatSession.postImages`):
 
-| Key | Type | Rules |
-| --- | --- | --- |
-| `caption` | `String?` | Markdown shown above the images, trimmed; `null` when Claude gave none or it is blank. |
-| `images` | `[Attachment]` | 1 to 10 images stored in `.hephaestus/chats/<CHAT-ID>/` as `<UUID>-<name>`, in the order of the paths ([Message files](#message-files)). |
+| Key       | Type           | Rules                                                                                                                                    |
+|-----------|----------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| `caption` | `String?`      | Markdown shown above the images, trimmed; `null` when Claude gave none or it is blank.                                                   |
+| `images`  | `[Attachment]` | 1 to 10 images stored in `.hephaestus/chats/<CHAT-ID>/` as `<UUID>-<name>`, in the order of the paths ([Message files](#message-files)). |
 
 ```json
 {"type":"images","id":"9F0A1B2C-3D4E-4F5A-8B6C-7D8E9F0A1B2C","created":"2026-11-03T22:10:04Z","caption":"The new icon at 1024 px.","images":[{"id":"1A2B3C4D-5E6F-4A7B-8C9D-0E1F2A3B4C5D","name":"icon-1024.png","path":"chats/3F2504E0-4F89-11D3-9A0C-0305E82C3301/1A2B3C4D-5E6F-4A7B-8C9D-0E1F2A3B4C5D-icon-1024.png","contentType":"image/png","size":98418}]}
@@ -1122,12 +1124,12 @@ The images Claude shows with `show_image` ([MCP › show_image](mcp.md#show_imag
 
 The rules, in this order, refuse the whole call (`invalid`) and store nothing:
 
-| Rule | Message |
-| --- | --- |
-| 1 to 10 paths | `show_image needs 1 to 10 images.` |
-| Each path (absolute, from `~/`, or from the project's folder) names a regular file that can be read | `<path> is not a readable file.` |
-| Each file is at most 20 MB, and all together | `<name> is larger than 20 MB.`, `The attachments of one request exceed 20 MB.` |
-| Each file starts with a PNG (`89 50 4E 47 0D 0A 1A 0A`), JPEG (`FF D8 FF`), GIF (`GIF87a`, `GIF89a`) or WebP (`RIFF`, 4 bytes, `WEBP`) signature | `<path> is not a PNG, JPEG, GIF or WebP image.` |
+| Rule                                                                                                                                             | Message                                                                        |
+|--------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| 1 to 10 paths                                                                                                                                    | `show_image needs 1 to 10 images.`                                             |
+| Each path (absolute, from `~/`, or from the project's folder) names a regular file that can be read                                              | `<path> is not a readable file.`                                               |
+| Each file is at most 20 MB, and all together                                                                                                     | `<name> is larger than 20 MB.`, `The attachments of one request exceed 20 MB.` |
+| Each file starts with a PNG (`89 50 4E 47 0D 0A 1A 0A`), JPEG (`FF D8 FF`), GIF (`GIF87a`, `GIF89a`) or WebP (`RIFF`, 4 bytes, `WEBP`) signature | `<path> is not a PNG, JPEG, GIF or WebP image.`                                |
 
 The signature decides the stored `contentType` (`image/png`, `image/jpeg`, `image/gif`, `image/webp`), whatever
 the extension. The same path twice is stored twice. The item is the main conversation's, whatever agent made the
@@ -1139,13 +1141,13 @@ A user item's `attachments`, as V2's `Attachment` (`MessageAttachment` in ChatDa
 into the chat's folder, `.hephaestus/chats/<CHAT-ID>/<id>-<name>`, and never changed; it moves to the Trash with
 the chat's folder.
 
-| Key | Type | Required | Default | Rules |
-| --- | --- | --- | --- | --- |
-| `id` | `String` | yes | — | An uppercase UUID, unique in the chat; the stored file's name starts with it. |
-| `name` | `String` | yes | — | The name shown, one path component, such as `screenshot.png`. |
-| `path` | `String` | yes | — | Relative to `.hephaestus/`: `chats/<CHAT-ID>/<id>-<name>`. |
-| `contentType` | `String` | no | `application/octet-stream` | A MIME type: the name's extension's preferred one (`UTType(filenameExtension:)`), else the default. |
-| `size` | `Int` | no | `0` | In bytes; 0 when unknown. |
+| Key           | Type     | Required | Default                    | Rules                                                                                               |
+|---------------|----------|----------|----------------------------|-----------------------------------------------------------------------------------------------------|
+| `id`          | `String` | yes      | —                          | An uppercase UUID, unique in the chat; the stored file's name starts with it.                       |
+| `name`        | `String` | yes      | —                          | The name shown, one path component, such as `screenshot.png`.                                       |
+| `path`        | `String` | yes      | —                          | Relative to `.hephaestus/`: `chats/<CHAT-ID>/<id>-<name>`.                                          |
+| `contentType` | `String` | no       | `application/octet-stream` | A MIME type: the name's extension's preferred one (`UTType(filenameExtension:)`), else the default. |
+| `size`        | `Int`    | no       | `0`                        | In bytes; 0 when unknown.                                                                           |
 
 - Other keys are kept and written back after these. An entry without `id`, `name` or `path` is skipped.
 - **Reading a file** (`MessageAttachment.url(inProject:)`): only a `path` of three parts, `chats`, a folder and
@@ -1174,20 +1176,20 @@ the chat's folder.
 2.1.309 in `ChatDataTests/Fixtures`) into items and events. A line that isn't a JSON object is
 skipped.
 
-| Line | Result |
-| --- | --- |
-| `system` `init` | A CLI turn opens. The first of a process sets `sessionStarted` and checks `mcp_servers` for `hephaestus`. |
-| `system` `status` | `compacting` starts a compaction; the next `status` ends it. |
-| `system` `compact_boundary` | The compaction line, from `compact_metadata.trigger` and `pre_tokens`. |
-| `stream_event` | `message_start` records the message's id and model; `content_block_start` opens block `index`; a `text_delta` (main conversation) streams text into the chat; `thinking_delta` accumulates. Others are ignored. A line's message is its `api_message_id`, else the latest `message_start` of its `parent_tool_use_id`. |
-| `assistant` | One item per block of `message.content`: `text` → `assistant` (none when empty), `thinking` → `thinking` (none when empty), `tool_use` → `toolUse`. A block takes the index of the first open block of its message with its type and no item yet, else the next index of the message. |
-| `user` with `tool_result` blocks | One `toolResult` each: `content` as a string, or its `text` parts joined with LF, then one line of compact JSON per part that is neither text nor image. |
-| `control_request` `can_use_tool` | A `permissionRequest` item: the CLI asks ([Chat processes › Permissions](#permissions)). Another subtype is refused at once: `Unsupported control request: <subtype>`. |
-| `control_response` | Matched to the app's request by `request_id`. |
-| `control_cancel_request` | The request is cancelled: `decision` `deny`, `decidedBy` `null`. |
-| `result` | Open text and thinking blocks with text become items, open calls are dropped; then a `result` item: `durationMs` = `duration_ms`, `costUSD` = `total_cost_usd`, `isError` = `is_error`, `summary` null without error, else `Stopped by the user.` for the first result after Stop, else `result` for subtype `success`, else the `errors` joined with LF, else the `subtype`. The CLI turn closes. |
-| `command_lifecycle` | The state of the message whose `uuid` is `command_uuid`. |
-| Others (`rate_limit_event`, `keep_alive`…) | Ignored. |
+| Line                                       | Result                                                                                                                                                                                                                                                                                                                                                                                             |
+|--------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `system` `init`                            | A CLI turn opens. The first of a process sets `sessionStarted` and checks `mcp_servers` for `hephaestus`.                                                                                                                                                                                                                                                                                          |
+| `system` `status`                          | `compacting` starts a compaction; the next `status` ends it.                                                                                                                                                                                                                                                                                                                                       |
+| `system` `compact_boundary`                | The compaction line, from `compact_metadata.trigger` and `pre_tokens`.                                                                                                                                                                                                                                                                                                                             |
+| `stream_event`                             | `message_start` records the message's id and model; `content_block_start` opens block `index`; a `text_delta` (main conversation) streams text into the chat; `thinking_delta` accumulates. Others are ignored. A line's message is its `api_message_id`, else the latest `message_start` of its `parent_tool_use_id`.                                                                             |
+| `assistant`                                | One item per block of `message.content`: `text` → `assistant` (none when empty), `thinking` → `thinking` (none when empty), `tool_use` → `toolUse`. A block takes the index of the first open block of its message with its type and no item yet, else the next index of the message.                                                                                                              |
+| `user` with `tool_result` blocks           | One `toolResult` each: `content` as a string, or its `text` parts joined with LF, then one line of compact JSON per part that is neither text nor image.                                                                                                                                                                                                                                           |
+| `control_request` `can_use_tool`           | A `permissionRequest` item: the CLI asks ([Chat processes › Permissions](#permissions)). Another subtype is refused at once: `Unsupported control request: <subtype>`.                                                                                                                                                                                                                             |
+| `control_response`                         | Matched to the app's request by `request_id`.                                                                                                                                                                                                                                                                                                                                                      |
+| `control_cancel_request`                   | The request is cancelled: `decision` `deny`, `decidedBy` `null`.                                                                                                                                                                                                                                                                                                                                   |
+| `result`                                   | Open text and thinking blocks with text become items, open calls are dropped; then a `result` item: `durationMs` = `duration_ms`, `costUSD` = `total_cost_usd`, `isError` = `is_error`, `summary` null without error, else `Stopped by the user.` for the first result after Stop, else `result` for subtype `success`, else the `errors` joined with LF, else the `subtype`. The CLI turn closes. |
+| `command_lifecycle`                        | The state of the message whose `uuid` is `command_uuid`.                                                                                                                                                                                                                                                                                                                                           |
+| Others (`rate_limit_event`, `keep_alive`…) | Ignored.                                                                                                                                                                                                                                                                                                                                                                                           |
 
 ### Chat processes
 
@@ -1200,12 +1202,12 @@ The first that applies: Settings ▸ Chat's path (`claudePath`); `HEPHAESTUS_CLA
 shell's `PATH`. A path set in Settings or the variable that isn't an executable file is an error, and nothing
 else is tried. Then `<path> --version` (30 s): the version is its output's first `[0-9]+(\.[0-9]+)+`.
 
-| Outcome | Status |
-| --- | --- |
-| Not found | `Claude CLI not found. Install Claude Code, or set its path in Settings ▸ Chat.` |
-| Set but not executable | `<path> is not an executable file.` |
-| `--version` fails | `<path> --version failed: <reason>.`: `timeout`, the first line of its standard error without final periods, or `exit code <n>` |
-| A version | Available. |
+| Outcome                | Status                                                                                                                          |
+|------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| Not found              | `Claude CLI not found. Install Claude Code, or set its path in Settings ▸ Chat.`                                                |
+| Set but not executable | `<path> is not an executable file.`                                                                                             |
+| `--version` fails      | `<path> --version failed: <reason>.`: `timeout`, the first line of its standard error without final periods, or `exit code <n>` |
+| A version              | Available.                                                                                                                      |
 
 The check runs once the projects and tools are loaded, and again after the path changes or **Look Again**. Then
 the model probe reads the CLI's models and commands: `<path> -p --input-format stream-json --output-format
@@ -1276,14 +1278,14 @@ before the text block, `{"type":"image","source":{"type":"base64","media_type":"
 each a [Claude image](#claude-images): a message whose image comes after its text wouldn't call its skill.
 `<text>` is the message, then, for the item its chip carried, a blank line and one line V3 writes:
 
-| Item | Line |
-| --- | --- |
-| The project | `Attached: project ORD` |
-| A ticket | `Attached: ticket ORD-142 of project ORD` |
-| A service, a request | `Attached: service payments-api of project ORD, as seen in Staging`; `Attached: request req-8f3a of project ORD, as seen in Staging` |
-| A run, a release | `Attached: run 1288 of project ORD`; `Attached: release v1.4.0 of project ORD` |
-| An operation | `Attached: operation createOrder of project ORD` |
-| A file (a skill's run) | `Attached: file /absolute/path` |
+| Item                   | Line                                                                                                                                 |
+|------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| The project            | `Attached: project ORD`                                                                                                              |
+| A ticket               | `Attached: ticket ORD-142 of project ORD`                                                                                            |
+| A service, a request   | `Attached: service payments-api of project ORD, as seen in Staging`; `Attached: request req-8f3a of project ORD, as seen in Staging` |
+| A run, a release       | `Attached: run 1288 of project ORD`; `Attached: release v1.4.0 of project ORD`                                                       |
+| An operation           | `Attached: operation createOrder of project ORD`                                                                                     |
+| A file (a skill's run) | `Attached: file /absolute/path`                                                                                                      |
 
 #### Turns
 
@@ -1293,14 +1295,14 @@ other than `queued` and `started` finishes it; a `result` closes the CLI turn an
 `started`, or the oldest without a state. A message sent during a turn is written at once: the CLI runs it
 after its current CLI turn. The turn's end writes `updated`.
 
-| State | When |
-| --- | --- |
-| `starting` | A process was started; its first `system/init` hasn't come. |
-| `running` | A turn runs. |
-| `waitingPermission` | A card waits: the CLI's request, or the app's. |
-| `waitingAnswers` | No turn runs, and the chat's transcript, read, has questions ([Questions](#questions)) or a picker request ([Picker requests](#picker-requests)) waiting. |
-| `error` | The CLI couldn't start, didn't start in 60 s, or exited during a turn on its own. Until the next message. |
-| `idle` | Otherwise. |
+| State               | When                                                                                                                                                      |
+|---------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `starting`          | A process was started; its first `system/init` hasn't come.                                                                                               |
+| `running`           | A turn runs.                                                                                                                                              |
+| `waitingPermission` | A card waits: the CLI's request, or the app's.                                                                                                            |
+| `waitingAnswers`    | No turn runs, and the chat's transcript, read, has questions ([Questions](#questions)) or a picker request ([Picker requests](#picker-requests)) waiting. |
+| `error`             | The CLI couldn't start, didn't start in 60 s, or exited during a turn on its own. Until the next message.                                                 |
+| `idle`              | Otherwise.                                                                                                                                                |
 
 #### Permissions
 
@@ -1348,14 +1350,14 @@ a tool the user's Claude Code settings allow); otherwise it sends `can_use_tool`
 setting **Edit the project's files** (`chat.fileEdits` in the user defaults: `never`, `askFirst`, `always`;
 `askFirst` when unset) read at that moment:
 
-| Request | Setting | Answer |
-| --- | --- | --- |
-| `Read`, `Grep`, `Glob` inside the project's folder | Any | `allow`, no item |
-| `Read`, `Grep`, `Glob` outside it | Any | A `permissionRequest` item: a card |
-| `Edit`, `Write`, `NotebookEdit` | `never` | `deny`, `The user doesn't let Claude edit files from chats (Settings ▸ Chat).`, no item |
-| `Edit`, `Write`, `NotebookEdit` | `askFirst` | A card |
-| `Edit`, `Write`, `NotebookEdit` inside the project's folder, not in its `.hephaestus/` | `always` | `allow`, no item |
-| `Edit`, `Write`, `NotebookEdit` in `.hephaestus/` or outside the project's folder | `always` | A card |
+| Request                                                                                | Setting    | Answer                                                                                  |
+|----------------------------------------------------------------------------------------|------------|-----------------------------------------------------------------------------------------|
+| `Read`, `Grep`, `Glob` inside the project's folder                                     | Any        | `allow`, no item                                                                        |
+| `Read`, `Grep`, `Glob` outside it                                                      | Any        | A `permissionRequest` item: a card                                                      |
+| `Edit`, `Write`, `NotebookEdit`                                                        | `never`    | `deny`, `The user doesn't let Claude edit files from chats (Settings ▸ Chat).`, no item |
+| `Edit`, `Write`, `NotebookEdit`                                                        | `askFirst` | A card                                                                                  |
+| `Edit`, `Write`, `NotebookEdit` inside the project's folder, not in its `.hephaestus/` | `always`   | `allow`, no item                                                                        |
+| `Edit`, `Write`, `NotebookEdit` in `.hephaestus/` or outside the project's folder      | `always`   | A card                                                                                  |
 
 - The path is `file_path` (`Read`, `Edit`, `Write`), `notebook_path` (`NotebookEdit`) or `path` (`Grep`, `Glob`;
   the project's folder without one).
@@ -1368,26 +1370,26 @@ setting **Edit the project's files** (`chat.fileEdits` in the user defaults: `ne
 
 #### Stop, end and quit
 
-| Event | What happens |
-| --- | --- |
-| Stop | Each card waiting is refused (the CLI's with `The user stopped Claude.`), recorded with this Mac's name; the line `Stopped by the user.`; the `interrupt` control request. Without a `result` 5 s later, SIGINT, then SIGTERM, then SIGKILL, 5 s apart, to the process group. |
-| No turn for 20 min | stdin closed, then SIGTERM and SIGKILL, 5 s apart. The next message starts a process with `--resume`. |
-| No `system/init` in 60 s | SIGTERM, SIGKILL 5 s later; the error line. |
-| The app quits | A turn in progress gets its line and its cards are cancelled; SIGTERM, SIGKILL after 3 s. |
-| A resumed process exits before its `system/init`, its standard error saying `No conversation found with session ID` | `sessionStarted` false, the warning line, and one launch again with `--session-id`, writing the same messages. |
-| Any exit | Open blocks finish as items; the cards still waiting are cancelled; the token and the MCP configuration go. |
-| `set_model`, `apply_flag_settings` | A model or effort change of a chat whose process runs: `{"subtype":"set_model","model":<model>}`, `{"subtype":"apply_flag_settings","settings":{"effortLevel":<effort>}}`. |
+| Event                                                                                                               | What happens                                                                                                                                                                                                                                                                  |
+|---------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Stop                                                                                                                | Each card waiting is refused (the CLI's with `The user stopped Claude.`), recorded with this Mac's name; the line `Stopped by the user.`; the `interrupt` control request. Without a `result` 5 s later, SIGINT, then SIGTERM, then SIGKILL, 5 s apart, to the process group. |
+| No turn for 20 min                                                                                                  | stdin closed, then SIGTERM and SIGKILL, 5 s apart. The next message starts a process with `--resume`.                                                                                                                                                                         |
+| No `system/init` in 60 s                                                                                            | SIGTERM, SIGKILL 5 s later; the error line.                                                                                                                                                                                                                                   |
+| The app quits                                                                                                       | A turn in progress gets its line and its cards are cancelled; SIGTERM, SIGKILL after 3 s.                                                                                                                                                                                     |
+| A resumed process exits before its `system/init`, its standard error saying `No conversation found with session ID` | `sessionStarted` false, the warning line, and one launch again with `--session-id`, writing the same messages.                                                                                                                                                                |
+| Any exit                                                                                                            | Open blocks finish as items; the cards still waiting are cancelled; the token and the MCP configuration go.                                                                                                                                                                   |
+| `set_model`, `apply_flag_settings`                                                                                  | A model or effort change of a chat whose process runs: `{"subtype":"set_model","model":<model>}`, `{"subtype":"apply_flag_settings","settings":{"effortLevel":<effort>}}`.                                                                                                    |
 
 ### Agents
 
 V2's workflows and agents (`ChatAgents.swift`), checked on V2's captures `stream-workflow.jsonl` with its folder,
 `stream-workflow-stop.jsonl` and `stream-background-agent.jsonl` (`ChatAgentsTests`).
 
-| Record | Made when | `id` | Title |
-| --- | --- | --- | --- |
-| workflow (`ChatWorkflow`) | `system/task_started` with `task_type` `local_workflow` | the line's `task_id` | `summary`: its `description`, else `Workflow` |
-| workflow agent (`ChatAgent`, kind `workflow`) | a `workflow_agent` entry of a `task_progress` line, or a `started` entry of the run's `journal.jsonl` | `agentId` | `label`, else `Agent` |
-| sub-agent (`ChatAgent`, kind `subagent`) | a `toolUse` item `Agent` or `Task` of the CLI | the call's id | its `description`, else `subagent_type`, else `Agent` |
+| Record                                        | Made when                                                                                             | `id`                 | Title                                                 |
+|-----------------------------------------------|-------------------------------------------------------------------------------------------------------|----------------------|-------------------------------------------------------|
+| workflow (`ChatWorkflow`)                     | `system/task_started` with `task_type` `local_workflow`                                               | the line's `task_id` | `summary`: its `description`, else `Workflow`         |
+| workflow agent (`ChatAgent`, kind `workflow`) | a `workflow_agent` entry of a `task_progress` line, or a `started` entry of the run's `journal.jsonl` | `agentId`            | `label`, else `Agent`                                 |
+| sub-agent (`ChatAgent`, kind `subagent`)      | a `toolUse` item `Agent` or `Task` of the CLI                                                         | the call's id        | its `description`, else `subagent_type`, else `Agent` |
 
 - A workflow keeps `toolUseID` (its Workflow call), `runID`, `name` (`workflow_name`), `summary` (a
   `task_progress`'s new `summary` replaces it), `state`, `started`, `ended`. An agent keeps `kind`, `workflowID`,
@@ -1429,10 +1431,10 @@ V2's background work: Claude starts work that goes on after its turn, a command 
 `run_in_background`, an agent in the background, a workflow. Claude Code reports it in `system` lines, checked on
 V2's capture `stream-background-bash.jsonl` (`BackgroundWorkTests`):
 
-| `subtype` | Sent when | Read |
-| --- | --- | --- |
+| `subtype`                  | Sent when                        | Read                                                                              |
+|----------------------------|----------------------------------|-----------------------------------------------------------------------------------|
 | `background_tasks_changed` | a background task starts or ends | `tasks`, each `task_id`: the tasks still running (`StreamOutput.backgroundTasks`) |
-| `task_notification` | a task ends | `task_id` (`StreamOutput.taskNotification`) |
+| `task_notification`        | a task ends                      | `task_id` (`StreamOutput.taskNotification`)                                       |
 
 For each process (`ChatRun`): the tasks running (`backgroundTasks`), every task a `background_tasks_changed` listed
 (`listedTasks`), and whether the CLI owes a turn (`notificationPending`):
@@ -1449,15 +1451,15 @@ The process has **background work** while a task runs or a turn is owed (`hasBac
 a changed context window waits for it too. The status bar counts an idle chat with background work as running,
 "Running in background" ([Navigation › Status bar](ui/navigation.md#status-bar)).
 
-| Lines of the capture | Tasks | Turn owed | State | Background work |
-| --- | --- | --- | --- | --- |
-| 1 `system/init` | none | no | running | no |
-| 18 `background_tasks_changed` `bw1kgc2rd` | `bw1kgc2rd` | no | running | yes |
-| 29 `result` | `bw1kgc2rd` | no | idle | yes |
-| 32 `task_notification` `bw1kgc2rd` | `bw1kgc2rd` | yes | idle | yes |
-| 33 `background_tasks_changed` `[]` | none | yes | idle | yes |
-| 34 `system/init` | none | no | running | no |
-| 43 `result` | none | no | idle | no |
+| Lines of the capture                      | Tasks       | Turn owed | State   | Background work |
+|-------------------------------------------|-------------|-----------|---------|-----------------|
+| 1 `system/init`                           | none        | no        | running | no              |
+| 18 `background_tasks_changed` `bw1kgc2rd` | `bw1kgc2rd` | no        | running | yes             |
+| 29 `result`                               | `bw1kgc2rd` | no        | idle    | yes             |
+| 32 `task_notification` `bw1kgc2rd`        | `bw1kgc2rd` | yes       | idle    | yes             |
+| 33 `background_tasks_changed` `[]`        | none        | yes       | idle    | yes             |
+| 34 `system/init`                          | none        | no        | running | no              |
+| 43 `result`                               | none        | no        | idle    | no              |
 
 ### Chat events
 
@@ -1465,10 +1467,10 @@ What the session reports for the notifications (`ChatEvent`, `ChatSession.onEven
 as V2's `chat.notification` events. `refreshState` computes a chat's state after each change; a change from a
 state the session had already computed reports:
 
-| Kind | `ChatEvent.Kind` | When |
-| --- | --- | --- |
-| needs you | `needsYou` | The state becomes `waitingPermission` or `waitingAnswers` from another one. |
-| finished | `finished` | The state becomes `idle` from `starting`, `running` or `waitingPermission`, and the last turn (the items after the user's last message) has no `Stopped by the user.` line or result. |
+| Kind      | `ChatEvent.Kind` | When                                                                                                                                                                                  |
+|-----------|------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| needs you | `needsYou`       | The state becomes `waitingPermission` or `waitingAnswers` from another one.                                                                                                           |
+| finished  | `finished`       | The state becomes `idle` from `starting`, `running` or `waitingPermission`, and the last turn (the items after the user's last message) has no `Stopped by the user.` line or result. |
 
 - A chat's first state (loading, a new chat) reports nothing, so a relaunch doesn't report the chats already
   waiting; nor does `error`.
@@ -1556,6 +1558,96 @@ its arguments.
 writes the ticket with `chats: [<CHAT-ID>]`, then sets the chat's `ticket` to the new id (V2's feedback link).
 Later tickets aren't linked.
 
+### Implement chats
+
+The chats of Implement and Implement All ([UI › Tickets › Implement](ui/tickets.md#implement)) and of the tools
+`implement_ticket` and `implement_bundle` ([MCP](mcp.md#implement_ticket)), as V2's `chats.implementTicket` and
+`chats.implementBundle`. `Implementer` (ToolsScenes) checks the item and links the chat to it; `ChatSession.startImplementChat` makes the chat, its worktree and its first message ([Architecture](architecture.md#chatdata)).
+
+**Checks**, in order; a failure creates nothing:
+
+| Check                                                                             | Error                                                                                                                 |
+|-----------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| The ticket, or the bundle, is loaded                                              | `notFound`: `Ticket <ID> not found.`, `Bundle <ID> not found.`                                                        |
+| A ticket isn't done                                                               | `conflict`: `<ID> is done; set another status to implement it.`                                                       |
+| A ticket isn't a draft (Claude can't move a draft, [Ticket rules](#ticket-rules)) | `conflict`: `<ID> is a draft; create it to implement it.`                                                             |
+| A bundle is `todo`                                                                | `conflict`: `<ID> is in progress; set it to To Do to implement it.`, `<ID> is done; set it to To Do to implement it.` |
+| A bundle lists a ticket that is loaded and isn't done                             | `conflict`: `<ID> has no ticket left to implement.`                                                                   |
+| The Claude CLI is available                                                       | `unavailable`, as for any message ([Chat processes](#chat-processes))                                                 |
+| An orchestrated ticket chat's branch and worktree are made (below)                | `unavailable`: `Cannot create the branch and worktree of <TICKET-ID>: <reason>`                                       |
+
+**Then:**
+
+1. The [chat file](#chat-file): kind `ticket` with `ticket: <TICKET-ID>` and `questionsBlocked: true`, or kind
+   `bundle` with `bundle: <BUNDLE-ID>`; an orchestrated ticket chat also has `orchestrator: <bundle chat id>`. Its
+   title is `Implement <ID>: <title>` for a ticket, `Implement All <ID>: <title>` for a bundle, cut to 80
+   characters. Its settings are the sheet's; `implement_ticket` and `implement_bundle` give a new chat's (Settings ▸
+   Chat's model and effort, the other settings' defaults), except for an orchestrated ticket chat, which takes its
+   orchestrator's settings as they are at the call.
+2. The link, as the user (`TicketLibrary.linkChat(_:toTicket:by:)`, `startImplementation(of:chat:by:)`): the chat's
+   id is appended to the ticket's `chats`; or to the bundle's `chats` with its status set to `in_progress`, in one
+   write, the bundle's checks made again first. `updated` is set. A link that fails deletes the chat's file and
+   fails with its error.
+3. The first message, as the user's on this Mac: `/hephaestus-skills:implement-ticket <TICKET-ID>`,
+   `/hephaestus-skills:implement-ticket <TICKET-ID> <BUNDLE-ID>` for an orchestrated ticket chat, or
+   `/hephaestus-skills:implement-bundle <BUNDLE-ID>`. The CLI runs it as the call of the [internal
+   skill](#internal-skills), the ids as its arguments.
+
+**Orchestrated ticket chats.** `implement_ticket` called with the token of a chat of kind `bundle`, for a ticket
+that chat's bundle lists, starts an orchestrated ticket chat: the calling chat is its `orchestrator`. Every other
+call, and Implement, starts a ticket chat without one.
+
+**Branch and worktree** of an orchestrated ticket chat, made before its file, V2's steps: `<branch>` is
+`<BUNDLE-ID>/<TICKET-ID>`, such as `ORD-B3/ORD-142`; `<worktree>` is `<data folder>/Worktrees/<project id>/<TICKET-ID>`.
+Each step is a `git` command run in the project's folder, 60 s at most:
+
+1. `git worktree list --porcelain`: when it lists `<worktree>`, `git worktree remove --force --force <worktree>`.
+2. When the folder `<worktree>` still exists, it is deleted; then `git worktree prune`.
+3. When `git show-ref --verify --quiet refs/heads/<branch>` exits with 0, `git branch -D <branch>`.
+4. `git worktree add -b <branch> <worktree> HEAD`: the branch starts at the project's current commit.
+
+- Steps 1 to 3 drop what an earlier chat of the ticket left: a retry starts on a fresh branch.
+- `<reason>`: `git is not available` (the tools have none); `git cannot start: <error>`; `git did not finish within
+  60 seconds`; for a command that exits with another status than 0 (but `show-ref`), its standard error trimmed, or
+  its standard output when the error is empty; `<path> cannot be deleted: <error>`, `<path> cannot be created:
+  <error>`. A project outside a git repository fails at step 1 with git's `fatal: not a git repository…`.
+- One worktree is made at a time, so calls made together never run git in the same repository at once.
+
+**Working folder.** An orchestrated ticket chat's CLI starts in its worktree, at every launch, while its
+orchestrator chat exists, it is its ticket's newest orchestrated chat (the latest `created`) and the folder exists;
+otherwise in the project's folder, as every chat. For a project whose folder is a subfolder of its repository (the
+nearest folder up holding `.git`), it is the same subfolder of the worktree. The file tools treat that folder as
+the project's ([File tools](#file-tools)). The chat commits on its branch; merging it, and removing the worktree and
+the branch, are the bundle's chat's work.
+
+**Reports to the orchestrator.** When a chat with an `orchestrator` goes from `starting`, `running` or
+`waitingPermission` to `idle` or `error`, the app sends the orchestrator chat one message, as the user's on this
+Mac, which starts a turn there after the one at work and reopens it when closed:
+
+| The turn                                                   | Message                                                                      |
+|------------------------------------------------------------|------------------------------------------------------------------------------|
+| was stopped with Stop                                      | `Chat of <TICKET-ID> was stopped.`                                           |
+| left the chat in `error`, or its last `result` is an error | `Chat of <TICKET-ID> ended in error: <reason>`                               |
+| ended otherwise                                            | `Chat of <TICKET-ID> finished its turn:`, a blank line, then the final reply |
+
+- The turn is the items after the chat's last `user` item. The final reply is the turn's last `assistant` item
+  without `parentToolUseID`, empty without one; `<reason>` is the turn's last `system` item of level `error`, else
+  the last `result`'s `summary`.
+- Nothing is sent when the orchestrator chat is gone or the CLI isn't available, nor for a turn that ends waiting
+  for answers (`waitingAnswers`): the turn after the answers reports.
+- [Chat events](#chat-events): a chat with an `orchestrator` reports no `finished`, and its orchestrator reports
+  `finished` only while none of its chats is `starting`, `running` or `waitingPermission`.
+
+**Questions blocked.** While a chat's `questionsBlocked` is true, `ask_questions` and the six picker requests fail
+with `forbidden` and `This chat implements a ticket: it asks the user nothing until the user writes in it.`. The
+first message the user sends with the composer (`ChatSession.send`) sets it to false, in the chat file's write
+that records the message; Resume (`resume-chat`), the first message and the reports don't.
+
+**The item's chats**, as the Tickets window lists them (`ChatSession.chats(ofTicket:)`, `chats(ofBundle:)`): a
+ticket's are the loaded chats whose `ticket` is its id; a bundle's, those whose `bundle` is its id, each followed
+by the chats whose `orchestrator` it is, oldest first. Deleting a chat leaves its id in the `chats` key, kept as
+read. [Mentioned ids](#mentioned-ids) leave a ticket's or bundle's own chats out of its Mentioned In.
+
 ### Chat plugin
 
 The internal skills chats call ([Internal skills](#internal-skills)), as a Claude Code plugin, which every chat's
@@ -1605,15 +1697,15 @@ page.`
 `<repo>` is `github.com/<owner>/<name>`, so that a `GH_HOST` of the user's never sends a call elsewhere. Each
 option and its value are one argument; a run's id and a tag come after `--`.
 
-| Call | Command | Timeout |
-| --- | --- | --- |
-| Runs | `gh run list --repo=<repo> --limit=50 --json=conclusion,createdAt,databaseId,displayTitle,event,headBranch,headSha,number,startedAt,status,updatedAt,workflowName` | 30 s |
-| A run | `gh run view --repo=<repo> --json=<the same>,jobs -- <run id>` | 30 s |
-| A job's log | `gh run view --repo=<repo> --log --job=<job id>` | 60 s |
-| Re-run | `gh run rerun --repo=<repo> [--failed] -- <run id>` | 30 s |
-| Cancel | `gh run cancel --repo=<repo> -- <run id>` | 30 s |
-| Releases | `gh api repos/<owner>/<name>/releases?per_page=50`, then `gh release list --repo=<repo> --limit=50 --exclude-drafts --json=tagName,isLatest` for the latest | 30 s each |
-| A file | `gh release download --repo=<repo> --pattern=<asset> --dir=<folder> -- <tag>` | 30 min |
+| Call        | Command                                                                                                                                                            | Timeout   |
+|-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| Runs        | `gh run list --repo=<repo> --limit=50 --json=conclusion,createdAt,databaseId,displayTitle,event,headBranch,headSha,number,startedAt,status,updatedAt,workflowName` | 30 s      |
+| A run       | `gh run view --repo=<repo> --json=<the same>,jobs -- <run id>`                                                                                                     | 30 s      |
+| A job's log | `gh run view --repo=<repo> --log --job=<job id>`                                                                                                                   | 60 s      |
+| Re-run      | `gh run rerun --repo=<repo> [--failed] -- <run id>`                                                                                                                | 30 s      |
+| Cancel      | `gh run cancel --repo=<repo> -- <run id>`                                                                                                                          | 30 s      |
+| Releases    | `gh api repos/<owner>/<name>/releases?per_page=50`, then `gh release list --repo=<repo> --limit=50 --exclude-drafts --json=tagName,isLatest` for the latest        | 30 s each |
+| A file      | `gh release download --repo=<repo> --pattern=<asset> --dir=<folder> -- <tag>`                                                                                      | 30 min    |
 
 - **gh** is the one the projects' tool lookup found in the login shell's `PATH` ([Loading](#loading)); it runs
   with the login shell's environment without `HEPHAESTUS_*`, `CLICOLOR_FORCE`, `GH_FORCE_TTY`, `GH_DEBUG` and
@@ -1633,13 +1725,13 @@ option and its value are one argument; a run's id and a tag come after `--`.
 
 ### Failures
 
-| Case | Message |
-| --- | --- |
-| No GitHub page | `Project <ID> has no GitHub page.` |
-| No gh | `Install the GitHub CLI (gh) to see runs and releases.` |
-| gh exits with 4 (no login) | `Run gh auth login in Terminal to see runs and releases.` |
-| gh fails otherwise | `gh <command> failed: <reason>.`, the reason `timeout`, the first line of its standard error without final periods, or `exit code <n>` |
-| Output not as expected | `gh <command> returned unexpected output: <reason>.` |
+| Case                       | Message                                                                                                                                |
+|----------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+| No GitHub page             | `Project <ID> has no GitHub page.`                                                                                                     |
+| No gh                      | `Install the GitHub CLI (gh) to see runs and releases.`                                                                                |
+| gh exits with 4 (no login) | `Run gh auth login in Terminal to see runs and releases.`                                                                              |
+| gh fails otherwise         | `gh <command> failed: <reason>.`, the reason `timeout`, the first line of its standard error without final periods, or `exit code <n>` |
+| Output not as expected     | `gh <command> returned unexpected output: <reason>.`                                                                                   |
 
 ### Downloads
 
@@ -1663,17 +1755,17 @@ environment sets it, runs in the project's folder with the login shell's environ
 then SIGKILL). The Argo CD commands use the Application's namespace: `<namespace>` of `<namespace>/<name>`, else
 `argocd`.
 
-| Call | Command |
-| --- | --- |
-| Deployments | `get deployments -o json` |
-| A Deployment's status | `get deployment/<deployment> -o json`, then `get pods --selector=<its matchLabels> -o json` |
-| Logs | `logs <pod or deployment/<deployment>> --tail=<n> --timestamps` (`--all-containers` for the Deployment; `--container`, `--since=<n>s`, `--previous`) |
-| Events | `get events -o json`, those whose object is the Deployment or named after it |
-| Restart | `rollout restart deployment/<deployment>` |
-| Scale | `scale deployment/<deployment> --replicas=<0–100>` |
-| Argo CD status | `get applications.argoproj.io/<name> -o json`: `status.sync.status`, `status.health.status`, the revision, `status.operationState.phase` |
-| Argo CD sync | `patch applications.argoproj.io/<name> --type=merge --patch={"operation":{"initiatedBy":{"username":"Hephaestus"},"sync":{"syncStrategy":{"hook":{}}}}}`, refused while an operation runs |
-| Port forward | `port-forward <target> --address=127.0.0.1 <local>:<remote>`, waiting at most 30 s for `Forwarding from 127.0.0.1:<port> -> <remote>` |
+| Call                  | Command                                                                                                                                                                                   |
+|-----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Deployments           | `get deployments -o json`                                                                                                                                                                 |
+| A Deployment's status | `get deployment/<deployment> -o json`, then `get pods --selector=<its matchLabels> -o json`                                                                                               |
+| Logs                  | `logs <pod or deployment/<deployment>> --tail=<n> --timestamps` (`--all-containers` for the Deployment; `--container`, `--since=<n>s`, `--previous`)                                      |
+| Events                | `get events -o json`, those whose object is the Deployment or named after it                                                                                                              |
+| Restart               | `rollout restart deployment/<deployment>`                                                                                                                                                 |
+| Scale                 | `scale deployment/<deployment> --replicas=<0–100>`                                                                                                                                        |
+| Argo CD status        | `get applications.argoproj.io/<name> -o json`: `status.sync.status`, `status.health.status`, the revision, `status.operationState.phase`                                                  |
+| Argo CD sync          | `patch applications.argoproj.io/<name> --type=merge --patch={"operation":{"initiatedBy":{"username":"Hephaestus"},"sync":{"syncStrategy":{"hook":{}}}}}`, refused while an operation runs |
+| Port forward          | `port-forward <target> --address=127.0.0.1 <local>:<remote>`, waiting at most 30 s for `Forwarding from 127.0.0.1:<port> -> <remote>`                                                     |
 
 Failures: `<command> exited with code <n>: <standard error>` (or `.` without it), `<command> did not finish
 within 60 seconds.`, `Unexpected output from <command>.`, `kubectl was not found in the PATH of the login shell.`,
@@ -1826,15 +1918,15 @@ fails with `Virtual machines need a Mac with Apple silicon.` The app carries the
 
 `VirtualMachines/Images/<IMAGE-ID>/image.yml`, `ImageFile`, written with mode 0600.
 
-| Swift name | Key | Type | Required | Rules |
-| --- | --- | --- | --- | --- |
-| schema | `schema` | `Int` | no | `1` |
-| id | `id` | `String` | yes | The folder's name. |
-| version, build | `version`, `build` | `String` | yes | ipsw.me's, such as `27.2.1`, `26B131`. |
-| state | `state` | `String` | yes | `downloading`, `installing`, `needsSetup`, `ready`, `failed`. |
-| failure | `failure` | `String?` | written as `null` | The failure's message, one line. |
+| Swift name         | Key                    | Type      | Required          | Rules                                                         |
+|--------------------|------------------------|-----------|-------------------|---------------------------------------------------------------|
+| schema             | `schema`               | `Int`     | no                | `1`                                                           |
+| id                 | `id`                   | `String`  | yes               | The folder's name.                                            |
+| version, build     | `version`, `build`     | `String`  | yes               | ipsw.me's, such as `27.2.1`, `26B131`.                        |
+| state              | `state`                | `String`  | yes               | `downloading`, `installing`, `needsSetup`, `ready`, `failed`. |
+| failure            | `failure`              | `String?` | written as `null` | The failure's message, one line.                              |
 | userName, password | `userName`, `password` | `String?` | written as `null` | The guest account, in clear: the password of a test computer. |
-| created | `created` | date | yes | |
+| created            | `created`              | date      | yes               |                                                               |
 
 `cores` and `memoryGB` stay as unknown keys; `diskGB`, `progress` and `diskBytes` are dropped.
 
@@ -1854,18 +1946,18 @@ created: 2026-11-09T14:03:00Z
 
 `VirtualMachines/Machines/<VM-ID>/vm.yml`, `MachineFile`.
 
-| Swift name | Key | Type | Required | Rules |
-| --- | --- | --- | --- | --- |
-| schema | `schema` | `Int` | no | `1` |
-| id, name | `id`, `name` | `String` | yes | The name is one line of 1 to 100 characters, trimmed. |
-| imageID, version, build | `imageID`, `version`, `build` | `String` | yes | The image it was made from, as it was then. |
-| cores, memoryGB | `cores`, `memoryGB` | `Int` | yes | |
-| diskGB | `diskGB` | `Int?` | written as `null` | When absent, the size of `Disk.img`. |
-| growContainer | `growContainer` | `Bool` | no, `false` | True while the guest's container has to grow over a grown disk. |
-| startedBy | `startedBy` | `String` | no, `user` | A machine with another value is skipped ([Storage](#storage)). |
-| projectID, chatID | `projectID`, `chatID` | `String?` | written as `null` | Kept as read; the inspector's Project row shows `projectID`'s project. |
-| created | `created` | date | yes | |
-| macAddress | `macAddress` | `String?` | no, written only when set | The network device's MAC address, `xx:xx:xx:xx:xx:xx`, made at the machine's creation, or at its first start when it has none, so its guest's address can be found. |
+| Swift name              | Key                           | Type      | Required                  | Rules                                                                                                                                                               |
+|-------------------------|-------------------------------|-----------|---------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| schema                  | `schema`                      | `Int`     | no                        | `1`                                                                                                                                                                 |
+| id, name                | `id`, `name`                  | `String`  | yes                       | The name is one line of 1 to 100 characters, trimmed.                                                                                                               |
+| imageID, version, build | `imageID`, `version`, `build` | `String`  | yes                       | The image it was made from, as it was then.                                                                                                                         |
+| cores, memoryGB         | `cores`, `memoryGB`           | `Int`     | yes                       |                                                                                                                                                                     |
+| diskGB                  | `diskGB`                      | `Int?`    | written as `null`         | When absent, the size of `Disk.img`.                                                                                                                                |
+| growContainer           | `growContainer`               | `Bool`    | no, `false`               | True while the guest's container has to grow over a grown disk.                                                                                                     |
+| startedBy               | `startedBy`                   | `String`  | no, `user`                | A machine with another value is skipped ([Storage](#storage)).                                                                                                      |
+| projectID, chatID       | `projectID`, `chatID`         | `String?` | written as `null`         | Kept as read; the inspector's Project row shows `projectID`'s project.                                                                                              |
+| created                 | `created`                     | date      | yes                       |                                                                                                                                                                     |
+| macAddress              | `macAddress`                  | `String?` | no, written only when set | The network device's MAC address, `xx:xx:xx:xx:xx:xx`, made at the machine's creation, or at its first start when it has none, so its guest's address can be found. |
 
 `state` and `startedAt` are never stored: after a launch every machine is stopped. A file without `macAddress`
 round-trips byte for byte until the machine is given a MAC address.
@@ -1918,14 +2010,14 @@ No tool starts a setup.
 
 ### Machine lifecycle
 
-| Operation | Rules |
-| --- | --- |
+| Operation                | Rules                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+|--------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Create (`createMachine`) | In this order: Apple silicon; the name; the image exists (`Image <id> not found.`) and is Ready (`The image is not Ready.`); `cores` 2 to this Mac's cores, `memoryGB` 4 to its memory, `diskGB` the image's disk size to 2048 (`<param>: use a number from <min> to <max>.`); fewer than 2 running. Then the folder: copies of the platform files, a clone of the disk grown to `diskGB` ([Growing a disk](#growing-a-disk)), a new MAC address, `vm.yml`; a file that can't be written deletes the folder (`The virtual machine could not be created: <reason>.`). Then it starts; a start that fails leaves it stopped. |
-| Start | Fewer than 2 running; the machine made with its cores, memory, folder and MAC address, without a shared folder. |
-| Stop | Through the agent (`/sbin/shutdown -h now` as root), waiting up to 60 seconds, else at once, as a power cut. A paused machine stops at once. |
-| Pause, Resume | The framework's `pause()` and `resume()`; never stored. |
-| Edit (`updateMachine`) | Stopped only (`The virtual machine is running.`); the name; the ranges, `diskGB` from its current size. A larger disk grows `Disk.img` and sets `growContainer`. |
-| Delete | A running machine stops at once; the folder is deleted (`The virtual machine could not be deleted: <reason>.`). Deleting an image deletes its machines first. |
+| Start                    | Fewer than 2 running; the machine made with its cores, memory, folder and MAC address, without a shared folder.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Stop                     | Through the agent (`/sbin/shutdown -h now` as root), waiting up to 60 seconds, else at once, as a power cut. A paused machine stops at once.                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Pause, Resume            | The framework's `pause()` and `resume()`; never stored.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Edit (`updateMachine`)   | Stopped only (`The virtual machine is running.`); the name; the ranges, `diskGB` from its current size. A larger disk grows `Disk.img` and sets `growContainer`.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Delete                   | A running machine stops at once; the folder is deleted (`The virtual machine could not be deleted: <reason>.`). Deleting an image deletes its machines first.                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 - A machine that stops by itself (the guest shut down, or a failure) leaves those that run; a failure's message
   is kept for the window, which shows it once (`MachineHost.failures`).
@@ -1977,22 +2069,22 @@ whose `startedBy` isn't `user` skipped.
 `<data folder>/settings.yml`: the app's settings. Swift type `SettingsFile`. A missing file gives the defaults; an invalid one is set aside as `settings.yml.invalid`
 and gives the defaults (`DataFolder.readSettings()`).
 
-| Swift name | Key | Type | Required | Default | Rules |
-| --- | --- | --- | --- | --- | --- |
-| schema | `schema` | `Int` | no | `1` | |
-| mcpPort | `mcpPort` | `Int` | no | `47830` | The MCP server's port on 127.0.0.1: 1024–65535 (`SettingsFile.isPort`). `HEPHAESTUS_MCP_PORT` replaces it while set, without changing the file ([MCP](mcp.md#server-lifecycle)). |
-| claudePath | `claudePath` | `String?` | no | absent | The Claude CLI the chats run: an absolute path or one from `~/`; absent finds it ([Chat processes › The CLI](#the-cli)). Written only when set. |
-| chatModel | `chatModel` | `String?` | no | absent | The model of new chats, a CLI model value such as `opus`; absent for `default`. Written only when set. |
-| chatEffort | `chatEffort` | `String?` | no | absent | The effort of new chats (`low`, `medium`, `xhigh`, `max`); absent for `high`. Written only when set. |
-| defaultVMCores | `defaultVMCores` | `Int?` | no | absent (2) | New machines' cores, 2 to this Mac's ([Virtual machines › Defaults](#defaults)). Written only when not the default. |
-| defaultVMMemoryGB | `defaultVMMemoryGB` | `Int?` | no | absent (4) | New machines' memory in GB, 4 to this Mac's. |
-| defaultVMDiskGB | `defaultVMDiskGB` | `Int?` | no | absent (64) | New machines' disk in GB, 32 to 2048. |
-| newWindows | `newWindows` | `String?` | no | absent (`tabs`) | How the windows the app opens appear: `tabs`, as tabs of the frontmost window, or `windows`, each on its own; absent or another value reads as `tabs` (`SettingsFile.opensWindowsAsTabs`). Written when Settings ▸ General changes it ([Navigation › Settings ▸ General](ui/navigation.md#settings--general)). A V3 key. |
-| feedbackProjectID | `feedbackProjectID` | `String?` | no | absent | The project that receives feedback chats ([Navigation › Settings ▸ General](ui/navigation.md#settings--general)); absent for none, which hides the status bar and Help ▸ Send Feedback…. Written after `newWindows`, and removed by None. A V3 key, named as an earlier V2 setting was, which V2 no longer read. |
-| notifyNeedsYou | `notifyNeedsYou` | `Bool?` | no | absent (true) | Whether a chat that starts to wait for the user posts a notification ([UI › Chat › Notifications](ui/chat.md#notifications)). Written, with the next two, when Settings ▸ Notifications changes a toggle ([Navigation › Settings ▸ Notifications](ui/navigation.md#settings--notifications)), after `feedbackProjectID`. V2's key. |
-| notifyFinished | `notifyFinished` | `Bool?` | no | absent (true) | Whether a turn that ends well posts a notification. V2's key. |
-| notifyAISummary | `notifyAISummary` | `Bool?` | no | absent (true) | Whether a notification's line is written by `notification-summary` ([Internal skills](#internal-skills)); false posts the detail at once. V2's key. |
-| unknownKeys | — | `YAMLMapping` | — | empty | [Unknown keys](#unknown-keys). |
+| Swift name        | Key                 | Type          | Required | Default         | Rules                                                                                                                                                                                                                                                                                                                              |
+|-------------------|---------------------|---------------|----------|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| schema            | `schema`            | `Int`         | no       | `1`             |                                                                                                                                                                                                                                                                                                                                    |
+| mcpPort           | `mcpPort`           | `Int`         | no       | `47830`         | The MCP server's port on 127.0.0.1: 1024–65535 (`SettingsFile.isPort`). `HEPHAESTUS_MCP_PORT` replaces it while set, without changing the file ([MCP](mcp.md#server-lifecycle)).                                                                                                                                                   |
+| claudePath        | `claudePath`        | `String?`     | no       | absent          | The Claude CLI the chats run: an absolute path or one from `~/`; absent finds it ([Chat processes › The CLI](#the-cli)). Written only when set.                                                                                                                                                                                    |
+| chatModel         | `chatModel`         | `String?`     | no       | absent          | The model of new chats, a CLI model value such as `opus`; absent for `default`. Written only when set.                                                                                                                                                                                                                             |
+| chatEffort        | `chatEffort`        | `String?`     | no       | absent          | The effort of new chats (`low`, `medium`, `xhigh`, `max`); absent for `high`. Written only when set.                                                                                                                                                                                                                               |
+| defaultVMCores    | `defaultVMCores`    | `Int?`        | no       | absent (2)      | New machines' cores, 2 to this Mac's ([Virtual machines › Defaults](#defaults)). Written only when not the default.                                                                                                                                                                                                                |
+| defaultVMMemoryGB | `defaultVMMemoryGB` | `Int?`        | no       | absent (4)      | New machines' memory in GB, 4 to this Mac's.                                                                                                                                                                                                                                                                                       |
+| defaultVMDiskGB   | `defaultVMDiskGB`   | `Int?`        | no       | absent (64)     | New machines' disk in GB, 32 to 2048.                                                                                                                                                                                                                                                                                              |
+| newWindows        | `newWindows`        | `String?`     | no       | absent (`tabs`) | How the windows the app opens appear: `tabs`, as tabs of the frontmost window, or `windows`, each on its own; absent or another value reads as `tabs` (`SettingsFile.opensWindowsAsTabs`). Written when Settings ▸ General changes it ([Navigation › Settings ▸ General](ui/navigation.md#settings--general)). A V3 key.           |
+| feedbackProjectID | `feedbackProjectID` | `String?`     | no       | absent          | The project that receives feedback chats ([Navigation › Settings ▸ General](ui/navigation.md#settings--general)); absent for none, which hides the status bar and Help ▸ Send Feedback…. Written after `newWindows`, and removed by None. A V3 key, named as an earlier V2 setting was, which V2 no longer read.                   |
+| notifyNeedsYou    | `notifyNeedsYou`    | `Bool?`       | no       | absent (true)   | Whether a chat that starts to wait for the user posts a notification ([UI › Chat › Notifications](ui/chat.md#notifications)). Written, with the next two, when Settings ▸ Notifications changes a toggle ([Navigation › Settings ▸ Notifications](ui/navigation.md#settings--notifications)), after `feedbackProjectID`. V2's key. |
+| notifyFinished    | `notifyFinished`    | `Bool?`       | no       | absent (true)   | Whether a turn that ends well posts a notification. V2's key.                                                                                                                                                                                                                                                                      |
+| notifyAISummary   | `notifyAISummary`   | `Bool?`       | no       | absent (true)   | Whether a notification's line is written by `notification-summary` ([Internal skills](#internal-skills)); false posts the detail at once. V2's key.                                                                                                                                                                                |
+| unknownKeys       | —                   | `YAMLMapping` | —        | empty           | [Unknown keys](#unknown-keys).                                                                                                                                                                                                                                                                                                     |
 
 ```yaml
 schema: 1
@@ -2005,9 +2097,9 @@ mcpPort: 47830
 slashes not escaped, and a final line break. Not in the Keychain, so that a rebuilt app doesn't ask for
 access.
 
-| Key | Value |
-| --- | --- |
-| `schema` | `1` |
+| Key                | Value                                                                                                                 |
+|--------------------|-----------------------------------------------------------------------------------------------------------------------|
+| `schema`           | `1`                                                                                                                   |
 | `mcpExternalToken` | The MCP server's external token: 64 lowercase hexadecimal characters ([MCP › Authentication](mcp.md#authentication)). |
 
 - `DataFolder.externalToken(make:)` reads the token; when the file is missing, isn't a JSON object, or holds no
@@ -2023,10 +2115,11 @@ content the user writes in [System Prompts](ui/system-prompts.md). A V3 addition
   starting or ending with a hyphen, without two in a row (`InternalSkill.isValidName`). Today:
   `set-ticket-title` and `notification-summary`, which the app runs itself ([Running a skill](#internal-skills),
   below, and [Chat events](#chat-events)), and
-  `report-feedback`, `resume-chat` and `resume-agent`, which chats call (`isCalledFromChats`), through the [chat plugin](#chat-plugin):
+  `report-feedback`, `resume-chat`, `resume-agent`, `implement-ticket` and `implement-bundle`, which chats call (`isCalledFromChats`), through the [chat plugin](#chat-plugin):
   a feedback chat's first message calls `report-feedback` ([Feedback chats](#feedback-chats)), Resume calls
-  `resume-chat` ([Closing and deleting chats](#closing-and-deleting-chats)), an agent's Resume `resume-agent` ([Agents](#agents)). The first two are empty by default;
-  `resume-chat`, `resume-agent` and `notification-summary` hold V3's own text, which the user's saved file replaces. Every text the app has Claude act on
+  `resume-chat` ([Closing and deleting chats](#closing-and-deleting-chats)), an agent's Resume `resume-agent` ([Agents](#agents)),
+  Implement `implement-ticket` and Implement All `implement-bundle` ([Implement chats](#implement-chats)). The first two are empty by default;
+  `resume-chat`, `resume-agent`, `notification-summary`, `implement-ticket` and `implement-bundle` hold V3's own text, which the user's saved file replaces. Every text the app has Claude act on
   is an internal skill, never written in the code (the user's rule, 17 November 2026).
 - **File**: `<data folder>/skills/<name>/SKILL.md`, Claude's skill layout. Written atomically by
   `DataFolder.writeSkill(_:of:)`, its folder made when missing: a front matter with `name` (the code's),
@@ -2122,20 +2215,20 @@ They are checked on what the user or Claude changes, never when reading, and val
 written back as they were. A value that breaks one is refused with a `ProjectRuleError`, whose case the
 windows put in their own words; its `description` is the English message of the logs and of Claude's tools:
 
-| Case | Message |
-| --- | --- |
-| `identifierFormat` | `identifier: use 2 to 8 letters A–Z.` |
-| `identifierInUse(id)` | `identifier: <id> is already used by another project.` |
-| `nameLength(field:)` | `<field>: use 1 to 100 characters on one line.` |
-| `relativePath(field:)` | `<field>: use a relative path with / separators and no empty, . or .. component.` |
-| `url(field:)` | `<field>: use an absolute http or https URL.` |
-| `port(field:)` | `<field>: use a port from 1 to 65535.` |
-| `singleLine(field:)` | `<field>: use one line.` |
-| `jaeger(field:)` | `<field>: use a Jaeger as <namespace>/<name>.` |
-| `argoCDApplication(field:)` | `<field>: use an Argo CD application as <name> or <namespace>/<name>.` |
-| `kubeconfig(field:)` | `<field>: use a kubeconfig file as an absolute path or a path starting with ~/.` |
-| `githubPage` | `githubPage: use a page of the form https://github.com/<owner>/<name>.` |
-| `duplicateEnvironment(name)` | `An environment named “<name>” already exists.` |
+| Case                         | Message                                                                           |
+|------------------------------|-----------------------------------------------------------------------------------|
+| `identifierFormat`           | `identifier: use 2 to 8 letters A–Z.`                                             |
+| `identifierInUse(id)`        | `identifier: <id> is already used by another project.`                            |
+| `nameLength(field:)`         | `<field>: use 1 to 100 characters on one line.`                                   |
+| `relativePath(field:)`       | `<field>: use a relative path with / separators and no empty, . or .. component.` |
+| `url(field:)`                | `<field>: use an absolute http or https URL.`                                     |
+| `port(field:)`               | `<field>: use a port from 1 to 65535.`                                            |
+| `singleLine(field:)`         | `<field>: use one line.`                                                          |
+| `jaeger(field:)`             | `<field>: use a Jaeger as <namespace>/<name>.`                                    |
+| `argoCDApplication(field:)`  | `<field>: use an Argo CD application as <name> or <namespace>/<name>.`            |
+| `kubeconfig(field:)`         | `<field>: use a kubeconfig file as an absolute path or a path starting with ~/.`  |
+| `githubPage`                 | `githubPage: use a page of the form https://github.com/<owner>/<name>.`           |
+| `duplicateEnvironment(name)` | `An environment named “<name>” already exists.`                                   |
 
 ## Atomic writes
 

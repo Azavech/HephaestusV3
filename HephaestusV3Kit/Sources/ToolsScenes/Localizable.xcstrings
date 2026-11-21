@@ -53,6 +53,9 @@
     "Claude Code in Terminal" : {
 
     },
+    "Claude wants to start a chat that implements %@" : {
+      "comment" : "An approval card; the value is a ticket or bundle id"
+    },
     "Claude's answer has no title." : {
 
     },
@@ -211,6 +214,9 @@
     },
     "Show Previous Tab" : {
 
+    },
+    "Started the chat that implements %@" : {
+      "comment" : "Claude started a chat; the value is a ticket or bundle id"
     },
     "Starting" : {
       "comment" : "A chat's state in the status bar's popover"

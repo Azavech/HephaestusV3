@@ -581,6 +581,32 @@ public actor TicketLibrary {
         return publish()
     }
 
+    // MARK: Implement (docs/data.md › Implement chats)
+
+    /// Links a chat that implements the ticket: its id is appended to the ticket's `chats`, once.
+    public func linkChat(_ chatID: String, toTicket id: String) throws(TicketError) -> TicketSnapshot {
+        var (file, projectID) = try storedTicket(id)
+        guard !file.chatIDs.contains(chatID) else { return publish() }
+        file.chatIDs.append(chatID)
+        file.updated = now()
+        try write(file, in: projectID)
+        return publish()
+    }
+
+    /// Implement All: checks the bundle again (`ImplementRules`), then appends the chat to its `chats` and sets it
+    /// `in_progress`, in one write.
+    public func startImplementation(of id: String, chat chatID: String) throws(TicketError) -> TicketSnapshot {
+        var (bundle, projectID) = try storedBundle(id)
+        if let refusal = ImplementRules.refusal(of: bundle, ticket: { [tickets] in tickets[projectID]?[$0] }) {
+            throw .conflict(refusal)
+        }
+        if !bundle.chatIDs.contains(chatID) { bundle.chatIDs.append(chatID) }
+        bundle.status = .inProgress
+        bundle.updated = now()
+        try write(bundle, in: projectID)
+        return publish()
+    }
+
     /// Deletes a bundle: its file moves to the Trash; its tickets stay.
     public func deleteBundle(_ id: String) throws(TicketError) -> TicketSnapshot {
         let (bundle, projectID) = try storedBundle(id)

@@ -181,7 +181,9 @@ extension ChatSession {
     /// Resume: sends the call of the internal skill `resume-chat`, which says how to go on.
     public func resume(_ chatID: String) async throws(ChatError) {
         guard let chat = chats[chatID] else { throw .notFound("Chat \(chatID) not found.") }
-        try await send(InternalSkill.resumeChat.command, references: [], to: chatID, projectID: chat.projectID)
+        // The app's call, not the user's words: an implement chat still asks nothing.
+        _ = try await send(InternalSkill.resumeChat.command, references: [], to: chatID, projectID: chat.projectID, origin: nil, title: nil,
+                           images: [], files: [], fromUser: false)
     }
 
     // MARK: close_chat

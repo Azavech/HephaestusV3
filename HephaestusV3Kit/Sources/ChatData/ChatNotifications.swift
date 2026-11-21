@@ -63,6 +63,9 @@ extension ChatSession {
         if waiting.contains(new), !waiting.contains(old) {
             kind = .needsYou
         } else if new == .idle, [.starting, .running, .waitingPermission].contains(old), !lastTurnStopped(chatID) {
+            // A chat a bundle's chat started reports its turn there; the bundle's chat finishes once none of its
+            // chats is at work (docs/ui/chat.md › Notifications).
+            if chat.file.orchestratorChatID != nil || isOrchestrating(chatID) { return }
             kind = .finished
         } else {
             return
@@ -71,14 +74,14 @@ extension ChatSession {
     }
 
     /// The items of the last turn: those after the user's last message.
-    private func lastTurn(_ chatID: String) -> ArraySlice<ChatItem> {
+    func lastTurn(_ chatID: String) -> ArraySlice<ChatItem> {
         let items = transcripts[chatID] ?? []
         let start = items.lastIndex { if case .user = $0 { true } else { false } }.map { $0 + 1 } ?? items.startIndex
         return items[start...]
     }
 
     /// Whether Stop ended the last turn: its line, or its result, says so.
-    private func lastTurnStopped(_ chatID: String) -> Bool {
+    func lastTurnStopped(_ chatID: String) -> Bool {
         lastTurn(chatID).contains { item in
             switch item {
             case .system(let line): line.text == "Stopped by the user."

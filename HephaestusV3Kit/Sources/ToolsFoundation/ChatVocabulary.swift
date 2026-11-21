@@ -182,20 +182,33 @@ nonisolated public struct MentioningChat: Identifiable, Hashable, Sendable {
         case idle, working, waiting, error
     }
 
+    /// What the chat is for, as its row's symbol says.
+    public enum Kind: Hashable, Sendable {
+        /// A conversation.
+        case chat
+        /// A chat that implements a ticket or a bundle (docs/ui/tickets.md › Implement).
+        case implement
+        /// A feedback chat.
+        case feedback
+    }
+
     public let id: String
     public let title: String
     public let projectID: Project.ID
     public let updated: Date
     public let state: State
     public let closed: Bool
+    public let kind: Kind
 
-    public init(id: String, title: String, projectID: Project.ID, updated: Date, state: State = .idle, closed: Bool = false) {
+    public init(id: String, title: String, projectID: Project.ID, updated: Date, state: State = .idle, closed: Bool = false,
+                kind: Kind = .chat) {
         self.id = id
         self.title = title
         self.projectID = projectID
         self.updated = updated
         self.state = state
         self.closed = closed
+        self.kind = kind
     }
 
     /// The samples' chats that mention ORD-142 and ORD-B3, for previews.
@@ -234,4 +247,80 @@ nonisolated public struct ChatMentionsReader: Sendable {
 nonisolated extension EnvironmentValues {
     /// The chats that mention a ticket or bundle; nil lists none.
     @Entry public var chatMentions: ChatMentionsReader? = nil
+}
+
+/// A ticket's or bundle's own chats, as the Tickets window lists them (docs/ui/tickets.md › Chats): a ticket's are
+/// those whose `ticket` is it; a bundle's, its chats each followed by the chats they started. ToolsScenes gives
+/// every window the chat session's; previews pass the samples.
+nonisolated public struct ItemChatsReader: Sendable {
+    private let read: @MainActor @Sendable (String) -> [MentioningChat]
+
+    public init(_ read: @escaping @MainActor @Sendable (String) -> [MentioningChat]) {
+        self.read = read
+    }
+
+    @MainActor
+    public func callAsFunction(_ id: String) -> [MentioningChat] {
+        read(id)
+    }
+
+    /// The samples' chats of ORD-142 and of ORD-B3, for previews.
+    public static let samples = ItemChatsReader { MentioningChat.itemSamples[$0] ?? [] }
+}
+
+extension MentioningChat {
+    /// The samples' own chats of ORD-142 and ORD-B3.
+    public static let itemSamples: [String: [MentioningChat]] = [
+        "ORD-142": [
+            MentioningChat(id: "chat-implement-142", title: "Implement ORD-142: Retry storm between checkout and payments", projectID: "ORD",
+                           updated: Date(timeIntervalSince1970: 1_794_405_600), state: .working, kind: .implement),
+        ],
+        "ORD-B3": [
+            MentioningChat(id: "chat-implement-b3", title: "Implement All ORD-B3: Checkout reliability", projectID: "ORD",
+                           updated: Date(timeIntervalSince1970: 1_794_405_000), state: .idle, kind: .implement),
+            MentioningChat(id: "chat-implement-142", title: "Implement ORD-142: Retry storm between checkout and payments", projectID: "ORD",
+                           updated: Date(timeIntervalSince1970: 1_794_405_600), state: .working, kind: .implement),
+        ],
+    ]
+}
+
+/// A ticket or a bundle to implement (docs/ui/tickets.md › Implement).
+nonisolated public struct ImplementTarget: Identifiable, Hashable, Sendable {
+    public enum Kind: Hashable, Sendable {
+        case ticket, bundle
+    }
+
+    public let kind: Kind
+    /// The ticket's or bundle's id: `ORD-142`, `ORD-B3`.
+    public let id: String
+    public let projectID: Project.ID
+    public let title: String
+
+    public init(_ kind: Kind, id: String, projectID: Project.ID, title: String) {
+        self.kind = kind
+        self.id = id
+        self.projectID = projectID
+        self.title = title
+    }
+}
+
+/// Opens the Implement sheet on a ticket or a bundle. The window gives it to its tool; previews have none.
+nonisolated public struct ImplementAction: Sendable {
+    private let handler: @MainActor @Sendable (ImplementTarget) -> Void
+
+    public init(_ handler: @escaping @MainActor @Sendable (ImplementTarget) -> Void) {
+        self.handler = handler
+    }
+
+    @MainActor
+    public func callAsFunction(_ target: ImplementTarget) {
+        handler(target)
+    }
+}
+
+nonisolated extension EnvironmentValues {
+    /// A ticket's or bundle's own chats; nil lists none.
+    @Entry public var itemChats: ItemChatsReader? = nil
+    /// Opens the Implement sheet; nil where the window can't.
+    @Entry public var implement: ImplementAction? = nil
 }

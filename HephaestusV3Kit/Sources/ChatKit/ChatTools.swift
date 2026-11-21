@@ -13,10 +13,12 @@ public enum ChatGate {
     static let skillRefusal = "An internal skill's run only reads."
 
     /// Nil lets the call run; an error refuses it. A change set to Ask First waits for the user's answer to a
-    /// card in the chat.
+    /// card in the chat, except an implement chat's change of its own items: `bundleTickets` gives a bundle's
+    /// tickets for it; without it, only the chat's own ticket or bundle counts.
     @MainActor
     public static func check(_ caller: MCPCaller, _ operation: ToolOperation, _ arguments: JSONValue, chats: ChatSession,
-                             defaults: UserDefaults = .standard, mode given: ChatPermissionMode? = nil) async -> ToolError? {
+                             defaults: UserDefaults = .standard, mode given: ChatPermissionMode? = nil,
+                             bundleTickets: @MainActor (String) -> [String]? = { _ in nil }) async -> ToolError? {
         if case .internalSkill = caller {
             // The app runs the skill in the background, for its answer alone: it reads, and opens no window.
             return operation.permission == .read && operation.name != "open_in_app" ? nil : ToolError(.forbidden, skillRefusal)
@@ -53,6 +55,13 @@ public enum ChatGate {
         case .changeTickets:
             permission = rule(ChatPreferences.ticketChangesKey)
             refusal = "The user doesn't let Claude change tickets from chats (Settings ▸ Chat)."
+            // An implement chat changes its own items without a card (the user's choice): every ticketID and bundleID
+            // the call names is its own.
+            let named = ["ticketID", "bundleID"].compactMap { arguments[$0]?.stringValue?.uppercased() }
+            if permission == .askFirst, !named.isEmpty,
+               named.allSatisfy({ chats.ownsItem($0, chat: chatID, bundleTickets: bundleTickets) }) {
+                return nil
+            }
         case .deleteTickets:
             permission = rule(ChatPreferences.ticketChangesKey) == .never ? .never : .askFirst
             refusal = "The user doesn't let Claude change tickets from chats (Settings ▸ Chat)."
@@ -226,6 +235,8 @@ public enum ChatTools {
             }
         ) { @MainActor arguments throws(ToolError) in
             guard let chatID = MCPCaller.current.chatID else { throw ToolError(.forbidden, askRefusal) }
+            // An implement chat asks nothing until the user writes in it (docs/data.md › Implement chats).
+            if let refusal = chats.questionsRefusal(in: chatID) { throw ToolError(.forbidden, refusal) }
             let questions = try QuestionsItem.questions(from: arguments)
             let item: QuestionsItem
             do throws(ChatError) {
@@ -338,6 +349,7 @@ public enum ChatTools {
             describe: { _ in ToolCallText(action: action) }
         ) { @MainActor arguments throws(ToolError) in
             guard let chatID = MCPCaller.current.chatID else { throw ToolError(.forbidden, pickerRefusal) }
+            if let refusal = chats.questionsRefusal(in: chatID) { throw ToolError(.forbidden, refusal) }
             let item = try await chats.postPicker(chatID, kind: kind, input: arguments)
             return ["requestID": .string(item.requestID)]
         }

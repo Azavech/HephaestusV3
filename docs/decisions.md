@@ -319,6 +319,25 @@ skills only, each with a name in Claude's skill format and a content, starting w
 | Which shortcut? | ⌥⌘,, beside Settings' ⌘, and Project Settings' ⇧⌘,. | [UI › System Prompts](ui/system-prompts.md) |
 | Which code owns it? | ChatData (the skills and their files) and ChatKit (the view), since the skills are what Claude is told. | [Architecture › ChatKit](architecture.md#chatkit) |
 
+## Implement
+
+The owner asked on 20 November 2026 for V2's Implement on tickets and Implement All on bundles. Asked how V2's
+mechanisms map onto V3, they chose V2's full orchestration for bundles, carried by internal skills; the button in
+the ticket's header with a Chats section listing the ticket's chats; the skills' text in internal skills; and an
+implement chat that changes its own items without a card.
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| How does Implement All work? | As V2's (the owner's choice): a bundle's chat orchestrates one ticket chat per ticket with `implement_ticket`, each on the branch `<bundle id>/<ticket id>` in a git worktree the app makes in `<data folder>/Worktrees/`, and the app reports each one's turn to the bundle's chat. V2's CI chats aren't brought over: V3 has none; the Builds tools read the runs. | [Data › Implement chats](data.md#implement-chats) |
+| Where are the buttons, and the chats? | **Implement…** in the ticket's header (⇧⌘I), its Chats heading and the list's menu; **Implement All…** in the bundle's sidebar menu, as a bundle has no detail. A **Chats** section of the detail lists the ticket's chats (the owner's choice), a bundle's **Chats ▸** menu its own; a new chat opens in the project's Chat window, as feedback's does. | [UI › Tickets › Implement](ui/tickets.md#implement) |
+| Who says what Claude does? | Two internal skills, `implement-ticket` and `implement-bundle`, called from the chats as V2's (the owner's choice), with V3's own default text, so that Implement works before the owner edits them: the orchestration needs the skill to say how to use `implement_ticket` and the reports. No V2 prompt. | [UI › System Prompts › Implement skills](ui/system-prompts.md#implement-skills) |
+| Does an implement chat ask before changing its ticket? | No, under Ask First, for its own ticket, or its bundle and the bundle's tickets (the owner's choice); Never still refuses, Plan Only too. | [MCP › Permissions](mcp.md#permissions) |
+| Which tickets can be implemented? | Neither done (V2) nor a draft: Claude can't move a draft out of Draft. A bundle while To Do with a ticket left, as V2. | [Data › Implement chats](data.md#implement-chats) |
+| Which settings does the sheet offer? | V2's: model, effort, permission mode, Ultracode and context, the inspector's rows, on Settings ▸ Chat's defaults; nothing is saved. | [UI › Tickets › Implement sheet](ui/tickets.md#implement-sheet) |
+| What are the chats' titles? | "Implement ORD-142: <title>", "Implement All ORD-B3: <title>", 80 characters at most: V2's Haiku names aren't brought over. | [UI › Chat › Implement chats](ui/chat.md#implement-chats) |
+| Which chats are the ticket's? | Those whose `ticket` is it (Implement's, a bundle's, the feedback chat that made it), read from the chats rather than the ticket's `chats` key, which Implement still writes as V2 did; Mentioned In leaves them out, as V2's tab did. | [Data › Implement chats](data.md#implement-chats) |
+| When can an implement chat ask questions? | Once the user writes in it, as V2's; Resume doesn't count. | same |
+
 ## Release
 
 The owner chose a GitHub release built by GitHub Actions, without an install page, an updater, Developer ID signing

@@ -108,8 +108,9 @@ final class ChatWorld {
     let session: ChatSession
 
     /// `projectType` is the `type` of the project file, such as `swiftApplication`; none when nil. The picker
-    /// catalogues read fixtures of the world's folder (`PickerCatalogs.Sources.fixtures`).
-    init(projectType: String? = nil) async throws {
+    /// catalogues read fixtures of the world's folder (`PickerCatalogs.Sources.fixtures`). `runner` runs the
+    /// processes, `ChatRunner` by default; `git` puts a stand-in git in the tools' `PATH`, which `runner` answers.
+    init(projectType: String? = nil, runner: any ProcessRunning = ChatRunner(), git: Bool = false) async throws {
         root = FileManager.default.temporaryDirectory.appendingPathComponent("ChatSessionTests-\(UUID().uuidString)").resolvingSymlinksInPath()
         repo = root.appendingPathComponent("Repo")
         try FileManager.default.createDirectory(at: repo.appendingPathComponent(".hephaestus"), withIntermediateDirectories: true)
@@ -122,9 +123,17 @@ final class ChatWorld {
         try data.createIfNeeded()
         try YAMLFile.write(RegistryFile(projects: [repo.path]), to: data.registryFile)
         try data.writeSettings(SettingsFile(claudePath: cli.path))
-        projects = ProjectSession(dataFolder: data, runner: ChatRunner(), processEnvironment: [:])
+        var environment: [String: String] = [:]
+        if git {
+            let bin = root.appendingPathComponent("bin")
+            try FileManager.default.createDirectory(at: bin, withIntermediateDirectories: true)
+            FileManager.default.createFile(atPath: bin.appendingPathComponent("git").path, contents: Data("#!/bin/sh\nexit 1\n".utf8),
+                                           attributes: [.posixPermissions: 0o755])
+            environment["PATH"] = bin.path
+        }
+        projects = ProjectSession(dataFolder: data, runner: runner, processEnvironment: environment)
         await projects.start()
-        session = ChatSession(projects: projects, tokens: tokens, launcher: launcher, runner: ChatRunner(), device: "Studio",
+        session = ChatSession(projects: projects, tokens: tokens, launcher: launcher, runner: runner, device: "Studio",
                               processEnvironment: [:], trash: .folder(root.appendingPathComponent("Trash")),
                               catalogs: try .fixtures(in: root.appendingPathComponent("Catalogs")))
         await session.start(tools: ["list_tickets", "add_comment"], port: 47999)

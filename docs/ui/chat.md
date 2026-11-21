@@ -1029,6 +1029,34 @@ needed:
   for web views is left out: V3 has none. A virtual machine's screen, drawn by Virtualization, may show blank.
 - When no bitmap can be made, the sheet shows "The window could not be captured.", and Send sends no screenshot.
 
+## Implement chats
+
+The chats of [Tickets › Implement](tickets.md#implement), as V2's implement chats (the user's request, 20 November
+2026). They are listed, opened and answered as any chat of their project; the Tickets window lists them on their
+ticket or bundle ([Tickets › Chats](tickets.md#chats)). The rules are in [Data › Implement chats](../data.md#implement-chats).
+
+| Chat                     | Kind                                               | Started by                                                        | First message                                        | Works in                                     |
+|--------------------------|----------------------------------------------------|-------------------------------------------------------------------|------------------------------------------------------|----------------------------------------------|
+| A ticket's               | `ticket`                                           | **Implement…**, or `implement_ticket` from another chat           | `/hephaestus-skills:implement-ticket ORD-142`        | The project's folder                         |
+| A bundle's               | `bundle`                                           | **Implement All…**, or `implement_bundle`                         | `/hephaestus-skills:implement-bundle ORD-B3`         | The project's folder                         |
+| A ticket's, for a bundle | `ticket`, with the bundle's chat as `orchestrator` | `implement_ticket` from the bundle's chat, for one of its tickets | `/hephaestus-skills:implement-ticket ORD-142 ORD-B3` | Its worktree, on the branch `ORD-B3/ORD-142` |
+
+- **Title.** "Implement ORD-142: <ticket's title>", "Implement All ORD-B3: <bundle's title>", at most 80
+  characters (default chosen at design time; V2 had Haiku name them). The user renames them as any chat.
+- **The message** shows as the user's, the call's line as typed; the skill's content isn't shown (as for
+  [Feedback](#feedback)).
+- **No questions until the user writes.** In a ticket's chat, `ask_questions` and the picker requests are refused
+  until the user sends a message there: Claude decides what the ticket leaves open, and says so in its comment
+  (V2's rule). The first message the user sends lifts it for good; Resume doesn't.
+- **Reports.** Each time a turn of a ticket's chat for a bundle ends, the app sends the bundle's chat one message:
+  "Chat of ORD-142 finished its turn:" and its last reply, "Chat of ORD-142 ended in error: <reason>", or "Chat of
+  ORD-142 was stopped." (V2's texts). It shows in the bundle's chat as the user's message and starts a turn there,
+  after the turn at work if one is; a closed bundle chat reopens. A turn that ends waiting for answers sends none.
+- **Its own items.** Its Claude's changes to its own ticket, or to its bundle and the bundle's tickets, run
+  without a card ([MCP › Permissions](../mcp.md#permissions)).
+- V2's CI chats (`watch_ci`), which followed the CI run of a push, aren't brought over: Claude reads the runs
+  with the Builds tools.
+
 ## Notifications
 
 V2's chat notifications, Dock badge and bounce. The chat session reports two events
@@ -1042,6 +1070,9 @@ notifications, as [Settings ▸ Notifications](navigation.md#settings--notificat
 
 - **No event** for a chat's first state (loading, a new chat), so a relaunch posts nothing for the chats
   that already wait; nor for the error state, nor a turn ended with Stop.
+- **Orchestrated chats**, as V2's: a ticket chat a bundle's chat started posts no **Finished** (its turn is
+  reported to that chat instead, [Implement chats](#implement-chats)), and the bundle's chat posts **Finished**
+  only while none of the chats it started is at work. **Needs you** is posted for every chat.
 - **The notification.** Title "<project identifier> · <chat title>", such as "ORD · Fix the totals"; body the
   detail, or the summary below; the default sound. Its identifier is `chat/<chat id>`: a chat has one
   notification at most, a newer one replaces it. It shows as a banner also while the app is in front, but

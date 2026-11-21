@@ -16,14 +16,14 @@ detail column with its properties under the description. Light Mode.*
 
 ## Opening it
 
-| Way in | What happens |
-| --- | --- |
-| **Window ▸ Tickets**, ⌘2 | Opens the Tickets window for the key window's project, or brings forward the one already showing it. Every kind of project has Tickets, so the item is enabled whenever the key window has a project. See [navigation.md › Menus and shortcuts](navigation.md#menus-and-shortcuts). |
-| Projects window, **Tools** section | The **Tickets** tile reads "*n* open, *n* in review, *n* drafts" for the project and its sub projects, as this window lists them, from the loaded tickets (open: neither done nor a draft). Its **Open** button sends `.tool(.tickets, project:)`. |
-| Projects window, **Activity** | A ticket event, such as "You started work on the retry storm between checkout and payments", opens the window on that ticket. The older events, such as "You closed the ticket about the flaky timeout test", name no ticket and open the window without a focus. |
-| Menu bar panel | The highlighted project's row has a **Tickets** button, and ⌘2 opens Tickets for the highlighted project. |
-| Project switcher | In any Tickets window, picking another project moves this window to it. The selection and filter start afresh. See [components.md › Project switcher](components.md#project-switcher). |
-| Chat | The **Open** button of a "Read ticket ORD-142" row, or of a ticket in the Chat window's references, opens the window on that ticket. Such a row appears when a message attaches a ticket or names an existing ticket's id, such as ORD-142. |
+| Way in                             | What happens                                                                                                                                                                                                                                                                        |
+|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Window ▸ Tickets**, ⌘2           | Opens the Tickets window for the key window's project, or brings forward the one already showing it. Every kind of project has Tickets, so the item is enabled whenever the key window has a project. See [navigation.md › Menus and shortcuts](navigation.md#menus-and-shortcuts). |
+| Projects window, **Tools** section | The **Tickets** tile reads "*n* open, *n* in review, *n* drafts" for the project and its sub projects, as this window lists them, from the loaded tickets (open: neither done nor a draft). Its **Open** button sends `.tool(.tickets, project:)`.                                  |
+| Projects window, **Activity**      | A ticket event, such as "You started work on the retry storm between checkout and payments", opens the window on that ticket. The older events, such as "You closed the ticket about the flaky timeout test", name no ticket and open the window without a focus.                   |
+| Menu bar panel                     | The highlighted project's row has a **Tickets** button, and ⌘2 opens Tickets for the highlighted project.                                                                                                                                                                           |
+| Project switcher                   | In any Tickets window, picking another project moves this window to it. The selection and filter start afresh. See [components.md › Project switcher](components.md#project-switcher).                                                                                              |
+| Chat                               | The **Open** button of a "Read ticket ORD-142" row, or of a ticket in the Chat window's references, opens the window on that ticket. Such a row appears when a message attaches a ticket or names an existing ticket's id, such as ORD-142.                                         |
 
 - **Route.** `.tool(.tickets, project: <project id>, focus: <ticket id>)`. The focus is the ticket id, for
   example `ORD-142`, or a bundle id, such as `ORD-B3`, which selects the bundle in the sidebar. A route
@@ -45,14 +45,14 @@ detail column with its properties under the description. Light Mode.*
 
 ## Anatomy
 
-| Region | Contents |
-| --- | --- |
-| Toolbar | The project switcher, the title **Tickets** with the project's path as subtitle, **New Ticket**, the status menu, the next-step button, and the chat panel's button. |
-| Sidebar | **All Tickets**, then the **Status**, **Projects** and **Bundles** sections. 190 to 280 pt wide, 220 by default. |
-| Ticket list | The tickets that the sidebar's choice lets through. Grouped by project for a project with sub projects. While the sidebar is hidden, a filter bar above the list shows the filter that applies. 300 to 480 pt wide, 360 by default. |
-| Ticket detail | The selected ticket: header, description, properties, **Linked**, **Activity**. It takes the rest of the width. |
-| Comment composer | A comment field and **Comment**, pinned to the bottom of the ticket. |
-| Chat panel | When shown: beside the window's content, over it, or as a full page, depending on the layout. See [Chat panel](#chat-panel). |
+| Region           | Contents                                                                                                                                                                                                                            |
+|------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Toolbar          | The project switcher, the title **Tickets** with the project's path as subtitle, **New Ticket**, the status menu, the next-step button, and the chat panel's button.                                                                |
+| Sidebar          | **All Tickets**, then the **Status**, **Projects** and **Bundles** sections. 190 to 280 pt wide, 220 by default.                                                                                                                    |
+| Ticket list      | The tickets that the sidebar's choice lets through. Grouped by project for a project with sub projects. While the sidebar is hidden, a filter bar above the list shows the filter that applies. 300 to 480 pt wide, 360 by default. |
+| Ticket detail    | The selected ticket: header, description, properties, **Linked**, **Activity**. It takes the rest of the width.                                                                                                                     |
+| Comment composer | A comment field and **Comment**, pinned to the bottom of the ticket.                                                                                                                                                                |
+| Chat panel       | When shown: beside the window's content, over it, or as a full page, depending on the layout. See [Chat panel](#chat-panel).                                                                                                        |
 
 In the Mac layout the window is a three-column `NavigationSplitView`: sidebar, list and detail side by side,
 each running the full height. The toolbar is split along the same columns. The sidebar column holds the
@@ -68,16 +68,16 @@ trailing edge. The window and every column use the `canvas` background.
 The items are listed from left to right. In the iPhone layout the list and the ticket's page each have their
 own toolbar (see [Layouts](#layouts)).
 
-| Item | Control | Symbol | Shortcut | Behavior | Layouts |
-| --- | --- | --- | --- | --- | --- |
-| Sidebar | Button provided by `NavigationSplitView` | `sidebar.left` | None set by the window | Shows or hides the sidebar. | Mac, iPad |
-| Project switcher | Button with a popover | The project's own symbol, in its tint | None | Shows the window's project. Picking another moves this window to it and clears the selection. Help: "Switch Project". | Mac, iPad, iPhone |
-| Title | Window title and subtitle | None | None | **Tickets**, with the project's path as subtitle, for example "Shop › Orders". Hidden when the window is narrower than 760 pt. | Mac, iPad |
-| **Filter** | Menu with an inline picker | `line.3.horizontal.decrease.circle`; `line.3.horizontal.decrease.circle.fill` while a filter applies | None | The sidebar's choices. See [Filter menu](#filter-menu-iphone). Help: "Filter Tickets". | iPhone (list) |
-| **New Ticket** | Button | `plus` | ⇧⌘N (File ▸ New Ticket…) | Opens the [New Ticket sheet](#new-ticket-sheet). Help: "New Ticket (⇧⌘N)". | Mac, iPad (list column); iPhone (list) |
-| Status | Menu | The ticket's status symbol, or `circle.dashed` | Its items: ⌃⌘1 to ⌃⌘5 | Shows the selected ticket's status, and lists the statuses to change it to. Help: "Change Status". See [Status and next step](#status-and-next-step). | Mac, iPad: symbol and name; iPhone (page): symbol only |
-| Next step | Button, `borderedProminent` | None; `arrow.right` on iPhone | ⇧⌘Return | Moves the ticket one step forward: its label is the step's name, such as **Send to Review**. Help: the step's name and its shortcut, such as "Send to Review (⇧⌘↩)". | Mac, iPad: name; iPhone (page): symbol only |
-| Chat | Button | `sidebar.right` | ⌃⌘C | Shows or hides the chat panel. It is the last item, at the right edge of the toolbar (the user's choice). Absent when Settings ▸ Chat turns the panel off. See [components.md › Chat panel button](components.md#chat-panel-button). | Mac, iPad, iPhone |
+| Item             | Control                                  | Symbol                                                                                               | Shortcut                 | Behavior                                                                                                                                                                                                                             | Layouts                                                |
+|------------------|------------------------------------------|------------------------------------------------------------------------------------------------------|--------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------|
+| Sidebar          | Button provided by `NavigationSplitView` | `sidebar.left`                                                                                       | None set by the window   | Shows or hides the sidebar.                                                                                                                                                                                                          | Mac, iPad                                              |
+| Project switcher | Button with a popover                    | The project's own symbol, in its tint                                                                | None                     | Shows the window's project. Picking another moves this window to it and clears the selection. Help: "Switch Project".                                                                                                                | Mac, iPad, iPhone                                      |
+| Title            | Window title and subtitle                | None                                                                                                 | None                     | **Tickets**, with the project's path as subtitle, for example "Shop › Orders". Hidden when the window is narrower than 760 pt.                                                                                                       | Mac, iPad                                              |
+| **Filter**       | Menu with an inline picker               | `line.3.horizontal.decrease.circle`; `line.3.horizontal.decrease.circle.fill` while a filter applies | None                     | The sidebar's choices. See [Filter menu](#filter-menu-iphone). Help: "Filter Tickets".                                                                                                                                               | iPhone (list)                                          |
+| **New Ticket**   | Button                                   | `plus`                                                                                               | ⇧⌘N (File ▸ New Ticket…) | Opens the [New Ticket sheet](#new-ticket-sheet). Help: "New Ticket (⇧⌘N)".                                                                                                                                                           | Mac, iPad (list column); iPhone (list)                 |
+| Status           | Menu                                     | The ticket's status symbol, or `circle.dashed`                                                       | Its items: ⌃⌘1 to ⌃⌘5    | Shows the selected ticket's status, and lists the statuses to change it to. Help: "Change Status". See [Status and next step](#status-and-next-step).                                                                                | Mac, iPad: symbol and name; iPhone (page): symbol only |
+| Next step        | Button, `borderedProminent`              | None; `arrow.right` on iPhone                                                                        | ⇧⌘Return                 | Moves the ticket one step forward: its label is the step's name, such as **Send to Review**. Help: the step's name and its shortcut, such as "Send to Review (⇧⌘↩)".                                                                 | Mac, iPad: name; iPhone (page): symbol only            |
+| Chat             | Button                                   | `sidebar.right`                                                                                      | ⌃⌘C                      | Shows or hides the chat panel. It is the last item, at the right edge of the toolbar (the user's choice). Absent when Settings ▸ Chat turns the panel off. See [components.md › Chat panel button](components.md#chat-panel-button). | Mac, iPad, iPhone                                      |
 
 - **Steady toolbar.** The status menu and the next-step button stay in the toolbar when no ticket is selected,
   disabled, so the toolbar never shifts.
@@ -93,12 +93,12 @@ own toolbar (see [Layouts](#layouts)).
 A single-selection `List`. The selection is the window's filter. It starts on **All Tickets**. When nothing
 is selected, the list shows all tickets.
 
-| Row | Symbol | Badge | Lets through |
-| --- | --- | --- | --- |
-| **All Tickets** | `tray.full` | All the window's tickets | Every ticket. |
-| **Status** section: one row per status, in workflow order | The status symbol (see [Status and next step](#status-and-next-step)) | The tickets in that status | The tickets in that status. |
-| **Projects** section: the window's project, then its sub projects | The project's icon, in its tint | The tickets of that project and of its own sub projects | The tickets of that project and its own sub projects. |
-| **Bundles** section: one row per bundle, and **New Bundle** (`plus`) in its header | `shippingbox`; the bundle's status symbol at the trailing edge | None; a progress bar instead | The tickets in the bundle. |
+| Row                                                                                | Symbol                                                                | Badge                                                   | Lets through                                          |
+|------------------------------------------------------------------------------------|-----------------------------------------------------------------------|---------------------------------------------------------|-------------------------------------------------------|
+| **All Tickets**                                                                    | `tray.full`                                                           | All the window's tickets                                | Every ticket.                                         |
+| **Status** section: one row per status, in workflow order                          | The status symbol (see [Status and next step](#status-and-next-step)) | The tickets in that status                              | The tickets in that status.                           |
+| **Projects** section: the window's project, then its sub projects                  | The project's icon, in its tint                                       | The tickets of that project and of its own sub projects | The tickets of that project and its own sub projects. |
+| **Bundles** section: one row per bundle, and **New Bundle** (`plus`) in its header | `shippingbox`; the bundle's status symbol at the trailing edge        | None; a progress bar instead                            | The tickets in the bundle.                            |
 
 - **Counts.** Badges count the tickets the window holds, before any filter.
 - **Projects section.** It appears only for a project with sub projects. The rows follow the project tree,
@@ -112,9 +112,10 @@ is selected, the list shows all tickets.
   in `success`; help and VoiceOver: the status's name), and a mini linear progress bar under it: the share of
   the bundle's tickets that are **Done**. A bundle's status follows its tickets ([Data › Ticket
   rules](../data.md#ticket-rules)): it becomes Done when all are, and In Progress again when one isn't.
-- **Bundle context menu.** **Edit Bundle…** opens the [bundle sheet](#bundle-sheet) on it; **Set Status ▸**
-  To Do, In Progress, Done (the current one disabled); **Delete Bundle…** asks "Delete *ORD-B3*?", "Its
-  tickets are kept.", then moves the bundle's file to the Trash.
+- **Bundle context menu.** **Implement All…** ([Implement](#implement)); **Edit Bundle…** opens the [bundle
+  sheet](#bundle-sheet) on it; **Set Status ▸** To Do, In Progress, Done (the current one disabled); **Chats ▸**
+  ([Implement › Chats](#chats)); **Mentioned In ▸** ([Mentioned In](#mentioned-in)); **Delete Bundle…** asks
+  "Delete *ORD-B3*?", "Its tickets are kept.", then moves the bundle's file to the Trash.
 - **Order.** **All Tickets**, **Status**, **Projects**, **Bundles**. The iPhone's **Filter** menu lists its
   sections in the same order, Bundles only when there are some.
 - **Headings.** The section titles are headings for VoiceOver.
@@ -154,7 +155,8 @@ Bundles section.*
   is ORD-142; for Shop, whose own tickets come first, SHOP-14.
 - **No match.** When the filter lets no ticket through, the list says so and offers **Show All Tickets** (see
   [States](#states)).
-- **Context menu** of a row: **Set Status ▸** with the five statuses; **Add to Bundle ▸** with the project's
+- **Context menu** of a row: **Implement…** ([Implement](#implement)), which first selects the ticket;
+  **Set Status ▸** with the five statuses; **Add to Bundle ▸** with the project's
   bundles that don't hold it, then **New Bundle…** (the [bundle sheet](#bundle-sheet) with the ticket
   checked); **Remove from *bundle*** for each bundle that holds it; **Delete…**.
 - **Delete** (⌘⌫, Edit ▸ Delete, or **Delete…**) asks "Delete *ORD-142*?", "Their files and attachments move to
@@ -180,10 +182,10 @@ at the bottom.
 
 **Two arrangements.** The detail measures its own width:
 
-| Width of the detail | Arrangement |
-| --- | --- |
-| 720 pt or more | Two columns. The left column holds the header, description, **Linked** and **Activity**, with 28 pt of padding and 26 pt between parts, and the composer at its bottom. A divider separates it from a 280 pt properties column on the right, on the `surface` background, with 20 pt of padding. The properties form a single column there. |
-| Less than 720 pt | One column: header, description, properties, **Linked**, **Activity**, with 24 pt of padding and 26 pt between parts. The properties are laid out in as many columns of at least 150 pt as fit. The composer spans the width. |
+| Width of the detail | Arrangement                                                                                                                                                                                                                                                                                                                                 |
+|---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 720 pt or more      | Two columns. The left column holds the header, description, **Linked** and **Activity**, with 28 pt of padding and 26 pt between parts, and the composer at its bottom. A divider separates it from a 280 pt properties column on the right, on the `surface` background, with 20 pt of padding. The properties form a single column there. |
+| Less than 720 pt    | One column: header, description, properties, **Linked**, **Activity**, with 24 pt of padding and 26 pt between parts. The properties are laid out in as many columns of at least 150 pt as fit. The composer spans the width.                                                                                                               |
 
 At the default window size, the detail column is narrower than 720 pt, so the properties sit under the
 description.
@@ -191,7 +193,8 @@ description.
 ### Header
 
 - **Ticket id** (`callout`, `textSecondary`, monospaced digits), such as ORD-142, and at the trailing edge
-  **Edit** (`pencil`, ⌘E, help "Edit the Ticket (⌘E)"), which opens the [editor](#editor).
+  **Implement…** (`hammer`, ⇧⌘I, [Implement](#implement)), then **Edit** (`pencil`, ⌘E, help "Edit the Ticket
+  (⌘E)"), which opens the [editor](#editor). Both are borderless buttons with their title and symbol.
 - **Title** (`title`, semibold, `textPrimary`). It can be selected and copied, and it is a heading for
   VoiceOver.
 - **Status and priority badges**, and **Blocked** as in the list (help "It depends on a ticket that isn't
@@ -221,15 +224,15 @@ entry.
 
 Each property shows its name (`caption`, semibold, `textSecondary`) above its value (`textPrimary`).
 
-| Property | Value |
-| --- | --- |
-| **Status** | The status badge. |
-| **Priority** | The priority badge, or "None" in `textSecondary`: a menu that sets None, Low, Medium, High or Urgent at once. |
-| **Reporter** | Who created the ticket: "You" or "Claude". |
-| **Bundle** | Each bundle's title after `shippingbox` in `accent`, one per line (a ticket may be in several), or "None" in `textSecondary`. |
-| **Created On** | Day, month and year, such as "9 Nov 2026". |
-| **Last Updated** | Day, month and year. |
-| **Labels** | One capsule per label (`caption`, on `surfaceSunken`), or "None". |
+| Property         | Value                                                                                                                         |
+|------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| **Status**       | The status badge.                                                                                                             |
+| **Priority**     | The priority badge, or "None" in `textSecondary`: a menu that sets None, Low, Medium, High or Urgent at once.                 |
+| **Reporter**     | Who created the ticket: "You" or "Claude".                                                                                    |
+| **Bundle**       | Each bundle's title after `shippingbox` in `accent`, one per line (a ticket may be in several), or "None" in `textSecondary`. |
+| **Created On**   | Day, month and year, such as "9 Nov 2026".                                                                                    |
+| **Last Updated** | Day, month and year.                                                                                                          |
+| **Labels**       | One capsule per label (`caption`, on `surfaceSunken`), or "None".                                                             |
 
 The Bundle property shows the bundle the ticket is in among its own project's bundles. In a parent's
 window, a sub project's ticket shows its bundle too, though the sidebar lists only the parent's own bundles:
@@ -237,12 +240,12 @@ in the Shop window, ORD-142 reads Checkout reliability.
 
 **Priorities**
 
-| Priority | Symbol | Color |
-| --- | --- | --- |
-| Low | `arrow.down` | `textSecondary` |
-| Medium | `minus` | `info` |
-| High | `arrow.up` | `warning` |
-| Urgent | `exclamationmark.2` | `danger` |
+| Priority | Symbol              | Color           |
+|----------|---------------------|-----------------|
+| Low      | `arrow.down`        | `textSecondary` |
+| Medium   | `minus`             | `info`          |
+| High     | `arrow.up`          | `warning`       |
+| Urgent   | `exclamationmark.2` | `danger`        |
 
 ### Attachments
 
@@ -269,23 +272,41 @@ in this window. A link the ticket declares has **Remove Link** in its context me
 the other ticket declares are removed from that ticket. A declared link whose ticket is missing (git removed
 its file) shows **Not found** (`exclamationmark.triangle`, `warning`) and is disabled.
 
-| Kind | Symbol | Opens | Focus |
-| --- | --- | --- | --- |
-| Depends On | `arrow.turn.down.right` | Tickets | The ticket id |
-| Blocks | `hand.raised` | Tickets | The ticket id |
-| Related | `link` | Tickets | The ticket id |
-| Service | `shippingbox` | Service Map | `service:<name>`, such as `service:payments-api` |
-| Request | `arrow.left.arrow.right` | Service Map | `request:<id>`, such as `request:req-8f3a` |
-| Contract | `curlybraces.square` | Contracts | The operation id, such as `listOrders` |
-| Build | `hammer` | Builds | The run number, such as `1288` |
+| Kind       | Symbol                   | Opens       | Focus                                            |
+|------------|--------------------------|-------------|--------------------------------------------------|
+| Depends On | `arrow.turn.down.right`  | Tickets     | The ticket id                                    |
+| Blocks     | `hand.raised`            | Tickets     | The ticket id                                    |
+| Related    | `link`                   | Tickets     | The ticket id                                    |
+| Service    | `shippingbox`            | Service Map | `service:<name>`, such as `service:payments-api` |
+| Request    | `arrow.left.arrow.right` | Service Map | `request:<id>`, such as `request:req-8f3a`       |
+| Contract   | `curlybraces.square`     | Contracts   | The operation id, such as `listOrders`           |
+| Build      | `hammer`                 | Builds      | The run number, such as `1288`                   |
+
+### Chats
+
+V2's Chats tab, as a part of the detail between **Linked** and **Mentioned In** (the user's choice): the
+ticket's own chats, the latest updated first, closed chats included (`ticket.chats`). They are the chats whose
+`ticket` is the ticket ([Data › Chat kinds](../data.md#chat-kinds)): the chats [Implement](#implement) starts,
+those a bundle's chat starts for it, and the feedback chat that created it.
+
+- **Heading.** **Chats**, with **Implement…** (`hammer`) at its trailing edge, the header's button again.
+- **Rows.** In a group box, separated by dividers, each one plain button (`ticket.chats.<chat id>`), drawn as
+  Mentioned In's rows: the kind's symbol in `accent` (`hammer` for a chat that implements the ticket,
+  `ladybug` for a feedback chat, `bubble.left.and.text.bubble.right` otherwise), the chat's title on one line
+  (`textSecondary` when closed), under it "<project identifier> · <date>", then the chat's mark and
+  `arrow.up.forward.app`. A click opens the chat in its project's Chat window; the context menu has **Open in
+  Chat Window** and **Open in New Window**.
+- **None.** "Implement starts a chat in which Claude implements this ticket." in `textSecondary`
+  (`ticket.chats.empty`).
+- The section shows only where the app gives the window the chats (`\.itemChats`); previews pass the samples.
 
 ### Mentioned In
 
 ![ORD-142's detail: Mentioned In lists Why does checkout time out on Staging?, ORD, with the waiting dot, and What changed in Shop this week?, SHOP, closed](images/tickets-mentioned-in.png)
 
-V2's Mentioned In tab, as a part of the detail between **Linked** and **Activity** (V3's detail has no tabs):
-the chats of every loaded project that mention the ticket, the latest updated first, closed chats included
-(`ticket.mentions`).
+V2's Mentioned In tab, as a part of the detail between [**Chats**](#chats) and **Activity** (V3's detail has no
+tabs): the chats of every loaded project that mention the ticket, the latest updated first, closed chats included
+(`ticket.mentions`), except the ticket's own chats, which **Chats** lists (as V2's tab left them out).
 
 - **Mentions.** A chat mentions a ticket when its messages or Claude's replies (outside a sub-agent) show the
   id as a link, or a message carries the ticket ([Data › Mentioned ids](../data.md#mentioned-ids)). Calls,
@@ -298,14 +319,13 @@ the chats of every loaded project that mention the ticket, the latest updated fi
   context menu: **Open in Chat Window**, **Open in New Window** ([Chat › Chat windows](chat.md#chat-windows)).
 - **None.** "Chats that mention this ticket appear here." in `textSecondary` (`ticket.mentions.empty`).
 - V2's rows also offered Rename…, Close and Delete…: they are in the chat, once opened (default chosen at design
-  time: the Tickets window doesn't change chats). V2 left out the ticket's own chats, which its Chats tab
-  listed; V3 has no such tab, so every chat that mentions the ticket is listed.
+  time: the Tickets window doesn't change chats).
 - The section shows only where the app gives the window the chats (`\.chatMentions`); previews pass the
   samples: **Mentioned In**, **Mentioned In, None**.
 
 **Bundles.** A bundle has no detail: its sidebar row's context menu has **Mentioned In ▸**
-(`tickets.sidebar.bundle.<id>.mentions`), after **Set Status ▸**, listing the chats that mention the bundle by
-title, each opening it in the Chat window, or "No Mentions", disabled.
+(`tickets.sidebar.bundle.<id>.mentions`), after **Chats ▸**, listing the chats that mention the bundle by
+title, except the bundle's own chats, each opening it in the Chat window, or "No Mentions", disabled.
 
 ### Activity
 
@@ -315,16 +335,16 @@ at the trailing edge (`callout`, `textSecondary`, such as "10 Nov at 07:00"). A 
 the entry, in a rounded box on the `surface` color with 12 pt of padding. The text can be selected and
 copied.
 
-| Entry | Symbol | Sentences ("You" for the user, "Claude" for Claude) |
-| --- | --- | --- |
-| Drafted | `sparkles` | "You drafted this ticket", "Claude drafted this ticket" |
-| Created | `plus.circle` | "You created this ticket", "Claude created this ticket" |
-| Status changed | `arrow.right.circle` | "You moved it from Created to In Progress" |
-| Renamed | `character.cursor.ibeam` | "You renamed it from “*old*” to “*new*”"; an automatic rename (author `automatic`): "It was named “*title*”" |
-| Link added | `link` | "You made it depend on ORD-139", "You related it to ORD-139" |
-| Link removed | `minus.circle` | "You removed its dependency on ORD-139", "You removed its relation to ORD-139" |
-| Description edited | `pencil` | "You edited the description" |
-| Commented | `text.bubble` | "Claude commented", with the comment (Markdown) and its files under it |
+| Entry              | Symbol                   | Sentences ("You" for the user, "Claude" for Claude)                                                          |
+|--------------------|--------------------------|--------------------------------------------------------------------------------------------------------------|
+| Drafted            | `sparkles`               | "You drafted this ticket", "Claude drafted this ticket"                                                      |
+| Created            | `plus.circle`            | "You created this ticket", "Claude created this ticket"                                                      |
+| Status changed     | `arrow.right.circle`     | "You moved it from Created to In Progress"                                                                   |
+| Renamed            | `character.cursor.ibeam` | "You renamed it from “*old*” to “*new*”"; an automatic rename (author `automatic`): "It was named “*title*”" |
+| Link added         | `link`                   | "You made it depend on ORD-139", "You related it to ORD-139"                                                 |
+| Link removed       | `minus.circle`           | "You removed its dependency on ORD-139", "You removed its relation to ORD-139"                               |
+| Description edited | `pencil`                 | "You edited the description"                                                                                 |
+| Commented          | `text.bubble`            | "Claude commented", with the comment (Markdown) and its files under it                                       |
 
 - **Comments.** "(edited)" follows the sentence of a comment whose text was changed (help: the edit's date).
   Its files show as in [Attachments](#attachments), without **Remove…**: a comment's files go with it. The
@@ -367,16 +387,89 @@ on Mac and iPad, and in the page's toolbar on iPhone.
 - **Shortcuts.** They act on the selected ticket while the Tickets window is the key window, and do nothing
   while their control is disabled.
 
-| Status | Symbol | Color | Shortcut | Next step |
-| --- | --- | --- | --- | --- |
-| Draft | `circle.dashed` | `textSecondary` | ⌃⌘1 | **Create Ticket** |
-| Created | `circle` | `info` | ⌃⌘2 | **Start Work** |
-| In Progress | `circle.lefthalf.filled` | `accent` | ⌃⌘3 | **Send to Review** |
-| In Review | `eye.circle` | `warning` | ⌃⌘4 | **Mark as Done** |
-| Done | `checkmark.circle.fill` | `success` | ⌃⌘5 | None: the button is disabled |
+| Status      | Symbol                   | Color           | Shortcut | Next step                    |
+|-------------|--------------------------|-----------------|----------|------------------------------|
+| Draft       | `circle.dashed`          | `textSecondary` | ⌃⌘1      | **Create Ticket**            |
+| Created     | `circle`                 | `info`          | ⌃⌘2      | **Start Work**               |
+| In Progress | `circle.lefthalf.filled` | `accent`        | ⌃⌘3      | **Send to Review**           |
+| In Review   | `eye.circle`             | `warning`       | ⌃⌘4      | **Mark as Done**             |
+| Done        | `checkmark.circle.fill`  | `success`       | ⌃⌘5      | None: the button is disabled |
 
 The statuses are shared with the Dashboard's Tickets widget, which counts tickets by status
 (`TicketStatus`, in `ToolsFoundation/Vocabulary.swift`).
+
+## Implement
+
+![ORD-142's detail: Implement… beside Edit, and the Chats section with the chat that implements it](images/tickets-implement.png)
+*ORD-142's detail column (the "Implement" preview): **Implement…** in its header and at the heading of **Chats**,
+which lists the chat that implements it, at work, above the chats that mention it.*
+
+V2's **Implement** and **Implement All**, brought over as V2 did them (the user's request, 20 November 2026):
+Claude implements a ticket in a chat of its own, and a bundle in a chat that runs one chat per ticket. The app
+starts the chats and links them; what Claude does in them is the internal skills' to say, `implement-ticket` and
+`implement-bundle`, which the user edits in [System Prompts](system-prompts.md). The chats are the Chat window's
+([Chat › Implement chats](chat.md#implement-chats)); the Tickets window lists them in [Chats](#chats).
+
+**Implement**, for a ticket:
+
+- **Where.** **Implement…** in the ticket's header and at the heading of its **Chats**, both `ticket.implement`
+  and `ticket.chats.implement`, ⇧⌘I, and **Implement…** in the list's context menu, which selects the ticket
+  first.
+- **Enabled** while the ticket is neither done nor a draft (V2: not done; Claude can't move a draft, [Data ›
+  Ticket rules](../data.md#ticket-rules)). Help: "Implement the Ticket with Claude (⇧⌘I)"; while disabled,
+  "Set another status to implement this ticket." for a done ticket and "Create the ticket to implement it." for a
+  draft. A chat of the ticket at work doesn't disable it: several chats of a ticket can run at once.
+- **Dependencies.** When tickets it depends on aren't done, an alert comes first: "ORD-142 depends on ORD-139,
+  ORD-140, which are not done. Implement it anyway?" ("which is not done" for one), the ids in ascending number,
+  with **Implement** and **Cancel** (Escape). Implement opens the sheet; Cancel starts nothing.
+- **The sheet** ([Implement sheet](#implement-sheet)) chooses the chat's settings; **Start** creates the chat,
+  which calls `implement-ticket` with the ticket's id, links it to the ticket and opens it in the project's Chat
+  window ([Data › Implement chats](../data.md#implement-chats)).
+- **Then** Claude works as the skill says: as written by default, it sets the ticket In Progress, makes and tests
+  the change, commits, comments and sets it In Review. The Tickets window shows each change at once. Until the
+  user writes in the chat, its Claude asks no question. Its changes to its own ticket don't ask first ([MCP ›
+  Permissions](../mcp.md#permissions)).
+
+**Implement All**, for a bundle:
+
+- **Where.** **Implement All…** in the bundle's sidebar context menu (`tickets.sidebar.bundle.<id>.implement`).
+- **Enabled** while the bundle is To Do and at least one ticket it lists isn't done (a listed id without its
+  ticket doesn't count). The menu item is disabled otherwise: a bundle In Progress or Done needs setting back to
+  To Do first (V2's rule).
+- **The sheet**, then **Start**: the bundle's chat, which calls `implement-bundle` with the bundle's id; the
+  bundle is set In Progress and lists the chat. It opens in the Chat window.
+- **Then** that chat orchestrates, as the skill says: it starts a chat for each ticket that waits for no other
+  ticket, with `implement_ticket`; each of these works on its own branch `<bundle id>/<ticket id>` in a git
+  worktree the app makes, and the app reports each one's turn to the bundle's chat, which merges the branches as
+  they come, then tests the whole. These chats show in their tickets' **Chats** and in the bundle's **Chats ▸**.
+
+**Chats ▸** in the bundle's context menu (`tickets.sidebar.bundle.<id>.chats`) lists the bundle's chats, the
+latest first, each followed by the ticket chats it started, oldest first, by title; each opens its chat in the
+Chat window. "No Chats", disabled, when there are none.
+
+### Implement sheet
+
+![The Implement sheet for ORD-142: the title, the ticket's title, Model, Effort, Permissions, Ultracode, Context, Cancel and Start](images/tickets-implement-sheet.png)
+*Implement ORD-142: the chat's settings, on Settings ▸ Chat's defaults.*
+
+A sheet over the window (`implement.sheet`), 420 to 480 pt wide, on `canvas`, from ChatKit (it uses the chat's
+settings menus) and shown by the window, which gives the Tickets window its action (`\.implement`):
+
+| Part       | Identifier                                                                                                          | Contents                                                                                                                                                                                                                                              |
+|------------|---------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Heading    | —                                                                                                                   | "Implement ORD-142" or "Implement All ORD-B3" (`title3`, semibold), a heading for VoiceOver; under it the ticket's or bundle's title on one line, truncated at its end, `textSecondary`.                                                              |
+| Settings   | `implement.model`, `implement.effort`, `implement.permissionMode`, `implement.ultracode`, `implement.contextWindow` | The Chat window inspector's rows: **Model**, **Effort**, **Permissions**, **Ultracode**, **Context**, on Settings ▸ Chat's model and effort and the defaults of the others each time the sheet opens. A choice sets only the chat this Start creates. |
+| Note       | `implement.note`                                                                                                    | For a bundle: "The ticket chats this chat starts take its settings." (`caption`, `textSecondary`).                                                                                                                                                    |
+| Message    | `implement.message`                                                                                                 | Why Start failed, in `danger`; otherwise why it waits for the CLI, in `textSecondary`: "Checking the Claude CLI…", or "Claude CLI is not available: <reason>".                                                                                        |
+| Bottom bar | `implement.cancel`, `implement.start`                                                                               | Under a divider, at the trailing edge: a small progress indicator while starting, **Cancel** (Escape) and **Start** (Return, `borderedProminent`).                                                                                                    |
+
+- **Start** is enabled while the Claude CLI is available and nothing is starting. While it runs, the settings and
+  Cancel are disabled.
+- **Success** closes the sheet and opens the new chat in its project's Chat window (`.tool(.chat, project:,
+  focus: <chat id>)`), as Send Feedback does.
+- **Failure** keeps the sheet, its settings, and the reason in the message line, such as "ORD-142 is done; set
+  another status to implement it." ([Data › Implement chats](../data.md#implement-chats)).
+- **Cancel** closes the sheet; nothing starts.
 
 ## New Ticket sheet
 
@@ -395,12 +488,12 @@ list, on the `canvas` background.
   is 360 pt high at least, 400 pt by default, or 440 pt with the Project field. The form scrolls when the
   sheet is shorter than its fields.
 
-| Part | Contents |
-| --- | --- |
-| Heading | **New Ticket** (`title3`, semibold), a heading for VoiceOver. |
-| First group | **Title**: a text field with "Title" as placeholder, and at its trailing edge **Generate Title** ([below](#generate-title)). **Description**: a text field with "Description" as placeholder, four lines high, growing to eight. |
+| Part         | Contents                                                                                                                                                                                                                                                                                                           |
+|--------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Heading      | **New Ticket** (`title3`, semibold), a heading for VoiceOver.                                                                                                                                                                                                                                                      |
+| First group  | **Title**: a text field with "Title" as placeholder, and at its trailing edge **Generate Title** ([below](#generate-title)). **Description**: a text field with "Description" as placeholder, four lines high, growing to eight.                                                                                   |
 | Second group | **Project**: a picker of the window's project and its sub projects, by name, in tree order. Only for a project with sub projects. **Priority**: a picker with None, Low, Medium, High and Urgent, set to Medium. **Save as Draft**: a switch, on. Footer: "A draft stays out of the workflow until you create it." |
-| Bottom bar | Under a divider, at the trailing edge: **Cancel** and **Create**. |
+| Bottom bar   | Under a divider, at the trailing edge: **Cancel** and **Create**.                                                                                                                                                                                                                                                  |
 
 - **Project.** In a parent's window, such as Shop, the Project field says where the ticket goes: Shop,
   Orders, Payments or Edge Gateway. It starts on the project picked in the sidebar's **Projects** section, or
@@ -522,18 +615,19 @@ ORD-139, which depends on ORD-142.", and **OK**.
 
 ## States
 
-| State | When | What shows |
-| --- | --- | --- |
-| Tickets listed | The filter lets tickets through | The list, with the selected ticket in the detail column. |
-| Grouped | The window's project has sub projects | The list in sections per project, and the sidebar's **Projects** section. |
-| Filtered | A filter other than **All Tickets** applies, and the sidebar is hidden | The [filter bar](#ticket-list) above the list, with the filter's name. On iPhone the **Filter** button's symbol is filled. |
-| No tickets | The project has no tickets | **No Tickets** with `ticket`: "Tickets you create or draft show up here.", and a **New Ticket** button that opens the sheet. |
-| No matching tickets | The project has tickets, but the filter lets none through | **No Matching Tickets** with `line.3.horizontal.decrease.circle`, one sentence that names the filter, and **Show All Tickets**, which puts the sidebar back on **All Tickets**. The sentences: "No ticket is a draft.", "No ticket is waiting to start." (Created), "No ticket is in progress.", "No ticket is in review.", "No ticket is done.", and for a project or a bundle, "*Name* has no tickets." |
-| No selection | No ticket is selected (Mac and iPad) | **No Ticket Selected** with `ticket`: "Pick a ticket to see its details." The status menu reads "Status" and the next-step button "Next Step", both disabled. |
-| Ticket not found | A route's focus names none of the window's tickets | **Ticket Not Found** with `ticket`: "*Project* has no ticket with the id *id*.", such as "Orders has no ticket with the id ORD-999.", in the detail column, or as the page on iPhone, with Back. No row is selected, and the status menu and the next step are disabled. Picking a ticket replaces it. |
-| Done ticket | The ticket's status is Done | The next-step button reads "Next Step", disabled. **Done** is disabled in the status menu. |
-| No links | The ticket links to nothing | No **Linked** section. |
-| No bundle | The ticket is in none of the window's bundles | **Bundle** reads "None". |
+| State               | When                                                                   | What shows                                                                                                                                                                                                                                                                                                                                                                                                |
+|---------------------|------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Tickets listed      | The filter lets tickets through                                        | The list, with the selected ticket in the detail column.                                                                                                                                                                                                                                                                                                                                                  |
+| Grouped             | The window's project has sub projects                                  | The list in sections per project, and the sidebar's **Projects** section.                                                                                                                                                                                                                                                                                                                                 |
+| Filtered            | A filter other than **All Tickets** applies, and the sidebar is hidden | The [filter bar](#ticket-list) above the list, with the filter's name. On iPhone the **Filter** button's symbol is filled.                                                                                                                                                                                                                                                                                |
+| No tickets          | The project has no tickets                                             | **No Tickets** with `ticket`: "Tickets you create or draft show up here.", and a **New Ticket** button that opens the sheet.                                                                                                                                                                                                                                                                              |
+| No matching tickets | The project has tickets, but the filter lets none through              | **No Matching Tickets** with `line.3.horizontal.decrease.circle`, one sentence that names the filter, and **Show All Tickets**, which puts the sidebar back on **All Tickets**. The sentences: "No ticket is a draft.", "No ticket is waiting to start." (Created), "No ticket is in progress.", "No ticket is in review.", "No ticket is done.", and for a project or a bundle, "*Name* has no tickets." |
+| No selection        | No ticket is selected (Mac and iPad)                                   | **No Ticket Selected** with `ticket`: "Pick a ticket to see its details." The status menu reads "Status" and the next-step button "Next Step", both disabled.                                                                                                                                                                                                                                             |
+| Ticket not found    | A route's focus names none of the window's tickets                     | **Ticket Not Found** with `ticket`: "*Project* has no ticket with the id *id*.", such as "Orders has no ticket with the id ORD-999.", in the detail column, or as the page on iPhone, with Back. No row is selected, and the status menu and the next step are disabled. Picking a ticket replaces it.                                                                                                    |
+| Done ticket         | The ticket's status is Done                                            | The next-step button reads "Next Step", disabled. **Done** is disabled in the status menu. **Implement…** is disabled.                                                                                                                                                                                                                                                                                    |
+| Draft ticket        | The ticket's status is Draft                                           | **Implement…** is disabled: "Create the ticket to implement it."                                                                                                                                                                                                                                                                                                                                          |
+| No links            | The ticket links to nothing                                            | No **Linked** section.                                                                                                                                                                                                                                                                                                                                                                                    |
+| No bundle           | The ticket is in none of the window's bundles                          | **Bundle** reads "None".                                                                                                                                                                                                                                                                                                                                                                                  |
 
 ![Ticket Not Found in Orders' window](images/tickets-not-found.png)
 *Orders' window opened on ORD-999, which it doesn't have: **Ticket Not Found** in the detail column.*
@@ -553,11 +647,11 @@ Tickets needs 900 pt for its three columns (`macLayoutWidth`). The window picks 
 (see [foundations.md › Layout system](foundations.md#layout-system)), and Tickets adapts its panes to it (the
 user's choice).
 
-| Layout | When | What changes |
-| --- | --- | --- |
-| Mac | The window is at least 900 pt wide, or at least 1241 pt with the chat panel open | Sidebar, list and detail side by side. The chat panel sits beside them, and the columns make room for it. |
-| iPad | From 640 pt up to the Mac width | The sidebar folds away behind the sidebar button (the user's choice). The list and the detail stay side by side, and the sidebar button shows the sidebar again. While the sidebar is folded, the filter bar shows the filter that applies. The toolbar keeps its items. The chat panel slides over the content, with a shadow. |
-| iPhone | Narrower than 640 pt | One pane at a time (the user's choice). The list comes first, with the sidebar's choices in a **Filter** menu and the filter bar above it while a filter applies. The list starts with nothing selected, unless the window was opened on a ticket, which starts on its page. Picking a ticket pushes its page, with a Back button. The status menu and the next-step button become symbols. The New Ticket sheet narrows to fit the window. The chat panel fills the window. A window that narrows to this width keeps its selection and shows that item's page, as a collapsing split view does ([Foundations › Layout system](foundations.md#layout-system)). |
+| Layout | When                                                                             | What changes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|--------|----------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Mac    | The window is at least 900 pt wide, or at least 1241 pt with the chat panel open | Sidebar, list and detail side by side. The chat panel sits beside them, and the columns make room for it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| iPad   | From 640 pt up to the Mac width                                                  | The sidebar folds away behind the sidebar button (the user's choice). The list and the detail stay side by side, and the sidebar button shows the sidebar again. While the sidebar is folded, the filter bar shows the filter that applies. The toolbar keeps its items. The chat panel slides over the content, with a shadow.                                                                                                                                                                                                                                                                                                                                 |
+| iPhone | Narrower than 640 pt                                                             | One pane at a time (the user's choice). The list comes first, with the sidebar's choices in a **Filter** menu and the filter bar above it while a filter applies. The list starts with nothing selected, unless the window was opened on a ticket, which starts on its page. Picking a ticket pushes its page, with a Back button. The status menu and the next-step button become symbols. The New Ticket sheet narrows to fit the window. The chat panel fills the window. A window that narrows to this width keeps its selection and shows that item's page, as a collapsing split view does ([Foundations › Layout system](foundations.md#layout-system)). |
 
 - **Sidebar on a layout change.** Entering the Mac layout shows the sidebar. Entering the iPad or iPhone
   layout folds it. Within a layout, the sidebar button's choice holds.
@@ -610,10 +704,10 @@ id as title and focus, with the ticket's own project. In a parent's window, a su
 own project. When the selection changes, the subject follows. When nothing is selected, there is no subject,
 and the panel asks about the window's project.
 
-| Subject | Heading of a new chat | Suggestions |
-| --- | --- | --- |
-| A ticket, such as ORD-142 | "Ask about ORD-142" | The questions the Tickets tool words for the ticket's status (below) |
-| None | "Ask about *project*", such as "Ask about Orders" | "What changed this week?", "What needs my attention?" |
+| Subject                   | Heading of a new chat                             | Suggestions                                                          |
+|---------------------------|---------------------------------------------------|----------------------------------------------------------------------|
+| A ticket, such as ORD-142 | "Ask about ORD-142"                               | The questions the Tickets tool words for the ticket's status (below) |
+| None                      | "Ask about *project*", such as "Ask about Orders" | "What changed this week?", "What needs my attention?"                |
 
 In both cases the heading is followed by "Claude reads it through Tickets, and asks before it changes
 anything."
@@ -625,13 +719,13 @@ anything."
 - **Suggestions.** The read also returns the questions worth asking about the ticket where it is in its
   life: first the question its status raises, then a summary. The chat offers them.
 
-  | Status | Suggestions, for ORD-142 |
-  | --- | --- |
-  | Draft | "Is ORD-142 ready to create?", "Summarize ORD-142" |
-  | Created | "Where should work on ORD-142 start?", "Summarize ORD-142" |
+  | Status      | Suggestions, for ORD-142                                            |
+  |-------------|---------------------------------------------------------------------|
+  | Draft       | "Is ORD-142 ready to create?", "Summarize ORD-142"                  |
+  | Created     | "Where should work on ORD-142 start?", "Summarize ORD-142"          |
   | In Progress | "What's left before ORD-142 can go to review?", "Summarize ORD-142" |
-  | In Review | "Is ORD-142 ready to be marked as done?", "Summarize ORD-142" |
-  | Done | "What did ORD-142 change?", "Summarize ORD-142" |
+  | In Review   | "Is ORD-142 ready to be marked as done?", "Summarize ORD-142"       |
+  | Done        | "What did ORD-142 change?", "Summarize ORD-142"                     |
 
 - **Unknown ticket.** A read of an id that names no ticket returns nothing.
 - **Changing a ticket.** Settings ▸ Chat ▸ **Change tickets** sets whether Claude may change tickets:
@@ -641,66 +735,70 @@ See [Chat](chat.md) for the panel itself.
 
 ## Accessibility
 
-| Element | Identifier | Label or notes |
-| --- | --- | --- |
-| **All Tickets** row | `tickets.sidebar.all` | Badge: the ticket count. |
-| Status row | `tickets.sidebar.<status>`, for example `tickets.sidebar.inProgress` | Status raw values: `draft`, `created`, `inProgress`, `inReview`, `done`. |
-| Project row | `tickets.sidebar.project.<project id>`, for example `tickets.sidebar.project.ORD` | The project's icon is hidden from accessibility. |
-| Bundle row | `tickets.sidebar.bundle.<bundle id>`, for example `tickets.sidebar.bundle.ORD-B3` | The progress bar reads "*n* of *m* done". |
-| **Status**, **Projects**, **Bundles** (sidebar and Filter menu) | None | Headings. |
-| **Filter** menu | `tickets.filterMenu` | Label "Filter", value the filter's name. Help "Filter Tickets". iPhone only. |
-| **Filter** menu's choices | `tickets.filterMenu.all`, `tickets.filterMenu.<status>`, `tickets.filterMenu.project.<project id>`, `tickets.filterMenu.bundle.<bundle id>` | The choice's name. |
-| Filter bar | `tickets.filterBar` | One button: label "Filter", value the filter's name, hint "Shows all tickets." Help "Show All Tickets". |
-| **New Ticket** (toolbar) | `tickets.list.new` | Help "New Ticket (⇧⌘N)". |
-| **No Tickets** | `tickets.list.empty` | Contains its title, sentence and button. |
-| **New Ticket** (empty list) | `tickets.list.empty.new` | None. |
-| **No Matching Tickets** | `tickets.list.noMatch` | Contains its title, sentence and button. |
-| **Show All Tickets** (no match) | `tickets.list.noMatch.showAll` | None. |
-| Loading indicator | `tickets.list.loading` | "Loading Tickets". |
-| **Couldn't Load Tickets** | `tickets.list.error` | Contains its title, the error's message and its button. |
-| **Try Again** | `tickets.list.retry` | None. |
-| Ticket row | `tickets.row.<ticket id>`, for example `tickets.row.ORD-142` | One element: title, date, id, status and priority. |
-| Project group header | `tickets.group.<project id>`, for example `tickets.group.SHOP` | The project's name. Heading. |
-| **No Ticket Selected** | `tickets.detail.empty` | Contains its title and sentence. |
-| **Ticket Not Found** | `tickets.detail.notFound` | Contains its title and sentence. |
-| Status menu | `ticket.status.menu` | Label: the status's name, or "Status". Help "Change Status". |
-| Status menu's items | `ticket.status.<status>`, for example `ticket.status.done` | The status's name. Shortcuts ⌃⌘1 to ⌃⌘5. |
-| Next step | `ticket.nextStep` | Label: the step's name, or "Next Step". Help: the step's name and "(⇧⌘↩)". On iPhone the symbol alone shows, and the label is still read. |
-| Chat panel button | `toolbar.chatPanel` | Label "Chat". Help "Show the Chat Panel (⌃⌘C)" or "Hide the Chat Panel (⌃⌘C)". |
-| Project switcher | `toolbar.projectSwitcher` | Help "Switch Project". |
-| Ticket detail | `ticket.detail` | Contains every part of the ticket. |
-| Ticket id | `ticket.number` | None. |
-| Ticket title | `ticket.title` | Heading. |
-| Description | `ticket.description` | None. |
-| Properties | `ticket.properties` | Each property is one element: its name and its value. The Bundle property's symbol is hidden. |
-| Link row | `ticket.link.<link id>`, for example `ticket.link.l1` | One button: title and kind. The kind's symbol and the trailing arrow are hidden from accessibility. Unique within the ticket shown. |
-| **Linked**, **Activity** | None | Headings. |
-| Activity entry | `ticket.activity.<event id>`, for example `ticket.activity.2` | One element: text, date and comment. The symbol is hidden from accessibility. Unique within the ticket shown. |
-| Comment field | `ticket.comment` | Placeholder "Add a comment". |
-| **Comment** | `ticket.comment.send` | Help "Add the Comment (⌘↩)". |
-| **Attach Files**, a waiting file | `ticket.comment.attach`, `ticket.comment.file` | Label "Attach Files"; the file's name and Remove. |
-| **Edit**, the editor and its fields | `ticket.edit`, `ticket.editor`, `ticket.edit.title`, `.generateTitle`, `.generateTitle.message`, `.description`, `.priority`, `.labels`, `.cancel`, `.save` | Help "Edit the Ticket (⌘E)"; Generate Title's label "Generate Title", help "Generate a Title from the Description". |
-| Priority property | `ticket.priority` | A menu: the priority's name or "None". |
-| **Blocked** | `ticket.blocked` | Help "It depends on a ticket that isn't done." |
-| Attachments, **Add Files…**, a file | `ticket.attachments`, `ticket.attachments.add`, `ticket.attachment.<uuid>` | A file is one button: its name (and size). |
-| **Add Link…** | `ticket.links.add` | None. |
-| Mentioned In, a chat, none | `ticket.mentions`, `ticket.mentions.<chat id>`, `ticket.mentions.empty` | A row is one button: its title, project and date, then its mark's label ("Working", "Waiting for you", "Stopped with an error"). |
-| A bundle's **Mentioned In ▸** | `tickets.sidebar.bundle.<id>.mentions` | A menu. |
-| Comment editor | `ticket.commentEditor.text`, `ticket.commentEditor.save` | None. |
-| **New Bundle** (sidebar) | `tickets.sidebar.newBundle` | Help "New Bundle". |
-| Add Link sheet | `addLink.sheet`, `addLink.kind`, `addLink.ticket.<id>`, `addLink.add` | Heading. |
-| Bundle sheet | `bundle.sheet`, `bundle.title`, `bundle.ticket.<id>`, `bundle.save` | Heading. |
-| Markdown | None | Headings keep the header trait; a task box reads "Done" or "Not done". |
-| New Ticket sheet | `newTicket.sheet` | Contains every field of the sheet. |
-| New Ticket heading | None | Heading. |
-| **Title** field | `newTicket.title` | Label "Title" (hidden visually). |
-| **Description** field | `newTicket.description` | Label "Description" (hidden visually). |
-| **Project** | `newTicket.project` | Only for a project with sub projects. |
-| **Priority** | `newTicket.priority` | None. |
-| **Save as Draft** | `newTicket.draft.toggle` | None. |
-| **Cancel** | `newTicket.cancel` | Escape. |
-| **Create** | `newTicket.create` | Return. |
-| Dashboard's Tickets widget | `dashboard.tickets.<status>`, `dashboard.tickets.subprojects` | Each count is one element: the number and the status's name; the status symbol is hidden. |
+| Element                                                         | Identifier                                                                                                                                                  | Label or notes                                                                                                                            |
+|-----------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| **All Tickets** row                                             | `tickets.sidebar.all`                                                                                                                                       | Badge: the ticket count.                                                                                                                  |
+| Status row                                                      | `tickets.sidebar.<status>`, for example `tickets.sidebar.inProgress`                                                                                        | Status raw values: `draft`, `created`, `inProgress`, `inReview`, `done`.                                                                  |
+| Project row                                                     | `tickets.sidebar.project.<project id>`, for example `tickets.sidebar.project.ORD`                                                                           | The project's icon is hidden from accessibility.                                                                                          |
+| Bundle row                                                      | `tickets.sidebar.bundle.<bundle id>`, for example `tickets.sidebar.bundle.ORD-B3`                                                                           | The progress bar reads "*n* of *m* done".                                                                                                 |
+| **Status**, **Projects**, **Bundles** (sidebar and Filter menu) | None                                                                                                                                                        | Headings.                                                                                                                                 |
+| **Filter** menu                                                 | `tickets.filterMenu`                                                                                                                                        | Label "Filter", value the filter's name. Help "Filter Tickets". iPhone only.                                                              |
+| **Filter** menu's choices                                       | `tickets.filterMenu.all`, `tickets.filterMenu.<status>`, `tickets.filterMenu.project.<project id>`, `tickets.filterMenu.bundle.<bundle id>`                 | The choice's name.                                                                                                                        |
+| Filter bar                                                      | `tickets.filterBar`                                                                                                                                         | One button: label "Filter", value the filter's name, hint "Shows all tickets." Help "Show All Tickets".                                   |
+| **New Ticket** (toolbar)                                        | `tickets.list.new`                                                                                                                                          | Help "New Ticket (⇧⌘N)".                                                                                                                  |
+| **No Tickets**                                                  | `tickets.list.empty`                                                                                                                                        | Contains its title, sentence and button.                                                                                                  |
+| **New Ticket** (empty list)                                     | `tickets.list.empty.new`                                                                                                                                    | None.                                                                                                                                     |
+| **No Matching Tickets**                                         | `tickets.list.noMatch`                                                                                                                                      | Contains its title, sentence and button.                                                                                                  |
+| **Show All Tickets** (no match)                                 | `tickets.list.noMatch.showAll`                                                                                                                              | None.                                                                                                                                     |
+| Loading indicator                                               | `tickets.list.loading`                                                                                                                                      | "Loading Tickets".                                                                                                                        |
+| **Couldn't Load Tickets**                                       | `tickets.list.error`                                                                                                                                        | Contains its title, the error's message and its button.                                                                                   |
+| **Try Again**                                                   | `tickets.list.retry`                                                                                                                                        | None.                                                                                                                                     |
+| Ticket row                                                      | `tickets.row.<ticket id>`, for example `tickets.row.ORD-142`                                                                                                | One element: title, date, id, status and priority.                                                                                        |
+| Project group header                                            | `tickets.group.<project id>`, for example `tickets.group.SHOP`                                                                                              | The project's name. Heading.                                                                                                              |
+| **No Ticket Selected**                                          | `tickets.detail.empty`                                                                                                                                      | Contains its title and sentence.                                                                                                          |
+| **Ticket Not Found**                                            | `tickets.detail.notFound`                                                                                                                                   | Contains its title and sentence.                                                                                                          |
+| Status menu                                                     | `ticket.status.menu`                                                                                                                                        | Label: the status's name, or "Status". Help "Change Status".                                                                              |
+| Status menu's items                                             | `ticket.status.<status>`, for example `ticket.status.done`                                                                                                  | The status's name. Shortcuts ⌃⌘1 to ⌃⌘5.                                                                                                  |
+| Next step                                                       | `ticket.nextStep`                                                                                                                                           | Label: the step's name, or "Next Step". Help: the step's name and "(⇧⌘↩)". On iPhone the symbol alone shows, and the label is still read. |
+| Chat panel button                                               | `toolbar.chatPanel`                                                                                                                                         | Label "Chat". Help "Show the Chat Panel (⌃⌘C)" or "Hide the Chat Panel (⌃⌘C)".                                                            |
+| Project switcher                                                | `toolbar.projectSwitcher`                                                                                                                                   | Help "Switch Project".                                                                                                                    |
+| Ticket detail                                                   | `ticket.detail`                                                                                                                                             | Contains every part of the ticket.                                                                                                        |
+| Ticket id                                                       | `ticket.number`                                                                                                                                             | None.                                                                                                                                     |
+| Ticket title                                                    | `ticket.title`                                                                                                                                              | Heading.                                                                                                                                  |
+| Description                                                     | `ticket.description`                                                                                                                                        | None.                                                                                                                                     |
+| Properties                                                      | `ticket.properties`                                                                                                                                         | Each property is one element: its name and its value. The Bundle property's symbol is hidden.                                             |
+| Link row                                                        | `ticket.link.<link id>`, for example `ticket.link.l1`                                                                                                       | One button: title and kind. The kind's symbol and the trailing arrow are hidden from accessibility. Unique within the ticket shown.       |
+| **Linked**, **Activity**                                        | None                                                                                                                                                        | Headings.                                                                                                                                 |
+| Activity entry                                                  | `ticket.activity.<event id>`, for example `ticket.activity.2`                                                                                               | One element: text, date and comment. The symbol is hidden from accessibility. Unique within the ticket shown.                             |
+| Comment field                                                   | `ticket.comment`                                                                                                                                            | Placeholder "Add a comment".                                                                                                              |
+| **Comment**                                                     | `ticket.comment.send`                                                                                                                                       | Help "Add the Comment (⌘↩)".                                                                                                              |
+| **Attach Files**, a waiting file                                | `ticket.comment.attach`, `ticket.comment.file`                                                                                                              | Label "Attach Files"; the file's name and Remove.                                                                                         |
+| **Edit**, the editor and its fields                             | `ticket.edit`, `ticket.editor`, `ticket.edit.title`, `.generateTitle`, `.generateTitle.message`, `.description`, `.priority`, `.labels`, `.cancel`, `.save` | Help "Edit the Ticket (⌘E)"; Generate Title's label "Generate Title", help "Generate a Title from the Description".                       |
+| Priority property                                               | `ticket.priority`                                                                                                                                           | A menu: the priority's name or "None".                                                                                                    |
+| **Blocked**                                                     | `ticket.blocked`                                                                                                                                            | Help "It depends on a ticket that isn't done."                                                                                            |
+| Attachments, **Add Files…**, a file                             | `ticket.attachments`, `ticket.attachments.add`, `ticket.attachment.<uuid>`                                                                                  | A file is one button: its name (and size).                                                                                                |
+| **Add Link…**                                                   | `ticket.links.add`                                                                                                                                          | None.                                                                                                                                     |
+| Mentioned In, a chat, none                                      | `ticket.mentions`, `ticket.mentions.<chat id>`, `ticket.mentions.empty`                                                                                     | A row is one button: its title, project and date, then its mark's label ("Working", "Waiting for you", "Stopped with an error").          |
+| Chats, a chat, none                                             | `ticket.chats`, `ticket.chats.<chat id>`, `ticket.chats.empty`                                                                                              | As Mentioned In's rows.                                                                                                                   |
+| **Implement…**                                                  | `ticket.implement`, `ticket.chats.implement`                                                                                                                | Help "Implement the Ticket with Claude (⇧⌘I)", or why it is disabled.                                                                     |
+| A bundle's **Implement All…**, **Chats ▸**                      | `tickets.sidebar.bundle.<id>.implement`, `tickets.sidebar.bundle.<id>.chats`                                                                                | A button and a menu.                                                                                                                      |
+| Implement sheet                                                 | `implement.sheet`, `implement.model`, `.effort`, `.permissionMode`, `.ultracode`, `.contextWindow`, `.note`, `.message`, `.cancel`, `.start`                | Its heading is a heading.                                                                                                                 |
+| A bundle's **Mentioned In ▸**                                   | `tickets.sidebar.bundle.<id>.mentions`                                                                                                                      | A menu.                                                                                                                                   |
+| Comment editor                                                  | `ticket.commentEditor.text`, `ticket.commentEditor.save`                                                                                                    | None.                                                                                                                                     |
+| **New Bundle** (sidebar)                                        | `tickets.sidebar.newBundle`                                                                                                                                 | Help "New Bundle".                                                                                                                        |
+| Add Link sheet                                                  | `addLink.sheet`, `addLink.kind`, `addLink.ticket.<id>`, `addLink.add`                                                                                       | Heading.                                                                                                                                  |
+| Bundle sheet                                                    | `bundle.sheet`, `bundle.title`, `bundle.ticket.<id>`, `bundle.save`                                                                                         | Heading.                                                                                                                                  |
+| Markdown                                                        | None                                                                                                                                                        | Headings keep the header trait; a task box reads "Done" or "Not done".                                                                    |
+| New Ticket sheet                                                | `newTicket.sheet`                                                                                                                                           | Contains every field of the sheet.                                                                                                        |
+| New Ticket heading                                              | None                                                                                                                                                        | Heading.                                                                                                                                  |
+| **Title** field                                                 | `newTicket.title`                                                                                                                                           | Label "Title" (hidden visually).                                                                                                          |
+| **Description** field                                           | `newTicket.description`                                                                                                                                     | Label "Description" (hidden visually).                                                                                                    |
+| **Project**                                                     | `newTicket.project`                                                                                                                                         | Only for a project with sub projects.                                                                                                     |
+| **Priority**                                                    | `newTicket.priority`                                                                                                                                        | None.                                                                                                                                     |
+| **Save as Draft**                                               | `newTicket.draft.toggle`                                                                                                                                    | None.                                                                                                                                     |
+| **Cancel**                                                      | `newTicket.cancel`                                                                                                                                          | Escape.                                                                                                                                   |
+| **Create**                                                      | `newTicket.create`                                                                                                                                          | Return.                                                                                                                                   |
+| Dashboard's Tickets widget                                      | `dashboard.tickets.<status>`, `dashboard.tickets.subprojects`                                                                                               | Each count is one element: the number and the status's name; the status symbol is hidden.                                                 |
 
 - **Color with meaning.** Statuses and priorities always show a symbol and a name with their color.
 - **Strings.** Labels, headings, sentences, status, priority and kind names come from TicketsKit's String
@@ -728,25 +826,26 @@ pointed at, such as "TicketsRootView, iPhone, Filtered".
 
 `TicketsRootView`, with `TicketsModel` on the sample tickets:
 
-| Preview | Traits and size | Shows |
-| --- | --- | --- |
-| "Loaded" | `.appChrome`, 1180 × 760 pt | Orders, All Tickets, ORD-142 selected. |
-| "Loaded, Dark" | Same | The same, in Dark Mode. |
-| "Mentioned In" | `.appChrome`, 1180 × 1100 pt | Orders, ORD-142 selected, with the samples' chats that mention it. |
-| "Mentioned In, None" | Same | ORD-141, which no chat mentions. |
-| "Parent Project" | Same | Shop: the Projects section, the list grouped by project, SHOP-14 selected. |
-| "Bundle" | Same | Orders, the Checkout reliability bundle selected, ORD-139 selected. |
-| "No Matching Tickets" | Same | Tools, Done selected in the sidebar. |
-| "Ticket Not Found" | Same | Orders, opened on ORD-999. |
-| "Empty" | Same | AZDesign with no tickets and no bundles. |
-| "iPad" | `.padLayout`, 760 × 760 pt | Orders, ORD-142, the sidebar folded. |
-| "iPad, Filtered" | Same | The same, In Progress selected: the filter bar above the list. |
-| "iPhone" | `.phoneLayout`, 420 × 800 pt | Shop's list, grouped. |
-| "iPhone, Filtered" | Same | Orders' list, the Checkout reliability bundle selected: the filter bar, and the **Filter** symbol filled. |
-| "iPhone, Ticket" | Same | ORD-142's page. |
-| "iPhone, Dark" | Same | Orders' list, in Dark Mode. |
-| "Largest Text" | `.largestText`, 1180 × 760 pt | Orders at the largest Dynamic Type size. |
-| "Largest Text, iPhone" | `.phoneLayout`, `.largestText`, 420 × 800 pt | ORD-142's page at the largest Dynamic Type size. |
+| Preview                | Traits and size                              | Shows                                                                                                     |
+|------------------------|----------------------------------------------|-----------------------------------------------------------------------------------------------------------|
+| "Loaded"               | `.appChrome`, 1180 × 760 pt                  | Orders, All Tickets, ORD-142 selected.                                                                    |
+| "Loaded, Dark"         | Same                                         | The same, in Dark Mode.                                                                                   |
+| "Mentioned In"         | `.appChrome`, 1180 × 1100 pt                 | Orders, ORD-142 selected, with the samples' chats that mention it.                                        |
+| "Mentioned In, None"   | Same                                         | ORD-141, which no chat mentions.                                                                          |
+| "Implement"            | Same                                         | Orders, ORD-142 selected, with the samples' chats that implement it under **Chats**.                      |
+| "Parent Project"       | Same                                         | Shop: the Projects section, the list grouped by project, SHOP-14 selected.                                |
+| "Bundle"               | Same                                         | Orders, the Checkout reliability bundle selected, ORD-139 selected.                                       |
+| "No Matching Tickets"  | Same                                         | Tools, Done selected in the sidebar.                                                                      |
+| "Ticket Not Found"     | Same                                         | Orders, opened on ORD-999.                                                                                |
+| "Empty"                | Same                                         | AZDesign with no tickets and no bundles.                                                                  |
+| "iPad"                 | `.padLayout`, 760 × 760 pt                   | Orders, ORD-142, the sidebar folded.                                                                      |
+| "iPad, Filtered"       | Same                                         | The same, In Progress selected: the filter bar above the list.                                            |
+| "iPhone"               | `.phoneLayout`, 420 × 800 pt                 | Shop's list, grouped.                                                                                     |
+| "iPhone, Filtered"     | Same                                         | Orders' list, the Checkout reliability bundle selected: the filter bar, and the **Filter** symbol filled. |
+| "iPhone, Ticket"       | Same                                         | ORD-142's page.                                                                                           |
+| "iPhone, Dark"         | Same                                         | Orders' list, in Dark Mode.                                                                               |
+| "Largest Text"         | `.largestText`, 1180 × 760 pt                | Orders at the largest Dynamic Type size.                                                                  |
+| "Largest Text, iPhone" | `.phoneLayout`, `.largestText`, 420 × 800 pt | ORD-142's page at the largest Dynamic Type size.                                                          |
 
 `TicketListView` (360 × 620 pt unless noted):
 
@@ -769,6 +868,7 @@ pointed at, such as "TicketsRootView, iPhone, Filtered".
 - "iPhone": ORD-142 in the iPhone layout, 420 × 800 pt, with the compact actions.
 - "Largest Text": ORD-142 at the largest Dynamic Type size, 640 × 800 pt.
 - "Not Found": **Ticket Not Found** for ORD-999 in Orders, 640 × 480 pt.
+- "Chats": ORD-142 at 980 × 900 pt, with the samples' chats of the ticket and those that mention it.
 
 `NewTicketView` (size that fits; previews have no title generator, so **Generate Title** doesn't show but in
 "Generate Title"):

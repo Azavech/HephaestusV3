@@ -493,6 +493,7 @@ func ticketToolError(_ error: TicketError) -> ToolError {
     case .invalid(let message): ToolError(.invalid, message)
     case .notFound(let message): ToolError(.notFound, message)
     case .forbidden(let message): ToolError(.forbidden, message)
+    case .conflict(let message): ToolError(.conflict, message)
     case .storage(.trashFailed): ToolError(.unavailable, error.description)
     case .storage, .project: ToolError(.internal, error.description)
     }

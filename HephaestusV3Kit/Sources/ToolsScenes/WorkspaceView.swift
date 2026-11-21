@@ -112,6 +112,7 @@ private struct WorkspaceWindow: View {
         .adaptiveWindow($adaptiveWindow, layout: layout(tab))
         .frame(minWidth: Self.minimumWidth, minHeight: 420)
         .statusBar(FeedbackSource(window: windowName(of: tab), project: project(of: tab), item: workspace.subjects[tab.id]?.title))
+        .implementSheet()
         .environment(\.chatPanel, offersChatPanel(tab) ? chatPanelControl : nil)
         .focusedSceneValue(\.chatPanel, offersChatPanel(tab) ? chatPanelControl : nil)
         .focusedSceneValue(\.workspace, workspace)

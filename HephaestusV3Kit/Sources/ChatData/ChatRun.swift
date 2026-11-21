@@ -108,9 +108,18 @@ extension ChatSession {
     /// them. `files` are copied into the chat's folder and become the message's attachments (docs/data.md ›
     /// Message files): the images among them go to Claude as images, and each file's path follows the text as
     /// an `Attached: file <path>` line. A message has text, files, or both.
+    ///
+    /// The user's message lifts an implement chat's block on questions (docs/data.md › Implement chats).
     @discardableResult
     public func send(_ text: String, references: [ChatItemReference], to chatID: String?, projectID: String,
                      origin: String? = nil, title: String? = nil, images: [ClaudeImage] = [], files: [URL] = []) async throws(ChatError) -> String {
+        try await send(text, references: references, to: chatID, projectID: projectID, origin: origin, title: title, images: images,
+                       files: files, fromUser: true)
+    }
+
+    /// `send`, saying whether the user wrote the message: Resume's call of `resume-chat` didn't.
+    func send(_ text: String, references: [ChatItemReference], to chatID: String?, projectID: String, origin: String?, title: String?,
+              images: [ClaudeImage], files: [URL], fromUser: Bool) async throws(ChatError) -> String {
         let message = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !message.isEmpty || !files.isEmpty else { throw .invalid("text: write a message.") }
         try MessageAttachment.check(files)
@@ -135,7 +144,8 @@ extension ChatSession {
             sentImages += stored.filter { ClaudeImage.isImage(contentType: $0.attachment.contentType, url: $0.url) }
                 .compactMap { ClaudeImage(contentsOf: $0.url) }
         }
-        post(message, references: references, images: sentImages, attachments: attachments, carried: carried, to: id, cli: cli)
+        post(message, references: references, images: sentImages, attachments: attachments, carried: carried, to: id, cli: cli,
+             liftsQuestionBlock: fromUser)
         return id
     }
 
@@ -155,12 +165,13 @@ extension ChatSession {
     /// starting one when none runs. `carried` are items Claude reads of but the message doesn't keep as its own:
     /// its stored files.
     func post(_ message: String, references: [ChatItemReference], images: [ClaudeImage], attachments: [MessageAttachment] = [],
-              carried: [ChatItemReference] = [], to id: String, cli: String) {
+              carried: [ChatItemReference] = [], to id: String, cli: String, liftsQuestionBlock: Bool = false) {
         let item = UserItem(created: now(), text: message, sender: device, references: references, attachments: attachments)
         record(.user(item), in: id)
         change(id) {
             $0.updated = item.created
             $0.closed = false
+            if liftsQuestionBlock { $0.questionsBlocked = false }
         }
         failed.remove(id)
         let line = OutgoingMessage(text: ClaudeInput.text(message, carrying: references + carried), images: images)
@@ -209,7 +220,7 @@ extension ChatSession {
         }
         var launch = ChatLaunch(cliPath: cli, chatID: chatID, resume: chat.file.sessionStarted, model: chat.file.settings.model,
                                 effort: chat.file.settings.effort, mcpConfig: config, tools: toolNames,
-                                disallowedTools: ClaudeFileTools.disallowed(edits: fileEdits()), workingDirectory: project.root,
+                                disallowedTools: ClaudeFileTools.disallowed(edits: fileEdits()), workingDirectory: root(ofChat: chatID) ?? project.root,
                                 environment: projects.tools.environment, pluginDir: plugin)
         launch.permissionMode = ChatPermissionMode(stored: chat.file.settings.permissionMode)
         launch.ultracode = chat.file.settings.ultracode
@@ -509,6 +520,7 @@ extension ChatSession {
     /// Ends every process when the app quits: a turn in progress gets a line saying so; SIGTERM, then SIGKILL
     /// after 3 s.
     public func stopAll() {
+        quitting = true
         let live = Array(runs.values)
         for run in live where run.inTurn {
             record(.system(SystemItem(created: now(), text: "Stopped because Hephaestus quit.", level: .warning)), in: run.chatID)
@@ -530,9 +542,11 @@ extension ChatSession {
 
     // MARK: Approvals
 
-    /// The folder of the chat's project: where its CLI runs, and where its file tools may work without asking.
+    /// The folder of the chat's project: where its CLI runs, and where its file tools may work without asking. A
+    /// ticket chat a bundle's chat started works in its worktree while it has it (docs/data.md › Implement chats).
     public func root(ofChat chatID: String) -> String? {
-        chats[chatID].flatMap { projects.snapshot.project($0.projectID)?.root }
+        guard let chat = chats[chatID], let root = projects.snapshot.project(chat.projectID)?.root else { return nil }
+        return worktreeFolder(of: chat, projectRoot: root) ?? root
     }
 
     /// The user's answer to a card: the CLI's request, or the app's own.

@@ -280,6 +280,56 @@ struct TicketLibraryTests {
         #expect(try world.text("project.yml").contains("nextBundleNumber: 3"))
     }
 
+    // MARK: Implement (docs/data.md › Implement chats)
+
+    @Test("Implement: a ticket neither done nor a draft; its chat is appended to its chats once")
+    func implementTicket() async throws {
+        let world = try await World()
+        let one = try await world.create("One")
+        let draft = try await world.create("Draft", status: .draft)
+        let file = try #require(await world.ticket(one)?.file)
+        #expect(ImplementRules.refusal(of: file) == nil)
+        #expect(ImplementRules.refusal(of: try #require(await world.ticket(draft)?.file)) == "HEPH-2 is a draft; create it to implement it.")
+        _ = try await world.library.setStatus(one, to: .review, by: World.me)
+        #expect(ImplementRules.refusal(of: try #require(await world.ticket(one)?.file)) == nil, "A ticket in review can be implemented again")
+        _ = try await world.library.setStatus(one, to: .done, by: World.me)
+        #expect(ImplementRules.refusal(of: try #require(await world.ticket(one)?.file)) == "HEPH-1 is done; set another status to implement it.")
+
+        let chat = "3F2504E0-4F89-11D3-9A0C-0305E82C3301"
+        _ = try await world.library.linkChat(chat, toTicket: one)
+        _ = try await world.library.linkChat(chat, toTicket: one)
+        #expect(await world.ticket(one)?.file.chatIDs == [chat])
+        #expect(try world.text("ticket/HEPH-1.yml").contains("chats:\n- \(chat)\n"))
+        #expect(await failure { _ = try await world.library.linkChat(chat, toTicket: "HEPH-9") } == .notFound("Ticket HEPH-9 not found."))
+    }
+
+    @Test("Implement All: a bundle To Do with a ticket left lists the chat and is In Progress, in one write; otherwise a conflict")
+    func implementBundle() async throws {
+        let world = try await World()
+        let one = try await world.create("One")
+        let two = try await world.create("Two")
+        let bundle = try await world.library.createBundle(in: "HEPH", ticketIDs: [one, two]).id
+        let chat = "3F2504E0-4F89-11D3-9A0C-0305E82C3301"
+        _ = try await world.library.startImplementation(of: bundle, chat: chat)
+        let started = try #require(await world.library.snapshot.bundle(bundle))
+        #expect(started.status == .inProgress && started.chatIDs == [chat])
+        #expect(try world.text("bundle/HEPH-B1.yml").contains("status: in_progress"))
+        #expect(await failure { _ = try await world.library.startImplementation(of: bundle, chat: "OTHER") }
+            == .conflict("HEPH-B1 is in progress; set it to To Do to implement it."))
+        #expect(await world.library.snapshot.bundle(bundle)?.chatIDs == [chat], "A refusal writes nothing")
+
+        _ = try await world.library.setBundleStatus(bundle, to: .todo, by: World.me)
+        _ = try await world.library.setStatus(one, to: .done, by: World.me)
+        #expect(ImplementRules.refusal(of: try #require(await world.library.snapshot.bundle(bundle)), ticket: { _ in nil })
+            == "HEPH-B1 has no ticket left to implement.", "A listed id without its ticket doesn't count")
+        _ = try await world.library.setStatus(two, to: .done, by: World.me)
+        #expect(await failure { _ = try await world.library.startImplementation(of: bundle, chat: chat) }
+            == .conflict("HEPH-B1 is done; set it to To Do to implement it."))
+        _ = try await world.library.setBundleStatus(bundle, to: .todo, by: World.me)
+        #expect(await failure { _ = try await world.library.startImplementation(of: bundle, chat: chat) }
+            == .conflict("HEPH-B1 has no ticket left to implement."))
+    }
+
     @Test("Loading a project completes the bundles whose tickets are all done")
     func completeAtLoad() async throws {
         let world = try await World()

@@ -84,6 +84,7 @@ public struct TicketsRootView: View {
         } message: { confirmation in
             Text(verbatim: confirmationMessage(confirmation))
         }
+        .implementAlert(model)
         // A route to a ticket of this open window selects it again, even after the user picked another.
         .onFocusRequest { focus in
             model.select(focus: focus)
@@ -230,14 +231,24 @@ public struct TicketsRootView: View {
     }
 }
 
-/// The context menu of the list's selected tickets: Set Status, Add to Bundle, Delete.
+/// The context menu of the list's selected tickets: Implement…, Set Status, Add to Bundle, Delete.
 private struct TicketMenu: View {
     let model: TicketsModel
     let ids: Set<Ticket.ID>
 
+    @Environment(\.implement) private var implement
+
     var body: some View {
         let tickets = model.tickets.filter { ids.contains($0.id) }
         if !tickets.isEmpty {
+            if tickets.count == 1, let ticket = tickets.first, let implement {
+                Button(String(localized: "Implement…", bundle: #bundle, comment: "Starts a chat in which Claude implements the ticket"),
+                       systemImage: "hammer") {
+                    model.implement(ticket, with: implement)
+                }
+                .disabled(model.implementRefusal(of: ticket) != nil)
+                Divider()
+            }
             Menu(String(localized: "Set Status", bundle: #bundle)) {
                 ForEach(TicketStatus.allCases) { status in
                     Button(status.title, systemImage: status.symbol) {
@@ -272,6 +283,8 @@ private struct TicketMenu: View {
 /// bundles with their progress.
 private struct TicketSidebar: View {
     @Environment(\.chatMentions) private var chatMentions
+    @Environment(\.itemChats) private var itemChats
+    @Environment(\.implement) private var implement
     @Environment(\.openRoute) private var openRoute
     @Bindable var model: TicketsModel
 
@@ -330,6 +343,16 @@ private struct TicketSidebar: View {
                     .tag(TicketFilter.bundle(bundle.id))
                     .accessibilityIdentifier("tickets.sidebar.bundle.\(bundle.id)")
                     .contextMenu {
+                        if let implement {
+                            // V2's Implement All: a bundle To Do with a ticket left (docs/ui/tickets.md › Implement).
+                            Button(String(localized: "Implement All…", bundle: #bundle, comment: "Starts a chat in which Claude implements a bundle"),
+                                   systemImage: "hammer") {
+                                implement(TicketsModel.target(bundle))
+                            }
+                            .disabled(!model.canImplement(bundle))
+                            .accessibilityIdentifier("tickets.sidebar.bundle.\(bundle.id).implement")
+                            Divider()
+                        }
                         Button(String(localized: "Edit Bundle…", bundle: #bundle)) { model.startEditing(bundle) }
                         Menu(String(localized: "Set Status", bundle: #bundle)) {
                             ForEach(BundleStatus.allCases) { status in
@@ -338,6 +361,19 @@ private struct TicketSidebar: View {
                                 }
                                 .disabled(status == bundle.status)
                             }
+                        }
+                        if let itemChats {
+                            // The bundle's chats, each followed by the ticket chats it started.
+                            let chats = itemChats(bundle.id)
+                            Menu(String(localized: "Chats", bundle: #bundle, comment: "A ticket's own chats")) {
+                                if chats.isEmpty {
+                                    Text("No Chats", bundle: #bundle)
+                                }
+                                ForEach(chats) { chat in
+                                    Button(chat.title) { openRoute(.tool(.chat, project: chat.projectID, focus: chat.id)) }
+                                }
+                            }
+                            .accessibilityIdentifier("tickets.sidebar.bundle.\(bundle.id).chats")
                         }
                         if let chatMentions {
                             // V2's Mentioned In of a bundle: the chats that mention it, each opening in the Chat window.
@@ -483,6 +519,13 @@ private struct TicketFilterMenu: View {
 #Preview("Mentioned In", traits: .appChrome, .fixedLayout(width: 1180, height: 1100)) {
     TicketsRootView(model: TicketsModel(project: Project.sample("ORD")!, focus: "ORD-142", store: SampleTicketStore()))
         .environment(\.chatMentions, .samples)
+}
+
+#Preview("Implement", traits: .appChrome, .fixedLayout(width: 1180, height: 1100)) {
+    TicketsRootView(model: TicketsModel(project: Project.sample("ORD")!, focus: "ORD-142", store: SampleTicketStore()))
+        .environment(\.chatMentions, .samples)
+        .environment(\.itemChats, .samples)
+        .environment(\.implement, ImplementAction { _ in })
 }
 
 #Preview("Mentioned In, None", traits: .appChrome, .fixedLayout(width: 1180, height: 1100)) {

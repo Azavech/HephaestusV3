@@ -199,7 +199,7 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 | `operateClusters` | `k8s_restart`, `k8s_scale`, `k8s_port_forward`, `k8s_stop_port_forward`, `argocd_sync` | runs | Operate deployments, as Change tickets |
 | `operateMachines` | `vm_set_account`, `vm_create`, `vm_start`, `vm_stop`, `vm_shell`, `vm_click`, `vm_drag`, `vm_scroll`, `vm_type`, `vm_key`, `vm_copy_in`, `vm_copy_out` | runs | Operate virtual machines, as Change tickets |
 | `callAPIs` | `api_call` | runs | an `operation` starting `GET ` or `HEAD ` runs; another follows Call APIs that change data, as Change tickets |
-| `changeTickets` | `create_ticket`, `update_ticket`, `set_ticket_status`, `add_comment`, `update_comment`, the bundle tools but `delete_bundle` | runs | Change tickets: Always runs; Ask First shows a card and waits; Never refuses |
+| `changeTickets` | `create_ticket`, `update_ticket`, `set_ticket_status`, `add_comment`, `update_comment`, the bundle tools but `delete_bundle`, `implement_ticket`, `implement_bundle` | runs | Change tickets: Always runs; Ask First shows a card and waits, except on the chat's own items (below); Never refuses |
 | `deleteTickets` | `delete_ticket`, `delete_comment`, `remove_attachment`, `delete_bundle` | runs | Change tickets Never refuses; otherwise a card, even under Always |
 | `changeProjects` | `create_project`, `update_project` | runs | Change projects, as Change tickets |
 | `removeProjects` | `remove_project` | runs | Change projects Never refuses; otherwise a card |
@@ -222,6 +222,17 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 - **An internal skill's run** only reads (default chosen at design time: the app runs it for its answer alone,
   in the background, where no card can show): the `read` tools run but `open_in_app`; every other call is
   refused with `An internal skill's run only reads.` (`forbidden`), whatever Settings ▸ Chat says.
+
+**A chat's own items** (the user's choice, 20 November 2026): under Ask First, a `changeTickets` call of an
+[implement chat](data.md#implement-chats) runs without a card when it names only its own items: a `ticket` chat's
+`ticketID` its `ticket`; a `bundle` chat's `bundleID` its `bundle`, or its `ticketID` a ticket its bundle lists. A
+call without `ticketID` or `bundleID`, such as `create_ticket`, asks as before; Never still refuses. So a ticket's
+chat sets its status and comments on it, and a bundle's chat starts its tickets' chats with `implement_ticket`,
+without cards. `ChatGate.check` asks ToolsScenes' `ownsItem` whether the chat owns the item.
+
+**Questions in an implement chat.** While a chat's `questionsBlocked` is true, the `askUser` tools but
+`show_image` are refused (`forbidden`, `This chat implements a ticket: it asks the user nothing until the user
+writes in it.`), [Data › Implement chats](data.md#implement-chats).
 
 A chat's permission mode refines the column of a chat's Claude ([UI › Chat › Chat settings](ui/chat.md#chat-settings)):
 under Plan Only every group but `read`, `renameChats` and `askUser` is refused (`The chat is in Plan Only: Claude
@@ -268,7 +279,9 @@ what to ask the user, how to write a ticket. The app writes no system prompts, s
 changes reserved to the user ([Data › Ticket rules](data.md#ticket-rules)). In the app's chats, Claude also
 reads one line V3 writes with each message, naming the item the message carries ([Data ›
 Messages](data.md#messages)), and the same line in an internal skill's run, for the item it links ([Data ›
-Internal skills](data.md#internal-skills)); nothing else.
+Internal skills](data.md#internal-skills)), the internal skills' content the user edits in System Prompts, and the
+reports the app sends a bundle's chat about the chats it started ([Data › Implement chats](data.md#implement-chats));
+nothing else.
 
 ## Tools
 
@@ -297,6 +310,7 @@ a project: Claude may read and change every project of this Mac, as the user can
 | `ask_questions` | ChatKit | askUser | `ChatSession.postQuestions` |
 | `show_image` | ChatKit | askUser | `ChatSession.postImages` |
 | `ask_symbol`, `ask_color`, `ask_sound`, `ask_shortcut`, `ask_font`, `ask_animation` | ChatKit | askUser | `ChatSession.postPicker` |
+| `implement_ticket`, `implement_bundle` | ToolsScenes | changeTickets | `Implementer` ([Data › Implement chats](data.md#implement-chats)) |
 | `list_runs`, `get_run`, `get_run_log`, `list_releases`, `get_release` | BuildsKit | read | gh ([Data › Builds](data.md#builds)) |
 | `rerun_run`, `cancel_run` | BuildsKit | startBuilds | gh |
 | `api_operations` | ContractsKit | read | the project's contract ([Data › Contracts](data.md#contracts)) |
@@ -1768,6 +1782,77 @@ Input schema:
     "question",
     "suggestions",
     "recommended"
+  ],
+  "type" : "object"
+}
+```
+
+### implement_ticket
+
+- **Calls:** `Implementer.implementTicket` ([Data › Implement chats](data.md#implement-chats)): its checks, then a
+  `ticket` chat whose first message calls `implement-ticket`, linked to the ticket. With the token of a `bundle` chat,
+  for a ticket of its bundle: an orchestrated ticket chat, its branch and worktree, the calling chat's settings and
+  reports. The new chat isn't opened in a window.
+- **Permission:** `changeTickets`; a bundle's chat on a ticket of its bundle runs without a card ([Permissions](#permissions)).
+- **Result:** `{"chatID": <id>}`.
+- **Errors:** a malformed id (`invalid`); an unknown ticket (`notFound`); a done ticket or a draft (`conflict`, the
+  check's message); no Claude CLI, or a branch and worktree that can't be made (`unavailable`, the message); a file
+  that can't be written (`internal`).
+
+Description:
+
+```text
+Starts a chat in which Claude implements a ticket: the chat's first message calls the internal skill implement-ticket with the ticket's id, and the chat is added to the ticket's chats. Called from a chat that implements a bundle, for a ticket of that bundle, the new chat also gets the bundle's id, takes the calling chat's settings, and works on its own branch <bundle id>/<ticket id> in a git worktree the app creates from the project's current commit, replacing the ticket's earlier branch and worktree; the app then sends the calling chat a message each time the new chat ends a turn. Refused for a ticket that is done or a draft. Returns the new chat's id.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "ticketID" : {
+      "description" : "Ticket id, such as ORD-12.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "ticketID"
+  ],
+  "type" : "object"
+}
+```
+
+### implement_bundle
+
+- **Calls:** `Implementer.implementBundle` ([Data › Implement chats](data.md#implement-chats)): its checks, then a
+  `bundle` chat whose first message calls `implement-bundle`, linked to the bundle, which becomes `in_progress`. The new
+  chat isn't opened in a window.
+- **Permission:** `changeTickets`; a bundle's chat on its own bundle runs without a card ([Permissions](#permissions)).
+- **Result:** `{"chatID": <id>}`.
+- **Errors:** a malformed id (`invalid`); an unknown bundle (`notFound`); a bundle in progress or done, or without a
+  ticket left to implement (`conflict`, the check's message); no Claude CLI (`unavailable`); a file that can't be
+  written (`internal`).
+
+Description:
+
+```text
+Starts a chat in which Claude implements a bundle: the chat's first message calls the internal skill implement-bundle with the bundle's id, the chat is added to the bundle's chats, and the bundle is set to in_progress. Refused unless the bundle is todo and lists a ticket that isn't done. Returns the new chat's id.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "bundleID" : {
+      "description" : "Bundle id, such as ORD-B2.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "bundleID"
   ],
   "type" : "object"
 }

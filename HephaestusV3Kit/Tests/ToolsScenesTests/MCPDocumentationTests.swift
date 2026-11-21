@@ -35,10 +35,11 @@ struct MCPDocumentationTests {
     @MainActor
     func toolsMatch() throws {
         let session = ProjectSession(dataFolder: nil)
-        let registry = AppTools.registry(session: session, tickets: TicketSession(projects: session, device: "Test"),
-                                         chats: ChatSession(projects: session, tokens: MCPTokens(), device: "Test"),
+        let tickets = TicketSession(projects: session, device: "Test")
+        let chats = ChatSession(projects: session, tokens: MCPTokens(), device: "Test")
+        let registry = AppTools.registry(session: session, tickets: tickets, chats: chats,
                                          contracts: LiveContractStore(projects: session), maps: LiveServiceMapStore(projects: session),
-                                         machines: MachineHost(dataFolder: nil)) { _ in true }
+                                         machines: MachineHost(dataFolder: nil), implementer: Implementer(tickets: tickets, chats: chats)) { _ in true }
         let documented = try documentedTools()
         #expect(documented.map(\.name) == registry.names)
         for (name, description, schema) in documented {

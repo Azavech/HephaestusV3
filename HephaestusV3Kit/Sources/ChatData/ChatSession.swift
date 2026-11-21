@@ -145,6 +145,12 @@ public final class ChatSession {
     /// The chats whose transcript was read, latest last: the oldest are dropped past `keptTranscripts`.
     @ObservationIgnored var recent: [String] = []
     @ObservationIgnored private var statusTask: Task<Void, Never>?
+    /// A ticket chat's worktree is being made, and the calls waiting their turn: one at a time
+    /// (docs/data.md › Implement chats).
+    @ObservationIgnored var preparingWorktree = false
+    @ObservationIgnored var worktreeWaiters: [CheckedContinuation<Void, Never>] = []
+    /// The app quits: the chats' ends report nothing to their orchestrators.
+    @ObservationIgnored var quitting = false
 
     /// The transcripts kept in memory at most, besides those of running chats.
     static let keptTranscripts = 12
@@ -426,6 +432,7 @@ public final class ChatSession {
         if old != state {
             states[chatID] = state
             noticeTransition(chatID, from: old, to: state)
+            reportToOrchestrator(chatID, from: old, to: state)
         }
         if state.isRunning {
             if turnStarts[chatID] == nil { turnStarts[chatID] = now() }

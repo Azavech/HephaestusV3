@@ -19,10 +19,11 @@ import ToolsFoundation
 enum AppTools {
     /// `open` shows a route in a window, and says whether a window could.
     static func registry(session: ProjectSession, tickets: TicketSession, chats: ChatSession, contracts: LiveContractStore,
-                         maps: LiveServiceMapStore, machines: MachineHost, open: @escaping @MainActor (Route) -> Bool) -> ToolRegistry {
+                         maps: LiveServiceMapStore, machines: MachineHost, implementer: Implementer,
+                         open: @escaping @MainActor (Route) -> Bool) -> ToolRegistry {
         let feedback = FeedbackLink(isUnlinked: { chats.isUnlinkedFeedback($0) }, link: { chats.linkFeedback($0, toTicket: $1) })
         return ToolRegistry(ProjectTools.operations(session: session) + TicketTools.operations(tickets: tickets, projects: session, feedback: feedback)
-            + ChatTools.operations(chats: chats, projects: session) + BuildTools.operations(projects: session)
+            + ChatTools.operations(chats: chats, projects: session) + implementer.operations() + BuildTools.operations(projects: session)
             + ContractTools.operations(contracts: contracts, projects: session) + ClusterTools.operations(maps: maps, projects: session)
             + MachineTools.operations(host: machines) + [openInApp(session: session, tickets: tickets, open: open)])
     }

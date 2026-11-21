@@ -27,6 +27,8 @@ struct TicketDetailView: View {
 
     @Environment(\.openRoute) private var openRoute
     @Environment(\.chatMentions) private var chatMentions
+    @Environment(\.itemChats) private var itemChats
+    @Environment(\.implement) private var implement
 
     var body: some View {
         Group {
@@ -93,13 +95,34 @@ struct TicketDetailView: View {
         }
         attachments
         linked
+        if let itemChats {
+            TicketChatsSection(chats: itemChats(ticket.id)) { implementButton(identifier: "ticket.chats.implement", shortcut: false) }
+        }
         if let chatMentions {
             MentionedInSection(chats: chatMentions(ticket.id), emptyText: String(localized: "Chats that mention this ticket appear here.", bundle: #bundle))
         }
         activity
     }
 
-    /// The ticket's number, title, status and priority, and Edit.
+    /// Implement… (docs/ui/tickets.md › Implement): the dependencies alert first when some aren't done, then the
+    /// sheet. Disabled for a done ticket or a draft, saying why; absent where the window can't implement.
+    @ViewBuilder private func implementButton(identifier: String, shortcut: Bool) -> some View {
+        if let implement {
+            let refusal = model.implementRefusal(of: ticket)
+            Button(String(localized: "Implement…", bundle: #bundle, comment: "Starts a chat in which Claude implements the ticket"),
+                   systemImage: "hammer") {
+                model.implement(ticket, with: implement)
+            }
+            .labelStyle(.titleAndIcon)
+            .buttonStyle(.borderless)
+            .keyboardShortcut(shortcut ? KeyboardShortcut("i", modifiers: [.command, .shift]) : nil)
+            .disabled(refusal != nil)
+            .help(refusal ?? String(localized: "Implement the Ticket with Claude (⇧⌘I)", bundle: #bundle))
+            .accessibilityIdentifier(identifier)
+        }
+    }
+
+    /// The ticket's number, title, status and priority, Implement… and Edit.
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
@@ -109,6 +132,7 @@ struct TicketDetailView: View {
                     .foregroundStyle(.textSecondary)
                     .accessibilityIdentifier("ticket.number")
                 Spacer()
+                implementButton(identifier: "ticket.implement", shortcut: true)
                 Button(String(localized: "Edit", bundle: #bundle, comment: "Edits a ticket's title, description, priority and labels"), systemImage: "pencil") {
                     model.startEditing(ticket)
                 }
@@ -552,16 +576,46 @@ struct MentionedInSection: View {
     let chats: [MentioningChat]
     let emptyText: String
 
+    var body: some View {
+        ChatListSection(title: String(localized: "Mentioned In", bundle: #bundle, comment: "The chats that mention a ticket"),
+                        identifier: "ticket.mentions", chats: chats, emptyText: emptyText) {
+            EmptyView()
+        }
+    }
+}
+
+/// The ticket's own chats (docs/ui/tickets.md › Chats), with Implement… at the heading's trailing edge.
+struct TicketChatsSection<Trailing: View>: View {
+    let chats: [MentioningChat]
+    @ViewBuilder let trailing: () -> Trailing
+
+    var body: some View {
+        ChatListSection(title: String(localized: "Chats", bundle: #bundle, comment: "A ticket's own chats"), identifier: "ticket.chats",
+                        chats: chats,
+                        emptyText: String(localized: "Implement starts a chat in which Claude implements this ticket.", bundle: #bundle),
+                        trailing: trailing)
+    }
+}
+
+/// Chats in a group box, each opening its chat in the Chat window: Mentioned In's and Chats' rows.
+private struct ChatListSection<Trailing: View>: View {
+    let title: String
+    /// `ticket.mentions`, `ticket.chats`: the section's, `<identifier>.<chat id>` a row's, `<identifier>.empty`.
+    let identifier: String
+    let chats: [MentioningChat]
+    let emptyText: String
+    @ViewBuilder let trailing: () -> Trailing
+
     @Environment(\.openRoute) private var openRoute
 
     var body: some View {
-        TicketSection(String(localized: "Mentioned In", bundle: #bundle, comment: "The chats that mention a ticket")) {
-            EmptyView()
+        TicketSection(title) {
+            trailing()
         } content: {
             if chats.isEmpty {
                 Text(verbatim: emptyText)
                     .foregroundStyle(.textSecondary)
-                    .accessibilityIdentifier("ticket.mentions.empty")
+                    .accessibilityIdentifier("\(identifier).empty")
             } else {
                 GroupBox {
                     VStack(spacing: 0) {
@@ -569,7 +623,7 @@ struct MentionedInSection: View {
                             if chat.id != chats.first?.id {
                                 Divider()
                             }
-                            MentionRow(chat: chat) { openRoute(.tool(.chat, project: chat.projectID, focus: chat.id)) }
+                            MentionRow(chat: chat, identifier: identifier) { openRoute(.tool(.chat, project: chat.projectID, focus: chat.id)) }
                                 .contextMenu {
                                     Button(String(localized: "Open in Chat Window", bundle: #bundle)) {
                                         openRoute(.tool(.chat, project: chat.projectID, focus: chat.id))
@@ -585,19 +639,20 @@ struct MentionedInSection: View {
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("ticket.mentions")
+        .accessibilityIdentifier(identifier)
     }
 }
 
-/// A chat that mentions the ticket: its mark, title, project and last update.
+/// A chat of the ticket, or one that mentions it: its kind's symbol, title, project, last update and mark.
 private struct MentionRow: View {
     let chat: MentioningChat
+    let identifier: String
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 10) {
-                Image(systemName: "bubble.left.and.text.bubble.right")
+                Image(systemName: symbol)
                     .foregroundStyle(.accent)
                     .frame(minWidth: 20)
                     .accessibilityHidden(true)
@@ -620,7 +675,15 @@ private struct MentionRow: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("ticket.mentions.\(chat.id)")
+        .accessibilityIdentifier("\(identifier).\(chat.id)")
+    }
+
+    private var symbol: String {
+        switch chat.kind {
+        case .implement: "hammer"
+        case .feedback: "ladybug"
+        case .chat: "bubble.left.and.text.bubble.right"
+        }
     }
 
     @ViewBuilder private var mark: some View {
@@ -912,6 +975,18 @@ struct TicketNotFoundView: View {
         TicketDetailView(ticket: model.selectedTicket!, model: model)
             .toolbar { TicketActions(ticket: model.selectedTicket) }
     }
+}
+
+#Preview("Chats", traits: .appChrome) {
+    @Previewable @State var model = TicketsModel(project: Project.sample("ORD")!, focus: "ORD-142", store: SampleTicketStore())
+    NavigationStack {
+        TicketDetailView(ticket: model.selectedTicket!, model: model)
+            .toolbar { TicketActions(ticket: model.selectedTicket) }
+    }
+    .environment(\.chatMentions, .samples)
+    .environment(\.itemChats, .samples)
+    .environment(\.implement, ImplementAction { _ in })
+    .frame(width: 980, height: 900)
 }
 
 #Preview("Not Found", traits: .appChrome, .fixedLayout(width: 640, height: 480)) {

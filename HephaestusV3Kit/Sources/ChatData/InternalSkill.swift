@@ -52,8 +52,56 @@ public struct InternalSkill: Hashable, Sendable, Identifiable {
         most 150 characters that says what it is about. Answer with the sentence alone, without quotes or Markdown.
         """, defaultModel: "haiku", defaultEffort: .low)
 
+    /// Implementing a ticket, as V2's skill of the same name: Implement's first message calls it with the ticket's
+    /// id, and a bundle's chat's `implement_ticket` with the bundle's after it (docs/data.md › Implement chats). Its
+    /// default text is V3's own.
+    public static let implementTicket = InternalSkill(name: "implement-ticket", defaultContent: """
+        Implement the ticket the arguments name. When a second id follows it, a bundle's, that bundle's chat started \
+        you: you work in a git worktree, on your own branch.
+
+        1. Read the ticket with get_ticket, and its files with get_attachment. Set its status to in_progress with \
+        set_ticket_status.
+        2. Make the change the ticket asks for: the project's docs first when it keeps a specification, then the \
+        code. Build it and run its tests until they pass.
+        3. Commit the change. When a bundle's chat started you, commit on your branch and don't push or merge: that \
+        chat merges the branches.
+        4. Comment on the ticket with add_comment: what changed, the commit, the tests you ran and their results, and \
+        each choice you made where the ticket left one open.
+        5. Set the status to review.
+
+        Until the user writes in this chat, ask no questions: decide what the ticket leaves open, and list those \
+        decisions in your comment.
+        """, isCalledFromChats: true)
+
+    /// Implementing a bundle by running one chat per ticket, as V2's skill of the same name: Implement All's first
+    /// message calls it with the bundle's id. Its default text is V3's own, and says how to use `implement_ticket`
+    /// and the app's reports.
+    public static let implementBundle = InternalSkill(name: "implement-bundle", defaultContent: """
+        Implement the bundle the arguments name, by running one chat per ticket.
+
+        1. Read the bundle with get_bundle and each of its tickets with get_ticket. Leave out the tickets that are \
+        done.
+        2. Start a chat for each ticket that waits for no other ticket, with implement_ticket. A ticket waits for the \
+        tickets of the bundle it depends on that aren't done. Each chat works on its own branch, \
+        <bundle id>/<ticket id>, in a git worktree the app makes from the current commit, and commits there.
+        3. The app sends you a message each time one of these chats ends a turn: "Chat of <ticket id> finished its \
+        turn:" with its last reply, "Chat of <ticket id> ended in error: <reason>", or "Chat of <ticket id> was \
+        stopped.". Once every ticket a waiting ticket depends on has reported, merge their branches into the \
+        project's current branch, then start the waiting ticket's chat.
+        4. After an error or a stop, ask the user with ask_questions whether to retry the ticket on a fresh branch \
+        (implement_ticket again), skip it with the tickets that depend on it, or stop. The other chats keep running.
+        5. Once every ticket has reported or was skipped, merge the remaining branches into the current branch in \
+        the bundle's order, one commit per ticket, resolving the conflicts. Build and run the tests once on the \
+        result; when they fail, fix them or ask the user.
+        6. Update each ticket's comment with its commit on the current branch, then remove the merged worktrees and \
+        branches (git worktree remove, git branch -d).
+        7. Close the chats you started with close_chat, then reply with each ticket and its commit, or why it was \
+        skipped, and the conflicts you resolved.
+        """, isCalledFromChats: true)
+
     /// Every internal skill, in the order System Prompts lists them.
-    public static let all: [InternalSkill] = [.setTicketTitle, .reportFeedback, .resumeChat, .notificationSummary, .resumeAgent]
+    public static let all: [InternalSkill] = [.setTicketTitle, .reportFeedback, .resumeChat, .notificationSummary, .resumeAgent,
+                                              .implementTicket, .implementBundle]
 
     /// The plugin that gives chats the skills they call, as V2 named it.
     public static let pluginName = "hephaestus-skills"

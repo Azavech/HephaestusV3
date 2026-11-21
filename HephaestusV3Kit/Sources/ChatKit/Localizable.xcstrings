@@ -467,6 +467,12 @@
     "High" : {
       "comment" : "An effort level"
     },
+    "Implement %@" : {
+      "comment" : "The Implement sheet's heading; the value is a ticket id"
+    },
+    "Implement All %@" : {
+      "comment" : "The Implement sheet's heading for a bundle; the value is a bundle id"
+    },
     "In This Chat" : {
       "comment" : "A section: the items this chat attached or read"
     },
@@ -882,6 +888,9 @@
     "Standing dynamic-workflow orchestration for this chat, at any effort level." : {
 
     },
+    "Start" : {
+      "comment" : "Starts the chat that implements a ticket or a bundle"
+    },
     "Start builds" : {
 
     },
@@ -949,6 +958,9 @@
 
     },
     "The app has no data folder." : {
+
+    },
+    "The ticket chats this chat starts take its settings." : {
 
     },
     "The window could not be captured." : {

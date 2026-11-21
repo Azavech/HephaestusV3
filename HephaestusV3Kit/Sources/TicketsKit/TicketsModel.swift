@@ -126,6 +126,8 @@ final class TicketsModel {
     var bundleDraft: BundleDraft?
     /// What waits for a confirmation.
     var confirmation: TicketConfirmation?
+    /// The ticket whose Implement waits for the answer to the dependencies alert, and the action it then calls.
+    var implementPending: (ticket: Ticket, action: ImplementAction)?
     /// The message of the last change that failed, shown in an alert.
     var failure: String?
     /// True while a change runs.
