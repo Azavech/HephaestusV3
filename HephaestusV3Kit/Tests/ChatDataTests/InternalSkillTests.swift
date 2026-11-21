@@ -17,7 +17,11 @@ struct InternalSkillTests {
     @Test("The app defines set-ticket-title, empty, Haiku at a low effort, report-feedback, empty, resume-chat, with V3's text, both called from chats, and notification-summary, with V3's text, Haiku at a low effort; every name is in Claude's skill format, once")
     func definitions() {
         #expect(InternalSkill.all.map(\.name) == ["set-ticket-title", "report-feedback", "resume-chat", "notification-summary", "resume-agent",
-                                                    "implement-ticket", "implement-bundle"])
+                                                    "implement-ticket", "implement-bundle", "watch-ci"])
+        #expect(InternalSkill.watchCI.isCalledFromChats && InternalSkill.watchCI.command == "/hephaestus-skills:watch-ci")
+        #expect(InternalSkill.watchCI.defaults.content.contains("\"CI passed.\", \"CI failed.\" or \"CI not checked.\""),
+                "The first lines the app reads")
+        #expect(InternalSkill.implementTicket.defaults.content.contains("watch_ci") && InternalSkill.implementBundle.defaults.content.contains("watch_ci"))
         #expect(InternalSkill.resumeAgent.isCalledFromChats && !InternalSkill.resumeAgent.defaults.content.isEmpty)
         #expect(!InternalSkill.notificationSummary.isCalledFromChats && !InternalSkill.notificationSummary.defaults.content.isEmpty)
         #expect(InternalSkill.notificationSummary.defaults.model == "haiku" && InternalSkill.notificationSummary.defaults.effort == .low)

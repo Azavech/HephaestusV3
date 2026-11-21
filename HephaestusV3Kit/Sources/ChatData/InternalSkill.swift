@@ -56,21 +56,42 @@ public struct InternalSkill: Hashable, Sendable, Identifiable {
     /// id, and a bundle's chat's `implement_ticket` with the bundle's after it (docs/data.md › Implement chats). Its
     /// default text is V3's own.
     public static let implementTicket = InternalSkill(name: "implement-ticket", defaultContent: """
-        Implement the ticket the arguments name. When a second id follows it, a bundle's, that bundle's chat started \
-        you: you work in a git worktree, on your own branch.
+        Implement the ticket the arguments name. When a second id follows it, a bundle's, that bundle's chat \
+        started you: you work in a git worktree, on your own branch.
 
         1. Read the ticket with get_ticket, and its files with get_attachment. Set its status to in_progress with \
         set_ticket_status.
         2. Make the change the ticket asks for: the project's docs first when it keeps a specification, then the \
         code. Build it and run its tests until they pass.
-        3. Commit the change. When a bundle's chat started you, commit on your branch and don't push or merge: that \
-        chat merges the branches.
-        4. Comment on the ticket with add_comment: what changed, the commit, the tests you ran and their results, and \
-        each choice you made where the ticket left one open.
-        5. Set the status to review.
+        3. Commit the change. When a bundle's chat started you, commit on your branch, don't push or merge, and \
+        skip step 5: that chat merges the branches, pushes and follows the CI. Otherwise, push the commit.
+        4. Comment on the ticket with add_comment: what changed, the commit, the tests you ran and their results, \
+        and each choice you made where the ticket left one open.
+        5. When you pushed and the project has a GitHub page (githubPage in get_project), follow the CI of the \
+        pushed commit as below before you go on.
+        6. Set the status to review.
+        7. Close the CI chats you started with close_chat, then reply with what changed, the commit, the tests and \
+        how the CI went.
 
         Until the user writes in this chat, ask no questions: decide what the ticket leaves open, and list those \
         decisions in your comment.
+
+        Following the CI:
+        - Call watch_ci with the full hash of the pushed commit, then end your turn. The app starts a CI chat that \
+        watches the commit's workflow runs, and sends you its report when its turn ends: "CI chat finished its \
+        turn:" with its reply, whose first line is "CI passed.", "CI failed." or "CI not checked.", or "CI chat \
+        ended in error: <reason>", or "CI chat was stopped.".
+        - Until that report, don't set the status and don't close this chat.
+        - After "CI passed." or "CI not checked.", go on. When the CI wasn't checked, say why in your reply.
+        - After "CI failed.", an error or a stop, ask the user how to go on with ask_questions, even when they \
+        haven't written in this chat yet: the app lets you post this one question set. Offer these answers:
+          - Fix and check again: fix the cause, build and test, commit the fix and push it, add it to your comment \
+        with update_comment, then call watch_ci with the new commit.
+          - Re-run the failed runs: re-run each failed run with rerun_run and failedOnly, then call watch_ci with \
+        the same commit. If the app refuses rerun_run, say so in your reply and stop there.
+          - Finish without green CI: name the failed runs in your comment with update_comment, then go on.
+        - When the push or watch_ci fails, don't wait: say in your comment and your reply that the CI wasn't \
+        followed, and why.
         """, isCalledFromChats: true)
 
     /// Implementing a bundle by running one chat per ticket, as V2's skill of the same name: Implement All's first
@@ -81,9 +102,9 @@ public struct InternalSkill: Hashable, Sendable, Identifiable {
 
         1. Read the bundle with get_bundle and each of its tickets with get_ticket. Leave out the tickets that are \
         done.
-        2. Start a chat for each ticket that waits for no other ticket, with implement_ticket. A ticket waits for the \
-        tickets of the bundle it depends on that aren't done. Each chat works on its own branch, \
-        <bundle id>/<ticket id>, in a git worktree the app makes from the current commit, and commits there.
+        2. Start a chat for each ticket that waits for no other ticket, with implement_ticket. A ticket waits for \
+        the tickets of the bundle it depends on that aren't done. Each chat works on its own branch, <bundle \
+        id>/<ticket id>, in a git worktree the app makes from the current commit, and commits there.
         3. The app sends you a message each time one of these chats ends a turn: "Chat of <ticket id> finished its \
         turn:" with its last reply, "Chat of <ticket id> ended in error: <reason>", or "Chat of <ticket id> was \
         stopped.". Once every ticket a waiting ticket depends on has reported, merge their branches into the \
@@ -95,13 +116,58 @@ public struct InternalSkill: Hashable, Sendable, Identifiable {
         result; when they fail, fix them or ask the user.
         6. Update each ticket's comment with its commit on the current branch, then remove the merged worktrees and \
         branches (git worktree remove, git branch -d).
-        7. Close the chats you started with close_chat, then reply with each ticket and its commit, or why it was \
-        skipped, and the conflicts you resolved.
+        7. Push the current branch. When the project has a GitHub page (githubPage in get_project), follow the CI \
+        of the pushed commit as below.
+        8. Close the chats you started with close_chat, the CI chats too, then reply with each ticket and its \
+        commit, or why it was skipped, the conflicts you resolved, and how the CI went.
+
+        Following the CI:
+        - Call watch_ci with the full hash of the pushed commit, then end your turn. The app starts a CI chat that \
+        watches the commit's workflow runs, and sends you its report when its turn ends: "CI chat finished its \
+        turn:" with its reply, whose first line is "CI passed.", "CI failed." or "CI not checked.", or "CI chat \
+        ended in error: <reason>", or "CI chat was stopped.".
+        - After "CI passed." or "CI not checked.", go on. When the CI wasn't checked, say why in your reply.
+        - After "CI failed.", an error or a stop, ask the user how to go on with ask_questions. Offer these answers:
+          - Fix and check again: fix the cause yourself, build and test, commit the fix naming the ticket whose \
+        change caused it, push it, add it to that ticket's comment with update_comment, then call watch_ci with the \
+        new commit.
+          - Re-run the failed runs: re-run each failed run with rerun_run and failedOnly, then call watch_ci with \
+        the same commit. If the app refuses rerun_run, say so in your reply and stop there.
+          - Finish without green CI: name the failed runs in the tickets' comments with update_comment, then go on.
+        - When the push or watch_ci fails, don't wait: say in your reply that the CI wasn't followed, and why.
+        """, isCalledFromChats: true)
+
+    /// Following the CI of a pushed commit, as V2's CI chats: the first message of the chat `watch_ci` starts calls it
+    /// with the commit, the project attached (docs/data.md › CI chats). Its default text is V3's own, and says which
+    /// first line the app reads to tell a failure.
+    public static let watchCI = InternalSkill(name: "watch-ci", defaultContent: """
+        Follow the GitHub Actions runs of the commit the arguments name, then report on them. The chat that pushed \
+        the commit started this one, and the app sends it your last reply when your turn ends: that chat decides \
+        what to do next.
+
+        1. Read the project the message attaches with get_project: its githubPage, \
+        https://github.com/<owner>/<name>, is the repository.
+        2. List the commit's workflow runs with the gh CLI in your shell: gh run list --repo <owner>/<name> \
+        --commit <commit> --json databaseId,workflowName,status,conclusion. Runs can take a minute to show after a \
+        push: look again for two minutes before you decide there are none.
+        3. Wait for each run to end, in the foreground: gh run watch <run id> --repo <owner>/<name> --exit-status. \
+        When the shell moves a command that runs too long to the background, stop that task and watch again. Once \
+        every run has ended, list the runs again, in case a new one started.
+        4. End your turn with a reply whose first line is "CI passed.", "CI failed." or "CI not checked.", with \
+        nothing else on that line:
+           - "CI passed." when every run succeeded.
+           - "CI failed." when a run failed or was cancelled. Under it, for each such run: its workflow, its id, \
+        its failed jobs, and the cause, read with gh run view <run id> --repo <owner>/<name> --log-failed.
+           - "CI not checked." when you couldn't follow the runs. Under it, why: the commit has no workflow run, gh \
+        is missing or not logged in, or the project has no GitHub page.
+
+        Change no file, make no commit and ask no questions. Keep this turn going until you can reply: the app \
+        reports to the other chat as soon as it ends.
         """, isCalledFromChats: true)
 
     /// Every internal skill, in the order System Prompts lists them.
     public static let all: [InternalSkill] = [.setTicketTitle, .reportFeedback, .resumeChat, .notificationSummary, .resumeAgent,
-                                              .implementTicket, .implementBundle]
+                                              .implementTicket, .implementBundle, .watchCI]
 
     /// The plugin that gives chats the skills they call, as V2 named it.
     public static let pluginName = "hephaestus-skills"

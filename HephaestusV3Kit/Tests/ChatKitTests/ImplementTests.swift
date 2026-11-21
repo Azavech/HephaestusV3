@@ -53,6 +53,31 @@ struct ImplementChatKitTests {
         #expect(await check("T", ["ticketID": "ORD-142"], chats)?.code == .forbidden)
     }
 
+    @Test("watch_ci runs without a card under Ask First, Never and Plan Only refuse it; a chat closes the chats it started without one")
+    func ciChats() async {
+        let chats = session()
+        var ci = ChatFile(id: "C", title: "CI of ORD-142: 8e7ccf3", kind: .ci, created: date)
+        ci.ticketID = "ORD-142"
+        ci.orchestratorChatID = "T"
+        chats.chats["C"] = LoadedChat(file: ci, projectID: "ORD")
+        let watch = ToolOperation(name: "watch_ci", description: "", inputSchema: .object(), permission: .changeTickets) { _ throws(ToolError) in .null }
+        func check(_ chat: String, _ operation: ToolOperation, _ arguments: JSONValue, mode: ChatPermissionMode? = nil) async -> ToolError? {
+            await ChatGate.check(.chat(chat), operation, arguments, chats: chats, defaults: defaults, mode: mode)
+        }
+        defaults.set("askFirst", forKey: ChatPreferences.ticketChangesKey)
+        #expect(await check("T", watch, ["commit": "8e7ccf3a0b1c2d3e4f5061728394a5b6c7d8e9f0"]) == nil)
+        #expect(await check("T", watch, [:], mode: .plan)?.message == "The chat is in Plan Only: Claude plans and changes nothing.")
+        defaults.set("never", forKey: ChatPreferences.ticketChangesKey)
+        #expect(await check("T", watch, [:])?.message == "The user doesn't let Claude change tickets from chats (Settings ▸ Chat).")
+
+        let close = ToolOperation(name: "close_chat", description: "", inputSchema: .object(), permission: .closeChats) { _ throws(ToolError) in .null }
+        #expect(await check("T", close, ["chatIDs": ["C", "T"]]) == nil, "Its CI chat and itself")
+        #expect(await check("T", close, ["chatIDs": ["c"]]) == nil, "Ids are read in capitals")
+        let asked = ToolError(.forbidden, "The user didn't allow this call.")
+        #expect(await check("T", close, ["chatIDs": ["C", "P"]]) == asked, "Another chat still asks")
+        #expect(await check("B", close, ["chatIDs": ["C"]]) == asked, "A chat another one started")
+    }
+
     @Test("The sheet starts on its settings, keeps them and the reason after a failure, and waits for the CLI")
     func sheet() async {
         let target = ImplementTarget(.bundle, id: "ORD-B3", projectID: "ORD", title: "Checkout reliability")

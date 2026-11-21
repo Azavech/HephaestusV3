@@ -228,6 +228,8 @@ extension ChatSession {
         let id = UUID().uuidString
         let item = QuestionsItem(id: id, created: now(), questionSetID: id, questions: questions)
         record(.questions(item), in: chatID)
+        // The one set allowed after a CI failure is used up (docs/data.md › CI chats).
+        ciQuestionChats.remove(chatID)
         refreshState(chatID)
         return item
     }

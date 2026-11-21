@@ -76,7 +76,12 @@ public struct ImplementChat: Sendable, Hashable {
     /// The message a turn's end sends the orchestrator (docs/data.md › Implement chats › Reports): stopped, ended in
     /// error with its reason, or finished with the final reply.
     static func report(ticketID: String, turn: ArraySlice<ChatItem>, stopped: Bool, failed: Bool) -> String {
-        if stopped { return "Chat of \(ticketID) was stopped." }
+        report(subject: "Chat of \(ticketID)", turn: turn, stopped: stopped, failed: failed)
+    }
+
+    /// The report of a chat named `subject`, such as `Chat of ORD-142` or `CI chat`.
+    static func report(subject: String, turn: ArraySlice<ChatItem>, stopped: Bool, failed: Bool) -> String {
+        if stopped { return "\(subject) was stopped." }
         let lastResult = turn.reversed().lazy.compactMap { item -> ResultItem? in
             if case .result(let result) = item { return result }
             return nil
@@ -86,13 +91,13 @@ public struct ImplementChat: Sendable, Hashable {
                 if case .system(let line) = item, line.level == .error { return line.text }
                 return nil
             }.first
-            return "Chat of \(ticketID) ended in error: \(systemError ?? lastResult?.summary ?? "")"
+            return "\(subject) ended in error: \(systemError ?? lastResult?.summary ?? "")"
         }
         let reply = turn.reversed().lazy.compactMap { item -> String? in
             if case .assistant(let text) = item, text.parentToolUseID == nil { return text.text }
             return nil
         }.first ?? ""
-        return "Chat of \(ticketID) finished its turn:\n\n\(reply)".trimmingCharacters(in: .whitespacesAndNewlines)
+        return "\(subject) finished its turn:\n\n\(reply)".trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// The refusal of the ask tools in a chat whose questions are blocked.
@@ -243,23 +248,32 @@ extension ChatSession {
         }
     }
 
-    /// Why the ask tools are refused in the chat: its questions are blocked until the user writes.
-    public func questionsRefusal(in chatID: String) -> String? {
-        chats[chatID]?.file.questionsBlocked == true ? ImplementChat.questionsRefusal : nil
+    /// Why the ask tools are refused in the chat: its questions are blocked until the user writes. `questions` is
+    /// `ask_questions`, which an implement chat may call once after a CI failure (docs/data.md › CI chats).
+    public func questionsRefusal(in chatID: String, questions: Bool = false) -> String? {
+        guard chats[chatID]?.file.questionsBlocked == true else { return nil }
+        return questions && ciQuestionChats.contains(chatID) ? nil : ImplementChat.questionsRefusal
     }
 
-    /// A ticket's chats: those whose `ticket` is it, the latest updated first.
+    /// A ticket's chats: those whose `ticket` is it, in the order of `ordered(_:)`.
     public func chats(ofTicket ticketID: String) -> [LoadedChat] {
-        chats.values.filter { $0.file.ticketID == ticketID }.sorted { $0.file.updated > $1.file.updated }
+        ordered(chats.values.filter { $0.file.ticketID == ticketID })
     }
 
-    /// A bundle's chats: those whose `bundle` is it, the latest updated first, each followed by the chats it
-    /// orchestrates, oldest first.
+    /// A bundle's chats: those whose `bundle` is it, in the order of `ordered(_:)`, which brings the ticket chats
+    /// its chat started.
     public func chats(ofBundle bundleID: String) -> [LoadedChat] {
-        let own = chats.values.filter { $0.file.bundleID == bundleID && $0.file.orchestratorChatID == nil }
+        ordered(chats.values.filter { $0.file.bundleID == bundleID })
+    }
+
+    /// An item's chats as the Tickets window lists them: those whose orchestrator isn't among them, the latest
+    /// updated first, each followed by the loaded chats it orchestrates, oldest first.
+    private func ordered(_ own: [LoadedChat]) -> [LoadedChat] {
+        let ids = Set(own.map(\.id))
+        let top = own.filter { chat in chat.file.orchestratorChatID.map { !ids.contains($0) } ?? true }
             .sorted { $0.file.updated > $1.file.updated }
-        return own.flatMap { chat in
-            [chat] + chats.values.filter { $0.file.orchestratorChatID == chat.id }.sorted { $0.file.created < $1.file.created }
+        return top.flatMap { chat in
+            [chat] + chats.values.filter { $0.file.orchestratorChatID == chat.id }.sorted { ($0.file.created, $0.id) < ($1.file.created, $1.id) }
         }
     }
 
@@ -284,14 +298,24 @@ extension ChatSession {
     }
 
     /// A turn of a chat with an orchestrator ended: the orchestrator gets the report (docs/data.md › Implement
-    /// chats › Reports). Nothing while the app quits, without the orchestrator or the CLI, or when the turn waits
-    /// for answers.
+    /// chats › Reports, CI chats). Nothing while the app quits, without the orchestrator or the CLI, or when the turn
+    /// waits for answers. A CI failure lets an implement chat post one question set; another CI report takes it back.
     func reportToOrchestrator(_ chatID: String, from old: ChatState?, to new: ChatState) {
         guard !quitting, let old, [.starting, .running, .waitingPermission].contains(old), new == .idle || new == .error,
-              let chat = chats[chatID], let orchestratorID = chat.file.orchestratorChatID, chats[orchestratorID] != nil,
+              let chat = chats[chatID], let orchestratorID = chat.file.orchestratorChatID, let orchestrator = chats[orchestratorID],
               status.isAvailable, let cli = status.path else { return }
-        let message = ImplementChat.report(ticketID: chat.file.ticketID ?? chat.file.title, turn: lastTurn(chatID),
+        let message: String
+        if chat.file.kind == .ci {
+            message = CIChat.report(turn: lastTurn(chatID), stopped: lastTurnStopped(chatID), failed: new == .error)
+            if CIChat.isFailure(message), orchestrator.file.questionsBlocked {
+                ciQuestionChats.insert(orchestratorID)
+            } else {
+                ciQuestionChats.remove(orchestratorID)
+            }
+        } else {
+            message = ImplementChat.report(ticketID: chat.file.ticketID ?? chat.file.title, turn: lastTurn(chatID),
                                            stopped: lastTurnStopped(chatID), failed: new == .error)
+        }
         post(message, references: [], images: [], to: orchestratorID, cli: cli)
     }
 

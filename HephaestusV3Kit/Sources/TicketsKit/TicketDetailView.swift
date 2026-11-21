@@ -681,6 +681,7 @@ private struct MentionRow: View {
     private var symbol: String {
         switch chat.kind {
         case .implement: "hammer"
+        case .ci: "checklist"
         case .feedback: "ladybug"
         case .chat: "bubble.left.and.text.bubble.right"
         }

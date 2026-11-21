@@ -188,6 +188,8 @@ nonisolated public struct MentioningChat: Identifiable, Hashable, Sendable {
         case chat
         /// A chat that implements a ticket or a bundle (docs/ui/tickets.md › Implement).
         case implement
+        /// A chat that follows the CI of a push (docs/data.md › CI chats).
+        case ci
         /// A feedback chat.
         case feedback
     }

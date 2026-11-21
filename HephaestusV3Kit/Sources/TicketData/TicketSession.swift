@@ -132,6 +132,11 @@ public final class TicketSession {
         apply(try await readyLibrary().linkChat(chatID, toTicket: id))
     }
 
+    /// A bundle's CI chat: appends it to the bundle's `chats` (docs/data.md › CI chats).
+    public func linkChat(_ chatID: String, toBundle id: String) async throws(TicketError) {
+        apply(try await readyLibrary().linkChat(chatID, toBundle: id))
+    }
+
     /// Implement All: the bundle lists the chat and is In Progress, once its checks pass again.
     public func startImplementation(of id: String, chat chatID: String) async throws(TicketError) {
         apply(try await readyLibrary().startImplementation(of: id, chat: chatID))

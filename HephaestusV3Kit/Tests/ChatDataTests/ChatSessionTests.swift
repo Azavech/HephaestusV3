@@ -110,12 +110,14 @@ final class ChatWorld {
     /// `projectType` is the `type` of the project file, such as `swiftApplication`; none when nil. The picker
     /// catalogues read fixtures of the world's folder (`PickerCatalogs.Sources.fixtures`). `runner` runs the
     /// processes, `ChatRunner` by default; `git` puts a stand-in git in the tools' `PATH`, which `runner` answers.
-    init(projectType: String? = nil, runner: any ProcessRunning = ChatRunner(), git: Bool = false) async throws {
+    /// `githubPage` is the project file's GitHub page.
+    init(projectType: String? = nil, githubPage: String? = nil, runner: any ProcessRunning = ChatRunner(), git: Bool = false) async throws {
         root = FileManager.default.temporaryDirectory.appendingPathComponent("ChatSessionTests-\(UUID().uuidString)").resolvingSymlinksInPath()
         repo = root.appendingPathComponent("Repo")
         try FileManager.default.createDirectory(at: repo.appendingPathComponent(".hephaestus"), withIntermediateDirectories: true)
         let type = projectType.map { "type: \($0)\n" } ?? ""
-        try Data("schema: 1\nid: ORD\nname: Orders\ncreated: 2026-10-31T09:30:00Z\n\(type)".utf8)
+        let page = githubPage.map { "githubPage: \($0)\n" } ?? ""
+        try Data("schema: 1\nid: ORD\nname: Orders\ncreated: 2026-10-31T09:30:00Z\n\(type)\(page)".utf8)
             .write(to: repo.appendingPathComponent(".hephaestus/project.yml"))
         let cli = root.appendingPathComponent("claude")
         FileManager.default.createFile(atPath: cli.path, contents: Data("#!/bin/sh\nexit 1\n".utf8), attributes: [.posixPermissions: 0o755])

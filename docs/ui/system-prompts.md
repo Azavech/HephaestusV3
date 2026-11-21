@@ -68,8 +68,9 @@ reads.
 | `resume-agent`         | V3's own text: "One of your agents in this chat stopped before it was finished. The arguments name it, with its agent id in parentheses. Resume that agent with SendMessage, telling it to go on from where it stopped."                                                                                                                       | `default`, High (a chat's defaults; the app never runs it itself)                | **Resume** in a sub-agent's view ([Chat › Agents](chat.md#agents)): `/hephaestus-skills:resume-agent <title> (agent id <id>)`. V2 sent a fixed sentence.                                                                                                                                                                                                                                                                                                                             |
 | `implement-ticket`     | V3's own text, [below](#implement-skills)                                                                                                                                                                                                                                                                                                      | `default`, High (a chat's defaults; the app never runs it itself)                | **Implement…** and `implement_ticket` ([Tickets › Implement](tickets.md#implement)): the first message of a ticket's chat, `/hephaestus-skills:implement-ticket <ticket id>`, with the bundle's id after it for a chat a bundle's chat started. V2's skill of the same name; V3 writes its own text (no V2 prompt).                                                                                                                                                                  |
 | `implement-bundle`     | V3's own text, [below](#implement-skills)                                                                                                                                                                                                                                                                                                      | `default`, High (a chat's defaults; the app never runs it itself)                | **Implement All…** and `implement_bundle`: the first message of a bundle's chat, `/hephaestus-skills:implement-bundle <bundle id>`. V2's skill of the same name; V3 writes its own text.                                                                                                                                                                                                                                                                                             |
+| `watch-ci`             | V3's own text, [below](#ci-skill)                                                                                                                                                                                                                                                                                                              | `default`, High (a chat's defaults; the app never runs it itself)                | A CI chat's first message, `/hephaestus-skills:watch-ci <commit>` with its project attached, which `watch_ci` starts after a push ([Chat › Implement chats](chat.md#implement-chats)). V2's CI chats had a skill as their system prompt; V3 calls one, as its other chats do, with its own text (no V2 prompt).                                                                                                                                                                      |
 
-**Called skills.** `report-feedback`, `resume-chat`, `resume-agent`, `implement-ticket` and `implement-bundle` are called from chats (V2's called skills); `set-ticket-title` and
+**Called skills.** `report-feedback`, `resume-chat`, `resume-agent`, `implement-ticket`, `implement-bundle` and `watch-ci` are called from chats (V2's called skills); `set-ticket-title` and
 `notification-summary` the app runs itself. Every chat's CLI gets the called skills as the plugin `hephaestus-skills` ([Data › Chat
 plugin](../data.md#chat-plugin)), so a message starting with `/hephaestus-skills:<name>` calls one: Claude gets
 the skill's content, then the rest of the message. A chat that calls a skill keeps its own model and effort. The
@@ -86,7 +87,12 @@ choice): the code does, and each feature that uses one names it.
 ### Implement skills
 
 Their default content, V3's own (the user edits it here): Implement needs it to say how a bundle's chat uses
-`implement_ticket` and the app's reports ([Data › Implement chats](../data.md#implement-chats)).
+`implement_ticket` and the app's reports ([Data › Implement chats](../data.md#implement-chats)), and how the chat
+that pushed follows the CI with `watch_ci` ([Data › CI chats](../data.md#ci-chats)). As V2's: a ticket's chat, or a
+bundle's after merging, pushes; in a project with a GitHub page it then waits for the CI chat's report before it
+sets the status or closes, and after a failure asks the user whether to fix and check again, re-run the failed
+runs (`rerun_run`, which Settings ▸ Chat › Start builds allows or not) or finish without green CI. A ticket chat a
+bundle's chat started doesn't push.
 
 `implement-ticket`:
 
@@ -95,11 +101,23 @@ Implement the ticket the arguments name. When a second id follows it, a bundle's
 
 1. Read the ticket with get_ticket, and its files with get_attachment. Set its status to in_progress with set_ticket_status.
 2. Make the change the ticket asks for: the project's docs first when it keeps a specification, then the code. Build it and run its tests until they pass.
-3. Commit the change. When a bundle's chat started you, commit on your branch and don't push or merge: that chat merges the branches.
+3. Commit the change. When a bundle's chat started you, commit on your branch, don't push or merge, and skip step 5: that chat merges the branches, pushes and follows the CI. Otherwise, push the commit.
 4. Comment on the ticket with add_comment: what changed, the commit, the tests you ran and their results, and each choice you made where the ticket left one open.
-5. Set the status to review.
+5. When you pushed and the project has a GitHub page (githubPage in get_project), follow the CI of the pushed commit as below before you go on.
+6. Set the status to review.
+7. Close the CI chats you started with close_chat, then reply with what changed, the commit, the tests and how the CI went.
 
 Until the user writes in this chat, ask no questions: decide what the ticket leaves open, and list those decisions in your comment.
+
+Following the CI:
+- Call watch_ci with the full hash of the pushed commit, then end your turn. The app starts a CI chat that watches the commit's workflow runs, and sends you its report when its turn ends: "CI chat finished its turn:" with its reply, whose first line is "CI passed.", "CI failed." or "CI not checked.", or "CI chat ended in error: <reason>", or "CI chat was stopped.".
+- Until that report, don't set the status and don't close this chat.
+- After "CI passed." or "CI not checked.", go on. When the CI wasn't checked, say why in your reply.
+- After "CI failed.", an error or a stop, ask the user how to go on with ask_questions, even when they haven't written in this chat yet: the app lets you post this one question set. Offer these answers:
+  - Fix and check again: fix the cause, build and test, commit the fix and push it, add it to your comment with update_comment, then call watch_ci with the new commit.
+  - Re-run the failed runs: re-run each failed run with rerun_run and failedOnly, then call watch_ci with the same commit. If the app refuses rerun_run, say so in your reply and stop there.
+  - Finish without green CI: name the failed runs in your comment with update_comment, then go on.
+- When the push or watch_ci fails, don't wait: say in your comment and your reply that the CI wasn't followed, and why.
 ```
 
 `implement-bundle`:
@@ -113,7 +131,37 @@ Implement the bundle the arguments name, by running one chat per ticket.
 4. After an error or a stop, ask the user with ask_questions whether to retry the ticket on a fresh branch (implement_ticket again), skip it with the tickets that depend on it, or stop. The other chats keep running.
 5. Once every ticket has reported or was skipped, merge the remaining branches into the current branch in the bundle's order, one commit per ticket, resolving the conflicts. Build and run the tests once on the result; when they fail, fix them or ask the user.
 6. Update each ticket's comment with its commit on the current branch, then remove the merged worktrees and branches (git worktree remove, git branch -d).
-7. Close the chats you started with close_chat, then reply with each ticket and its commit, or why it was skipped, and the conflicts you resolved.
+7. Push the current branch. When the project has a GitHub page (githubPage in get_project), follow the CI of the pushed commit as below.
+8. Close the chats you started with close_chat, the CI chats too, then reply with each ticket and its commit, or why it was skipped, the conflicts you resolved, and how the CI went.
+
+Following the CI:
+- Call watch_ci with the full hash of the pushed commit, then end your turn. The app starts a CI chat that watches the commit's workflow runs, and sends you its report when its turn ends: "CI chat finished its turn:" with its reply, whose first line is "CI passed.", "CI failed." or "CI not checked.", or "CI chat ended in error: <reason>", or "CI chat was stopped.".
+- After "CI passed." or "CI not checked.", go on. When the CI wasn't checked, say why in your reply.
+- After "CI failed.", an error or a stop, ask the user how to go on with ask_questions. Offer these answers:
+  - Fix and check again: fix the cause yourself, build and test, commit the fix naming the ticket whose change caused it, push it, add it to that ticket's comment with update_comment, then call watch_ci with the new commit.
+  - Re-run the failed runs: re-run each failed run with rerun_run and failedOnly, then call watch_ci with the same commit. If the app refuses rerun_run, say so in your reply and stop there.
+  - Finish without green CI: name the failed runs in the tickets' comments with update_comment, then go on.
+- When the push or watch_ci fails, don't wait: say in your reply that the CI wasn't followed, and why.
+```
+
+### CI skill
+
+`watch-ci`'s default content, V3's own: the CI chat's Claude follows the runs with gh in its shell, as V2's did
+(the user's choice), and its reply's first line is the one the app reads to tell a failure ([Data › CI
+chats](../data.md#ci-chats)): a reply that doesn't start with "CI passed." or "CI not checked." counts as one.
+
+```text
+Follow the GitHub Actions runs of the commit the arguments name, then report on them. The chat that pushed the commit started this one, and the app sends it your last reply when your turn ends: that chat decides what to do next.
+
+1. Read the project the message attaches with get_project: its githubPage, https://github.com/<owner>/<name>, is the repository.
+2. List the commit's workflow runs with the gh CLI in your shell: gh run list --repo <owner>/<name> --commit <commit> --json databaseId,workflowName,status,conclusion. Runs can take a minute to show after a push: look again for two minutes before you decide there are none.
+3. Wait for each run to end, in the foreground: gh run watch <run id> --repo <owner>/<name> --exit-status. When the shell moves a command that runs too long to the background, stop that task and watch again. Once every run has ended, list the runs again, in case a new one started.
+4. End your turn with a reply whose first line is "CI passed.", "CI failed." or "CI not checked.", with nothing else on that line:
+   - "CI passed." when every run succeeded.
+   - "CI failed." when a run failed or was cancelled. Under it, for each such run: its workflow, its id, its failed jobs, and the cause, read with gh run view <run id> --repo <owner>/<name> --log-failed.
+   - "CI not checked." when you couldn't follow the runs. Under it, why: the commit has no workflow run, gh is missing or not logged in, or the project has no GitHub page.
+
+Change no file, make no commit and ask no questions. Keep this turn going until you can reply: the app reports to the other chat as soon as it ends.
 ```
 
 ## Previews

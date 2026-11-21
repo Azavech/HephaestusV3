@@ -330,6 +330,22 @@ struct TicketLibraryTests {
             == .conflict("HEPH-B1 has no ticket left to implement."))
     }
 
+    @Test("A bundle's CI chat is appended to its chats once, whatever its status; an unknown bundle is not found")
+    func linkBundleChat() async throws {
+        let world = try await World()
+        let one = try await world.create("One")
+        let bundle = try await world.library.createBundle(in: "HEPH", ticketIDs: [one]).id
+        let chat = "3F2504E0-4F89-11D3-9A0C-0305E82C3301"
+        let ci = "6BA7B810-9DAD-11D1-80B4-00C04FD430C8"
+        _ = try await world.library.startImplementation(of: bundle, chat: chat)
+        _ = try await world.library.linkChat(ci, toBundle: bundle)
+        _ = try await world.library.linkChat(ci, toBundle: bundle.lowercased())
+        let linked = try #require(await world.library.snapshot.bundle(bundle))
+        #expect(linked.chatIDs == [chat, ci] && linked.status == .inProgress)
+        #expect(try world.text("bundle/HEPH-B1.yml").contains("chats:\n- \(chat)\n- \(ci)\n"))
+        #expect(await failure { _ = try await world.library.linkChat(ci, toBundle: "HEPH-B9") } == .notFound("Bundle HEPH-B9 not found."))
+    }
+
     @Test("Loading a project completes the bundles whose tickets are all done")
     func completeAtLoad() async throws {
         let world = try await World()

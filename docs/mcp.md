@@ -194,12 +194,12 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 | `read` | the `list_` and `get_` tools, `open_in_app` | runs | runs |
 | `renameChats` | `rename_chat` | runs | runs |
 | `askUser` | `ask_questions`, `show_image`, `ask_symbol`, `ask_color`, `ask_sound`, `ask_shortcut`, `ask_font`, `ask_animation` | refused: only a chat's own Claude asks or shows | runs |
-| `closeChats` | `close_chat` | runs on the chats it names | its own chat runs; naming another one shows a card first |
+| `closeChats` | `close_chat` | runs on the chats it names | its own chat, and the chats it started (whose `orchestrator` it is), run; naming another one shows a card first |
 | `startBuilds` | `rerun_run`, `cancel_run` | runs | Start builds: Ask First shows a card and waits; Never (the default) refuses |
 | `operateClusters` | `k8s_restart`, `k8s_scale`, `k8s_port_forward`, `k8s_stop_port_forward`, `argocd_sync` | runs | Operate deployments, as Change tickets |
 | `operateMachines` | `vm_set_account`, `vm_create`, `vm_start`, `vm_stop`, `vm_shell`, `vm_click`, `vm_drag`, `vm_scroll`, `vm_type`, `vm_key`, `vm_copy_in`, `vm_copy_out` | runs | Operate virtual machines, as Change tickets |
 | `callAPIs` | `api_call` | runs | an `operation` starting `GET ` or `HEAD ` runs; another follows Call APIs that change data, as Change tickets |
-| `changeTickets` | `create_ticket`, `update_ticket`, `set_ticket_status`, `add_comment`, `update_comment`, the bundle tools but `delete_bundle`, `implement_ticket`, `implement_bundle` | runs | Change tickets: Always runs; Ask First shows a card and waits, except on the chat's own items (below); Never refuses |
+| `changeTickets` | `create_ticket`, `update_ticket`, `set_ticket_status`, `add_comment`, `update_comment`, the bundle tools but `delete_bundle`, `implement_ticket`, `implement_bundle`, `watch_ci` | runs | Change tickets: Always runs; Ask First shows a card and waits, except on the chat's own items (below); Never refuses |
 | `deleteTickets` | `delete_ticket`, `delete_comment`, `remove_attachment`, `delete_bundle` | runs | Change tickets Never refuses; otherwise a card, even under Always |
 | `changeProjects` | `create_project`, `update_project` | runs | Change projects, as Change tickets |
 | `removeProjects` | `remove_project` | runs | Change projects Never refuses; otherwise a card |
@@ -228,11 +228,13 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 `ticketID` its `ticket`; a `bundle` chat's `bundleID` its `bundle`, or its `ticketID` a ticket its bundle lists. A
 call without `ticketID` or `bundleID`, such as `create_ticket`, asks as before; Never still refuses. So a ticket's
 chat sets its status and comments on it, and a bundle's chat starts its tickets' chats with `implement_ticket`,
-without cards. `ChatGate.check` asks ToolsScenes' `ownsItem` whether the chat owns the item.
+without cards. `watch_ci` names no item: it always links the calling chat's own ticket or bundle, and refuses the
+other chats itself, so under Ask First it runs without a card. `ChatGate.check` asks ToolsScenes' `ownsItem` whether the chat owns the item.
 
 **Questions in an implement chat.** While a chat's `questionsBlocked` is true, the `askUser` tools but
 `show_image` are refused (`forbidden`, `This chat implements a ticket: it asks the user nothing until the user
-writes in it.`), [Data › Implement chats](data.md#implement-chats).
+writes in it.`), [Data › Implement chats](data.md#implement-chats), except one `ask_questions` after a CI failure
+report ([Data › CI chats](data.md#ci-chats)).
 
 A chat's permission mode refines the column of a chat's Claude ([UI › Chat › Chat settings](ui/chat.md#chat-settings)):
 under Plan Only every group but `read`, `renameChats` and `askUser` is refused (`The chat is in Plan Only: Claude
@@ -280,8 +282,8 @@ changes reserved to the user ([Data › Ticket rules](data.md#ticket-rules)). In
 reads one line V3 writes with each message, naming the item the message carries ([Data ›
 Messages](data.md#messages)), and the same line in an internal skill's run, for the item it links ([Data ›
 Internal skills](data.md#internal-skills)), the internal skills' content the user edits in System Prompts, and the
-reports the app sends a bundle's chat about the chats it started ([Data › Implement chats](data.md#implement-chats));
-nothing else.
+reports the app sends a chat about the chats it started ([Data › Implement chats](data.md#implement-chats), [CI
+chats](data.md#ci-chats)); nothing else.
 
 ## Tools
 
@@ -311,6 +313,7 @@ a project: Claude may read and change every project of this Mac, as the user can
 | `show_image` | ChatKit | askUser | `ChatSession.postImages` |
 | `ask_symbol`, `ask_color`, `ask_sound`, `ask_shortcut`, `ask_font`, `ask_animation` | ChatKit | askUser | `ChatSession.postPicker` |
 | `implement_ticket`, `implement_bundle` | ToolsScenes | changeTickets | `Implementer` ([Data › Implement chats](data.md#implement-chats)) |
+| `watch_ci` | ToolsScenes | changeTickets | `Implementer` ([Data › CI chats](data.md#ci-chats)) |
 | `list_runs`, `get_run`, `get_run_log`, `list_releases`, `get_release` | BuildsKit | read | gh ([Data › Builds](data.md#builds)) |
 | `rerun_run`, `cancel_run` | BuildsKit | startBuilds | gh |
 | `api_operations` | ContractsKit | read | the project's contract ([Data › Contracts](data.md#contracts)) |
@@ -1322,8 +1325,8 @@ Input schema:
 - **Calls:** `ChatSession.closeChats(_:caller:)` ([Data › Closing and deleting chats](data.md#closing-and-deleting-chats)): the
   calling chat closes once its turn ends; a listed chat of its project closes at once; one at work, of another
   project, or unknown is refused, the others still close.
-- **Permission:** `closeChats`: only the calling chat runs without asking; naming another chat shows a card first
-  ([Permissions](#permissions)). The external token names the chats it closes.
+- **Permission:** `closeChats`: the calling chat, and the chats it started (whose `orchestrator` it is), run without
+  asking; naming another chat shows a card first ([Permissions](#permissions)). The external token names the chats it closes.
 - **Result:** `{"closed": [<ids>], "closesAfterTurn": <bool>, "refused": [{"chatID", "reason"}]}`.
 - **Errors:** another token than a chat's without `chatIDs` (`forbidden`, `chatIDs: name the chats to close; only a
   chat's own Claude closes its chat without them.`); the user didn't allow it (`forbidden`).
@@ -1331,7 +1334,7 @@ Input schema:
 Description:
 
 ```text
-Closes chats. Without chatIDs, closes the calling chat once its current turn ends; the conversation stays, and a message reopens it. With chatIDs, closes those chats of the calling chat's project; a chat where Claude is at work, a chat of another project or an unknown one is refused, and the others still close. Closing another chat than the calling one asks the user first. Returns the chats closed, whether the calling chat closes after its turn, and each refusal with its reason.
+Closes chats. Without chatIDs, closes the calling chat once its current turn ends; the conversation stays, and a message reopens it. With chatIDs, closes those chats of the calling chat's project; a chat where Claude is at work, a chat of another project or an unknown one is refused, and the others still close. Closing another chat than the calling one, or the chats it started, asks the user first. Returns the chats closed, whether the calling chat closes after its turn, and each refusal with its reason.
 ```
 
 Input schema:
@@ -1853,6 +1856,44 @@ Input schema:
   },
   "required" : [
     "bundleID"
+  ],
+  "type" : "object"
+}
+```
+
+### watch_ci
+
+- **Calls:** `Implementer.watchCI` ([Data › CI chats](data.md#ci-chats)): its checks, then a `ci` chat whose first
+  message calls `watch-ci` with the commit, with the calling chat as its `orchestrator`, its settings, and its ticket
+  or bundle, which lists the new chat. The app reports each of the new chat's turns to the calling chat. The new
+  chat isn't opened in a window.
+- **Permission:** `changeTickets`; it always links the calling chat's own item, so it runs without a card under Ask
+  First ([Permissions](#permissions)).
+- **Result:** `{"chatID": <id>}`.
+- **Errors:** the external token, a calling chat that isn't a ticket or bundle chat or that another chat started
+  (`forbidden`); a commit that isn't a full hash (`invalid`); a project without a GitHub page (`conflict`); the
+  calling chat, its ticket or its bundle not loaded (`notFound`); no Claude CLI (`unavailable`); a file that can't
+  be written (`internal`). The messages are those of [Data › CI chats](data.md#ci-chats).
+
+Description:
+
+```text
+Starts a CI chat that follows the GitHub Actions runs of a commit this chat pushed: a chat of its own, whose first message calls the internal skill watch-ci with the commit, which takes this chat's settings and is added to this chat's ticket's or bundle's chats. The app then sends this chat a message each time the CI chat ends a turn: "CI chat finished its turn:" with its last reply, "CI chat ended in error: <reason>", or "CI chat was stopped.". After a report other than a finished turn whose reply starts with the line "CI passed." or "CI not checked.", a chat that can't ask questions yet may post one question set with ask_questions. Only a ticket or bundle chat that no other chat started can call it, in a project with a GitHub page. Returns the new chat's id.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "commit" : {
+      "description" : "Full hash of the pushed commit: 40 or 64 hexadecimal characters, in any case.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "commit"
   ],
   "type" : "object"
 }

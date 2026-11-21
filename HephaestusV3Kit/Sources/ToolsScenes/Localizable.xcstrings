@@ -53,6 +53,9 @@
     "Claude Code in Terminal" : {
 
     },
+    "Claude wants to start a chat that follows the CI of commit %@" : {
+      "comment" : "An approval card; the value is a short commit hash"
+    },
     "Claude wants to start a chat that implements %@" : {
       "comment" : "An approval card; the value is a ticket or bundle id"
     },
@@ -214,6 +217,9 @@
     },
     "Show Previous Tab" : {
 
+    },
+    "Started the CI chat of commit %@" : {
+      "comment" : "Claude started a chat that follows the CI; the value is a short commit hash"
     },
     "Started the chat that implements %@" : {
       "comment" : "Claude started a chat; the value is a ticket or bundle id"

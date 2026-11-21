@@ -33,6 +33,18 @@ struct ImplementerTests {
         #expect(Implementer.toolError(.conflict("x")) == ToolError(.conflict, "x"))
         #expect(Implementer.toolError(.unavailable("Cannot create the branch and worktree of ORD-1: git is not available")).code == .unavailable)
         #expect(Implementer.toolError(.notFound("Ticket ORD-1 not found.")).code == .notFound)
+        #expect(Implementer.toolError(.forbidden(CIChat.callerRefusal)) == ToolError(.forbidden, CIChat.callerRefusal))
+    }
+
+    @Test("watch_ci from the external token, or a chat that isn't loaded, starts nothing; its row names the commit")
+    func watchCI() async {
+        let implementer = implementer()
+        let commit = "8e7ccf3a0b1c2d3e4f5061728394a5b6c7d8e9f0"
+        await #expect(throws: ChatError.forbidden(CIChat.externalRefusal)) { try await implementer.watchCI(commit, caller: nil) }
+        await #expect(throws: ChatError.notFound("Chat NOPE not found.")) { try await implementer.watchCI(commit, caller: "NOPE") }
+        let text = Implementer.describeCI("8E7CCF3A0B1C")
+        #expect(text.action == "Started the CI chat of commit 8e7ccf3")
+        #expect(text.request == "Claude wants to start a chat that follows the CI of commit 8e7ccf3")
     }
 
     @Test("A call's row and card name the item, which opens in its Tickets window")

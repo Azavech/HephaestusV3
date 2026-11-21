@@ -141,8 +141,9 @@ final class AppData {
         }
         let kind: MentioningChat.Kind = switch chat.file.kind {
         case .ticket, .bundle: .implement
+        case .ci: .ci
         case .feedback: .feedback
-        case .project, .ci, .setup: .chat
+        case .project, .setup: .chat
         }
         return MentioningChat(id: chat.id, title: chat.file.title, projectID: chat.projectID, updated: chat.file.updated,
                               state: state, closed: chat.file.closed, kind: kind)

@@ -40,11 +40,13 @@ public enum ChatError: Error, Sendable, Hashable, CustomStringConvertible {
     case invalid(String)
     /// The chat already waits for the user's answers.
     case conflict(String)
+    /// The caller may not do this, such as a chat that may not start a CI chat.
+    case forbidden(String)
     case storage(StorageError)
 
     public var description: String {
         switch self {
-        case .unavailable(let message), .notFound(let message), .invalid(let message), .conflict(let message): message
+        case .unavailable(let message), .notFound(let message), .invalid(let message), .conflict(let message), .forbidden(let message): message
         case .storage(let error): error.description
         }
     }
@@ -151,6 +153,9 @@ public final class ChatSession {
     @ObservationIgnored var worktreeWaiters: [CheckedContinuation<Void, Never>] = []
     /// The app quits: the chats' ends report nothing to their orchestrators.
     @ObservationIgnored var quitting = false
+    /// The implement chats that may post one question set despite `questionsBlocked`, after a CI failure report
+    /// (docs/data.md › CI chats). In memory only.
+    @ObservationIgnored var ciQuestionChats: Set<String> = []
 
     /// The transcripts kept in memory at most, besides those of running chats.
     static let keptTranscripts = 12

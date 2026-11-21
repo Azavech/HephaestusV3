@@ -740,10 +740,10 @@ folders (attachments, agents) stay as they are.
 | schema             | `schema`           | `Int`           | no       | `1`        |                                                                                                                                                                                                                                                                                                                                               |
 | id                 | `id`               | `String`        | yes      | —          | An uppercase UUID (`ChatIDs.isChatID`), equal to the file's name.                                                                                                                                                                                                                                                                             |
 | title              | `title`            | `String`        | no       | `New Chat` | One line. V3 titles a new chat with the first line of its first message that isn't empty, at most 80 characters; a rename takes 1 to 100 characters on one line.                                                                                                                                                                              |
-| kind               | `kind`             | `ChatFile.Kind` | yes      | —          | `project`, `ticket`, `bundle`, `feedback`, `ci` or `setup` ([Chat kinds](#chat-kinds)). V3 makes `project` chats, `feedback` chats from Send Feedback ([Feedback chats](#feedback-chats)), and `ticket` and `bundle` chats from Implement ([Implement chats](#implement-chats)).                                                              |
+| kind               | `kind`             | `ChatFile.Kind` | yes      | —          | `project`, `ticket`, `bundle`, `feedback`, `ci` or `setup` ([Chat kinds](#chat-kinds)). V3 makes `project` chats, `feedback` chats ([Feedback chats](#feedback-chats)), `ticket` and `bundle` chats ([Implement chats](#implement-chats)), `ci` chats ([CI chats](#ci-chats)).                                                                |
 | ticketID           | `ticket`           | `String?`       | no       | `null`     | Always written, `null` when absent.                                                                                                                                                                                                                                                                                                           |
 | bundleID           | `bundle`           | `String?`       | no       | `null`     | Always written, `null` when absent.                                                                                                                                                                                                                                                                                                           |
-| orchestratorChatID | `orchestrator`     | `String?`       | no       | absent     | A `ticket` or `ci` chat's orchestrator: the bundle chat that started a ticket chat with `implement_ticket` ([Implement chats](#implement-chats)). Never changed. Written only when set.                                                                                                                                                       |
+| orchestratorChatID | `orchestrator`     | `String?`       | no       | absent     | A `ticket` or `ci` chat's orchestrator: the bundle chat that started it with `implement_ticket`, or the chat that started it with `watch_ci` ([CI chats](#ci-chats)). Never changed. Written only when set.                                                                                                                                   |
 | imageID            | `image`            | `String?`       | no       | absent     | A `setup` chat's image, kept as read ([Chat kinds](#chat-kinds)). Written only when set.                                                                                                                                                                                                                                                      |
 | created            | `created`          | `Date`          | yes      | —          | Never changed.                                                                                                                                                                                                                                                                                                                                |
 | updated            | `updated`          | `Date`          | no       | `created`  | Set by a message sent, a turn's end, a rename, a settings change. The Chat window lists chats by it, the latest first.                                                                                                                                                                                                                        |
@@ -1633,20 +1633,81 @@ Mac, which starts a turn there after the one at work and reopens it when closed:
 - The turn is the items after the chat's last `user` item. The final reply is the turn's last `assistant` item
   without `parentToolUseID`, empty without one; `<reason>` is the turn's last `system` item of level `error`, else
   the last `result`'s `summary`.
+- A CI chat reports the same way, with its own messages ([CI chats](#ci-chats)).
 - Nothing is sent when the orchestrator chat is gone or the CLI isn't available, nor for a turn that ends waiting
   for answers (`waitingAnswers`): the turn after the answers reports.
 - [Chat events](#chat-events): a chat with an `orchestrator` reports no `finished`, and its orchestrator reports
   `finished` only while none of its chats is `starting`, `running` or `waitingPermission`.
 
 **Questions blocked.** While a chat's `questionsBlocked` is true, `ask_questions` and the six picker requests fail
-with `forbidden` and `This chat implements a ticket: it asks the user nothing until the user writes in it.`. The
+with `forbidden` and `This chat implements a ticket: it asks the user nothing until the user writes in it.`, but
+for one question set after a CI failure ([CI chats](#ci-chats)). The
 first message the user sends with the composer (`ChatSession.send`) sets it to false, in the chat file's write
 that records the message; Resume (`resume-chat`), the first message and the reports don't.
 
 **The item's chats**, as the Tickets window lists them (`ChatSession.chats(ofTicket:)`, `chats(ofBundle:)`): a
-ticket's are the loaded chats whose `ticket` is its id; a bundle's, those whose `bundle` is its id, each followed
-by the chats whose `orchestrator` it is, oldest first. Deleting a chat leaves its id in the `chats` key, kept as
+ticket's are the loaded chats whose `ticket` is its id; a bundle's, those whose `bundle` is its id. Those whose
+`orchestrator` isn't one of them come first, the latest updated first, each followed by the chats whose
+`orchestrator` it is, oldest first: a bundle's chat by the ticket chats and the CI chat it started, a ticket's chat
+by its CI chats. Deleting a chat leaves its id in the `chats` key, kept as
 read. [Mentioned ids](#mentioned-ids) leave a ticket's or bundle's own chats out of its Mentioned In.
+
+### CI chats
+
+The chats of `watch_ci` ([MCP](mcp.md#watch_ci)), as V2's CI chats (the user's request, 20 November 2026): the
+chat that pushed an implementation starts one to follow the GitHub Actions runs of the pushed commit, and gets its
+report. `ChatSession.startCIChat` checks the call and makes the chat; `Implementer` (ToolsScenes) links it to the
+ticket or bundle ([Architecture](architecture.md#chatdata)).
+
+**Checks**, in order; a failure creates nothing:
+
+| Check                                                                        | Error                                                                                          |
+|------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------|
+| The caller is a chat's Claude, not the external token                        | `forbidden`: `Only a chat's own Claude can start a CI chat.`                                   |
+| The calling chat is loaded                                                   | `notFound`: `Chat <ID> not found.`                                                             |
+| It is a `ticket` or `bundle` chat without `orchestrator`                     | `forbidden`: `Only a ticket or bundle chat that no other chat started can start a CI chat.`    |
+| `commit` is 40 or 64 hexadecimal characters, in any case                     | `invalid`: `commit: give the full hash of the pushed commit, 40 or 64 hexadecimal characters.` |
+| The calling chat's project has a [GitHub page](#github-page), as it resolves | `conflict`: `Project <ID> has no GitHub page.`                                                 |
+| The Claude CLI is available                                                  | `unavailable`, as for any message ([Chat processes](#chat-processes))                          |
+
+**Then:**
+
+1. The [chat file](#chat-file): kind `ci`, `orchestrator: <calling chat id>`, and the calling chat's `ticket`, or
+   its `bundle`. Its title is `CI of <ID>: <the commit's first 7 characters>`, such as `CI of ORD-142: 8e7ccf3`;
+   its settings are the calling chat's, as they are at the call.
+2. The link, as the user (`TicketLibrary.linkChat(_:toTicket:)`, `linkChat(_:toBundle:)`): the chat's id is
+   appended to the ticket's or the bundle's `chats`, once; `updated` is set. A link that fails, such as for a ticket
+   or bundle that isn't loaded (`notFound`: `Ticket <ID> not found.`, `Bundle <ID> not found.`), deletes the chat's
+   file and fails with its error.
+3. The first message, as the user's on this Mac: `/hephaestus-skills:watch-ci <commit>`, the commit in lowercase,
+   carrying the project, so that its text ends with `Attached: project <ID>` ([Messages](#messages)). The CLI runs
+   it as the call of the [internal skill](#internal-skills) `watch-ci`, the rest of the text as its arguments.
+
+- It works in the project's folder, as every chat but an orchestrated ticket chat, and has no `questionsBlocked`.
+  What its Claude does is the skill's to say: as written by default, it waits with gh in its shell for every
+  workflow run of the commit, then ends its turn with a reply whose first line is `CI passed.`, `CI failed.` or
+  `CI not checked.` ([UI › System Prompts › CI skill](ui/system-prompts.md#ci-skill)). The app doesn't check
+  what it does. Its permission prompts show in its own chat, as any chat's.
+- It isn't opened in a window.
+
+**Reports.** Each of its turns is reported to the orchestrator as an orchestrated ticket chat's is
+([Implement chats](#implement-chats)), from the same items, with these messages:
+
+| The turn                                                   | Message                                                          |
+|------------------------------------------------------------|------------------------------------------------------------------|
+| was stopped with Stop                                      | `CI chat was stopped.`                                           |
+| left the chat in `error`, or its last `result` is an error | `CI chat ended in error: <reason>`                               |
+| ended otherwise                                            | `CI chat finished its turn:`, a blank line, then the final reply |
+
+- A report is a **CI failure** unless it is `CI chat finished its turn:` and the final reply's first line that
+  isn't empty, without the white space, `*`, `_` and `#` at its ends, starts with `CI passed.` or `CI not
+  checked.`. A stopped CI chat, or one that ended in error, thus reports a failure. V2's messages and rule; V2
+  wanted the line alone, V3 also takes it trimmed and followed by more (default chosen at design time).
+- **One question set after a failure.** When a CI failure report is sent to an orchestrator whose
+  `questionsBlocked` is true, its next `ask_questions` runs despite it, so that its Claude can ask the user how to go
+  on; the question set it posts uses that up. A report of a CI chat that isn't a failure, and the orchestrator's
+  deletion, take it back. It is kept in memory only (`ChatSession.ciQuestionChats`), and the picker requests stay
+  refused (V2's rule).
 
 ### Chat plugin
 
@@ -2115,11 +2176,11 @@ content the user writes in [System Prompts](ui/system-prompts.md). A V3 addition
   starting or ending with a hyphen, without two in a row (`InternalSkill.isValidName`). Today:
   `set-ticket-title` and `notification-summary`, which the app runs itself ([Running a skill](#internal-skills),
   below, and [Chat events](#chat-events)), and
-  `report-feedback`, `resume-chat`, `resume-agent`, `implement-ticket` and `implement-bundle`, which chats call (`isCalledFromChats`), through the [chat plugin](#chat-plugin):
+  `report-feedback`, `resume-chat`, `resume-agent`, `implement-ticket`, `implement-bundle` and `watch-ci`, which chats call (`isCalledFromChats`), through the [chat plugin](#chat-plugin):
   a feedback chat's first message calls `report-feedback` ([Feedback chats](#feedback-chats)), Resume calls
   `resume-chat` ([Closing and deleting chats](#closing-and-deleting-chats)), an agent's Resume `resume-agent` ([Agents](#agents)),
-  Implement `implement-ticket` and Implement All `implement-bundle` ([Implement chats](#implement-chats)). The first two are empty by default;
-  `resume-chat`, `resume-agent`, `notification-summary`, `implement-ticket` and `implement-bundle` hold V3's own text, which the user's saved file replaces. Every text the app has Claude act on
+  Implement `implement-ticket` and Implement All `implement-bundle` ([Implement chats](#implement-chats)), a CI chat's first message `watch-ci` ([CI chats](#ci-chats)). The first two are empty by default;
+  `resume-chat`, `resume-agent`, `notification-summary`, `implement-ticket`, `implement-bundle` and `watch-ci` hold V3's own text, which the user's saved file replaces. Every text the app has Claude act on
   is an internal skill, never written in the code (the user's rule, 17 November 2026).
 - **File**: `<data folder>/skills/<name>/SKILL.md`, Claude's skill layout. Written atomically by
   `DataFolder.writeSkill(_:of:)`, its folder made when missing: a front matter with `name` (the code's),

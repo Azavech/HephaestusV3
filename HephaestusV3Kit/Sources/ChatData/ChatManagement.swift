@@ -155,6 +155,7 @@ extension ChatSession {
         transcripts[chatID] = nil
         states[chatID] = nil
         streaming[chatID] = nil
+        ciQuestionChats.remove(chatID)
     }
 }
 

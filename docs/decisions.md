@@ -328,7 +328,7 @@ implement chat that changes its own items without a card.
 
 | Question | Default chosen | Where |
 | --- | --- | --- |
-| How does Implement All work? | As V2's (the owner's choice): a bundle's chat orchestrates one ticket chat per ticket with `implement_ticket`, each on the branch `<bundle id>/<ticket id>` in a git worktree the app makes in `<data folder>/Worktrees/`, and the app reports each one's turn to the bundle's chat. V2's CI chats aren't brought over: V3 has none; the Builds tools read the runs. | [Data › Implement chats](data.md#implement-chats) |
+| How does Implement All work? | As V2's (the owner's choice): a bundle's chat orchestrates one ticket chat per ticket with `implement_ticket`, each on the branch `<bundle id>/<ticket id>` in a git worktree the app makes in `<data folder>/Worktrees/`, and the app reports each one's turn to the bundle's chat. V2's CI chats came later the same day ([CI chats](#ci-chats)). | [Data › Implement chats](data.md#implement-chats) |
 | Where are the buttons, and the chats? | **Implement…** in the ticket's header (⇧⌘I), its Chats heading and the list's menu; **Implement All…** in the bundle's sidebar menu, as a bundle has no detail. A **Chats** section of the detail lists the ticket's chats (the owner's choice), a bundle's **Chats ▸** menu its own; a new chat opens in the project's Chat window, as feedback's does. | [UI › Tickets › Implement](ui/tickets.md#implement) |
 | Who says what Claude does? | Two internal skills, `implement-ticket` and `implement-bundle`, called from the chats as V2's (the owner's choice), with V3's own default text, so that Implement works before the owner edits them: the orchestration needs the skill to say how to use `implement_ticket` and the reports. No V2 prompt. | [UI › System Prompts › Implement skills](ui/system-prompts.md#implement-skills) |
 | Does an implement chat ask before changing its ticket? | No, under Ask First, for its own ticket, or its bundle and the bundle's tickets (the owner's choice); Never still refuses, Plan Only too. | [MCP › Permissions](mcp.md#permissions) |
@@ -337,6 +337,26 @@ implement chat that changes its own items without a card.
 | What are the chats' titles? | "Implement ORD-142: <title>", "Implement All ORD-B3: <title>", 80 characters at most: V2's Haiku names aren't brought over. | [UI › Chat › Implement chats](ui/chat.md#implement-chats) |
 | Which chats are the ticket's? | Those whose `ticket` is it (Implement's, a bundle's, the feedback chat that made it), read from the chats rather than the ticket's `chats` key, which Implement still writes as V2 did; Mentioned In leaves them out, as V2's tab did. | [Data › Implement chats](data.md#implement-chats) |
 | When can an implement chat ask questions? | Once the user writes in it, as V2's; Resume doesn't count. | same |
+
+## CI chats
+
+The owner asked on 20 November 2026 for V2's CI chats: `watch_ci`, the chat of kind `ci` that follows the GitHub
+Actions runs of a pushed commit and reports to the chat that pushed, and V2's Waiting for CI. Asked how they map
+onto V3, they chose V2's ways: the implementing chat pushes (a ticket's chat its commit, a bundle's chat once after
+merging), then one CI chat follows that push; its Claude watches the runs with gh in its shell; and a chat closes
+the chats it started without a card.
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| Who pushes? | The implementing chat, as V2's (the owner's choice): a ticket's chat after its commit, a bundle's chat once after merging. A ticket chat a bundle's chat started commits on its branch and doesn't push. | [UI › System Prompts › Implement skills](ui/system-prompts.md#implement-skills) |
+| How does the CI chat follow the runs? | With gh in its shell, as V2's (the owner's choice), so its commands follow its permission mode; the Builds tools stay for reading. | [UI › System Prompts › CI skill](ui/system-prompts.md#ci-skill) |
+| What does the CI chat get? | A first message that calls the internal skill `watch-ci` with the commit, carrying its project, instead of V2's fixed sentence and system prompt: every text Claude acts on is an internal skill. The orchestrator's settings, its ticket or bundle, which lists it. | [Data › CI chats](data.md#ci-chats) |
+| What does a re-run use? | `rerun_run`, so Settings ▸ Chat › Start builds holds (Never by default: Claude then says it can't). The owner had no preference. | [UI › System Prompts › Implement skills](ui/system-prompts.md#implement-skills) |
+| Does `watch_ci` ask first? | No, under Ask First: it always links the calling chat's own ticket or bundle. Under Change tickets: Never, it is refused, as the implement chat's other changes. | [MCP › Permissions](mcp.md#permissions) |
+| Who closes the CI chats? | The chat that started them, with `close_chat`, without a card (the owner's choice, as V2): a chat closes the chats whose `orchestrator` it is, a bundle's ticket chats too; any other chat still asks first. | same |
+| When is a report a failure? | V2's rule, its first line read a little more loosely: unless the reply's first line starts with "CI passed." or "CI not checked.", once white space and Markdown's `*`, `_`, `#` are trimmed. An error or a stop is one. | [Data › CI chats](data.md#ci-chats) |
+| May an implement chat ask after a failure? | One question set, as V2's, kept in memory: a report that isn't a failure, or deleting the chat, takes it back. | same |
+| What is the CI chat called, and where is it listed? | "CI of ORD-142: 8e7ccf3"; in the Chat window as any chat, and in the ticket's **Chats** and the bundle's **Chats ▸** right after the chat that started it, with `checklist`. | [UI › Tickets › Chats](ui/tickets.md#chats) |
 
 ## Release
 

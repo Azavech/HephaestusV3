@@ -287,12 +287,14 @@ its file) shows **Not found** (`exclamationmark.triangle`, `warning`) and is dis
 V2's Chats tab, as a part of the detail between **Linked** and **Mentioned In** (the user's choice): the
 ticket's own chats, the latest updated first, closed chats included (`ticket.chats`). They are the chats whose
 `ticket` is the ticket ([Data › Chat kinds](../data.md#chat-kinds)): the chats [Implement](#implement) starts,
-those a bundle's chat starts for it, and the feedback chat that created it.
+those a bundle's chat starts for it, the feedback chat that created it, and the CI chats of its chats, each right
+after the chat that started it ([Data › Implement chats](../data.md#implement-chats)).
 
 - **Heading.** **Chats**, with **Implement…** (`hammer`) at its trailing edge, the header's button again.
 - **Rows.** In a group box, separated by dividers, each one plain button (`ticket.chats.<chat id>`), drawn as
   Mentioned In's rows: the kind's symbol in `accent` (`hammer` for a chat that implements the ticket,
-  `ladybug` for a feedback chat, `bubble.left.and.text.bubble.right` otherwise), the chat's title on one line
+  `checklist` for a CI chat, `ladybug` for a feedback chat, `bubble.left.and.text.bubble.right` otherwise), the
+  chat's title on one line
   (`textSecondary` when closed), under it "<project identifier> · <date>", then the chat's mark and
   `arrow.up.forward.app`. A click opens the chat in its project's Chat window; the context menu has **Open in
   Chat Window** and **Open in New Window**.
@@ -426,7 +428,10 @@ starts the chats and links them; what Claude does in them is the internal skills
   which calls `implement-ticket` with the ticket's id, links it to the ticket and opens it in the project's Chat
   window ([Data › Implement chats](../data.md#implement-chats)).
 - **Then** Claude works as the skill says: as written by default, it sets the ticket In Progress, makes and tests
-  the change, commits, comments and sets it In Review. The Tickets window shows each change at once. Until the
+  the change, commits and pushes, and comments; in a project with a GitHub page, it then starts a CI chat on the
+  pushed commit and waits for its report ([Chat › Implement chats](chat.md#implement-chats)). It sets the ticket In
+  Review once CI passed or couldn't be checked, or once the user chose to finish without green CI. The Tickets
+  window shows each change at once. Until the
   user writes in the chat, its Claude asks no question. Its changes to its own ticket don't ask first ([MCP ›
   Permissions](../mcp.md#permissions)).
 
@@ -441,10 +446,11 @@ starts the chats and links them; what Claude does in them is the internal skills
 - **Then** that chat orchestrates, as the skill says: it starts a chat for each ticket that waits for no other
   ticket, with `implement_ticket`; each of these works on its own branch `<bundle id>/<ticket id>` in a git
   worktree the app makes, and the app reports each one's turn to the bundle's chat, which merges the branches as
-  they come, then tests the whole. These chats show in their tickets' **Chats** and in the bundle's **Chats ▸**.
+  they come, then tests the whole and pushes it once; in a project with a GitHub page, it then follows the CI with
+  a CI chat, as a ticket's chat does. These chats show in their tickets' **Chats** and in the bundle's **Chats ▸**.
 
 **Chats ▸** in the bundle's context menu (`tickets.sidebar.bundle.<id>.chats`) lists the bundle's chats, the
-latest first, each followed by the ticket chats it started, oldest first, by title; each opens its chat in the
+latest first, each followed by the ticket chats and the CI chats it started, oldest first, by title; each opens its chat in the
 Chat window. "No Chats", disabled, when there are none.
 
 ### Implement sheet

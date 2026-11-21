@@ -593,6 +593,16 @@ public actor TicketLibrary {
         return publish()
     }
 
+    /// Links a bundle's CI chat (docs/data.md › CI chats): its id is appended to the bundle's `chats`, once.
+    public func linkChat(_ chatID: String, toBundle id: String) throws(TicketError) -> TicketSnapshot {
+        var (bundle, projectID) = try storedBundle(id)
+        guard !bundle.chatIDs.contains(chatID) else { return publish() }
+        bundle.chatIDs.append(chatID)
+        bundle.updated = now()
+        try write(bundle, in: projectID)
+        return publish()
+    }
+
     /// Implement All: checks the bundle again (`ImplementRules`), then appends the chat to its `chats` and sets it
     /// `in_progress`, in one write.
     public func startImplementation(of id: String, chat chatID: String) throws(TicketError) -> TicketSnapshot {

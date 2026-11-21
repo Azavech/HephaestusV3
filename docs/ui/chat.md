@@ -69,7 +69,7 @@ As V2's Chats section and chat header did (the user's request to bring every V2 
 - **Copy Conversation** puts the conversation on the pasteboard as plain text: each turn's author, its text and its calls' actions after "· ".
 - **Delete…** asks "Delete the chat “*title*”?", "Its transcript and files move to the Trash.", **Delete** (destructive) and **Cancel**; the chat's process ends, then its file, its transcript and its folder of files move to the Trash ([Data › Closing and deleting chats](../data.md#closing-and-deleting-chats)).
 - A failure shows over the composer.
-- Claude closes chats too, with `close_chat` ([MCP › close_chat](../mcp.md#close_chat)): its own chat once its turn ends, another one after the user allows it in a card.
+- Claude closes chats too, with `close_chat` ([MCP › close_chat](../mcp.md#close_chat)): its own chat once its turn ends, and the chats it started (a bundle's ticket chats, the CI chats) at once; another one after the user allows it in a card.
 
 ### Resume
 
@@ -1040,9 +1040,11 @@ ticket or bundle ([Tickets › Chats](tickets.md#chats)). The rules are in [Data
 | A ticket's               | `ticket`                                           | **Implement…**, or `implement_ticket` from another chat           | `/hephaestus-skills:implement-ticket ORD-142`        | The project's folder                         |
 | A bundle's               | `bundle`                                           | **Implement All…**, or `implement_bundle`                         | `/hephaestus-skills:implement-bundle ORD-B3`         | The project's folder                         |
 | A ticket's, for a bundle | `ticket`, with the bundle's chat as `orchestrator` | `implement_ticket` from the bundle's chat, for one of its tickets | `/hephaestus-skills:implement-ticket ORD-142 ORD-B3` | Its worktree, on the branch `ORD-B3/ORD-142` |
+| A push's CI              | `ci`, with the chat that pushed as `orchestrator`  | `watch_ci`, from a ticket's or bundle's chat after its push       | `/hephaestus-skills:watch-ci <full commit hash>`     | The project's folder                         |
 
-- **Title.** "Implement ORD-142: <ticket's title>", "Implement All ORD-B3: <bundle's title>", at most 80
-  characters (default chosen at design time; V2 had Haiku name them). The user renames them as any chat.
+- **Title.** "Implement ORD-142: <ticket's title>", "Implement All ORD-B3: <bundle's title>", "CI of ORD-142:
+  8e7ccf3" (the commit's first 7 characters), at most 80 characters (default chosen at design time; V2 had Haiku
+  name them). The user renames them as any chat.
 - **The message** shows as the user's, the call's line as typed; the skill's content isn't shown (as for
   [Feedback](#feedback)).
 - **No questions until the user writes.** In a ticket's chat, `ask_questions` and the picker requests are refused
@@ -1053,9 +1055,19 @@ ticket or bundle ([Tickets › Chats](tickets.md#chats)). The rules are in [Data
   ORD-142 was stopped." (V2's texts). It shows in the bundle's chat as the user's message and starts a turn there,
   after the turn at work if one is; a closed bundle chat reopens. A turn that ends waiting for answers sends none.
 - **Its own items.** Its Claude's changes to its own ticket, or to its bundle and the bundle's tickets, run
-  without a card ([MCP › Permissions](../mcp.md#permissions)).
-- V2's CI chats (`watch_ci`), which followed the CI run of a push, aren't brought over: Claude reads the runs
-  with the Builds tools.
+  without a card ([MCP › Permissions](../mcp.md#permissions)), and so does `watch_ci`.
+- **CI chats**, as V2's (the user's request, 20 November 2026). In a project with a GitHub page, the chat that
+  pushed an implementation, a ticket's or a bundle's, starts a CI chat with `watch_ci` and the pushed commit, then
+  waits: the CI chat's Claude follows the commit's GitHub Actions runs with gh in its shell, as the `watch-ci`
+  skill says, and replies "CI passed.", "CI failed." or "CI not checked." on its first line, with what failed. A
+  ticket chat a bundle's chat started never pushes. The CI chat takes the settings of the chat that started it,
+  and each of its turns is reported there, as a ticket chat's is to its bundle's chat: "CI chat finished its
+  turn:" and its last reply, "CI chat ended in error: <reason>", or "CI chat was stopped." (V2's texts) ([Data ›
+  CI chats](../data.md#ci-chats)).
+- **After a failure** (a reply other than "CI passed." or "CI not checked.", an error or a stop), a ticket's chat
+  in which the user hasn't written yet may still ask one set of questions, how to go on (V2's rule): as written
+  by default, fix and check again, re-run the failed runs, or finish without green CI ([System Prompts ›
+  Implement skills](system-prompts.md#implement-skills)).
 
 ## Notifications
 
@@ -1070,9 +1082,10 @@ notifications, as [Settings ▸ Notifications](navigation.md#settings--notificat
 
 - **No event** for a chat's first state (loading, a new chat), so a relaunch posts nothing for the chats
   that already wait; nor for the error state, nor a turn ended with Stop.
-- **Orchestrated chats**, as V2's: a ticket chat a bundle's chat started posts no **Finished** (its turn is
-  reported to that chat instead, [Implement chats](#implement-chats)), and the bundle's chat posts **Finished**
-  only while none of the chats it started is at work. **Needs you** is posted for every chat.
+- **Orchestrated chats**, as V2's: a ticket chat a bundle's chat started, and a CI chat, post no **Finished**
+  (their turns are reported to the chat that started them instead, [Implement chats](#implement-chats)), and that
+  chat posts **Finished** only while none of the chats it started is at work. **Needs you** is posted for every
+  chat.
 - **The notification.** Title "<project identifier> · <chat title>", such as "ORD · Fix the totals"; body the
   detail, or the summary below; the default sound. Its identifier is `chat/<chat id>`: a chat has one
   notification at most, a newer one replaces it. It shows as a banner also while the app is in front, but
