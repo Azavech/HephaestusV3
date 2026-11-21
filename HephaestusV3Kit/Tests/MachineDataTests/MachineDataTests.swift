@@ -561,7 +561,9 @@ struct MachineHostTests {
             #expect(throws: MachineError(.invalid, "diskGB: use a number from 64 to 2048.")) {
                 try host.updateMachine(machine.id, name: "B", cores: 2, memoryGB: 4, diskGB: 40)
             }
-            let edited = try host.updateMachine(machine.id, name: "B", cores: 4, memoryGB: 8, diskGB: 80)
+            // Within this Mac's ranges: a release runner has 3 cores and 7 GB.
+            let edited = try host.updateMachine(machine.id, name: "B", cores: min(4, MachineDefaults.hostCores),
+                                                memoryGB: min(8, MachineDefaults.hostMemoryGB), diskGB: 80)
             #expect(edited.name == "B" && edited.growContainer)
             #expect(host.library!.folder(machine: machine.id).diskGB == 80)
 
