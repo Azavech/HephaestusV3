@@ -40,6 +40,8 @@ let package = Package(
         .package(url: "git@github.com:Azavech/AZDesign.git", from: "0.7.0"),
         .package(url: "https://github.com/jpsim/Yams.git", from: "6.2.2"),
         .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.9.0"),
+        // The Updater's code, a local package of its own (docs/updater.md): the app's side of updates uses it.
+        .package(path: "../Updater"),
     ],
     targets: [
         // Data, without UI: no SwiftUI, and nothing isolated to the main actor unless it says so.
@@ -92,7 +94,7 @@ let package = Package(
             dependencies: [
                 "ToolsFoundation", "ProjectData", "FileStorage", "MCPKit", "TicketData", "ChatData", "BuildData", "ContractData", "ClusterData", "MachineData", "ProjectsKit",
                 "DashboardsKit", "TicketsKit", "ServiceMapKit", "ContractsKit", "BuildsKit", "MachinesKit", "ChatKit",
-                design,
+                design, .product(name: "UpdateData", package: "Updater"),
             ],
             resources: strings,
             swiftSettings: isolation

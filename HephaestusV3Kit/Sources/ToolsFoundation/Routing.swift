@@ -38,7 +38,7 @@ nonisolated public enum Route: Hashable, Sendable {
 
 /// A tab of the Settings window, by its stored name.
 nonisolated public enum SettingsPane: String, Hashable, Sendable, CaseIterable {
-    case general, projects, mcp, machines, chat, notifications
+    case general, projects, mcp, machines, chat, notifications, updates
 
     /// Where Settings keeps its tab, in the user defaults: it opens on the last one, or on a route's.
     public static let storageKey = "settings.pane"

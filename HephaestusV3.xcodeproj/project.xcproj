@@ -17,17 +17,22 @@
     }, {
       "kind": "local",
       "path": "GuestAgent",
+    }, {
+      "kind": "local",
+      "path": "Updater",
     },
   ],
   "files": [
     { "kind": "folder", "path": "HephaestusV3", "target-membership": [ "HephaestusV3" ] },
     { "kind": "folder", "path": "HephaestusAgent", "target-membership": [ "HephaestusAgent" ] },
+    { "kind": "folder", "path": "HephaestusUpdater", "target-membership": [ "HephaestusUpdater" ] },
     {
       "kind": "group",
       "name": "Products",
       "children": [
         { "path": "<PRODUCTS>/HephaestusV3.app", "id": "F5B9A72EE589E1913A56EAE4", "type": "wrapper.application", "index": false },
         { "path": "<PRODUCTS>/HephaestusAgent", "id": "9C41D2E07A3B5F1846E0C2A1", "type": "compiled.mach-o.executable", "index": false },
+        { "path": "<PRODUCTS>/HephaestusUpdater", "id": "5A01231CAAA30B072115F34C", "type": "compiled.mach-o.executable", "index": false },
       ],
     },
   ],
@@ -61,12 +66,40 @@
         "SWIFT_VERSION": "6.0",
       },
     }, {
+      "name": "HephaestusUpdater",
+      "id": "7EC57A3B938F4EDBF2083D71",
+      "product": "Products/HephaestusUpdater",
+      "product-type": "tool",
+      "build-phases": [
+        "compile-sources",
+        "frameworks",
+      ],
+      "package-product-members": [
+        {
+          "package": "Updater",
+          "product-name": "UpdateData",
+          "build-phase": { "build-phase": "frameworks" },
+        },
+      ],
+      "build-settings": {
+        "CODE_SIGN_STYLE": "Automatic",
+        "DEVELOPMENT_TEAM": "USWJAJULN9",
+        "ENABLE_HARDENED_RUNTIME": "YES",
+        "MACOSX_DEPLOYMENT_TARGET": "27.0",
+        "PRODUCT_BUNDLE_IDENTIFIER": "fr.azavech.hephaestusv3.updater",
+        "PRODUCT_NAME": "$(TARGET_NAME)",
+        "SDKROOT": "macosx",
+        "SKIP_INSTALL": "YES",
+        "SWIFT_VERSION": "6.0",
+      },
+    }, {
       "name": "HephaestusV3",
       "id": "B44D4E60632C22075A57BA9B",
       "product": "Products/HephaestusV3.app",
       "product-type": "application",
       "dependencies": [
         "HephaestusAgent",
+        "HephaestusUpdater",
       ],
       "build-phases": [
         "compile-sources",
@@ -92,6 +125,23 @@
             "cp -f \"$SRCROOT/GuestAgent/install-agent.sh\" \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/install-agent.sh\"",
             "",
           ],
+        }, {
+          "kind": "script",
+          "name": "Embed Updater",
+          "input-paths": [
+            "$(BUILT_PRODUCTS_DIR)/HephaestusUpdater",
+          ],
+          "output-paths": [
+            "$(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Helpers/HephaestusUpdater",
+          ],
+          "shell": "/bin/sh",
+          "script": [
+            "# The Updater, signed by its own target (docs/updater.md).",
+            "set -e",
+            "mkdir -p \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers\"",
+            "cp -f \"$BUILT_PRODUCTS_DIR/HephaestusUpdater\" \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers/HephaestusUpdater\"",
+            "",
+          ],
         },
       ],
       "package-product-members": [
@@ -105,7 +155,7 @@
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
         "CODE_SIGN_ENTITLEMENTS": "HephaestusV3/HephaestusV3.entitlements",
         "CODE_SIGN_STYLE": "Automatic",
-        "CURRENT_PROJECT_VERSION": "1",
+        "CURRENT_PROJECT_VERSION": "0",
         "DEVELOPMENT_TEAM": "USWJAJULN9",
         "ENABLE_APP_SANDBOX": "NO",
         "ENABLE_HARDENED_RUNTIME": "YES",

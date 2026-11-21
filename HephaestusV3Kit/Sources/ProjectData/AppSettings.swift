@@ -30,6 +30,10 @@ public struct SettingsFile: Codable, Sendable, Hashable {
     public var notifyNeedsYou: Bool?
     public var notifyFinished: Bool?
     public var notifyAISummary: Bool?
+    /// Settings ▸ Updates, as V2's: whether updates install by themselves (nil for on), and the minutes between two
+    /// checks, 5 to 1440 (nil for 30).
+    public var autoUpdate: Bool?
+    public var updateCheckIntervalMinutes: Int?
     public var unknownKeys: YAMLMapping
 
     public init(schema: Int = 1, mcpPort: Int = SettingsFile.defaultMCPPort, claudePath: String? = nil, chatModel: String? = nil,
@@ -43,7 +47,16 @@ public struct SettingsFile: Codable, Sendable, Hashable {
     }
 
     static let knownKeys: Set<String> = ["schema", "mcpPort", "claudePath", "chatModel", "chatEffort", "defaultVMCores", "defaultVMMemoryGB",
-                                         "defaultVMDiskGB", "newWindows", "feedbackProjectID", "notifyNeedsYou", "notifyFinished", "notifyAISummary"]
+                                         "defaultVMDiskGB", "newWindows", "feedbackProjectID", "notifyNeedsYou", "notifyFinished", "notifyAISummary",
+                                         "autoUpdate", "updateCheckIntervalMinutes"]
+
+    /// The minutes between two update checks when `updateCheckIntervalMinutes` is absent.
+    public static let defaultUpdateCheckInterval = 30
+
+    /// `updateCheckIntervalMinutes`, 30 when absent, brought into 5…1440.
+    public var updateCheckInterval: Int {
+        min(max(updateCheckIntervalMinutes ?? Self.defaultUpdateCheckInterval, 5), 1440)
+    }
 
     /// Whether the windows the app opens become tabs of the frontmost window: unless `newWindows` is `windows`.
     public var opensWindowsAsTabs: Bool {
@@ -66,6 +79,8 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         notifyNeedsYou = try c.optional("notifyNeedsYou")
         notifyFinished = try c.optional("notifyFinished")
         notifyAISummary = try c.optional("notifyAISummary")
+        autoUpdate = try c.optional("autoUpdate")
+        updateCheckIntervalMinutes = try c.optional("updateCheckIntervalMinutes")
         unknownKeys = try c.unknownKeys(known: Self.knownKeys)
     }
 
@@ -84,6 +99,8 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         try c.encodeIfPresent(notifyNeedsYou, "notifyNeedsYou")
         try c.encodeIfPresent(notifyFinished, "notifyFinished")
         try c.encodeIfPresent(notifyAISummary, "notifyAISummary")
+        try c.encodeIfPresent(autoUpdate, "autoUpdate")
+        try c.encodeIfPresent(updateCheckIntervalMinutes, "updateCheckIntervalMinutes")
         try c.encodeUnknownKeys(unknownKeys, known: Self.knownKeys)
     }
 

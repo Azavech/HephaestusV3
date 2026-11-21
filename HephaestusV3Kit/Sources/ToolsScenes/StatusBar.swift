@@ -4,9 +4,10 @@ import ChatData
 import ChatKit
 import SwiftUI
 import ToolsFoundation
+import UpdateData
 
 /// Where feedback goes: the project chosen in Settings ▸ General, while it is loaded, and the chats that start
-/// its feedback chats. Nil hides the status bar and Help ▸ Send Feedback….
+/// its feedback chats. Nil hides the status bar's ladybug and Help ▸ Send Feedback….
 nonisolated struct FeedbackTarget: Sendable {
     let project: Project
     let chats: LiveChatStore
@@ -17,6 +18,8 @@ nonisolated extension EnvironmentValues {
     @Entry var feedbackTarget: FeedbackTarget? = nil
     /// The chats the status bar counts, from `RouteHost`; nil counts none.
     @Entry var chatSession: ChatSession? = nil
+    /// The Updater, whose version and Update item the status bar shows, from `RouteHost`.
+    @Entry var updateController: UpdateController? = nil
 }
 
 /// A chat the status bar counts: at work, or waiting for the user (docs/ui/navigation.md › Status bar).
@@ -118,8 +121,8 @@ nonisolated extension FocusedValues {
 }
 
 extension View {
-    /// The status bar at the bottom of the window, with the ladybug that sends feedback about it; nothing while
-    /// no feedback project is set (docs/ui/navigation.md › Status bar).
+    /// The status bar at the bottom of the window: the chats, the app's version and its update, and the ladybug that
+    /// sends feedback about the window while a feedback project is set (docs/ui/navigation.md › Status bar).
     func statusBar(_ source: FeedbackSource, countsChats: Bool = true) -> some View {
         modifier(StatusBarModifier(source: source, countsChats: countsChats))
     }
@@ -128,10 +131,11 @@ extension View {
 /// The window's content above the status bar; the Send Feedback sheet on the window.
 private struct StatusBarModifier: ViewModifier {
     let source: FeedbackSource
-    /// Whether the bar counts the chats: not in a chat window, as V2's chat windows didn't.
+    /// Whether the bar counts the chats and offers the update: not in a chat window, as V2's chat windows didn't.
     let countsChats: Bool
     @Environment(\.feedbackTarget) private var target
     @Environment(\.chatSession) private var chatSession
+    @Environment(\.updateController) private var updates
     @Environment(\.openRoute) private var openRoute
     @State private var feedback = FeedbackStarter()
 
@@ -139,7 +143,8 @@ private struct StatusBarModifier: ViewModifier {
         VStack(spacing: 0) {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            StatusBarSlot(showsFeedback: target != nil, session: countsChats ? chatSession : nil, start: feedbackStart, openChat: openChat)
+            StatusBarSlot(session: countsChats ? chatSession : nil, updates: updates, offersUpdate: countsChats, start: feedbackStart,
+                          openChat: openChat)
         }
         .background {
             WindowReader { [feedback] window in feedback.window = window }
@@ -177,20 +182,20 @@ private struct StatusBarModifier: ViewModifier {
     }
 }
 
-/// The status bar, while it has something to show: a view of its own, the only one of the window that reads the chats'
-/// states, so that a chat's change draws the bar and not the window's content.
+/// The status bar: a view of its own, the only one of the window that reads the chats' states and the Updater's,
+/// so that their changes draw the bar and not the window's content.
 private struct StatusBarSlot: View {
-    let showsFeedback: Bool
     /// The chats counted; nil counts none.
     let session: ChatSession?
+    let updates: UpdateController?
+    /// Whether the Update item may show: not in a chat window.
+    let offersUpdate: Bool
     let start: (() -> Void)?
     let openChat: (StatusChat) -> Void
 
     var body: some View {
-        let chats = StatusChat.list(session)
-        if showsFeedback || !chats.isEmpty {
-            StatusBar(chats: chats, start: start, openChat: openChat)
-        }
+        StatusBar(chats: StatusChat.list(session), version: (updates?.appVersion ?? AppVersion.running(Bundle.main.infoDictionary ?? [:])).display,
+                  update: offersUpdate ? updates?.updateItem : nil, install: { updates?.install() }, start: start, openChat: openChat)
     }
 }
 
@@ -237,17 +242,27 @@ struct FeedbackRequest: Identifiable {
 }
 
 /// The bar at the bottom of a window: 26 points high under a hairline, the chats at work and waiting in its
-/// middle, the ladybug at its right end.
+/// middle; the version, the Update item and the ladybug at its right end.
 struct StatusBar: View {
     let chats: [StatusChat]
+    /// The app's version and build: `v1.0.43(78)`.
+    let version: String
+    /// The Update item; nil hides it.
+    let update: UpdateItem?
+    /// A click on the Update item.
+    let install: () -> Void
     /// Starts feedback; nil hides the ladybug.
     let start: (() -> Void)?
     let openChat: (StatusChat) -> Void
 
     @State private var showsChats = false
 
-    init(chats: [StatusChat] = [], start: (() -> Void)?, openChat: @escaping (StatusChat) -> Void = { _ in }) {
+    init(chats: [StatusChat] = [], version: String = "v1.0.43(78)", update: UpdateItem? = nil, install: @escaping () -> Void = {},
+         start: (() -> Void)?, openChat: @escaping (StatusChat) -> Void = { _ in }) {
         self.chats = chats
+        self.version = version
+        self.update = update
+        self.install = install
         self.start = start
         self.openChat = openChat
     }
@@ -282,6 +297,12 @@ struct StatusBar: View {
                     .accessibilityIdentifier("statusBar.waitingChats")
                 }
                 Spacer(minLength: 0)
+                Text(verbatim: version)
+                    .accessibilityLabel(Text("Version \(version)", bundle: #bundle, comment: "The status bar's version, for VoiceOver"))
+                    .accessibilityIdentifier("statusBar.version")
+                if let update {
+                    updateItem(update)
+                }
                 if let start {
                     Button(action: start) {
                         Image(systemName: "ladybug")
@@ -309,6 +330,31 @@ struct StatusBar: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("statusBar")
         .onChange(of: chats.isEmpty) { if chats.isEmpty { showsChats = false } }
+    }
+}
+
+extension StatusBar {
+    /// `Update available…` in the accent color, a click installing the update; `Installing…` with a mini spinner,
+    /// not clickable (docs/ui/updates.md › Update item).
+    @ViewBuilder
+    fileprivate func updateItem(_ item: UpdateItem) -> some View {
+        switch item {
+        case .available(let tooltip):
+            Button(action: install) {
+                Text("Update available…", bundle: #bundle, comment: "The status bar's Update item")
+                    .foregroundStyle(.accent)
+            }
+            .help(UpdateTexts.tooltip(tooltip))
+            .accessibilityIdentifier("statusBar.update")
+        case .installing:
+            HStack(spacing: 5) {
+                ProgressView()
+                    .controlSize(.mini)
+                Text("Installing…", bundle: #bundle, comment: "An update installs")
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("statusBar.update")
+        }
     }
 }
 
@@ -415,6 +461,21 @@ private let previewChats = [
         Color.clear
         StatusBar(chats: Array(previewChats.prefix(1)), start: nil)
     }
+}
+
+#Preview("Status Bar, Update Available", traits: .fixedLayout(width: 600, height: 60)) {
+    VStack(spacing: 0) {
+        Color.clear
+        StatusBar(update: .available(.ready(AppVersion(version: "1.0.44", build: 80), restartsWhenIdle: true)), start: {})
+    }
+}
+
+#Preview("Status Bar, Installing, Dark", traits: .fixedLayout(width: 600, height: 60)) {
+    VStack(spacing: 0) {
+        Color.clear
+        StatusBar(chats: Array(previewChats.prefix(1)), update: .installing, start: {})
+    }
+    .preferredColorScheme(.dark)
 }
 
 #Preview("Chats Popover", traits: .sizeThatFitsLayout) {

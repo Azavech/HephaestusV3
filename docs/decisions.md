@@ -360,14 +360,34 @@ the chats it started without a card.
 
 ## Release
 
-The owner chose a GitHub release built by GitHub Actions, without an install page, an updater, Developer ID signing
-or notarization.
+The owner chose a GitHub release built by GitHub Actions, without an install page, Developer ID signing or
+notarization. Since 21 November 2026 the app updates itself from these releases ([Updates](#updates)).
 
 | Question | Default chosen | Where |
 | --- | --- | --- |
 | When does a release build? | Only when asked (Actions ▸ Release, with the version): a push to `main` releases nothing. | [Release › Running a release](release.md#running-a-release) |
 | How are versions numbered? | The version is the workflow's input; the build is the commit count. | [Release › Build script](release.md#build-script) |
-| How is the app signed? | Ad-hoc, with its entitlements, agent first. | same |
+| How is the app signed? | Ad-hoc, with its entitlements, the helpers (agent, Updater) first. | same |
 | How does the runner fetch AZDesign? | A read-only deploy key of AZDesign, stored as the secret `AZDESIGN_DEPLOY_KEY`. | [Release › Setup](release.md#setup) |
 | Is there CI on pushes? | No: only a release runs the tests on the runner. | [Release](release.md) |
 | Where is the data folder? | `~/Library/Application Support/HephaestusV3/`, by the owner's choice: an ad-hoc signed copy can't use the App Group container. Its data is copied once from there by a development build. | [Data › Data folder](data.md#data-folder) |
+
+## Updates
+
+On 21 November 2026 the owner asked for V2's version in the status bar and its Updater, and chose to keep V2's
+requests to GitHub without signing in, and made the repository public. The rest follows V2; these were open.
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| Which copy updates itself? | Only `/Applications/HephaestusV3.app`; any other copy says why it doesn't, so that no other copy is ever updated or kept. | [Updater › Starting the Updater](updater.md#starting-the-updater) |
+| What tells a development build? | Build 0: the project's `CURRENT_PROJECT_VERSION` is 0, and only a release sets the commit count. | same |
+| Where does the release repository come from? | The code (`ReleaseFeed.repository`), not an Info.plist key as in V2. | [Updater › Release feed](updater.md#release-feed) |
+| What does a 404 mean while the repository is private? | The repository's own page is read: 404 there is an error that says the repository is private or missing, 200 is "no release yet". | same |
+| What does the release carry for the Updater? | A `release.json` as V2's, describing the `.dmg` the release already had; no zip. | [Release › release.json](release.md#releasejson) |
+| How does the Updater read the `.dmg`? | `hdiutil attach -readonly -nobrowse`, `ditto` of the app, then detach. | [Updater › Download and verification](updater.md#download-and-verification) |
+| What of LaunchServices? | Each copy the Updater makes is unregistered before it moves or goes; the app opens again by its path. | [Updater › LaunchServices](updater.md#launchservices) |
+| How are the windows kept over a restart? | The app's own `NSQuitAlwaysKeepsWindows` for that quit, removed at the next launch; V2 saved its windows itself. | [Updater › Restart for an update](updater.md#restart-for-an-update) |
+| What is "idle" in V3? | No chat counted by the status bar, no unsent draft, no virtual machine, setup, install or image download, no sheet. | [UI › Updates › Restart rules](ui/updates.md#restart-rules) |
+| What does the restart alert say? | The chats and machines it stops and the drafts it loses; none of them, no alert. | same |
+| Where does the Update item go? | After the version, before the ladybug, in `accent`; not in chat windows. | [UI › Updates › Update item](ui/updates.md#update-item) |
+| Where is Settings ▸ Updates? | The last tab, after Notifications. | [UI › Updates › Settings ▸ Updates](ui/updates.md#settings--updates) |

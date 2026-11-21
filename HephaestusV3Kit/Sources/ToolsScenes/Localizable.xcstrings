@@ -4,6 +4,9 @@
     "%@ (not loaded)" : {
 
     },
+    "%@ available" : {
+      "comment" : "An update: v1.0.44(80) available"
+    },
     "%@ · %@" : {
       "comment" : "A chat notification's title: the project's identifier, then the chat's title",
       "localizations" : {
@@ -32,6 +35,9 @@
     "AI-generated summary" : {
 
     },
+    "About Hephaestus V3" : {
+      "comment" : "App menu item\nThe About window's title"
+    },
     "Add Existing Folder…" : {
       "comment" : "File menu item, ⌘O"
     },
@@ -44,11 +50,26 @@
     "As tabs of the front window" : {
 
     },
+    "Automatically install updates" : {
+
+    },
+    "Cancel" : {
+
+    },
     "Chat" : {
       "comment" : "A chat window's name, in the feedback's context"
     },
     "Chats" : {
       "comment" : "Settings ▸ Notifications, the section of the chats' notifications"
+    },
+    "Check Now" : {
+
+    },
+    "Check for updates" : {
+
+    },
+    "Checking for updates…" : {
+
     },
     "Claude Code in Terminal" : {
 
@@ -86,7 +107,31 @@
     "Copy Command" : {
 
     },
+    "Downloading update %@…" : {
+      "comment" : "The status bar's Update item"
+    },
     "Enter a port from 1024 to 65535." : {
+
+    },
+    "Every %lld minutes" : {
+      "comment" : "A check interval stored by hand"
+    },
+    "Every 15 minutes" : {
+
+    },
+    "Every 2 hours" : {
+
+    },
+    "Every 30 minutes" : {
+
+    },
+    "Every 6 hours" : {
+
+    },
+    "Every day" : {
+
+    },
+    "Every hour" : {
 
     },
     "External Token" : {
@@ -104,8 +149,17 @@
     "HEPHAESTUS_MCP_PORT sets the port to %@ while the app runs." : {
 
     },
+    "Hephaestus V3 looks for a newer release on GitHub 10 seconds after it opens, then at this interval. With automatic updates, it restarts to install one once no chat is at work or waiting, no virtual machine runs and no draft is unsent; otherwise the status bar offers it." : {
+
+    },
     "Hide Chat Panel" : {
 
+    },
+    "Install" : {
+      "comment" : "The About window's button that installs an update"
+    },
+    "Installing…" : {
+      "comment" : "An update installs"
     },
     "Listening on 127.0.0.1:%@" : {
 
@@ -134,7 +188,13 @@
     "No Project" : {
 
     },
+    "No update available" : {
+
+    },
     "None" : {
+
+    },
+    "Not Now" : {
 
     },
     "Not listening: %@" : {
@@ -150,6 +210,9 @@
 
     },
     "Notify when a chat needs you" : {
+
+    },
+    "OK" : {
 
     },
     "Open Project" : {
@@ -184,6 +247,15 @@
     },
     "Regenerate…" : {
 
+    },
+    "Release repository" : {
+
+    },
+    "Restart" : {
+      "comment" : "The button that restarts the app to install an update"
+    },
+    "Restart to install %@?" : {
+      "comment" : "The alert before a restart for an update; the version, such as v1.0.44(80)"
     },
     "Run the command in Terminal to give Claude Code the tools of Hephaestus V3. After Regenerate or a new port, run “claude mcp remove hephaestus” first." : {
 
@@ -239,11 +311,58 @@
     "Terminal sessions that use the current token stop working until you add the server again." : {
 
     },
+    "The Updater didn't answer; the update wasn't installed." : {
+
+    },
+    "The Updater isn't responding." : {
+
+    },
     "The ladybug at the bottom of every window, and Help ▸ Send Feedback… (⇧⌘B), start a chat in this project about the window, with its screenshot, which calls the internal skill report-feedback. With None, neither shows." : {
 
     },
     "This tab's project isn't loaded. Pick another one in Projects." : {
 
+    },
+    "Try Again" : {
+
+    },
+    "Unsent drafts will be lost." : {
+      "comment" : "The restart alert: chats hold drafts"
+    },
+    "Update %@ available — click to install" : {
+      "comment" : "The status bar's Update item"
+    },
+    "Update %@ ready" : {
+      "comment" : "The status bar's Update item"
+    },
+    "Update %@ ready — restarts when idle" : {
+      "comment" : "The status bar's Update item"
+    },
+    "Update Now" : {
+
+    },
+    "Update available…" : {
+      "comment" : "The status bar's Update item"
+    },
+    "Updates" : {
+      "comment" : "Settings ▸ Updates, its section\nThe Settings tab of the app's updates"
+    },
+    "Version" : {
+
+    },
+    "Version %@" : {
+      "comment" : "The status bar's version, for VoiceOver"
+    },
+    "Version %@ (%@)" : {
+      "comment" : "The About window's and Settings ▸ Updates' version: Version 1.0.43 (78)",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Version %1$@ (%2$@)"
+          }
+        }
+      }
     },
     "Virtual Machines" : {
 
@@ -262,6 +381,12 @@
     },
     "^[%lld chat](inflect: true) waiting" : {
       "comment" : "The status bar's count of the chats waiting for the user"
+    },
+    "^[%lld chat](inflect: true) will be stopped." : {
+      "comment" : "The restart alert: the chats at work or waiting"
+    },
+    "^[%lld virtual machine](inflect: true) will be stopped." : {
+      "comment" : "The restart alert: the machines, setups, installs and image downloads"
     }
   },
   "version" : "1.0"

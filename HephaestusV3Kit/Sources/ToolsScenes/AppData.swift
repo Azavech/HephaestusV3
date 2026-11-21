@@ -17,6 +17,7 @@ import ProjectsKit
 import TicketData
 import TicketsKit
 import ToolsFoundation
+import UpdateData
 
 /// The app's data, shared by every window: the project session, and the directory the windows read, kept
 /// in step with it.
@@ -51,6 +52,8 @@ final class AppData {
     let chatStore: LiveChatStore
     /// The internal skills' content, in the data folder (System Prompts).
     let skillStore: LiveInternalSkillStore
+    /// The Updater, its status and the restart for an update (docs/updater.md).
+    let updates = UpdateController()
     /// The titling of tickets created without a title, one after the other (`titleUntitled(_:)`).
     @ObservationIgnored private var titling: Task<Void, Never>?
     /// The MCP server's tools, once it starts: the chats word their calls with them.
@@ -86,7 +89,7 @@ final class AppData {
     /// The project that receives feedback chats: `settings.yml`'s `feedbackProjectID`, nil until read.
     private(set) var feedbackProjectID: Project.ID?
 
-    /// The feedback project while it is loaded; nil hides the status bar and Help ▸ Send Feedback….
+    /// The feedback project while it is loaded; nil hides the status bar's ladybug and Help ▸ Send Feedback….
     var feedbackTarget: FeedbackTarget? {
         directory.project(feedbackProjectID).map { FeedbackTarget(project: $0, chats: chatStore) }
     }
@@ -154,6 +157,17 @@ final class AppData {
     /// What starts the implement chats: the sheet's Start, and the tools `implement_ticket` and `implement_bundle`.
     var implementer: Implementer {
         Implementer(tickets: tickets, chats: chats)
+    }
+
+    // MARK: Updates (docs/ui/updates.md › Restart rules)
+
+    /// What a restart for an update would stop or lose: the chats the status bar counts, the machines, setups and
+    /// installs that run and the images that download, the chats' unsent drafts, and the sheets.
+    var runningWork: RunningWork {
+        RunningWork(chats: StatusChat.list(chats).count,
+                    machines: machineHost.runningCount + machineHost.images.filter { $0.state == .downloading }.count,
+                    drafts: chatStore.hasDrafts,
+                    sheet: NSApp.windows.contains { $0.attachedSheet != nil })
     }
 
     // MARK: Notifications (docs/ui/navigation.md › Settings ▸ Notifications)
@@ -243,6 +257,8 @@ final class AppData {
         notifier.open = { [weak self] route in self?.openRoute?(route) }
         notifier.start()
         machineHost.load()
+        updates.runningWork = { [weak self] in self?.runningWork ?? RunningWork() }
+        updates.start(dataFolder: session.dataFolder)
         await tickets.start()
         // A ticket created without a title, by anyone, gets one from `set-ticket-title` (docs/ui/tickets.md ›
         // Titles written by Claude).

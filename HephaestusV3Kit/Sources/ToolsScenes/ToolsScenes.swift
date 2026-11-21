@@ -18,6 +18,8 @@ enum SceneID {
     static let workspace = "workspace"
     /// A chat in a window of its own (V2's chat window).
     static let chat = "chat"
+    /// The About window, with the app's update.
+    static let about = "about"
 }
 
 /// Every window of the app.
@@ -67,6 +69,7 @@ public struct ToolsScenes: Scene {
             TabCommands()
             ChatPanelCommands()
             FeedbackCommands()
+            AboutCommands()
         }
 
         // One chat in a window of its own, from Open in New Window.
@@ -79,6 +82,14 @@ public struct ToolsScenes: Scene {
         }
         .defaultSize(width: 720, height: 820)
         .windowResizability(.contentMinSize)
+
+        // Hephaestus V3 ▸ About Hephaestus V3: the version, and its update (docs/ui/updates.md › About window).
+        Window(Text("About Hephaestus V3", bundle: #bundle, comment: "The About window's title"), id: SceneID.about) {
+            AboutView(controller: appData.updates)
+        }
+        .windowResizability(.contentSize)
+        .restorationBehavior(.disabled)
+        .defaultLaunchBehavior(.suppressed)
 
         // Type a few letters, then Return: the project's tab comes forward.
         MenuBarExtra(String(localized: "Open Project", bundle: #bundle), systemImage: "wrench.and.screwdriver") {
@@ -125,6 +136,11 @@ public struct ToolsScenes: Scene {
                         }
                         .tag(SettingsPane.notifications.rawValue)
                 }
+                UpdateSettingsPane(controller: appData.updates)
+                    .tabItem {
+                        Label(String(localized: "Updates", bundle: #bundle, comment: "The Settings tab of the app's updates"), systemImage: "arrow.down.circle")
+                    }
+                    .tag(SettingsPane.updates.rawValue)
             }
             .frame(width: 520, height: 440)
             .tint(.accent)
@@ -237,6 +253,7 @@ private struct RouteHost<Content: View>: View {
             .environment(\.availableTools, AppData.availableTools)
             .environment(\.feedbackTarget, appData.feedbackTarget)
             .environment(\.chatSession, appData.chats)
+            .environment(\.updateController, appData.updates)
             .environment(\.playSound, ChatSounds.player(appData.chats))
             .environment(\.chatMentions, appData.chatMentions)
             .environment(\.itemChats, appData.itemChats)

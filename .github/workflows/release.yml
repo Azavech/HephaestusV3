@@ -1,5 +1,6 @@
 # Builds a release of Hephaestus V3, signed ad-hoc and not notarized, and publishes it as a GitHub release with
-# its .dmg (docs/release.md). Run it from the Actions tab, or: gh workflow run release.yml -f version=1.0.0
+# its .dmg and its release.json, which the app's Updater reads (docs/release.md). Run it from the Actions tab,
+# or: gh workflow run release.yml -f version=1.0.0
 name: Release
 
 on:
@@ -75,6 +76,7 @@ jobs:
         run: |
           (cd HephaestusV3Kit && swift test)
           (cd GuestAgent && swift test)
+          (cd Updater && swift test)
 
       - name: Build
         id: build
@@ -86,8 +88,9 @@ jobs:
           DMG: ${{ steps.build.outputs.dmg }}
           SHA256: ${{ steps.build.outputs.sha256 }}
           BUILD: ${{ steps.build.outputs.build }}
+          MANIFEST: ${{ steps.build.outputs.manifest }}
         run: |
           git tag "v$VERSION"
           git push origin "v$VERSION"
-          gh release create "v$VERSION" "$DMG" --title "Hephaestus V3 $VERSION ($BUILD)" \
-            --notes "Built from $(git rev-parse --short HEAD). Signed ad-hoc, not notarized: after copying the app to Applications, open it once with Control-click ▸ Open, or run xattr -dr com.apple.quarantine /Applications/HephaestusV3.app. SHA-256 of the disk image: $SHA256"
+          gh release create "v$VERSION" "$DMG" "$MANIFEST" --latest --title "Hephaestus V3 $VERSION ($BUILD)" \
+            --notes "Built from $(git rev-parse --short HEAD). Signed ad-hoc, not notarized: after copying the app to Applications, open it once with Control-click ▸ Open, or run xattr -dr com.apple.quarantine /Applications/HephaestusV3.app. From then on the app installs its updates itself. SHA-256 of the disk image: $SHA256"

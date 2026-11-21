@@ -70,7 +70,7 @@ The architecture rests on a few rules:
 ## Repository layout
 
 ```
-HephaestusV3/                    the repository root (GitHub: Azavech, private)
+HephaestusV3/                    the repository root (GitHub: Azavech, public since 21 November 2026)
 ├─ CLAUDE.md                     what applies to this repository only
 ├─ .gitignore                    .DS_Store, xcuserdata/, .build/, .swiftpm/, DerivedData/, build/
 ├─ .github/workflows/release.yml the release workflow ([Release](release.md))
@@ -79,6 +79,8 @@ HephaestusV3/                    the repository root (GitHub: Azavech, private)
 ├─ HephaestusV3/                 the app target's folder: HephaestusV3App.swift, HephaestusV3.entitlements,
 │                                AppIcon.icon (Icon Composer)
 ├─ HephaestusAgent/              the guest agent's target: main.swift, which calls GuestAgent.main()
+├─ HephaestusUpdater/            the Updater's target: main.swift, which calls UpdaterProcess.main() ([Updater](updater.md))
+├─ Updater/                      the Updater's package: UpdateData, which the helper and ToolsScenes link, and its tests
 ├─ GuestAgent/                   the guest agent's package, for macOS 12 guests: GuestAgentKit, its tests,
 │                                and install-agent.sh ([Guest agent](guest-agent.md))
 ├─ HephaestusV3Kit/              the local package
@@ -91,10 +93,11 @@ HephaestusV3/                    the repository root (GitHub: Azavech, private)
 │  ├─ data.md                    the files: formats, rules, the data folder
 │  ├─ decisions.md               the defaults chosen at design time
 │  ├─ future-improvements.md     what comes later
+│  ├─ release.md, updater.md     the releases, and the Updater that installs them
 │  └─ ui/                        the UI specification and its images/
 └─ scripts/
    ├─ sync-strings.sh            fills the String Catalogs and checks the bundles
-   └─ build-release.sh           builds a release: the app signed ad-hoc, in a .dmg
+   └─ build-release.sh           builds a release: the app signed ad-hoc, in a .dmg, and its release.json
 ```
 
 `HephaestusV3Kit/.build/` and `HephaestusV3Kit/.swiftpm/` are generated and ignored. `sync-strings.sh` builds
@@ -113,25 +116,32 @@ has no shared scheme files: Xcode creates the `HephaestusV3` scheme for the targ
 | --- | --- |
 | `configurations` | Debug, Release; `default-configuration` Release |
 | `localizations` | development `en`; supported `Base` |
-| `packages` | two local packages, paths `HephaestusV3Kit` and `GuestAgent` |
-| `files` | the folders `HephaestusV3` and `HephaestusAgent` (synchronized), members of their targets; the group Products with `HephaestusV3.app` and `HephaestusAgent` |
+| `packages` | three local packages, paths `HephaestusV3Kit`, `GuestAgent` and `Updater` |
+| `files` | the folders `HephaestusV3`, `HephaestusAgent` and `HephaestusUpdater` (synchronized), members of their targets; the group Products with `HephaestusV3.app`, `HephaestusAgent` and `HephaestusUpdater` |
 | `last-upgrade`, `last-swift-update` | 27.2 |
 
 **Target `HephaestusV3`**: product type application, product `Products/HephaestusV3.app`, build phases
-compile sources, frameworks, resources and the script **Embed Guest Agent**, and a dependency on the target
-`HephaestusAgent`. The frameworks phase links the package product `ToolsScenes` of `HephaestusV3Kit`. The
+compile sources, frameworks, resources and the scripts **Embed Guest Agent** and **Embed Updater**, and dependencies
+on the targets `HephaestusAgent` and `HephaestusUpdater`. The frameworks phase links the package product `ToolsScenes` of `HephaestusV3Kit`. The
 resources phase holds `HephaestusV3/AppIcon.icon`, through the synchronized folder: the asset compiler makes
 `Assets.car` and `AppIcon.icns` from it ([Foundations › App icon](ui/foundations.md#app-icon)). The script (`/bin/sh`, its inputs and outputs declared
 for the user script sandbox) copies `$(BUILT_PRODUCTS_DIR)/HephaestusAgent` to `Contents/Helpers/HephaestusAgent`
 and `$(SRCROOT)/GuestAgent/install-agent.sh` to `Contents/Resources/install-agent.sh`; the app's signature seals
-them. (The JSON project format's copy-files phase needs a reference syntax Xcode doesn't document, so a script does
-the copy.)
+them. **Embed Updater**, the same way, copies `$(BUILT_PRODUCTS_DIR)/HephaestusUpdater` to
+`Contents/Helpers/HephaestusUpdater`. (The JSON project format's copy-files phase needs a reference syntax Xcode
+doesn't document, so a script does the copy.)
 
 **Target `HephaestusAgent`**: product type tool, product `Products/HephaestusAgent`, build phases compile sources
 and frameworks; the frameworks phase links the package product `GuestAgentKit` of `GuestAgent`. Settings: `ARCHS`
 arm64, `MACOSX_DEPLOYMENT_TARGET` 12.0, `CODE_SIGN_STYLE` Automatic, `DEVELOPMENT_TEAM` USWJAJULN9,
 `ENABLE_HARDENED_RUNTIME` YES, `PRODUCT_BUNDLE_IDENTIFIER` `fr.azavech.hephaestusv3.agent`, `SKIP_INSTALL` YES,
 `SWIFT_VERSION` 6.0, `SDKROOT` macosx.
+
+**Target `HephaestusUpdater`**: product type tool, product `Products/HephaestusUpdater`, build phases compile
+sources and frameworks; the frameworks phase links the package product `UpdateData` of `Updater`. Settings:
+`MACOSX_DEPLOYMENT_TARGET` 27.0, `CODE_SIGN_STYLE` Automatic, `DEVELOPMENT_TEAM` USWJAJULN9,
+`ENABLE_HARDENED_RUNTIME` YES, `PRODUCT_BUNDLE_IDENTIFIER` `fr.azavech.hephaestusv3.updater`, `SKIP_INSTALL` YES,
+`SWIFT_VERSION` 6.0, `SDKROOT` macosx. Its `main.swift` calls `UpdaterProcess.main()` ([Updater](updater.md)).
 
 | Build setting | Value | Why it matters |
 | --- | --- | --- |
@@ -155,7 +165,7 @@ arm64, `MACOSX_DEPLOYMENT_TARGET` 12.0, `CODE_SIGN_STYLE` Automatic, `DEVELOPMEN
 | `STRING_CATALOG_GENERATE_SYMBOLS`, `SWIFT_EMIT_LOC_STRINGS` | `YES` | String extraction. |
 | `ENABLE_PREVIEWS` | `YES` | |
 | `LD_RUNPATH_SEARCH_PATHS` | `@executable_path/../Frameworks` | |
-| `MARKETING_VERSION`, `CURRENT_PROJECT_VERSION` | `1.0`, `1` | |
+| `MARKETING_VERSION`, `CURRENT_PROJECT_VERSION` | `1.0`, `0` | A build without a release's values is build 0: a development build, which doesn't update itself ([Updater › Starting the Updater](updater.md#starting-the-updater)). A release sets both. |
 
 Project-level settings that matter: `LOCALIZATION_PREFERS_STRING_CATALOGS = YES`,
 `ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES`, `ENABLE_USER_SCRIPT_SANDBOXING = YES`,
@@ -199,7 +209,7 @@ struct HephaestusV3App: App {
 | `defaultLocalization` | `"en"` |
 | `platforms` | `.macOS("27.0")` |
 | `products` | one library, `ToolsScenes`, of the target `ToolsScenes` |
-| `dependencies` | `.package(url: "git@github.com:Azavech/AZDesign.git", from: "0.7.0")`: AZDesign by version, from its GitHub repo over SSH. `.package(url: "https://github.com/jpsim/Yams.git", from: "6.2.2")`: Yams, the YAML library the owner approved. `.package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.9.0")`: swift-markdown, approved for Markdown (it brings swift-cmark). `Package.resolved` pins the exact versions (AZDesign 0.7.0, revision `7f10be3`; Yams 6.2.2, revision `a27b21e`) |
+| `dependencies` | `.package(url: "git@github.com:Azavech/AZDesign.git", from: "0.7.0")`: AZDesign by version, from its GitHub repo over SSH. `.package(url: "https://github.com/jpsim/Yams.git", from: "6.2.2")`: Yams, the YAML library the owner approved. `.package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.9.0")`: swift-markdown, approved for Markdown (it brings swift-cmark). `.package(path: "../Updater")`: the Updater's local package, whose `UpdateData` ToolsScenes uses. `Package.resolved` pins the exact versions (AZDesign 0.7.0, revision `7f10be3`; Yams 6.2.2, revision `a27b21e`) |
 
 Shared values in the manifest:
 
@@ -237,7 +247,7 @@ Shared values in the manifest:
 | `BuildsKit` | Builds; the Recent Builds widget; the builds reader. | same | `toolTarget` |
 | `MachinesKit` | The Virtual Machines window, Settings ▸ Virtual Machines, the `vm_` tools. | same, plus MachineData, MCPKit, ProjectData | `toolTarget(data:)` |
 | `ChatKit` | The Chat window, the chat panel, Settings ▸ Chat, System Prompts, the shared chat store. | same, plus ChatData, MCPKit, ProjectData, FileStorage | `toolTarget(data:)` |
-| `ToolsScenes` | Scenes, menu commands, route handling, the app's data (`AppData`), the MCP server's tools (`AppTools`) and Settings ▸ MCP. The only target that knows every tool. | ToolsFoundation, ProjectData, FileStorage, MCPKit, ProjectsKit, DashboardsKit, TicketsKit, ServiceMapKit, ContractsKit, BuildsKit, MachinesKit, ChatKit, the data targets, AZDesign | `.target` |
+| `ToolsScenes` | Scenes, menu commands, route handling, the app's data (`AppData`), the MCP server's tools (`AppTools`) and Settings ▸ MCP. The only target that knows every tool. | ToolsFoundation, ProjectData, FileStorage, MCPKit, ProjectsKit, DashboardsKit, TicketsKit, ServiceMapKit, ContractsKit, BuildsKit, MachinesKit, ChatKit, the data targets, AZDesign, `UpdateData` of the Updater package | `.target` |
 
 Every UI target has `Localizable.xcstrings` as its only resource; the data targets have none, since their
 messages are technical details in English under a window's localized sentence. SwiftPM builds it into the bundle
@@ -247,7 +257,7 @@ messages are technical details in English under a window's localized sentence. S
 `.copy("Fixtures")`), `MCPKitTests`, `ToolsFoundationTests`, `ProjectsKitTests`, `DashboardsKitTests`, `TicketsKitTests`,
 `ServiceMapKitTests`, `ContractsKitTests`, `BuildsKitTests`, `MachinesKitTests`, `ChatKitTests`,
 `ToolsScenesTests`, and `TicketDataTests`, `TextFormatsTests`, `ChatDataTests`, `BuildDataTests`, `ContractDataTests`,
-`ClusterDataTests`, `MachineDataTests`. The guest agent's package has its own, `GuestAgentKitTests`. Each depends only on its target, uses Swift Testing and `@testable import`.
+`ClusterDataTests`, `MachineDataTests`. The Updater's package has its own, `UpdateDataTests`. The guest agent's package has its own, `GuestAgentKitTests`. Each depends only on its target, uses Swift Testing and `@testable import`.
 
 **Dependency rules**
 
@@ -683,6 +693,34 @@ settings). Source files in `Sources/MachineData/`:
 loads it after the projects, and stops everything at quit. Tests pass a `FakeBackend` making `FakeGuest`s: no test
 downloads, installs or starts a machine.
 
+### UpdateData (the Updater package)
+
+The Updater's code and what the app shares with it ([Updater](updater.md)), in the local package `Updater/`
+(`swift-tools-version: 6.2`, macOS 27, one library product `UpdateData`, its tests `UpdateDataTests`), as the guest
+agent's is in `GuestAgent/`: so that HephaestusV3Kit keeps its one product and its `HephaestusV3Kit` scheme. No UI,
+no default isolation, no dependency; `UpdaterMachine` is an actor, `UpdaterProcess.main()` is `@MainActor`. The Xcode
+target `HephaestusUpdater` and HephaestusV3Kit's ToolsScenes link it. Source files in `Updater/Sources/UpdateData/`:
+
+| File | Contents |
+| --- | --- |
+| `AppVersion.swift` | `AppVersion` (`display`, `aboutLine`, `running`) |
+| `ReleaseManifest.swift` | `ReleaseManifest` (`validate`, `diskImageName`) |
+| `ReleaseFeed.swift` | `GitHubRelease`, `FeedResult`, `ReleaseFeed` (`repository`, `latest`) |
+| `UpdateDecision.swift` | `UpdateDecision.decide` |
+| `UpdateTools.swift` | `ProcessRunner`, `UpdateTools` (`.system`), `LaunchServices.lsregister`, `DiskImage.copyApp` |
+| `UpdateDownloader.swift` | `UpdateDownloader` (steps 1 to 4, `buildFolder`, `expandedApp`, `deleteBuildFolder`, `sha256Hex`) |
+| `UpdateVerifier.swift` | `UpdateVerifier` (steps 5 to 9, `signingTeamID`) |
+| `UpdateInstaller.swift` | `InstallOutcome`, `UpdateInstaller` (the swap, the quarantine, the relaunch by path, `install-failed`) |
+| `UpdaterIPC.swift` | `UpdaterIPC`, `UpdaterRequest`, `UpdaterMessage`, `UpdaterState`, `UpdaterStatus` |
+| `UpdaterArguments.swift` | `UpdaterArguments` (`parse`, `UsageError`) |
+| `UpdaterMachine.swift` | `UpdaterMachine` (`Dependencies`, `start`, `handle`, `appExited`) |
+| `UpdaterProcess.swift` | `UpdaterProcess.main()`: the Updater's process |
+| `UpdatePresentation.swift` | `UpdaterStartConditions`, `UpdateArea`, `UpdateItem`, `AutomaticRestart`, `UpdateInterval` |
+| `UpdaterTexts.swift` | `UpdaterTexts`, `UpdaterError` |
+
+Tests replace `hdiutil`'s image, `open` and `lsregister` with fakes through `UpdateTools`, and answer GitHub with a
+stubbed `URLProtocol`.
+
 ## ToolsFoundation
 
 The vocabulary every target speaks. Its data types are `nonisolated public` value types, `Hashable` and
@@ -945,8 +983,10 @@ component comes from AZDesign.
 `WindowDirectory.swift` (the windows and their tabs, for routes), `AppData.swift` (the app's data),
 `AppTools.swift` (the MCP server's tools), `Implementer.swift` (Implement: `Implementer`, its checks, `implement_ticket` and `implement_bundle`; `watchCI(_:caller:)` and `watch_ci`, which link a CI chat to its ticket or bundle; and `implementSheet()`, which gives a tab `\.implement` and shows ChatKit's `ImplementView`), `MCPSettingsView.swift` (Settings ▸ MCP), `GeneralSettingsView.swift`
 (Settings ▸ General), `NotificationSettingsView.swift` (Settings ▸ Notifications), `ChatNotifier.swift` (the
-chats' notifications, the Dock's badge and bounce), `StatusBar.swift` (the status bar, its chat counts and
-feedback) and `WindowCapture.swift` (a window's PNG). Its only public type is `public struct ToolsScenes: Scene` with `public init()`, which sets
+chats' notifications, the Dock's badge and bounce), `StatusBar.swift` (the status bar, its chat counts, its version
+and Update item, and feedback), `UpdateController.swift` (the app side of the Updater, `RunningWork`),
+`AboutWindow.swift` (the About window and its menu item, `UpdateTexts`), `UpdateSettingsView.swift` (Settings ▸
+Updates) and `WindowCapture.swift` (a window's PNG). Its only public type is `public struct ToolsScenes: Scene` with `public init()`, which sets
 `NSWindow.allowsAutomaticWindowTabbing = false`: the app draws its own tabs, and macOS adds neither its tab
 items nor its tabs ([Navigation › Tabs](ui/navigation.md#tabs)).
 
@@ -956,7 +996,8 @@ items nor its tabs ([Navigation › Tabs](ui/navigation.md#tabs)).
 
 | Scene | Type | Id | Content | Default size | At launch |
 | --- | --- | --- | --- | --- | --- |
-| Window | `WindowGroup(Text(verbatim: "Hephaestus V3"), id:, for: WorkspaceValue.self)`, `.commands { NewItemCommands(); ToolCommands(); TabCommands(); ChatPanelCommands(); FeedbackCommands() }` | `workspace` | `WorkspaceRoot(value: $value, appData:, selectedProjectID: $selectedProjectID, machineFocus:, machineFocusRequest:)` | 1320 × 840 | Opens, with no value: Projects |
+| Window | `WindowGroup(Text(verbatim: "Hephaestus V3"), id:, for: WorkspaceValue.self)`, `.commands { NewItemCommands(); ToolCommands(); TabCommands(); ChatPanelCommands(); FeedbackCommands(); AboutCommands() }` | `workspace` | `WorkspaceRoot(value: $value, appData:, selectedProjectID: $selectedProjectID, machineFocus:, machineFocusRequest:)` | 1320 × 840 | Opens, with no value: Projects |
+| About | `Window(Text("About Hephaestus V3"), id:)`, `.windowResizability(.contentSize)`, `.restorationBehavior(.disabled)`, `.defaultLaunchBehavior(.suppressed)`; `AboutCommands` replaces `.appInfo` with About Hephaestus V3, which opens it | `about` (`SceneID.about`) | `AboutView(controller: appData.updates)` | 360 wide, its content's height | Never opened, never restored |
 | Menu bar | `MenuBarExtra(String(localized: "Open Project"), systemImage: "wrench.and.screwdriver")`, `.menuBarExtraStyle(.window)` | — | `ProjectLauncher(projects: appData.directory.projects)` | 360 × 460 (the panel's own) | Always present |
 | Settings | `Settings` | — | `TabView(selection:)` on `@AppStorage(SettingsPane.storageKey)` (each tab tagged with its `SettingsPane` raw value): `GeneralSettingsPane(appData:)` labeled General (`gearshape`), `ProjectsSettingsPane(session: appData.session)` labeled Projects (`folder`), `MCPSettingsPane(appData:)` labeled MCP, `MachineSettingsView(store: appData.machineStore)` labeled Virtual Machines (`desktopcomputer`) while it is available, then `ChatSettingsView()` labeled with Chat's title and symbol and `NotificationSettingsPane(appData:)` labeled Notifications (`bell.badge`) while Chat is available; `.frame(width: 520, height: 440)`, `.tint(.accent)` | 520 × 440 | — |
 | Chat window | `WindowGroup(Text(verbatim: "Chat"), id:, for: ChatWindowValue.self)`, `.defaultSize(width: 720, height: 820)`, `.windowResizability(.contentMinSize)` | `chat` (`SceneID.chat`) | `ChatWindowScene(value:)`: `ChatWindowView(chatID:)` (ChatKit) at least 480 × 480, `.statusBar(_:countsChats: false)` with the source "Chat", the chat's project and title, and a `WindowReader` that calls `WindowDirectory.shared.register(_:chat:)` | 720 × 820 | Restored with its `ChatWindowValue` (`chatID`) |
@@ -1185,8 +1226,9 @@ that a route selects a tab already showing what it asks for instead of opening a
   `context(version:build:system:)` makes the feedback's context lines, by default from the main bundle's
   `CFBundleShortVersionString` and `CFBundleVersion` and `ProcessInfo.operatingSystemVersion`.
 - `View.statusBar(_ source:)` puts the window's content (`frame(maxWidth: .infinity, maxHeight: .infinity)`)
-  above `StatusBar` in a `VStack(spacing: 0)` while `\.feedbackTarget` is set: under the tab area and the chat
-  panel together. Its modifier keeps a
+  above `StatusBar` in a `VStack(spacing: 0)`, always: under the tab area and the chat panel together. The bar
+  shows `\.updateController`'s `appVersion.display` and, outside chat windows, its `updateItem`
+  ([Updates](ui/updates.md)); the ladybug only while `\.feedbackTarget` is set. Its modifier keeps a
   `FeedbackStarter` in `@State`, gives it its window through a `WindowReader`, publishes
   `focusedSceneValue(\.sendFeedback, SendFeedbackAction)` while there is a target, and shows
   `FeedbackView` (ChatKit) in a `.sheet(item:)` on `FeedbackStarter.request`. The sheet's finish calls
@@ -2239,7 +2281,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | ChatDataTests | Chat files, Implement chats, CI chats, Transcripts, Stream mapping, Context usage, Managing chats, Chat settings and answers, Chats on the Claude CLI, Launching the CLI, Internal skills, Internal skill runs, Feedback chats, File tools, Message files, Messages with files, Result images, Questions, Questions in a chat, Picker requests, Picker requests in a chat, Chat changes, observed by chat | A complete chat file written back byte for byte, the `origin` key, the kinds' rules; replay (add, update, lines skipped), lines written by the app, the LF after a line cut short; captures of Claude Code 2.1.309 mapped to items and their ids, streamed text, the CLI's permission request, compaction lines, results after Stop; the CLI located in order, its version and models; a first message (arguments without prompt, hooks or the CLI's tools, the MCP configuration and its chat token, the attached line), a turn replayed to idle, the app's card and the CLI's request answered, Stop, an exit in error, a missing session started again, model and effort. A `FakeLauncher` replays the captures; nothing starts Claude. The internal skills: the list, set-ticket-title and notification-summary, the name format, `SKILL.md` written and read back in a temporary folder, a file without front matter. The probe's commands (with the chats' plugin) and a chat's answer giving its project's. Context usage: the CLI's answer and its rules, the file keeping it, a message asking it. Chat settings and answers: the launch's mode, Ultracode and window; Always Allow passing the suggestions back, Don't Allow's message, Allow All approving what waits. Managing chats: close now or after the turn, Stop cancelling it, reopen, delete to a stand-in Trash, `close_chat`, Resume calling `resume-chat`. Questions: a valid set reordered, each rule's message, V2's item read and written back, the Answers message, the answers' checks; a chat that asks, waits once its turn ends, refuses a second set, and sends the answers with the last one. Result images: mapped after their result and stored as `image-<n>` files. Messages with files: stored, kept on the message, images sent and paths after the text; files alone; a folder refused. Mentioned ids: a message's and a reply's ids (not a code block, a sub-agent's text or a result), and a session reading them from the files. Agents and workflows: V2's workflow capture with its folder (records, agents, transcripts, the agents file read back), its background agent (task id, transcript, end) and its stop capture (`stop_task`), and the `agentId` line. Background work: V2's `stream-background-bash.jsonl` replayed line by line (tasks, the owed turn, the idle timer) and its lines' mapping. Chat notifications: the summary's cleanup, a finished turn and a card waiting reported with their detail and input, nothing for a first state or a Stop, the fallback detail, the chats shown in the key window. Message files: a V2 message's files read and written back with their unknown keys, a stored file's attachment, the path rule (a link out of `.hephaestus/` refused), a 1.0.31 feedback message's files; the feedback message keeps its files. Internal skill runs: the CLI's arguments with and without a system prompt, the JSON answer and its failures (an error, a timeout, no JSON), a run on a session with a fake runner (the skill's values, the folder, the input on standard input) and none before the CLI is checked. File tools: the tools by setting, the answers inside and outside the project's folder, in `.hephaestus/`, through a symbolic link, and a running chat's requests answered at once or with a card. Picker requests: each kind's rules and messages in order, pairs of colors, V2's six items read and written back with their unknown keys, markers and the answer's message, the SF Symbol, sound and font catalogues on fixtures (`PickerCatalogs.Sources.fixtures`: plists, sound files and families in a temporary folder), a project's files walked; a chat that asks, waits once its turn ends, refuses a second request and questions, sends `Symbol: <answer>` once, a picker's notification input, and the App-only kinds. Implement chats: a ticket chat and a bundle chat, their files, titles and first messages, linked before the message, a failed link removing the chat; a bundle chat's orchestrated ticket chat, its settings, the git commands of its branch and worktree on a `GitRecorder` (an earlier worktree and branch removed, a failing command and no git refused), and with `/usr/bin/git` itself in a temporary repository; the working folder; a turn reported to the orchestrator without a Finished event; the report texts; questions blocked until the user writes, not by Resume; a chat's own items. `ChatWorld` takes a runner, a stand-in git in the tools' `PATH` and a GitHub page. CI chats: a ticket's and a bundle's, their files, titles, settings and first message with the project attached, linked first; each check's refusal and a failed link removing the chat; a turn reported to the orchestrator without a Finished event; a failure allowing one question set, used up by it, a pass taking it back; the report texts and the failure rule; full hashes; a ticket's and a bundle's chats in order. Chat changes: a `PerChat` reader told of its chat's changes only, an in-place change and the revision included; the file events that read the chats again (a `chats/` folder, dropped events, another's write or removal of a chat's file) and those that don't (a transcript's line, a chat's folder, the session's own write). |
 | TicketDataTests | Ticket and bundle files, Ticket library | A complete ticket and bundle written back byte for byte; defaults, the creation entry and unknown keys; numbers from the counters, skipping existing files; provisional titles and the title, description and status messages; Claude's descriptions taken as written; drafts; link rules 1–7 with their messages and inverse links; history entries in order and changes that write nothing; Claude's status limits; the Complete and Reopened rules, Claude's bundle limits and the Complete rule at load; deletion order and the Trash; comments and their files; attachment copies, names, limits and paths; outside changes, invalid files and removals. Fixtures: example ticket and bundle files. Uses a test Trash folder. The untitled handler (called for tickets created without a title, by the user or Claude, not for titled ones), the generated title (renamed as `automatic`, not over a title given since), titles from answers. Implement's rules: a done ticket or a draft refused, a chat linked once, a bundle's CI chat linked once; Implement All's chat and In Progress in one write, and its conflicts. |
 | TextFormatsTests | Language detection, Token kinds, Word lists, Highlighter fixtures, Tokenizer edge cases, Markdown block model, Links, Heading anchors, Ticket and bundle ids, Linked ids, Soft line breaks, Markers, Notations | Every tokenizer against its fixtures and the word lists of [Text](text.md); the block model of every Markdown feature; links, images and path resolution read from [Text](text.md); ids. Fixtures: highlighting examples. Markers: each kind in Markdown, spaces included, a refused value as its source, code spans, code blocks and links, plain text with ids, linked ids. Notations: shortcuts and key caps, recorded keys, the standard shortcuts, font sizes and labels, animation expressions and their messages, system colors. |
-| ToolsScenesTests | MCP documentation, Implementer, Tabs, Window directory, Feedback | docs/mcp.md's tools, descriptions and input schemas equal the registry's; chat windows found by their chat, never as workspaces, and their value's round trip; a window's tabs (the initial tab, the tab bar's visibility, adding, closing, moving, Next and Previous, kept tool states, reported items, one chat conversation per project, a project's tab, the restored value); routes over windows ordered far off screen (no macOS tabs, selecting the tab that shows a route with its focus, a new tab in the frontmost window or a window of its own, Merge All Windows); the feedback context line, a window's PNG, overlay placement, the feedback request's temporary folder. Windows are never shown, or ordered far off screen. The Implementer: unknown and malformed ids, the errors' mapping, the calls' rows and cards; `watch_ci`'s first refusals and its row. |
+| ToolsScenesTests | MCP documentation, Implementer, Tabs, Window directory, Feedback, Updates | docs/mcp.md's tools, descriptions and input schemas equal the registry's; chat windows found by their chat, never as workspaces, and their value's round trip; a window's tabs (the initial tab, the tab bar's visibility, adding, closing, moving, Next and Previous, kept tool states, reported items, one chat conversation per project, a project's tab, the restored value); routes over windows ordered far off screen (no macOS tabs, selecting the tab that shows a route with its focus, a new tab in the frontmost window or a window of its own, Merge All Windows); the feedback context line, a window's PNG, overlay placement, the feedback request's temporary folder. Windows are never shown, or ordered far off screen. The Implementer: unknown and malformed ids, the errors' mapping, the calls' rows and cards; `watch_ci`'s first refusals and its row. Updates: the restart alert's text, the update texts, a controller outside `/Applications`, which starts no Updater. |
 | ToolsFoundationTests | Routes, Strings, Inherited settings | Each `FocusRequest` is new; `ChatReference.route` and ids per environment; shared titles from the catalog; unique tool shortcuts; inherited environments. |
 | ProjectsKitTests | Project lists, Projects window, Overview grids, Activity samples, Project picker, Projects from the app's data, New Project, Projects window on the app's data, Project Settings, Project tools | Tree and filtered sections; folding and revealing; focus selection; inherited environments and their note; figures and activity over the family, at most 40; column counts; event ids; highlight, arrow keys, skipping projects without the tool, reset, Return. Uses `MockProjectStore`.; the mapping of kinds, tints and environments; New Project's following fields, rules, type and parent from the folder, sub project folders and default location; the loading, empty and unavailable states; the selection after a removal and at load.; Project Settings' fields, rules and messages, environments added, renamed and removed, pending fields applied together, and inherited environments changed in the sub project's changes.; the five project tools through JSON-RPC on a real session, their refusals and `~/` expansion. |
 | DashboardsKitTests | What the Dashboard shows, Edit mode, Steps of the keyboard and VoiceOver, Settings, The Dashboard on the project files, Widgets of unavailable tools | Sample, default and saved lists; hidden service widgets; toolbar environment and time window; a change in every window of a project; list order; titles; Done, remove, add, first save, drags; every step and its limits; title, checkbox and Number rules. The live store on a real session in a temporary folder: the default list whatever the identifier, stored widgets read and written back in their layout with Recent Chats and unknown keys kept, the first change storing the default ids, the time window, a failed change and its message, a change made elsewhere, the mapping. Widgets shown by available tool; hidden widgets keep their places. Uses `MockDashboardLayoutStore`. |
@@ -2249,6 +2291,7 @@ deleted afterwards): never the user's projects, data folder, Trash or shell, and
 | BuildsKitTests | Focus, Model, Reader, Samples and logs, Recent Builds widget | Focus parsing; default selection, focus by mode, repeated routes, steps, mode selections, chat subject; reader text and owner repository; default steps, open jobs, log line kinds, sample releases; recent runs within 1–20. Uses `MockBuildStore`. |
 | MachinesKitTests | Machines window: selection and routes, Machines window: layouts, Machines: states and sizes, Machines: actions | Opening and route selection, unknown machines, images; Mac width, layout by width, side columns per layout; actions per state, starting and shutting down; size and download formats; sample ids; start, pause, resume and stop through the store, the limit of 2 and its alert, deletions (an image's machines too), a failure shown once, the guest account, Finish Setup's condition. Uses a sample store (`MockMachineStore`). |
 | MachineDataTests | Virtual machine files, Guest disks, macOS versions, Guest addresses, Guest agent protocol, Machine host | image.yml and vm.yml written byte for byte, earlier keys, lowercase ids, skipped folders and machines not started by the user; a machine's clone; disk growth (the recovery container moved, both tables, the MBR) and other layouts; ipsw.me's list and order; DHCP leases; frames and a connection over a socket pair; the host with a fake backend: an image's download, install and failures, the interrupted image, the setup and Finish Setup's SIP rule, the missing agent, New Machine's checks and the limit of 2, stop through the agent or at once, edits and the grown disk's container, a machine stopping by itself, deletions, the guest account, the defaults. |
+| UpdateDataTests (the Updater package) | Versions, release.json, Decision, Command line, IPC, Starting the Updater, Presentation, Release feed, Download and verification, Installer, Updater states | Versions and display; `release.json`'s rules and docs/release.md's example; the feed against a stubbed `URLProtocol` (a release, none, a repository not shown, the rate limit, statuses, assets, the manifest, the headers); the decision's rows; usage errors; the notifications' round trip and the pid filter; the start conditions in temporary folders; the About window's rows, the Update item, the automatic restart; the download, its reuse and failures, verification with bundles signed ad hoc under a test bundle id, one real image made with `hdiutil`; the swap, quarantine, relaunch arguments and `install-failed`; every transition of the state machine with a clock the test moves. No network, no `open`, no LaunchServices. |
 | GuestAgentKitTests (GuestAgent package) | Guest agent | The hello and status, SIP's parsing, exec (outputs, timeout, truncation, params), the file methods, unknown methods (`setEnv` among them). Over a socket pair, `/bin/sh -c`, never as root. |
 | ChatKitTests | Implement chats in ChatKit, Chat store, Sample engine, Chat panel, Chat window, Chat wording, System Prompts, Send Feedback, Skill completion, Questions card, Composer files, Context indicator, Drafts, Claude CLI line, Picker cards, Conversations made once | Each chat's draft shared by its views and a new chat's kept apart; the panel's pop-up showing another chat with its draft; the CLI line's states and Settings' tab names. Starting and continuing conversations, empty messages, ordering, decisions; mentions and reads; attachments, sending, New Chat, the Chat window route, suggestions; window selection, grouping, new chat, sending; approval sentences, suggestion wording and identifiers, references, unique sample ids; the live store's turns from a transcript (users' items, calls worded by their tools, failed calls, cards and their channels, notices, streamed text); the gate's rules. Uses `MockChatEngine`, and a chat session without projects. System Prompts: opening, the delayed save, Save All, a failed save and its recovery. The file tools' rows and cards, their paths from the project's folder. A message's files from the project's `.hephaestus/`, and those a 1.0.31 feedback message names. Turns: CLI card previews, Always Allow and cancelled answers; the gate under each mode; thinking, the Done line, a sub-agent's call as a step, a call's details and inputs, a call that runs, captions, Find. Skill completion: the skills offered after `/`, their order, the CLI's own commands left out, the completion's text, the limit. Context indicator: tokens and tooltip. Composer files: added once, a folder refused; a paste of files, of an image (a PNG named for its time, cleaned after), of text. Questions card: the question shown first and next, Submit or Next; `ask_questions` refused to other tokens and to skills' runs, its rules before the chat. Picker cards: each card's answer (symbol, sound, a color or a pair and the switch, a recorded shortcut and its warnings, a font's weight and size, an animation's Custom expression), Submit's rules, a request as a block and in Find, the samples' answer. Implement: an implement chat's own items run without a card under Ask First, others still ask, Never and Plan Only refuse; `watch_ci` without a card, and `close_chat` on the chats a chat started; the Implement sheet's model. Conversations made once: the turns made again when the transcript changes, not at each read nor at each word streamed, the streamed text then its item shown once; a view of one chat not told of another's items and words; a turn view equal whatever its action. |
 

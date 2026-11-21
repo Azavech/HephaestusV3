@@ -24,6 +24,7 @@ strings and tests. The shared, generic components come from AZDesign, whose refe
 | --- | --- |
 | [Foundations](foundations.md) | Principles, colors, typography, shapes, Liquid Glass, icons, motion, the Mac / iPad / iPhone layout system, states, accessibility, previews, localization |
 | [Navigation](navigation.md) | Windows and their tabs, tools per project, the anatomy of a window, the status bar, routes, window reuse, tabs and the chat panel, Settings ▸ General, menus and shortcuts |
+| [Updates](updates.md) | The version in the status bar, the About window, the Update item, Settings ▸ Updates, the restart for an update |
 | [Components](components.md) | Project switcher, icons, status dots, badges, figures, toolbar padding, empty states, phone stack, the chat panel's button, glass overlays |
 
 **Windows**

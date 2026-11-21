@@ -28,6 +28,9 @@ final class ChatDrafts {
         guard files[id] != new else { return }
         files[id] = new
     }
+
+    /// Whether a chat holds unsent text or files, which a restart for an update would lose.
+    var isEmpty: Bool { texts.isEmpty && files.isEmpty }
 }
 
 /// A view's composer: the draft of the chat it shows, the store's, or of its new chat, its own.

@@ -24,7 +24,8 @@ tab by its old window's name, "the Tickets window", meaning the tab.
 
 | Other window | Kind | Opens | Size | Page |
 | --- | --- | --- | --- | --- |
-| **Settings** | One window | ⌘, | 520 × 440 pt | Tabs: [General](#settings--general), [Projects](projects.md#settings--projects), [MCP](../mcp.md#settings--mcp), [Virtual Machines](virtual-machines.md#settings--virtual-machines), [Chat](chat.md#settings--chat) |
+| **Settings** | One window | ⌘, | 520 × 440 pt | Tabs: [General](#settings--general), [Projects](projects.md#settings--projects), [MCP](../mcp.md#settings--mcp), [Virtual Machines](virtual-machines.md#settings--virtual-machines), [Chat](chat.md#settings--chat), [Notifications](#settings--notifications), [Updates](updates.md#settings--updates) |
+| **About** | One window | Hephaestus V3 ▸ About Hephaestus V3 | 360 pt wide | [Updates › About window](updates.md#about-window) |
 | **Menu bar panel** | Menu bar item | The `wrench.and.screwdriver` icon | 360 × 460 pt | [Menu bar](menu-bar.md) |
 
 - A new window is 1320 × 840 pt. The first window, at launch, shows Projects; macOS restores the windows open
@@ -81,21 +82,19 @@ chat panel is on the right, outside the tabs; the status bar runs under both.*
 | **Tab bar** | Under the toolbar, across the tab area, with two tabs or more: one tab per tab of the window, then + ([Tabs](#tabs)). |
 | **Tab** | The selected tab's content, sidebar included, laid out as a Mac, an iPad or an iPhone would, depending on the window's width. |
 | **Chat panel** | On the right, outside the tabs, beside them on a Mac, over them on an iPad, the whole window on an iPhone. See [Chat](chat.md). |
-| **Status bar** | Under the tabs and the chat panel, across the window, while a feedback project is set ([Status bar](#status-bar)). |
+| **Status bar** | Under the tabs and the chat panel, across the window, always ([Status bar](#status-bar)). |
 
 ## Status bar
 
-V2's status bar, with its ladybug and its chat counts (the user's choices; V2's other items, the device, the
-MCP port, the version, updates, usage and costs, stay out): a bar across the bottom of every window but
-Settings and the menu bar panel, under the tabs and the chat panel ([Anatomy of a window](#anatomy-of-a-window)).
-Its feedback is about the selected tab.
+V2's status bar, with its ladybug, its chat counts, its version and its Update item (the user's choices; V2's
+other items, the device, the MCP port, usage and costs, stay out): a bar across the bottom of every window but
+Settings, the About window and the menu bar panel, under the tabs and the chat panel ([Anatomy of a
+window](#anatomy-of-a-window)). Its feedback is about the selected tab.
 
-![The status bar: 1 chat running and 1 chat waiting in its middle, the ladybug at its right](images/status-bar-chats.png)
+![The status bar: 1 chat running and 1 chat waiting in its middle; v1.0.43(78) and the ladybug at its right](images/status-bar-chats.png)
 
-- **Shown** while Settings ▸ General has a feedback project that is loaded
-  ([Settings ▸ General](#settings--general)), or while chats are counted; otherwise no window has the bar,
-  and the tabs take its room (the user's choice for the ladybug; the counts showing it too is a default
-  chosen at design time).
+- **Shown** always, since the version always shows, as in V2 (the owner's choice of 21 November 2026). Before,
+  it showed only with a feedback project or chats counted.
 - **Look.** 26 points high, under a hairline (`Divider`), on `canvas`, in every layout. Its texts are
   `caption`, in `textSecondary`, on one line.
 - **Running chats** (`statusBar.runningChats`), in the middle: a mini spinner and "1 chat running" or
@@ -113,6 +112,11 @@ Its feedback is about the selected tab.
   wide.
 
   ![The chats popover: Refund rules, ORD · Waiting for permission, then Fix the totals, ORD · Running](images/status-bar-chats-popover.png)
+- **Version** (`statusBar.version`), right of the middle: the app's version and build, `v1.0.43(78)`, in every
+  window with the bar, chat windows included ([Updates › Version](updates.md#version)).
+- **Update** (`statusBar.update`), after the version, in the windows of the app's tabs: "Update available…" in
+  `accent` while an update is offered, a click installing it, or a mini spinner and "Installing…" once the install
+  is chosen ([Updates › Update item](updates.md#update-item)).
 - **Ladybug** (`statusBar.feedback`), 10 points from the right edge, while there is a feedback project: a
   borderless button with `ladybug` in `textSecondary`, the tooltip "Send Feedback (⇧⌘B)" and the label "Send
   Feedback". A click captures the window, then opens the Send Feedback sheet on it
@@ -120,8 +124,10 @@ Its feedback is about the selected tab.
   feedback is open.
 - The counts are those of every project: the session's chats, whatever the window shows (V2 counted the
   chats of the window's Mac). The Dock badge counts the waiting ones ([Chat › Notifications](chat.md#notifications)).
+- A chat window's bar shows the version and the ladybug only: no chat counts, no Update item, as V2's.
 - The bar is one element, `statusBar`. Previews: "Status Bar", "Status Bar, Dark", "Status Bar, Chats",
-  "Status Bar, Chats Without Feedback", "Chats Popover".
+  "Status Bar, Chats Without Feedback", "Status Bar, Update Available", "Status Bar, Installing, Dark", "Chats
+  Popover".
 
 ## Routes
 
@@ -137,7 +143,7 @@ panel and the chat's **Open** buttons all use routes.
 | `.machine(id)` | Virtual Machines, with the machine selected. |
 | `.projectSettings(id)` | The project's Project Settings tab. |
 | `.chatWindow(chat:)` | The chat's own window ([Chat › Chat windows](chat.md#chat-windows)): the one already showing it, un-minimized and brought forward, or a new one. Not a tab: chat windows are a scene of their own, never merged into the others. |
-| `.settings(pane)` | The Settings window, on that tab (`SettingsPane`: `general`, `projects`, `mcp`, `machines`, `chat`, `notifications`). The tab is stored as `settings.pane` in the user defaults, so Settings also opens on the last tab shown. Used by the chat's **Open Settings**. |
+| `.settings(pane)` | The Settings window, on that tab (`SettingsPane`: `general`, `projects`, `mcp`, `machines`, `chat`, `notifications`, `updates`). The tab is stored as `settings.pane` in the user defaults, so Settings also opens on the last tab shown. Used by the chat's **Open Settings**. |
 
 **Focus formats**, the item a tool selects when a route opens it:
 
@@ -240,8 +246,9 @@ The first tab of Settings (`gearshape`), a grouped form with two sections. **Win
 | Message | `settings.general.feedbackMessage` | When `settings.yml` can't be written: the storage error, in `danger`; the choice still holds until the app quits. |
 | Footer | — | "The ladybug at the bottom of every window, and Help ▸ Send Feedback… (⇧⌘B), start a chat in this project about the window, with its screenshot, which calls the internal skill report-feedback. With None, neither shows." |
 
-- While the chosen project is loaded, every window shows its [status bar](#status-bar) and the Help menu
-  its Send Feedback… item. With None, or while the project isn't loaded, neither shows (the user's choice).
+- While the chosen project is loaded, every window's [status bar](#status-bar) shows the ladybug and the Help
+  menu its Send Feedback… item. With None, or while the project isn't loaded, neither shows (the user's choice);
+  the bar itself stays, with the version.
 - To send feedback about Hephaestus itself, add its folder as a project (File ▸ Add Existing Folder…) and
   pick it here, as V2's feedback went to its own project.
 
@@ -252,7 +259,7 @@ Stored**.
 
 ![Settings ▸ Notifications: the three toggles on](images/settings-notifications.png)
 
-The last tab of Settings (`bell.badge`), after Chat, shown while the Chat tool is: a grouped form with one
+The tab after Chat (`bell.badge`), before [Updates](updates.md#settings--updates), shown while the Chat tool is: a grouped form with one
 section, **Chats**. The toggles choose the chats' notifications ([Chat › Notifications](chat.md#notifications)).
 
 | Element | Identifier | Content |
@@ -318,13 +325,15 @@ The app's tab items follow Bring All to Front, under macOS's names and shortcuts
 | --- | --- | --- |
 | Show Chat Panel / Hide Chat Panel | ⌃⌘C | While the window offers the panel: not in Chat's tab, nor with Settings ▸ Chat's switch off |
 
-**App menu:** Settings… (⌘,) opens Settings, whose Chat pane is described in [Chat](chat.md). **System
-Prompts…** (⌥⌘,), right after it, selects the [System Prompts](system-prompts.md) tab or opens it.
+**App menu:** **About Hephaestus V3** opens the [About window](updates.md#about-window), with the version and its
+update, in place of macOS's About panel. Settings… (⌘,) opens Settings, whose Chat pane is described in
+[Chat](chat.md). **System Prompts…** (⌥⌘,), right after it, selects the [System Prompts](system-prompts.md) tab or
+opens it.
 
 **Help menu:** **Send Feedback…** (⇧⌘B), after the Help search field, starts feedback about the key window,
-as its ladybug does ([Chat › Feedback](chat.md#feedback)). It shows only while the key window has a
-status bar: a feedback project is set and loaded, and the key window is one of the app's windows, not
-Settings. Its feedback is about the selected tab.
+as its ladybug does ([Chat › Feedback](chat.md#feedback)). It shows only while the key window's status bar has
+the ladybug: a feedback project is set and loaded, and the key window is one of the app's windows, not
+Settings or the About window. Its feedback is about the selected tab.
 
 **Menu bar panel:** ↑ ↓ move, Return opens the highlighted project's tab, ⌘1–⌘6 open its tools. See
 [Menu bar](menu-bar.md).

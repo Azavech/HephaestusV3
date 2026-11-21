@@ -15,6 +15,9 @@ is one more client of them. This file adds only what applies here to `~/Develope
   such as `MachineData`) have no UI.
 - `GuestAgent/` and the `HephaestusAgent` target: the guest agent of the virtual machines, its own package for
   macOS 12 guests, bundled in `Contents/Helpers` (`docs/guest-agent.md`); its tests run with `swift test` there.
+- `Updater/` and the `HephaestusUpdater` target: the Updater, its own package (`UpdateData`, which ToolsScenes uses
+  too), bundled in `Contents/Helpers`; it installs new GitHub releases into `/Applications/HephaestusV3.app`
+  (`docs/updater.md`); its tests run with `swift test` there.
 - `docs/architecture.md`: how the code is put together; `docs/data.md`: the files and their format; `docs/ui/`:
   the UI specification, window by window; `docs/decisions.md`: the defaults chosen at design time;
   `docs/future-improvements.md`: what comes later; `docs/release.md`: the release workflow. All must be precise
@@ -29,6 +32,7 @@ is one more client of them. This file adds only what applies here to `~/Develope
   use temporary folders only: never the user's projects, data folder, Trash or shell, and no live Claude calls.
 - Signed builds use `xcodebuild` (the `xcode` MCP server can't sign this app); after a capability change,
   add `-allowProvisioningUpdates`.
-- Releases: GitHub Actions builds an ad-hoc signed `.dmg` on demand and attaches it to a GitHub release
-  (`docs/release.md`). The owner set aside the workspace's Developer ID, notarization and install page rule for
-  this app: don't bring them back unless the owner asks.
+- Releases: GitHub Actions builds an ad-hoc signed `.dmg` and its `release.json` on demand and attaches them to a
+  GitHub release (`docs/release.md`), which the Updater of installed copies picks up. The owner set aside the
+  workspace's Developer ID, notarization and install page rule for this app: don't bring them back unless the owner
+  asks.

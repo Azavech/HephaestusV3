@@ -113,6 +113,27 @@ struct DataFolderTests {
         }
     }
 
+    @Test("settings.yml's update settings: absent for on and 30 minutes, written after the notifications, read back")
+    func updates() throws {
+        try withTemporaryFolder { root in
+            let folder = DataFolder(url: root)
+            var settings = folder.readSettings()
+            #expect(settings.autoUpdate == nil && settings.updateCheckIntervalMinutes == nil && settings.updateCheckInterval == 30)
+            settings.notifyAISummary = false
+            settings.autoUpdate = false
+            settings.updateCheckIntervalMinutes = 60
+            try folder.writeSettings(settings)
+            #expect(try String(contentsOf: folder.settingsFile, encoding: .utf8)
+                == "schema: 1\nmcpPort: 47830\nnotifyAISummary: false\nautoUpdate: false\nupdateCheckIntervalMinutes: 60\n")
+            settings = folder.readSettings()
+            #expect(settings.autoUpdate == false && settings.updateCheckInterval == 60)
+            settings.updateCheckIntervalMinutes = 2
+            #expect(settings.updateCheckInterval == 5)
+            settings.updateCheckIntervalMinutes = 10_000
+            #expect(settings.updateCheckInterval == 1440)
+        }
+    }
+
     @Test(".hephaestus/.gitignore holds the line chats/")
     func gitignore() throws {
         try withTemporaryFolder { root in

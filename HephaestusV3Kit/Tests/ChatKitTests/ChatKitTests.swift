@@ -485,7 +485,7 @@ struct ClaudeCLILineTests {
 
     @Test("Settings' tabs are stored by name, under one key")
     func settingsPanes() {
-        #expect(SettingsPane.allCases.map(\.rawValue) == ["general", "projects", "mcp", "machines", "chat", "notifications"])
+        #expect(SettingsPane.allCases.map(\.rawValue) == ["general", "projects", "mcp", "machines", "chat", "notifications", "updates"])
         #expect(SettingsPane.storageKey == "settings.pane")
     }
 }

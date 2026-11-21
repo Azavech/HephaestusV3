@@ -11,6 +11,10 @@ public final class LiveChatStore: ChatStore {
     public let session: ChatSession
     let drafts = ChatDrafts()
 
+    /// Whether an existing chat holds an unsent draft: the automatic restart for an update waits until none does
+    /// (docs/ui/updates.md › Restart rules).
+    public var hasDrafts: Bool { !drafts.isEmpty }
+
     var cliStatus: ClaudeStatus? { session.status }
 
     /// The CLI keeps a message written during a turn, and runs it after.
