@@ -222,9 +222,12 @@ public struct ChatRootView: View {
         }
     }
 
-    /// The conversation picked, or a new one, over the field to write in.
+    /// The conversation picked, or a new one, over the field to write in. The conversation is read once: each read
+    /// asks the store for it. The composer is a view of its own, so that typing draws it alone.
     private var detail: some View {
-        VStack(spacing: 0) {
+        let conversation = model.conversation
+        let pending = conversation?.pendingApprovals ?? []
+        return VStack(spacing: 0) {
             if model.selectedIDs.count > 1 {
                 SeveralSelected(count: model.selectedIDs.count) {
                     model.confirming = .close(Array(model.selectedIDs))
@@ -236,7 +239,7 @@ public struct ChatRootView: View {
                 } else {
                     AgentDetailView(row: agent, store: model.store, padding: layout == .phone ? 16 : 24)
                 }
-            } else if let conversation = model.conversation {
+            } else if let conversation {
                 let matches = ChatFind.matches(of: model.findQuery, in: conversation)
                 if !model.findQuery.trimmingCharacters(in: .whitespaces).isEmpty {
                     FindBar(count: matches.count, index: model.findIndex, previous: { model.findIndex -= 1 }, next: { model.findIndex += 1 })
@@ -252,7 +255,7 @@ public struct ChatRootView: View {
                 }
             }
             OverComposer {
-                if let status = model.store.cliStatus, ClaudeCLILine.shows(status), model.conversation?.closed != true, model.selectedIDs.count <= 1 {
+                if let status = model.store.cliStatus, ClaudeCLILine.shows(status), conversation?.closed != true, model.selectedIDs.count <= 1 {
                     ClaudeCLILine(status: status)
                         .padding(.horizontal, layout == .phone ? 12 : 16)
                         .padding(.top, 8)
@@ -262,27 +265,27 @@ public struct ChatRootView: View {
                         .padding(.horizontal, layout == .phone ? 12 : 16)
                         .padding(.top, 8)
                 }
-                if model.conversation?.needsResume == true {
+                if conversation?.needsResume == true {
                     ResumeLine { Task { await model.resume() } }
                         .padding(.horizontal, layout == .phone ? 12 : 16)
                         .padding(.top, 8)
                 }
-                if let pending = model.conversation?.pendingApprovals, !pending.isEmpty {
+                if !pending.isEmpty {
                     PermissionCard(approvals: pending) { id, answer in model.decide(id, answer: answer) }
                         .padding(.horizontal, layout == .phone ? 12 : 16)
                         .padding(.top, 8)
                 }
-                if let questions = model.conversation?.waitingQuestions {
-                    QuestionsCard(questionSet: questions, projectID: model.conversation?.projectID, compact: layout == .phone, allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { label, text in
+                if let questions = conversation?.waitingQuestions {
+                    QuestionsCard(questionSet: questions, projectID: conversation?.projectID, compact: layout == .phone, allowsShortcut: pending.isEmpty) { label, text in
                         await model.answer(text, to: label, inSet: questions.id)
                     }
                     .id(questions.id)
                     .padding(.horizontal, layout == .phone ? 12 : 16)
                     .padding(.top, 8)
                 }
-                if let request = model.conversation?.waitingPicker, let catalogs = model.pickerCatalogs {
-                    PickerCard(request: request, projectID: model.conversation?.projectID ?? model.project.id, catalogs: catalogs, compact: layout == .phone,
-                               allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { answer in
+                if let request = conversation?.waitingPicker, let catalogs = model.pickerCatalogs {
+                    PickerCard(request: request, projectID: conversation?.projectID ?? model.project.id, catalogs: catalogs, compact: layout == .phone,
+                               allowsShortcut: pending.isEmpty) { answer in
                         await model.answerPicker(answer, request: request.requestID)
                     }
                     .id(request.requestID)
@@ -290,36 +293,11 @@ public struct ChatRootView: View {
                     .padding(.top, 8)
                 }
             }
-            if let conversation = model.conversation, conversation.closed {
+            if let conversation, conversation.closed {
                 ClosedNotice { model.reopen(conversation.id) }
                     .padding(layout == .phone ? 12 : 16)
             } else if model.selectedIDs.count <= 1, model.selectedAgent == nil {
-            MessageComposer(
-                text: $model.draft,
-                prompt: Text("Ask about \(model.project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
-                isBusy: (model.isResponding && !model.store.queuesMessages) || model.store.cliStatus?.checking == true,
-                identifier: "chat.composer",
-                completions: ChatCompletions.list(for: model.draft, commands: model.store.commands(for: model.project.id)),
-                hasAttachments: !model.files.isEmpty,
-                pastesFiles: { model.pasteFiles() },
-                send: { Task { await model.sendDraft(reader: toolReader) } }
-            ) {
-                FlowStack(spacing: 6) {
-                    AddFilesButton { choosesFiles = true }
-                    ProjectChip(project: model.project)
-                    ForEach(model.files, id: \.self) { url in
-                        PendingFileChip(url: url) { model.removeFile(url) }
-                    }
-                    if model.conversation != nil, model.replySettings?.permissionMode == ChatPermissionMode.bypassPermissions.rawValue {
-                        AllowAllBadge()
-                    }
-                    if let conversation = model.conversation, let usage = conversation.contextUsage {
-                        ContextIndicator(usage: usage, compactions: conversation.compactions, isCompacting: conversation.isCompacting)
-                    }
-                }
-            }
-            .padding(layout == .phone ? 12 : 16)
-            .stopsOnEscape(model.isResponding ? model.stop : nil)
+                WindowComposer(model: model, usage: ComposerUsage(conversation), choosesFiles: $choosesFiles)
             }
         }
         .background(.canvas)
@@ -483,6 +461,45 @@ private struct ChatList: View {
 
     /// Day, abbreviated month, hour and minute.
     private static let dateFormat = Date.FormatStyle.dateTime.day().month(.abbreviated).hour().minute()
+}
+
+/// The Chat window's composer, with the draft of the chat shown: a view of its own, which typing draws alone.
+private struct WindowComposer: View {
+    @Bindable var model: ChatWindowModel
+    let usage: ComposerUsage
+    @Binding var choosesFiles: Bool
+
+    @Environment(\.toolReader) private var toolReader
+    @Environment(\.windowLayout) private var layout
+
+    var body: some View {
+        MessageComposer(
+            text: $model.draft,
+            prompt: Text("Ask about \(model.project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
+            isBusy: (model.isResponding && !model.store.queuesMessages) || model.store.cliStatus?.checking == true,
+            identifier: "chat.composer",
+            completions: ChatCompletions.list(for: model.draft, commands: model.store.commands(for: model.project.id)),
+            hasAttachments: !model.files.isEmpty,
+            pastesFiles: { model.pasteFiles() },
+            send: { Task { await model.sendDraft(reader: toolReader) } }
+        ) {
+            FlowStack(spacing: 6) {
+                AddFilesButton { choosesFiles = true }
+                ProjectChip(project: model.project)
+                ForEach(model.files, id: \.self) { url in
+                    PendingFileChip(url: url) { model.removeFile(url) }
+                }
+                if usage.isChat, model.replySettings?.permissionMode == ChatPermissionMode.bypassPermissions.rawValue {
+                    AllowAllBadge()
+                }
+                if let context = usage.context {
+                    ContextIndicator(usage: context, compactions: usage.compactions, isCompacting: usage.isCompacting)
+                }
+            }
+        }
+        .padding(layout == .phone ? 12 : 16)
+        .stopsOnEscape(model.isResponding ? model.stop : nil)
+    }
 }
 
 /// A new chat: what it is about, and questions to start from. Centered, and it scrolls when the

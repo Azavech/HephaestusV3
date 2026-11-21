@@ -88,17 +88,59 @@ public final class LiveChatStore: ChatStore {
         session.chats[chatID]?.file.title
     }
 
+    /// The chat with its turns, made from its transcript once per change of the transcript, of its project's folder,
+    /// of its running or of the models (`made(_:)`); the text streaming is added to them at each read.
     func conversation(_ id: ChatConversation.ID?) -> ChatConversation? {
         guard let id, let chat = session.chats[id] else { return nil }
         var conversation = Self.conversation(chat)
-        conversation.turns = turns(session.transcripts[id] ?? [], streaming: session.streaming[id], root: session.root(ofChat: id), chatID: id,
-                                   isRunning: session.state(of: id).isRunning)
-        conversation.waitingQuestions = session.waitingQuestions(in: id).map(ChatQuestionSet.init)
-        conversation.waitingPicker = session.waitingPicker(in: id)
-        conversation.compactions = session.compactions(in: id)
+        let parts = made(id)
+        conversation.turns = Self.appending(session.streaming[id], to: parts.turns, isRecorded: parts.itemIDs.contains)
+        conversation.waitingQuestions = parts.waitingQuestions
+        conversation.waitingPicker = parts.waitingPicker
+        conversation.compactions = parts.compactions
         conversation.isCompacting = session.compacting.contains(id)
         conversation.needsResume = session.needsResume(id)
         return conversation
+    }
+
+    /// What a chat's transcript gives its conversation, and what it was made from.
+    struct MadeTurns {
+        /// The transcript's revision (`PerChat.revision(of:)`), the project's folder, the chat's running and the models.
+        struct Key: Equatable {
+            var revision: Int
+            var root: String?
+            var isRunning: Bool
+            var models: [ClaudeModel]
+        }
+
+        var key: Key
+        var turns: [ChatTurn]
+        var itemIDs: Set<String>
+        var waitingQuestions: ChatQuestionSet?
+        var waitingPicker: PickerItem?
+        var compactions: Int
+    }
+
+    /// The conversations made, by chat. A view reads its chat's conversation at each change of what it shows, and
+    /// once for each of its parts: making the turns of a long transcript each time held the main thread, typing
+    /// included.
+    private var madeTurns: [String: MadeTurns] = [:]
+    /// The chats kept made at most: past them, those kept are dropped, and made again when they show.
+    private static let keptMade = 16
+
+    /// The chat's turns and what else its transcript gives, made again only when the transcript, the folder, the
+    /// running or the models changed. Observes the transcript, as reading it does.
+    func made(_ id: ChatConversation.ID) -> MadeTurns {
+        let key = MadeTurns.Key(revision: session.transcripts.revision(of: id), root: session.root(ofChat: id),
+                                isRunning: session.state(of: id).isRunning, models: session.models)
+        if let found = madeTurns[id], found.key == key { return found }
+        let items = session.transcripts[id] ?? []
+        let new = MadeTurns(key: key, turns: turns(items, streaming: nil, root: key.root, chatID: id, isRunning: key.isRunning),
+                            itemIDs: Set(items.map(\.id)), waitingQuestions: session.waitingQuestions(in: id).map(ChatQuestionSet.init),
+                            waitingPicker: session.waitingPicker(in: id), compactions: session.compactions(in: id))
+        if madeTurns[id] == nil, madeTurns.count >= Self.keptMade { madeTurns.removeAll() }
+        madeTurns[id] = new
+        return new
     }
 
     func conversations(of projects: Set<Project.ID>) -> [ChatConversation] {
@@ -357,8 +399,19 @@ public final class LiveChatStore: ChatStore {
                 break
             }
         }
-        if let streaming, !items.contains(where: { $0.id == streaming.itemID }) {
-            add(ChatBlock(id: streaming.itemID, .text(streaming.text)), id: streaming.itemID, date: Date())
+        return Self.appending(streaming, to: turns) { id in items.contains { $0.id == id } }
+    }
+
+    /// The turns with the text streaming at the end of Claude's last turn, or of a new one; unchanged without text, or
+    /// once its item is recorded.
+    static func appending(_ streaming: StreamingText?, to turns: [ChatTurn], isRecorded: (String) -> Bool) -> [ChatTurn] {
+        guard let streaming, !isRecorded(streaming.itemID) else { return turns }
+        var turns = turns
+        let block = ChatBlock(id: streaming.itemID, .text(streaming.text))
+        if let last = turns.indices.last, turns[last].author == .claude {
+            turns[last].blocks.append(block)
+        } else {
+            turns.append(ChatTurn(id: streaming.itemID, author: .claude, date: Date(), blocks: [block]))
         }
         return turns
     }

@@ -2,6 +2,23 @@ import AZDesign
 import ChatData
 import SwiftUI
 
+/// What a composer shows of its chat, read with the conversation and handed to the composer's own view: whether there is a
+/// chat, and how much of its context it used.
+struct ComposerUsage: Hashable {
+    var isChat = false
+    var context: ContextUsage?
+    var compactions = 0
+    var isCompacting = false
+
+    init(_ conversation: ChatConversation?) {
+        guard let conversation else { return }
+        isChat = true
+        context = conversation.contextUsage
+        compactions = conversation.compactions
+        isCompacting = conversation.isCompacting
+    }
+}
+
 /// How much of the context the conversation uses, in the composer, as V2's indicator: a ring filled to the part
 /// used, then "98% left"; green from 20 % left, orange under 20 %, red under 10 %. While the CLI compacts, the
 /// ring fades in and out. The tooltip gives the tokens and the compactions.

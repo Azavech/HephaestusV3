@@ -136,13 +136,10 @@ private struct StatusBarModifier: ViewModifier {
     @State private var feedback = FeedbackStarter()
 
     func body(content: Content) -> some View {
-        let chats = countsChats ? StatusChat.list(chatSession) : []
         VStack(spacing: 0) {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            if target != nil || !chats.isEmpty {
-                StatusBar(chats: chats, start: feedbackStart, openChat: openChat)
-            }
+            StatusBarSlot(showsFeedback: target != nil, session: countsChats ? chatSession : nil, start: feedbackStart, openChat: openChat)
         }
         .background {
             WindowReader { [feedback] window in feedback.window = window }
@@ -176,6 +173,23 @@ private struct StatusBarModifier: ViewModifier {
     private var startAction: SendFeedbackAction {
         SendFeedbackAction { [feedback, source, isOn = target != nil] in
             feedback.start(source, isOn: isOn)
+        }
+    }
+}
+
+/// The status bar, while it has something to show: a view of its own, the only one of the window that reads the chats'
+/// states, so that a chat's change draws the bar and not the window's content.
+private struct StatusBarSlot: View {
+    let showsFeedback: Bool
+    /// The chats counted; nil counts none.
+    let session: ChatSession?
+    let start: (() -> Void)?
+    let openChat: (StatusChat) -> Void
+
+    var body: some View {
+        let chats = StatusChat.list(session)
+        if showsFeedback || !chats.isEmpty {
+            StatusBar(chats: chats, start: start, openChat: openChat)
         }
     }
 }

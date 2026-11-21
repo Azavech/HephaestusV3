@@ -143,8 +143,10 @@ struct CIChatTests {
         // Another failure allows one again; a pass takes it back.
         let date = Date(timeIntervalSince1970: 0)
         func end(with text: String) {
-            world.session.transcripts[id, default: []].append(.user(UserItem(created: date, text: "again", sender: "Studio")))
-            world.session.transcripts[id, default: []].append(.assistant(AssistantItem(id: UUID().uuidString, created: date, text: text, messageID: "m")))
+            world.session.transcripts[id] = (world.session.transcripts[id] ?? []) + [
+                .user(UserItem(created: date, text: "again", sender: "Studio")),
+                .assistant(AssistantItem(id: UUID().uuidString, created: date, text: text, messageID: "m")),
+            ]
             world.session.reportToOrchestrator(id, from: .running, to: .idle)
         }
         end(with: "CI failed.\n\nThe Tests run failed: `testRetries`.")

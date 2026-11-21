@@ -1742,7 +1742,10 @@ would be over 3,750,000 bytes. A file is an image when its content type, or else
 
 `ChatSession.start`, once the projects and tools are loaded, reads the chat files of every loaded project (names
 `<CHAT-ID>.yml` only; an invalid file, or one whose `id` differs from its name, is skipped), and again when the
-projects change or a batch of file events names a `chats/` folder. Transcripts aren't followed: a transcript
+projects change, or when a batch of file events names a `chats/` folder itself, a chat's `.yml` the session didn't
+write (its content isn't what the session's `OwnWrites` recorded, or it was removed), or says events were dropped.
+The lines appended to a transcript, a chat's folder (`chats/<CHAT-ID>/`) and the session's own writes of a chat's
+file don't read the chats again: a chat at work writes them at each item. Transcripts aren't followed: a transcript
 changed outside the app shows when its chat is read again.
 
 ## Builds

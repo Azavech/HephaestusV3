@@ -79,10 +79,11 @@ public final class ChatSession {
     /// The commands of each project's chats, by project id, from the last chat process of the project that
     /// answered `initialize`: the probe's and the project's own skills.
     public internal(set) var projectCommands: [String: [ClaudeCommand]] = [:]
-    /// The transcripts read, by chat id: those of chats open in a window, and of chats that run.
-    public internal(set) var transcripts: [String: [ChatItem]] = [:]
-    /// The text Claude is writing, by chat id.
-    public internal(set) var streaming: [String: StreamingText] = [:]
+    /// The transcripts read, by chat id: those of chats open in a window, and of chats that run. Each chat's is
+    /// observed on its own, so that a chat at work draws only the views that show it.
+    @ObservationIgnored public let transcripts = PerChat<[ChatItem]>()
+    /// The text Claude is writing, by chat id, each chat's observed on its own.
+    @ObservationIgnored public let streaming = PerChat<StreamingText>()
     public internal(set) var states: [String: ChatState] = [:]
     /// The chats whose process has background work running: a task, or the turn that will report one
     /// (docs/data.md › Background work). The chat's state doesn't change for it.
@@ -357,21 +358,23 @@ public final class ChatSession {
 
     /// Adds or replaces an item: in memory when the transcript is read, and as a line of the file.
     func record(_ item: ChatItem, in chatID: String, op: Transcript.Op = .add) {
-        if var items = transcripts[chatID] {
-            if let index = items.firstIndex(where: { $0.id == item.id }) {
-                items[index] = item
+        // In place: copying a long transcript for each item cost the main thread more than the item. A transcript not
+        // read stays so.
+        transcripts.modify(chatID) { items in
+            if let index = items?.lastIndex(where: { $0.id == item.id }) {
+                items?[index] = item
             } else {
-                items.append(item)
+                items?.append(item)
             }
-            transcripts[chatID] = items
         }
         noteMentions(of: item, in: chatID)
         guard let url = transcriptURL(chatID) else { return }
         try? Transcript.append(Transcript.line(op, item), to: url, endingLine: appended.insert(chatID).inserted)
     }
 
+    /// The item, looked for from the end, where the items updated are.
     func item(_ id: String, in chatID: String) -> ChatItem? {
-        transcripts[chatID]?.first { $0.id == id }
+        transcripts[chatID]?.last { $0.id == id }
     }
 
     /// Keeps the chat's transcript, dropping the oldest ones read beyond `keptTranscripts`, except those of
@@ -410,12 +413,22 @@ public final class ChatSession {
         }
     }
 
-    /// Files changed outside the app: the chats of a project whose `chats/` folder changed are read again.
+    /// Files changed outside the app: the chats are read again when a chat's file or a `chats/` folder changed.
     func handle(_ events: [FileEvent]) {
-        let touched = events.contains { event in
-            event.path.contains("/.hephaestus/chats") || event.kind.contains(.mustRescan) || event.kind.contains(.rootChanged)
-        }
-        if touched { reload() }
+        if events.contains(where: changesChats) { reload() }
+    }
+
+    /// Whether an event may change the chats read: a chat's `.yml` that the session didn't write itself, a `chats/`
+    /// folder, or anything when events were dropped. The lines the session appends to a transcript at each item of a
+    /// chat at work, and its own writes of a chat's file, change nothing it hasn't already: reading every chat's file
+    /// again for them held the main thread while a chat ran.
+    func changesChats(_ event: FileEvent) -> Bool {
+        if event.kind.contains(.mustRescan) || event.kind.contains(.rootChanged) { return true }
+        if event.path.hasSuffix("/.hephaestus/chats") { return true }
+        let url = URL(fileURLWithPath: event.path)
+        guard url.pathExtension == "yml", url.deletingLastPathComponent().path.hasSuffix("/.hephaestus/chats") else { return false }
+        if let data = try? Data(contentsOf: url) { return !ownWrites.isOwnWrite(path: event.path, data: data) }
+        return !ownWrites.isOwnRemoval(path: event.path)
     }
 
     // MARK: State

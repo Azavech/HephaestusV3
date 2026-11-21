@@ -35,14 +35,18 @@ public struct ChatPanel: View {
         self.showsHeader = showsHeader
     }
 
+    /// The conversation is read once: each read asks the store for it. The composer is a view of its own, so that
+    /// typing draws it alone.
     public var body: some View {
         let attachment = model.attachment(for: subject)
+        let conversation = model.conversation
+        let pending = conversation?.pendingApprovals ?? []
         VStack(spacing: 0) {
             if showsHeader {
-                header
+                header(title: conversation?.title)
                 Divider()
             }
-            if let conversation = model.conversation {
+            if let conversation {
                 TranscriptScrollView(conversation: conversation, activity: model.activity, compact: true, padding: 14,
                                      decide: { approval, allow in model.decide(approval, allow: allow) }, stop: model.stop)
                     .id(conversation.id)
@@ -50,7 +54,7 @@ public struct ChatPanel: View {
                 emptyState(attachment)
             }
             OverComposer {
-                if let status = model.store.cliStatus, ClaudeCLILine.shows(status), model.conversation?.closed != true {
+                if let status = model.store.cliStatus, ClaudeCLILine.shows(status), conversation?.closed != true {
                     ClaudeCLILine(status: status)
                         .padding(.horizontal, 12)
                         .padding(.top, 8)
@@ -60,27 +64,27 @@ public struct ChatPanel: View {
                         .padding(.horizontal, 12)
                         .padding(.top, 8)
                 }
-                if model.conversation?.needsResume == true {
+                if conversation?.needsResume == true {
                     ResumeLine { Task { await model.resume() } }
                         .padding(.horizontal, 12)
                         .padding(.top, 8)
                 }
-                if let pending = model.conversation?.pendingApprovals, !pending.isEmpty {
+                if !pending.isEmpty {
                     PermissionCard(approvals: pending) { id, answer in model.decide(id, answer: answer) }
                         .padding(.horizontal, 12)
                         .padding(.top, 8)
                 }
-                if let questions = model.conversation?.waitingQuestions {
-                    QuestionsCard(questionSet: questions, projectID: model.conversation?.projectID, compact: true, allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { label, text in
+                if let questions = conversation?.waitingQuestions {
+                    QuestionsCard(questionSet: questions, projectID: conversation?.projectID, compact: true, allowsShortcut: pending.isEmpty) { label, text in
                         await model.answer(text, to: label, inSet: questions.id)
                     }
                     .id(questions.id)
                     .padding(.horizontal, 12)
                     .padding(.top, 8)
                 }
-                if let request = model.conversation?.waitingPicker, let catalogs = model.pickerCatalogs {
-                    PickerCard(request: request, projectID: model.conversation?.projectID ?? project.id, catalogs: catalogs, compact: true,
-                               allowsShortcut: model.conversation?.pendingApprovals.isEmpty ?? true) { answer in
+                if let request = conversation?.waitingPicker, let catalogs = model.pickerCatalogs {
+                    PickerCard(request: request, projectID: conversation?.projectID ?? project.id, catalogs: catalogs, compact: true,
+                               allowsShortcut: pending.isEmpty) { answer in
                         await model.answerPicker(answer, request: request.requestID)
                     }
                     .id(request.requestID)
@@ -88,50 +92,12 @@ public struct ChatPanel: View {
                     .padding(.top, 8)
                 }
             }
-            if let conversation = model.conversation, conversation.closed {
+            if let conversation, conversation.closed {
                 ClosedNotice { model.reopen() }
                     .padding(12)
             } else {
-            MessageComposer(
-                text: $model.draft,
-                prompt: Text("Ask about \(attachment?.title ?? project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
-                isBusy: (model.isResponding && !model.store.queuesMessages) || model.store.cliStatus?.checking == true,
-                identifier: "chat.composer",
-                completions: ChatCompletions.list(for: model.draft, commands: model.store.commands(for: project.id)),
-                hasAttachments: !model.files.isEmpty,
-                pastesFiles: { model.pasteFiles() },
-                send: { Task { await model.sendDraft(project: project, origin: origin, subject: subject, reader: toolReader) } }
-            ) {
-                FlowStack(spacing: 6) {
-                    AddFilesButton { choosesFiles = true }
-                    chip(attachment)
-                    ForEach(model.files, id: \.self) { url in
-                        PendingFileChip(url: url) { model.removeFile(url) }
-                    }
-                    if let settings = model.replySettings {
-                        // The chat's settings, as V2's composer folded them into one menu.
-                        Menu {
-                            ReplySettingsRows(models: model.store.models, settings: settings, identifier: "chat.panel.settings",
-                                              isChat: model.conversationID != nil) { model.setReplySettings($0) }
-                        } label: {
-                            Label(String(localized: "Chat Settings", bundle: #bundle), systemImage: "slider.horizontal.3")
-                        }
-                        .labelStyle(.iconOnly)
-                        .menuStyle(.borderlessButton)
-                        .fixedSize()
-                        .help(String(localized: "Chat Settings", bundle: #bundle))
-                        .accessibilityIdentifier("chat.panel.settings")
-                        if settings.permissionMode == ChatPermissionMode.bypassPermissions.rawValue, model.conversationID != nil {
-                            AllowAllBadge()
-                        }
-                    }
-                    if let conversation = model.conversation, let usage = conversation.contextUsage {
-                        ContextIndicator(usage: usage, compactions: conversation.compactions, isCompacting: conversation.isCompacting)
-                    }
-                }
-            }
-            .padding(12)
-            .stopsOnEscape(model.isResponding ? model.stop : nil)
+                PanelComposer(project: project, origin: origin, subject: subject, model: model, usage: ComposerUsage(conversation),
+                              choosesFiles: $choosesFiles)
             }
         }
         .background(.canvas)
@@ -153,13 +119,14 @@ public struct ChatPanel: View {
         .accessibilityIdentifier("chat.panel")
     }
 
-    private var header: some View {
+    /// The panel's header, with the pop-up titled `title`, the conversation's; nil for a new chat.
+    private func header(title: String?) -> some View {
         HStack(spacing: 10) {
             Label(String(localized: "Chat", bundle: #bundle), systemImage: ToolKind.chat.symbol)
                 .font(.headline)
                 .foregroundStyle(.textPrimary)
                 .accessibilityAddTraits(.isHeader)
-            chatPicker
+            chatPicker(title: title)
             Spacer(minLength: 4)
             Button(String(localized: "New Chat", bundle: #bundle), systemImage: "square.and.pencil") {
                 model.startNewChat()
@@ -188,7 +155,7 @@ public struct ChatPanel: View {
 
     /// V2's pop-up of the project's chats: the one shown, the others to switch to, the latest first, each with
     /// its mark; then Open in New Window. A closed chat is listed only while it shows.
-    private var chatPicker: some View {
+    private func chatPicker(title: String?) -> some View {
         let chats = model.store.conversations(of: [project.id]).filter { !$0.closed || $0.id == model.conversationID }
         return Menu {
             Picker(String(localized: "Chats", bundle: #bundle, comment: "The panel's list of the project's chats"),
@@ -214,7 +181,7 @@ public struct ChatPanel: View {
             .disabled(model.conversationID == nil)
             .accessibilityIdentifier("chat.panel.openNewWindow")
         } label: {
-            Text(verbatim: model.conversation?.title ?? String(localized: "New Chat", bundle: #bundle))
+            Text(verbatim: title ?? String(localized: "New Chat", bundle: #bundle))
                 .lineLimit(1)
                 .truncationMode(.tail)
         }
@@ -265,6 +232,63 @@ public struct ChatPanel: View {
         .frame(maxHeight: .infinity)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.panel.empty")
+    }
+}
+
+/// The panel's composer, with the draft of the chat shown and what the next message carries: a view of its own, which
+/// typing draws alone.
+private struct PanelComposer: View {
+    let project: Project
+    let origin: ToolKind
+    let subject: ChatReference?
+    @Bindable var model: ChatPanelModel
+    let usage: ComposerUsage
+    @Binding var choosesFiles: Bool
+
+    @Environment(\.toolReader) private var toolReader
+
+    var body: some View {
+        let attachment = model.attachment(for: subject)
+        MessageComposer(
+            text: $model.draft,
+            prompt: Text("Ask about \(attachment?.title ?? project.name)…", bundle: #bundle, comment: "The composer's prompt: an item or a project"),
+            isBusy: (model.isResponding && !model.store.queuesMessages) || model.store.cliStatus?.checking == true,
+            identifier: "chat.composer",
+            completions: ChatCompletions.list(for: model.draft, commands: model.store.commands(for: project.id)),
+            hasAttachments: !model.files.isEmpty,
+            pastesFiles: { model.pasteFiles() },
+            send: { Task { await model.sendDraft(project: project, origin: origin, subject: subject, reader: toolReader) } }
+        ) {
+            FlowStack(spacing: 6) {
+                AddFilesButton { choosesFiles = true }
+                chip(attachment)
+                ForEach(model.files, id: \.self) { url in
+                    PendingFileChip(url: url) { model.removeFile(url) }
+                }
+                if let settings = model.replySettings {
+                    // The chat's settings, as V2's composer folded them into one menu.
+                    Menu {
+                        ReplySettingsRows(models: model.store.models, settings: settings, identifier: "chat.panel.settings",
+                                          isChat: model.conversationID != nil) { model.setReplySettings($0) }
+                    } label: {
+                        Label(String(localized: "Chat Settings", bundle: #bundle), systemImage: "slider.horizontal.3")
+                    }
+                    .labelStyle(.iconOnly)
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help(String(localized: "Chat Settings", bundle: #bundle))
+                    .accessibilityIdentifier("chat.panel.settings")
+                    if settings.permissionMode == ChatPermissionMode.bypassPermissions.rawValue, model.conversationID != nil {
+                        AllowAllBadge()
+                    }
+                }
+                if let context = usage.context {
+                    ContextIndicator(usage: context, compactions: usage.compactions, isCompacting: usage.isCompacting)
+                }
+            }
+        }
+        .padding(12)
+        .stopsOnEscape(model.isResponding ? model.stop : nil)
     }
 
     /// What the next message carries: the tool's selection, the button that puts it back once taken

@@ -28,8 +28,10 @@ struct ChatTranscript: View {
         let matches = Set(ChatFind.matches(of: findQuery, in: conversation))
         LazyVStack(alignment: .leading, spacing: compact ? 16 : 22) {
             ForEach(conversation.turns) { turn in
+                // A turn that didn't change isn't drawn again: the one at work changes at each word Claude writes.
                 ChatTurnView(turn: turn, projectID: conversation.projectID, compact: compact, decide: decide, matches: matches,
                              currentMatch: currentMatch, hidesWaitingApprovals: hidesWaitingApprovals)
+                    .equatable()
             }
             if let activity {
                 ChatAuthorRow(author: .claude, isSample: false) {
@@ -226,8 +228,9 @@ struct ChatTurnView: View {
         switch block.content {
         case .text(let text):
             // Markdown, as V2's bubbles: ids of the loaded projects are links; the user's line breaks stay.
-            MarkdownView(text, projects: Set(directory.projects.map(\.id)), root: directory.project(projectID)?.path,
+            ChatMarkdown(text: text, projects: Set(directory.projects.map(\.id)), root: directory.project(projectID)?.path,
                          keepsLineBreaks: turn.author == .user)
+                .equatable()
                 .foregroundStyle(.textPrimary)
         case .call(let call):
             ToolCallRow(turnID: turn.id, blockID: block.id, call: call, compact: compact)
@@ -268,6 +271,27 @@ struct ChatTurnView: View {
     /// Claude's Markdown: emphasis, code and links inline, line breaks kept.
     static func markdown(_ text: String) -> AttributedString {
         (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text)
+    }
+}
+
+extension ChatTurnView: Equatable {
+    /// `decide` is left out: a view gives every turn the same action, made again at each of its own draws.
+    static func == (lhs: ChatTurnView, rhs: ChatTurnView) -> Bool {
+        lhs.turn == rhs.turn && lhs.projectID == rhs.projectID && lhs.compact == rhs.compact && lhs.matches == rhs.matches
+            && lhs.currentMatch == rhs.currentMatch && lhs.hidesWaitingApprovals == rhs.hidesWaitingApprovals
+    }
+}
+
+/// A text of a turn as Markdown, parsed again only when the text or what it links changes: the turn at work is drawn
+/// again at each word Claude writes, and parsing each of its texts again each time held the main thread.
+struct ChatMarkdown: View, Equatable {
+    let text: String
+    let projects: Set<Project.ID>
+    let root: String?
+    let keepsLineBreaks: Bool
+
+    var body: some View {
+        MarkdownView(text, projects: projects, root: root, keepsLineBreaks: keepsLineBreaks)
     }
 }
 
