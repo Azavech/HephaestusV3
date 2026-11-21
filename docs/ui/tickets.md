@@ -106,7 +106,10 @@ is selected, the list shows all tickets.
   Orders, Payments and Edge Gateway, indented. Selecting the window's own project row lets through the
   same tickets as **All Tickets**.
 - **Bundles section.** It always appears, so that its header's **New Bundle** button (help "New Bundle") is
-  there. Bundles stay per project: a parent's window lists only its own bundles, never its sub projects' (the
+  there. The button, a borderless `plus` in `accent`, ends 16 pt from the sidebar's trailing edge, where the
+  rows' content ends: in line with the bundle rows' status symbols and the Status rows' badges, with or without
+  a bundle. A section header runs to 2 pt from that edge, so the header has 14 pt of trailing padding. Bundles
+  stay per project: a parent's window lists only its own bundles, never its sub projects' (the
   user's choice). Each row shows the bundle's title on one line, its status symbol in its color (To Do
   `circle` in `textSecondary`, In Progress `circle.lefthalf.filled` in `accent`, Done `checkmark.circle.fill`
   in `success`; help and VoiceOver: the status's name), and a mini linear progress bar under it: the share of
@@ -145,8 +148,8 @@ or a project filter keeps the sections.
 
 ![Tickets for Shop: the sidebar's Projects section, and the list grouped under Shop, Orders and Payments](images/tickets-shop.png)
 *Tickets for Shop, a parent project. The sidebar adds a Projects section with each project's count. The list
-groups the tickets under Shop, then Orders and Payments. Shop has no bundles of its own, so the sidebar has no
-Bundles section.*
+groups the tickets under Shop, then Orders and Payments. Shop has no bundles of its own, so its Bundles section
+has only its header and **New Bundle**.*
 
 - **Selection.** Clicking a row selects the ticket and shows it in the detail column. The selection survives
   a filter change: when the new filter hides the selected ticket, the detail column keeps showing it.

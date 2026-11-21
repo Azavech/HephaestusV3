@@ -404,8 +404,14 @@ private struct TicketSidebar: View {
                     .help(String(localized: "New Bundle", bundle: #bundle))
                     .accessibilityIdentifier("tickets.sidebar.newBundle")
             }
+            .padding(.trailing, Self.headerTrailingInset)
         }
     }
+
+    /// How much further the sidebar's section headers run than its rows' content: a header ends 2 pt from
+    /// the sidebar's trailing edge, a row's content 16 pt. Taken off the Bundles header, it ends its + where
+    /// the bundle rows' status symbols end, with the Status rows' badges.
+    private static let headerTrailingInset: CGFloat = 14
 }
 
 /// A section's title in the sidebar or the Filter menu, a heading for VoiceOver.
