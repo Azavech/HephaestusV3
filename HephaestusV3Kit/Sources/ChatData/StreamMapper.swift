@@ -32,6 +32,8 @@ public enum StreamOutput: Sendable, Hashable {
     case taskNotification(taskID: String)
     /// `task_started`, `task_progress`, `task_updated` and `task_notification`, for the chat's workflows and agents.
     case taskLine(JSONValue)
+    /// `rate_limit_event` with the weekly window: the Claude account's weekly usage (docs/data.md › Plan usage file).
+    case planUsage(PlanUsage)
     /// A line of a known shape that changes nothing; the name of its type, for the log.
     case ignored(String)
     /// A line that isn't a JSON object.
@@ -100,6 +102,9 @@ public struct StreamMapper: Sendable {
         case "command_lifecycle":
             guard let uuid = object["command_uuid"]?.stringValue, let state = object["state"]?.stringValue else { return [.ignored(type)] }
             return [.commandState(uuid: uuid, state: state)]
+        case "rate_limit_event":
+            guard let usage = PlanUsage.report(object["rate_limit_info"]) else { return [.ignored(type)] }
+            return [.planUsage(usage)]
         default:
             return [.ignored(type)]
         }

@@ -105,6 +105,9 @@ public final class ChatSession {
     public internal(set) var turnStarts: [String: Date] = [:]
     /// The chats whose conversation the CLI is compacting.
     public internal(set) var compacting: Set<String> = []
+    /// The Claude account's newest weekly usage, which the chats' CLI reports, kept in `plan-usage.yml`; nil before
+    /// the first report (docs/data.md › Plan usage file). Kept after its reset time, which the status bar checks.
+    public internal(set) var planUsage: PlanUsage?
     /// The model and effort of new chats.
     public internal(set) var defaults = ChatSettings()
     /// The path set in Settings ▸ Chat; nil finds the CLI.
@@ -193,6 +196,7 @@ public final class ChatSession {
         self.port = port
         let settings = projects.dataFolder?.readSettings() ?? SettingsFile()
         claudePath = settings.claudePath
+        planUsage = projects.dataFolder?.readPlanUsage()
         defaults = ChatSettings(model: settings.chatModel.flatMap { ChatSettings.isModel($0) ? $0 : nil } ?? ChatSettings.defaultModel,
                                 effort: settings.chatEffort.flatMap(Effort.init(rawValue:)) ?? .high)
         reload()

@@ -29,6 +29,9 @@
         }
       }
     },
+    "%lld%% used" : {
+      "comment" : "The weekly usage popover: the part of the week's limit used"
+    },
     "A chat needs you when Claude asks for a permission or asks you questions. With the summary on, the internal skill notification-summary writes each notification's line; off, the line is the first line of Claude's reply. The Dock's badge counts the chats waiting for you either way." : {
 
     },
@@ -224,6 +227,9 @@
     "Opened a window of Hephaestus" : {
 
     },
+    "Overage: %@" : {
+      "comment" : "The weekly usage popover: the CLI's overage status, such as Overage: rejected · out of credits"
+    },
     "Port" : {
 
     },
@@ -373,6 +379,12 @@
     "Waiting for permission" : {
       "comment" : "A chat's state in the status bar's popover"
     },
+    "Weekly usage" : {
+      "comment" : "The weekly usage popover's title"
+    },
+    "Weekly usage: %lld%% used" : {
+      "comment" : "The status bar's weekly usage ring, its tooltip"
+    },
     "Windows" : {
 
     },
@@ -387,6 +399,20 @@
     },
     "^[%lld virtual machine](inflect: true) will be stopped." : {
       "comment" : "The restart alert: the machines, setups, installs and image downloads"
+    },
+    "in use" : {
+      "comment" : "The weekly usage popover: the overage is in use"
+    },
+    "resets %@ %@" : {
+      "comment" : "The weekly usage popover: when the week resets, such as resets Sun 14:00",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "resets %1$@ %2$@"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

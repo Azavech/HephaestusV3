@@ -171,7 +171,7 @@ which rules the app enforces, and never tells Claude how to work.
 | Does the summary run with its toggle off? | No: V2's engine ran it for every Mac whatever its toggle said; here one Mac reads it, so the toggle off runs nothing. | same |
 | When is a notification not posted? | While the app is active and its key window shows the chat (the Chat window's selected chat or a panel's conversation), as V2. Tested on each view's `controlActiveState`. | [UI › Chat › Notifications](ui/chat.md#notifications) |
 | Where does a click take the user? | To the chat in its project's Chat window, through the route `.tool(.chat, project:, focus:)`, as the status bar's popover does. | same |
-| Does the status bar count chats? | Yes, V2's running and waiting items and their popover, in the middle of the bar; they show the bar also without a feedback project. V2's other items (device, MCP port, version, updates, usage, costs) stay out. | [Navigation › Status bar](ui/navigation.md#status-bar) |
+| Does the status bar count chats? | Yes, V2's running and waiting items and their popover, in the middle of the bar; they show the bar also without a feedback project. V2's device, MCP port and costs stay out; its version and Update item came with [Updates](#updates), its weekly usage with [Weekly usage](#weekly-usage). | [Navigation › Status bar](ui/navigation.md#status-bar) |
 | Which chats does it count? | Every loaded project's, whatever the window shows, as V2 counted the chats of the window's Mac. | same |
 | Do chats open in windows of their own? | Yes, V2's chat window: one chat, its title and project, the ladybug only in its status bar, 720 × 820 pt, at least 480; one window per chat, brought forward when asked again. | [UI › Chat › Chat windows](ui/chat.md#chat-windows) |
 | Where is Open in New Window? | In the Chat window's More menu and row menu, a row's double-click (as Mail opens a message), and the panel's Chats pop-up. The panel's header keeps its Open in Chat Window button; V2's own header button was a design-time default too. | same |
@@ -391,3 +391,16 @@ requests to GitHub without signing in, and made the repository public. The rest 
 | What does the restart alert say? | The chats and machines it stops and the drafts it loses; none of them, no alert. | same |
 | Where does the Update item go? | After the version, before the ladybug, in `accent`; not in chat windows. | [UI › Updates › Update item](ui/updates.md#update-item) |
 | Where is Settings ▸ Updates? | The last tab, after Notifications. | [UI › Updates › Settings ▸ Updates](ui/updates.md#settings--updates) |
+
+## Weekly usage
+
+On 21 November 2026 the owner asked for V2's Claude usage indicator in the status bar, next to the version. It
+follows V2: the weekly window only, from the CLI's `rate_limit_event` lines, the same ring, levels, tooltip and
+popover. These were open.
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| Where does the ring go? | After the version and the Update item, before the ladybug, as V2's order; in chat windows too. | [UI › Navigation › Weekly usage](ui/navigation.md#weekly-usage) |
+| Which colors? | AZDesign's `success`, `warning` and `danger` for V2's green, orange and red, and the composer's context ring's drawing: `divider` track, round ends. | same |
+| What does the file keep? | V2's `plan-usage.yml` without `received`: one Mac's chats need no order between devices. A report equal to the kept value writes nothing. | [Data › Plan usage file](data.md#plan-usage-file) |
+| Does Claude get a tool for it? | No: V2's `claude.planUsage` served its remote devices, which V3 doesn't have. | — |

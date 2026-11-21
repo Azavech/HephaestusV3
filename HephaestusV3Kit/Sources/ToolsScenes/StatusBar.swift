@@ -121,8 +121,9 @@ nonisolated extension FocusedValues {
 }
 
 extension View {
-    /// The status bar at the bottom of the window: the chats, the app's version and its update, and the ladybug that
-    /// sends feedback about the window while a feedback project is set (docs/ui/navigation.md › Status bar).
+    /// The status bar at the bottom of the window: the chats, the app's version and its update, the Claude plan's weekly
+    /// usage, and the ladybug that sends feedback about the window while a feedback project is set
+    /// (docs/ui/navigation.md › Status bar).
     func statusBar(_ source: FeedbackSource, countsChats: Bool = true) -> some View {
         modifier(StatusBarModifier(source: source, countsChats: countsChats))
     }
@@ -143,8 +144,7 @@ private struct StatusBarModifier: ViewModifier {
         VStack(spacing: 0) {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            StatusBarSlot(session: countsChats ? chatSession : nil, updates: updates, offersUpdate: countsChats, start: feedbackStart,
-                          openChat: openChat)
+            StatusBarSlot(session: chatSession, countsChats: countsChats, updates: updates, start: feedbackStart, openChat: openChat)
         }
         .background {
             WindowReader { [feedback] window in feedback.window = window }
@@ -182,20 +182,22 @@ private struct StatusBarModifier: ViewModifier {
     }
 }
 
-/// The status bar: a view of its own, the only one of the window that reads the chats' states and the Updater's,
-/// so that their changes draw the bar and not the window's content.
+/// The status bar: a view of its own, the only one of the window that reads the chats' states, the weekly usage and
+/// the Updater's state, so that their changes draw the bar and not the window's content.
 private struct StatusBarSlot: View {
-    /// The chats counted; nil counts none.
+    /// The chats, and the weekly usage their CLI reports; nil shows neither.
     let session: ChatSession?
+    /// Whether the bar counts the chats and may show the Update item: not in a chat window.
+    let countsChats: Bool
     let updates: UpdateController?
-    /// Whether the Update item may show: not in a chat window.
-    let offersUpdate: Bool
     let start: (() -> Void)?
     let openChat: (StatusChat) -> Void
 
     var body: some View {
-        StatusBar(chats: StatusChat.list(session), version: (updates?.appVersion ?? AppVersion.running(Bundle.main.infoDictionary ?? [:])).display,
-                  update: offersUpdate ? updates?.updateItem : nil, install: { updates?.install() }, start: start, openChat: openChat)
+        StatusBar(chats: StatusChat.list(countsChats ? session : nil),
+                  version: (updates?.appVersion ?? AppVersion.running(Bundle.main.infoDictionary ?? [:])).display,
+                  update: countsChats ? updates?.updateItem : nil, usage: session?.planUsage, install: { updates?.install() }, start: start,
+                  openChat: openChat)
     }
 }
 
@@ -242,13 +244,15 @@ struct FeedbackRequest: Identifiable {
 }
 
 /// The bar at the bottom of a window: 26 points high under a hairline, the chats at work and waiting in its
-/// middle; the version, the Update item and the ladybug at its right end.
+/// middle; the version, the Update item, the weekly usage and the ladybug at its right end.
 struct StatusBar: View {
     let chats: [StatusChat]
     /// The app's version and build: `v1.0.43(78)`.
     let version: String
     /// The Update item; nil hides it.
     let update: UpdateItem?
+    /// The Claude plan's weekly usage; hidden when nil, and from its reset time on.
+    let usage: PlanUsage?
     /// A click on the Update item.
     let install: () -> Void
     /// Starts feedback; nil hides the ladybug.
@@ -256,12 +260,15 @@ struct StatusBar: View {
     let openChat: (StatusChat) -> Void
 
     @State private var showsChats = false
+    /// The time the weekly usage is shown for, set again at its reset time, which hides it without waiting for a chat.
+    @State private var usageClock = Date()
 
-    init(chats: [StatusChat] = [], version: String = "v1.0.43(78)", update: UpdateItem? = nil, install: @escaping () -> Void = {},
-         start: (() -> Void)?, openChat: @escaping (StatusChat) -> Void = { _ in }) {
+    init(chats: [StatusChat] = [], version: String = "v1.0.43(78)", update: UpdateItem? = nil, usage: PlanUsage? = nil,
+         install: @escaping () -> Void = {}, start: (() -> Void)?, openChat: @escaping (StatusChat) -> Void = { _ in }) {
         self.chats = chats
         self.version = version
         self.update = update
+        self.usage = usage
         self.install = install
         self.start = start
         self.openChat = openChat
@@ -303,6 +310,9 @@ struct StatusBar: View {
                 if let update {
                     updateItem(update)
                 }
+                if let weekly = WeeklyUsage(usage, now: usageClock) {
+                    WeeklyUsageItem(usage: weekly)
+                }
                 if let start {
                     Button(action: start) {
                         Image(systemName: "ladybug")
@@ -330,6 +340,13 @@ struct StatusBar: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("statusBar")
         .onChange(of: chats.isEmpty) { if chats.isEmpty { showsChats = false } }
+        .task(id: usage?.resetsAt) {
+            // The ring goes at the reset time, without waiting for a chat (docs/ui/navigation.md › Weekly usage).
+            usageClock = Date()
+            guard let resetsAt = usage?.resetsAt, resetsAt > usageClock else { return }
+            guard (try? await Task.sleep(for: .seconds(resetsAt.timeIntervalSince(usageClock)))) != nil else { return }
+            usageClock = Date()
+        }
     }
 }
 
@@ -476,6 +493,28 @@ private let previewChats = [
         StatusBar(chats: Array(previewChats.prefix(1)), update: .installing, start: {})
     }
     .preferredColorScheme(.dark)
+}
+
+#Preview("Status Bar, Weekly Usage", traits: .fixedLayout(width: 600, height: 60)) {
+    VStack(spacing: 0) {
+        Color.clear
+        StatusBar(chats: Array(previewChats.dropFirst().prefix(1)), usage: previewPlanUsage(0.34), start: {})
+    }
+}
+
+#Preview("Status Bar, Weekly Usage Near the Limit, Dark", traits: .fixedLayout(width: 600, height: 60)) {
+    VStack(spacing: 0) {
+        Color.clear
+        StatusBar(usage: previewPlanUsage(0.93, status: "allowed_warning"), start: {})
+    }
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Status Bar, Weekly Usage Limited", traits: .fixedLayout(width: 600, height: 60)) {
+    VStack(spacing: 0) {
+        Color.clear
+        StatusBar(usage: previewPlanUsage(1, status: "rejected"), start: {})
+    }
 }
 
 #Preview("Chats Popover", traits: .sizeThatFitsLayout) {

@@ -8,7 +8,8 @@ struct ChatWindowValue: Codable, Hashable {
     let chatID: String
 }
 
-/// A chat window's content: the chat over the status bar, its ladybug only (docs/ui/chat.md › Chat windows).
+/// A chat window's content: the chat over the status bar, with its version, weekly usage and ladybug only
+/// (docs/ui/chat.md › Chat windows).
 /// The window is listed with its chat, for routes to bring it forward rather than open a second one.
 struct ChatWindowScene: View {
     let value: ChatWindowValue

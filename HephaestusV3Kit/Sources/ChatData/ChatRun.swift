@@ -386,6 +386,8 @@ extension ChatSession {
             case .compactionEnded:
                 compacting.remove(chatID)
                 askContextUsage(run)
+            case .planUsage(let usage):
+                receive(planUsage: usage)
             case .ignored, .invalid:
                 break
             }

@@ -9,24 +9,24 @@ The app has one kind of window, which holds **tabs** that the app draws itself (
 shows Projects, one tool for one project, a project's settings, Virtual Machines, or System Prompts. The windows' pages call a
 tab by its old window's name, "the Tickets window", meaning the tab.
 
-| Tab | How many | Opens | Page |
-| --- | --- | --- | --- |
-| **Projects** | One in the app | At launch; ⌘0 | [Projects](projects.md) |
-| **Dashboard** | One per project for routes; more with ⌘T, + or ⌘N | ⌘1, a tile, the menu bar panel, a link | [Dashboard](dashboard.md) |
-| **Tickets** | Same | ⌘2, a tile, the menu bar panel, a link | [Tickets](tickets.md) |
-| **Service Map** | Same | ⌘3, a tile, the menu bar panel, a link | [Service Map](service-map.md) |
-| **Contracts** | Same | ⌘4, a tile, the menu bar panel, a link | [Contracts](contracts.md) |
-| **Builds** | Same | ⌘5, a tile, the menu bar panel, a link | [Builds](builds.md) |
-| **Chat** | Same | ⌘6, a tile, the menu bar panel, the chat panel | [Chat](chat.md) |
-| **Virtual Machines** | One in the app | ⌘7 (Window menu) | [Virtual Machines](virtual-machines.md) |
-| **Project Settings** | One per project | ⇧⌘, (File menu), Projects' More menu | [Project Settings](project-settings.md) |
-| **System Prompts** | One in the app | ⌥⌘, (App menu) | [System Prompts](system-prompts.md) |
+| Tab                  | How many                                          | Opens                                          | Page                                    |
+|----------------------|---------------------------------------------------|------------------------------------------------|-----------------------------------------|
+| **Projects**         | One in the app                                    | At launch; ⌘0                                  | [Projects](projects.md)                 |
+| **Dashboard**        | One per project for routes; more with ⌘T, + or ⌘N | ⌘1, a tile, the menu bar panel, a link         | [Dashboard](dashboard.md)               |
+| **Tickets**          | Same                                              | ⌘2, a tile, the menu bar panel, a link         | [Tickets](tickets.md)                   |
+| **Service Map**      | Same                                              | ⌘3, a tile, the menu bar panel, a link         | [Service Map](service-map.md)           |
+| **Contracts**        | Same                                              | ⌘4, a tile, the menu bar panel, a link         | [Contracts](contracts.md)               |
+| **Builds**           | Same                                              | ⌘5, a tile, the menu bar panel, a link         | [Builds](builds.md)                     |
+| **Chat**             | Same                                              | ⌘6, a tile, the menu bar panel, the chat panel | [Chat](chat.md)                         |
+| **Virtual Machines** | One in the app                                    | ⌘7 (Window menu)                               | [Virtual Machines](virtual-machines.md) |
+| **Project Settings** | One per project                                   | ⇧⌘, (File menu), Projects' More menu           | [Project Settings](project-settings.md) |
+| **System Prompts**   | One in the app                                    | ⌥⌘, (App menu)                                 | [System Prompts](system-prompts.md)     |
 
-| Other window | Kind | Opens | Size | Page |
-| --- | --- | --- | --- | --- |
-| **Settings** | One window | ⌘, | 520 × 440 pt | Tabs: [General](#settings--general), [Projects](projects.md#settings--projects), [MCP](../mcp.md#settings--mcp), [Virtual Machines](virtual-machines.md#settings--virtual-machines), [Chat](chat.md#settings--chat), [Notifications](#settings--notifications), [Updates](updates.md#settings--updates) |
-| **About** | One window | Hephaestus V3 ▸ About Hephaestus V3 | 360 pt wide | [Updates › About window](updates.md#about-window) |
-| **Menu bar panel** | Menu bar item | The `wrench.and.screwdriver` icon | 360 × 460 pt | [Menu bar](menu-bar.md) |
+| Other window       | Kind          | Opens                               | Size         | Page                                                                                                                                                                                                                                                                                                    |
+|--------------------|---------------|-------------------------------------|--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Settings**       | One window    | ⌘,                                  | 520 × 440 pt | Tabs: [General](#settings--general), [Projects](projects.md#settings--projects), [MCP](../mcp.md#settings--mcp), [Virtual Machines](virtual-machines.md#settings--virtual-machines), [Chat](chat.md#settings--chat), [Notifications](#settings--notifications), [Updates](updates.md#settings--updates) |
+| **About**          | One window    | Hephaestus V3 ▸ About Hephaestus V3 | 360 pt wide  | [Updates › About window](updates.md#about-window)                                                                                                                                                                                                                                                       |
+| **Menu bar panel** | Menu bar item | The `wrench.and.screwdriver` icon   | 360 × 460 pt | [Menu bar](menu-bar.md)                                                                                                                                                                                                                                                                                 |
 
 - A new window is 1320 × 840 pt. The first window, at launch, shows Projects; macOS restores the windows open
   when the app quit, with their tabs, each tab's selected item and the selected tab.
@@ -42,16 +42,16 @@ available tools; ToolsScenes gives it to every window as the `availableTools` en
 menus read it directly.
 `AppData.machinesAvailable` does the same for Virtual Machines.
 
-| Feature | Tools and windows | Available |
-| --- | --- | --- |
-| Projects | The Projects window, Project Settings, Settings ▸ Projects, the menu bar panel | Yes |
-| Dashboard | The Dashboard window, its tile, Window ▸ Dashboard (⌘1), its menu bar button; its widgets show as their tools come ([Dashboard › Which widgets show](dashboard.md#which-widgets-show)) | Yes |
-| Tickets | The Tickets window, its tile, Window ▸ Tickets (⌘2), its menu bar button | Yes |
-| Chat | The Chat window, its tile, Window ▸ Chat (⌘6), its menu bar button, the chat panel of the available tools' windows, Settings ▸ Chat and Settings ▸ Notifications | Yes |
-| Builds | The Builds window, its tile, Window ▸ Builds (⌘5), its menu bar button, the Dashboard's Recent Builds widget | Yes |
-| Contracts | The Contracts window, its tile, Window ▸ Contracts (⌘4), its menu bar button, for a service whose folder holds `openapi/contract.yaml` | Yes |
-| Service Map | The Service Map window, its tile, Window ▸ Service Map (⌘3), its menu bar button, the Dashboard's service widgets | Yes |
-| Virtual Machines | Its window, Window ▸ Virtual Machines (⌘7), Settings ▸ Virtual Machines | Yes |
+| Feature          | Tools and windows                                                                                                                                                                      | Available |
+|------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| Projects         | The Projects window, Project Settings, Settings ▸ Projects, the menu bar panel                                                                                                         | Yes       |
+| Dashboard        | The Dashboard window, its tile, Window ▸ Dashboard (⌘1), its menu bar button; its widgets show as their tools come ([Dashboard › Which widgets show](dashboard.md#which-widgets-show)) | Yes       |
+| Tickets          | The Tickets window, its tile, Window ▸ Tickets (⌘2), its menu bar button                                                                                                               | Yes       |
+| Chat             | The Chat window, its tile, Window ▸ Chat (⌘6), its menu bar button, the chat panel of the available tools' windows, Settings ▸ Chat and Settings ▸ Notifications                       | Yes       |
+| Builds           | The Builds window, its tile, Window ▸ Builds (⌘5), its menu bar button, the Dashboard's Recent Builds widget                                                                           | Yes       |
+| Contracts        | The Contracts window, its tile, Window ▸ Contracts (⌘4), its menu bar button, for a service whose folder holds `openapi/contract.yaml`                                                 | Yes       |
+| Service Map      | The Service Map window, its tile, Window ▸ Service Map (⌘3), its menu bar button, the Dashboard's service widgets                                                                      | Yes       |
+| Virtual Machines | Its window, Window ▸ Virtual Machines (⌘7), Settings ▸ Virtual Machines                                                                                                                | Yes       |
 
 Previews and the screenshots of the spec show every tool: the environment value's default is all of them.
 
@@ -60,11 +60,11 @@ Previews and the screenshots of the spec show every tool: the environment value'
 What a project is decides which tools apply to it (`Project.tools`). Projects shows a tile for each, the
 Window menu enables only those, and the project switcher greys out the projects without the tab's tool.
 
-| Project kind | Tools, in menu order |
-| --- | --- |
-| Service with a contract | Dashboard, Tickets, Service Map, Contracts, Builds, Chat |
-| Service without a contract | Dashboard, Tickets, Service Map, Builds, Chat |
-| App, Library, Other | Dashboard, Tickets, Builds, Chat |
+| Project kind               | Tools, in menu order                                     |
+|----------------------------|----------------------------------------------------------|
+| Service with a contract    | Dashboard, Tickets, Service Map, Contracts, Builds, Chat |
+| Service without a contract | Dashboard, Tickets, Service Map, Builds, Chat            |
+| App, Library, Other        | Dashboard, Tickets, Builds, Chat                         |
 
 ## Anatomy of a window
 
@@ -72,22 +72,22 @@ Window menu enables only those, and the project switcher greys out the projects 
 *A window: the toolbar, then the tab bar over the tab area; the Tickets tab's sidebar is inside the tab, and the
 chat panel is on the right, outside the tabs; the status bar runs under both.*
 
-| Part | Contents |
-| --- | --- |
-| **Toolbar** | The selected tab's: for a tool, the project switcher, the title and subtitle, the tool's own items, and the chat panel button at the far right. |
-| **Project switcher** | A tool's tab's first toolbar item: the project's icon and name. A click opens a popover listing every project as a tree; picking one moves this tab to that project, where the tool starts afresh on its default selection; picking the project it already shows changes nothing. See [Components › Project switcher](components.md#project-switcher). |
-| **Title and subtitle** | The tool's name, and the project's path from its top-level project, such as "Shop › Orders". Hidden below 760 pt of tab width. |
-| **The tool's toolbar items** | Defined by the tool, as each tool's page lists them. |
-| **Chat panel button** | The last toolbar item, `sidebar.right`: shows or hides the chat panel. Absent in Chat's tab, and everywhere when Settings ▸ Chat turns the panel off. See [Chat](chat.md). |
-| **Tab bar** | Under the toolbar, across the tab area, with two tabs or more: one tab per tab of the window, then + ([Tabs](#tabs)). |
-| **Tab** | The selected tab's content, sidebar included, laid out as a Mac, an iPad or an iPhone would, depending on the window's width. |
-| **Chat panel** | On the right, outside the tabs, beside them on a Mac, over them on an iPad, the whole window on an iPhone. See [Chat](chat.md). |
-| **Status bar** | Under the tabs and the chat panel, across the window, always ([Status bar](#status-bar)). |
+| Part                         | Contents                                                                                                                                                                                                                                                                                                                                               |
+|------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Toolbar**                  | The selected tab's: for a tool, the project switcher, the title and subtitle, the tool's own items, and the chat panel button at the far right.                                                                                                                                                                                                        |
+| **Project switcher**         | A tool's tab's first toolbar item: the project's icon and name. A click opens a popover listing every project as a tree; picking one moves this tab to that project, where the tool starts afresh on its default selection; picking the project it already shows changes nothing. See [Components › Project switcher](components.md#project-switcher). |
+| **Title and subtitle**       | The tool's name, and the project's path from its top-level project, such as "Shop › Orders". Hidden below 760 pt of tab width.                                                                                                                                                                                                                         |
+| **The tool's toolbar items** | Defined by the tool, as each tool's page lists them.                                                                                                                                                                                                                                                                                                   |
+| **Chat panel button**        | The last toolbar item, `sidebar.right`: shows or hides the chat panel. Absent in Chat's tab, and everywhere when Settings ▸ Chat turns the panel off. See [Chat](chat.md).                                                                                                                                                                             |
+| **Tab bar**                  | Under the toolbar, across the tab area, with two tabs or more: one tab per tab of the window, then + ([Tabs](#tabs)).                                                                                                                                                                                                                                  |
+| **Tab**                      | The selected tab's content, sidebar included, laid out as a Mac, an iPad or an iPhone would, depending on the window's width.                                                                                                                                                                                                                          |
+| **Chat panel**               | On the right, outside the tabs, beside them on a Mac, over them on an iPad, the whole window on an iPhone. See [Chat](chat.md).                                                                                                                                                                                                                        |
+| **Status bar**               | Under the tabs and the chat panel, across the window, always ([Status bar](#status-bar)).                                                                                                                                                                                                                                                              |
 
 ## Status bar
 
-V2's status bar, with its ladybug, its chat counts, its version and its Update item (the user's choices; V2's
-other items, the device, the MCP port, usage and costs, stay out): a bar across the bottom of every window but
+V2's status bar, with its ladybug, its chat counts, its version, its Update item and its weekly usage (the user's
+choices; V2's other items, the device, the MCP port and costs, stay out): a bar across the bottom of every window but
 Settings, the About window and the menu bar panel, under the tabs and the chat panel ([Anatomy of a
 window](#anatomy-of-a-window)). Its feedback is about the selected tab.
 
@@ -117,6 +117,10 @@ window](#anatomy-of-a-window)). Its feedback is about the selected tab.
 - **Update** (`statusBar.update`), after the version, in the windows of the app's tabs: "Update available…" in
   `accent` while an update is offered, a click installing it, or a mini spinner and "Installing…" once the install
   is chosen ([Updates › Update item](updates.md#update-item)).
+- **Weekly usage** (`statusBar.weeklyUsage`), after the version and the Update item, in every window with the bar,
+  chat windows included, as V2's (the owner's choice of 21 November 2026): a ring filled to the part of the Claude
+  plan's weekly limit used ([Weekly usage](#weekly-usage)). Shown while the app knows a weekly usage whose reset
+  time hasn't passed.
 - **Ladybug** (`statusBar.feedback`), 10 points from the right edge, while there is a feedback project: a
   borderless button with `ladybug` in `textSecondary`, the tooltip "Send Feedback (⇧⌘B)" and the label "Send
   Feedback". A click captures the window, then opens the Send Feedback sheet on it
@@ -124,10 +128,54 @@ window](#anatomy-of-a-window)). Its feedback is about the selected tab.
   feedback is open.
 - The counts are those of every project: the session's chats, whatever the window shows (V2 counted the
   chats of the window's Mac). The Dock badge counts the waiting ones ([Chat › Notifications](chat.md#notifications)).
-- A chat window's bar shows the version and the ladybug only: no chat counts, no Update item, as V2's.
+- A chat window's bar shows the version, the weekly usage and the ladybug only: no chat counts, no Update item, as
+  V2's.
 - The bar is one element, `statusBar`. Previews: "Status Bar", "Status Bar, Dark", "Status Bar, Chats",
-  "Status Bar, Chats Without Feedback", "Status Bar, Update Available", "Status Bar, Installing, Dark", "Chats
-  Popover".
+  "Status Bar, Chats Without Feedback", "Status Bar, Update Available", "Status Bar, Installing, Dark", "Status
+  Bar, Weekly Usage", "Status Bar, Weekly Usage Near the Limit, Dark", "Status Bar, Weekly Usage Limited", "Chats
+  Popover", "Weekly Usage Popover".
+
+### Weekly usage
+
+How much of the Claude plan's weekly limit is used, as V2's status bar showed it: the newest value the Claude CLI
+reported in any chat of the app ([Data › Plan usage file](../data.md#plan-usage-file)). Only the weekly window
+shows; the 5-hour window shows nowhere, as in V2.
+
+![The status bar: 1 chat running in its middle; v1.0.43(78), a green ring a third full and the ladybug at its right](images/status-bar-weekly-usage.png)
+
+- **Ring.** 12 points wide, a 2-point line with round ends: the track in `divider`, filled clockwise from the top to
+  the part used, at most full, as the composer's context ring ([Chat › Context indicator](chat.md#context-indicator)).
+  Its color says how near the limit the account is:
+
+  | Level          | When                                                         | Color     |
+  |----------------|--------------------------------------------------------------|-----------|
+  | Normal         | under 80 % used                                              | `success` |
+  | Near the limit | from 80 % used                                               | `warning` |
+  | Limited        | 100 % used or more, or the CLI's `status` is `rejected`      | `danger`  |
+
+  ![The status bar in dark mode: an orange ring nearly full, then a red full ring in light mode](images/status-bar-weekly-usage-levels.png)
+- **Percentage**: the part used × 100, rounded to the nearest and capped at 100, as the CLI's `/usage` writes it:
+  0.685 gives 69 %, 1.04 gives 100 %.
+- **Tooltip**, also its VoiceOver label: "Weekly usage: 69% used".
+- **When it changes.** Each report replaces the value: the CLI sends one (`rate_limit_event`) as Claude answers, in
+  any chat, whatever the window shows ([Data › Stream mapping](../data.md#stream-mapping)). The value is kept in the
+  data folder, so the ring shows again after a restart, before any chat runs. Nothing is polled: Claude Code used
+  outside the app shows at the app's next report.
+- **Hidden** before the first report, and from the reset time on, at that moment, without waiting for a chat; it
+  shows again with the next report.
+- **Click**: opens the weekly usage popover (`statusBar.weeklyUsage.popover`) under the ring, in `callout`, 12
+  points of padding, its lines in `textPrimary`:
+
+  | Line       | Text                                                                                                                                                                                                                   | Shown                               |
+  |------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------|
+  | Title      | "Weekly usage", bold                                                                                                                                                                                                   | always                              |
+  | Percentage | "69% used", monospaced digits                                                                                                                                                                                          | always                              |
+  | Reset      | "resets Sun 14:00": the reset's weekday abbreviated in English, Mon to Sun, as the CLI writes it, and its time in the Mac's short time format, both in the Mac's time zone ("resets Sun 2:00 PM" with a 12-hour clock) | always                              |
+  | Overage    | "Overage: rejected · out of credits": the CLI's `overageStatus`, then its `overageDisabledReason` and "in use" when `isUsingOverage` is true, each after " · ", the CLI's values with spaces for underscores           | when the CLI sent an overage status |
+
+  The popover follows new reports while it is open, and closes when the ring goes.
+
+  ![The weekly usage popover: Weekly usage, 69% used, resets Sun 8:00 PM, Overage: rejected · out of credits](images/status-bar-weekly-usage-popover.png)
 
 ## Routes
 
@@ -135,25 +183,25 @@ A view never opens a tab itself. It asks for a **route** (`Route` in `ToolsFound
 place in the app (`RouteHost` in `ToolsScenes`) opens it. Links between tools, Projects' tiles, the menu bar
 panel and the chat's **Open** buttons all use routes.
 
-| Route | Opens |
-| --- | --- |
-| `.project(id)` | Projects, with the project selected. |
-| `.projectWindow(id)` | The tab already showing the project in the frontmost window that has one (its selected tab when that shows the project), or Projects with it selected when none does. Used by the menu bar panel. |
-| `.tool(tool, project:, focus:)` | The tool's tab for the project. The focus is selected in it. |
-| `.machine(id)` | Virtual Machines, with the machine selected. |
-| `.projectSettings(id)` | The project's Project Settings tab. |
-| `.chatWindow(chat:)` | The chat's own window ([Chat › Chat windows](chat.md#chat-windows)): the one already showing it, un-minimized and brought forward, or a new one. Not a tab: chat windows are a scene of their own, never merged into the others. |
-| `.settings(pane)` | The Settings window, on that tab (`SettingsPane`: `general`, `projects`, `mcp`, `machines`, `chat`, `notifications`, `updates`). The tab is stored as `settings.pane` in the user defaults, so Settings also opens on the last tab shown. Used by the chat's **Open Settings**. |
+| Route                           | Opens                                                                                                                                                                                                                                                                           |
+|---------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `.project(id)`                  | Projects, with the project selected.                                                                                                                                                                                                                                            |
+| `.projectWindow(id)`            | The tab already showing the project in the frontmost window that has one (its selected tab when that shows the project), or Projects with it selected when none does. Used by the menu bar panel.                                                                               |
+| `.tool(tool, project:, focus:)` | The tool's tab for the project. The focus is selected in it.                                                                                                                                                                                                                    |
+| `.machine(id)`                  | Virtual Machines, with the machine selected.                                                                                                                                                                                                                                    |
+| `.projectSettings(id)`          | The project's Project Settings tab.                                                                                                                                                                                                                                             |
+| `.chatWindow(chat:)`            | The chat's own window ([Chat › Chat windows](chat.md#chat-windows)): the one already showing it, un-minimized and brought forward, or a new one. Not a tab: chat windows are a scene of their own, never merged into the others.                                                |
+| `.settings(pane)`               | The Settings window, on that tab (`SettingsPane`: `general`, `projects`, `mcp`, `machines`, `chat`, `notifications`, `updates`). The tab is stored as `settings.pane` in the user defaults, so Settings also opens on the last tab shown. Used by the chat's **Open Settings**. |
 
 **Focus formats**, the item a tool selects when a route opens it:
 
-| Tool | Focus | Example |
-| --- | --- | --- |
-| Tickets | Ticket id | `ORD-142` |
-| Service Map | `service:<name>` or `request:<id>` | `service:payments-api`, `request:req-8f3a` |
-| Contracts | Operation id | `checkoutOrder` |
-| Builds | Run number, or `release:` and a tag | `1288`, `release:v1.4.0` |
-| Chat | Conversation id | `chat-checkout` |
+| Tool        | Focus                               | Example                                    |
+|-------------|-------------------------------------|--------------------------------------------|
+| Tickets     | Ticket id                           | `ORD-142`                                  |
+| Service Map | `service:<name>` or `request:<id>`  | `service:payments-api`, `request:req-8f3a` |
+| Contracts   | Operation id                        | `checkoutOrder`                            |
+| Builds      | Run number, or `release:` and a tag | `1288`, `release:v1.4.0`                   |
+| Chat        | Conversation id                     | `chat-checkout`                            |
 
 ## Window reuse
 
@@ -232,19 +280,19 @@ make a tab, and New Window a window.
 
 The first tab of Settings (`gearshape`), a grouped form with two sections. **Windows**:
 
-| Element | Identifier | Content |
-| --- | --- | --- |
+| Element              | Identifier                    | Content                                                                                                                                                                                                                                                                                                                                         |
+|----------------------|-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Open new windows** | `settings.general.newWindows` | Radio buttons: **As tabs of the front window** (`settings.general.newWindows.tabs`, the default) or **As separate windows** (`settings.general.newWindows.windows`), for what routes open ([Tabs](#tabs)). A choice is written to `settings.yml`'s `newWindows` ([Data › Settings file](../data.md#settings-file)) and applies to the next tab. |
-| Message | `settings.general.message` | When `settings.yml` can't be written: the storage error, in `danger`, under the buttons; the choice still holds until the app quits. Cleared by the next choice that is stored. |
-| Footer | — | "Applies to what Hephaestus opens: a tool, a project, its settings. Window ▸ Merge All Windows and Move Tab to New Window work either way." In `textSecondary`. |
+| Message              | `settings.general.message`    | When `settings.yml` can't be written: the storage error, in `danger`, under the buttons; the choice still holds until the app quits. Cleared by the next choice that is stored.                                                                                                                                                                 |
+| Footer               | —                             | "Applies to what Hephaestus opens: a tool, a project, its settings. Window ▸ Merge All Windows and Move Tab to New Window work either way." In `textSecondary`.                                                                                                                                                                                 |
 
 **Feedback**:
 
-| Element | Identifier | Content |
-| --- | --- | --- |
+| Element              | Identifier                         | Content                                                                                                                                                                                                                                                                                                                                                                  |
+|----------------------|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Feedback project** | `settings.general.feedbackProject` | A menu: **None** (the default), then every loaded project, top-level and sub projects in tree order, each named by its path ("Shop › Orders"). A project the setting names that isn't loaded shows as "<identifier> (not loaded)". A choice is written to `settings.yml`'s `feedbackProjectID` ([Data › Settings file](../data.md#settings-file)); None removes the key. |
-| Message | `settings.general.feedbackMessage` | When `settings.yml` can't be written: the storage error, in `danger`; the choice still holds until the app quits. |
-| Footer | — | "The ladybug at the bottom of every window, and Help ▸ Send Feedback… (⇧⌘B), start a chat in this project about the window, with its screenshot, which calls the internal skill report-feedback. With None, neither shows." |
+| Message              | `settings.general.feedbackMessage` | When `settings.yml` can't be written: the storage error, in `danger`; the choice still holds until the app quits.                                                                                                                                                                                                                                                        |
+| Footer               | —                                  | "The ladybug at the bottom of every window, and Help ▸ Send Feedback… (⇧⌘B), start a chat in this project about the window, with its screenshot, which calls the internal skill report-feedback. With None, neither shows."                                                                                                                                              |
 
 - While the chosen project is loaded, every window's [status bar](#status-bar) shows the ladybug and the Help
   menu its Send Feedback… item. With None, or while the project isn't loaded, neither shows (the user's choice);
@@ -262,13 +310,13 @@ Stored**.
 The tab after Chat (`bell.badge`), before [Updates](updates.md#settings--updates), shown while the Chat tool is: a grouped form with one
 section, **Chats**. The toggles choose the chats' notifications ([Chat › Notifications](chat.md#notifications)).
 
-| Element | Identifier | Content |
-| --- | --- | --- |
-| **Notify when a chat needs you** | `settings.notifications.needsYou` | On by default. Off, no "needs you" notification. Stored as `notifyNeedsYou`. |
-| **Notify when Claude finishes replying** | `settings.notifications.finished` | On by default. Off, no "finished" notification. Stored as `notifyFinished`. |
-| **AI-generated summary** | `settings.notifications.aiSummary` | On by default. Off, each notification is posted at once with its detail, and `notification-summary` doesn't run. Stored as `notifyAISummary`. |
-| Message | `settings.notifications.message` | When `settings.yml` can't be written: the storage error, in `danger`; the choice still holds until the app quits. |
-| Footer | — | "A chat needs you when Claude asks for a permission or asks you questions. With the summary on, the internal skill notification-summary writes each notification's line; off, the line is the first line of Claude's reply. The Dock's badge counts the chats waiting for you either way." |
+| Element                                  | Identifier                         | Content                                                                                                                                                                                                                                                                                    |
+|------------------------------------------|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Notify when a chat needs you**         | `settings.notifications.needsYou`  | On by default. Off, no "needs you" notification. Stored as `notifyNeedsYou`.                                                                                                                                                                                                               |
+| **Notify when Claude finishes replying** | `settings.notifications.finished`  | On by default. Off, no "finished" notification. Stored as `notifyFinished`.                                                                                                                                                                                                                |
+| **AI-generated summary**                 | `settings.notifications.aiSummary` | On by default. Off, each notification is posted at once with its detail, and `notification-summary` doesn't run. Stored as `notifyAISummary`.                                                                                                                                              |
+| Message                                  | `settings.notifications.message`   | When `settings.yml` can't be written: the storage error, in `danger`; the choice still holds until the app quits.                                                                                                                                                                          |
+| Footer                                   | —                                  | "A chat needs you when Claude asks for a permission or asks you questions. With the summary on, the internal skill notification-summary writes each notification's line; off, the line is the first line of Claude's reply. The Dock's badge counts the chats waiting for you either way." |
 
 A toggle writes the three keys of `settings.yml` ([Data › Settings file](../data.md#settings-file)). The Dock
 badge and bounce don't depend on them.
@@ -280,50 +328,50 @@ Previews: **All On**, **Summary Off, Dark**, **Not Stored**.
 **File menu**, as in any Mac app (the user's choice): ⌘N opens a window, ⌘T a tab, ⇧⌘N creates an item, ⌘W
 closes the tab and ⇧⌘W the window. These replace the items SwiftUI adds for the window, and its Close.
 
-| Item | Shortcut | In | Does |
-| --- | --- | --- | --- |
-| **New Window** | ⌘N | A tool's tab | Opens a window with a new tab of the selected tab's tool, on its project and on no particular item: the tool starts on its default selection, such as the first ticket or the newest run. Disabled in Projects, Project Settings and Virtual Machines. |
-| **New Tab** | ⌘T | A tool's tab | The same, as a new tab after the selected one, as the tab bar's + does. Disabled likewise. |
-| **New Ticket…** | ⇧⌘N | Tickets | Opens the New Ticket sheet. |
-| **New Chat** | ⇧⌘N | Chat | Starts a new chat. |
-| **New Project…** | ⇧⌘N | Projects | Opens the [New Project](projects.md#new-project) sheet. |
-| **New Machine…** | ⇧⌘N | Virtual Machines | Opens the [New Machine](virtual-machines.md#new-machine) sheet. |
-| **New Item** | ⇧⌘N | Any other tab | Disabled: the tab creates nothing. |
-| **Add Existing Folder…** | ⌘O | Projects | Opens a folder panel ([Add Existing Folder](projects.md#add-existing-folder)). Disabled in other tabs. |
-| **Close Tab** | ⌘W | Any window | Closes the selected tab; a window's last tab, and Settings, close the window. |
-| **Close Window** | ⇧⌘W | Any window | Closes the key window, with its tabs. |
-| **Project Settings…** | ⇧⌘, | A tab with a project | Selects the selected tab's project's [Project Settings](project-settings.md) tab, or opens it. Disabled without a project. |
+| Item                     | Shortcut | In                   | Does                                                                                                                                                                                                                                                   |
+|--------------------------|----------|----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **New Window**           | ⌘N       | A tool's tab         | Opens a window with a new tab of the selected tab's tool, on its project and on no particular item: the tool starts on its default selection, such as the first ticket or the newest run. Disabled in Projects, Project Settings and Virtual Machines. |
+| **New Tab**              | ⌘T       | A tool's tab         | The same, as a new tab after the selected one, as the tab bar's + does. Disabled likewise.                                                                                                                                                             |
+| **New Ticket…**          | ⇧⌘N      | Tickets              | Opens the New Ticket sheet.                                                                                                                                                                                                                            |
+| **New Chat**             | ⇧⌘N      | Chat                 | Starts a new chat.                                                                                                                                                                                                                                     |
+| **New Project…**         | ⇧⌘N      | Projects             | Opens the [New Project](projects.md#new-project) sheet.                                                                                                                                                                                                |
+| **New Machine…**         | ⇧⌘N      | Virtual Machines     | Opens the [New Machine](virtual-machines.md#new-machine) sheet.                                                                                                                                                                                        |
+| **New Item**             | ⇧⌘N      | Any other tab        | Disabled: the tab creates nothing.                                                                                                                                                                                                                     |
+| **Add Existing Folder…** | ⌘O       | Projects             | Opens a folder panel ([Add Existing Folder](projects.md#add-existing-folder)). Disabled in other tabs.                                                                                                                                                 |
+| **Close Tab**            | ⌘W       | Any window           | Closes the selected tab; a window's last tab, and Settings, close the window.                                                                                                                                                                          |
+| **Close Window**         | ⇧⌘W      | Any window           | Closes the key window, with its tabs.                                                                                                                                                                                                                  |
+| **Project Settings…**    | ⇧⌘,      | A tab with a project | Selects the selected tab's project's [Project Settings](project-settings.md) tab, or opens it. Disabled without a project.                                                                                                                             |
 
 **Window menu**, above the list of open windows:
 
-| Item | Shortcut | Enabled |
-| --- | --- | --- |
-| Projects | ⌘0 | Always |
-| Dashboard | ⌘1 | When the selected tab's project has the tool |
-| Tickets | ⌘2 | Same |
-| Service Map | ⌘3 | Same |
-| Contracts | ⌘4 | Same |
-| Builds | ⌘5 | Same |
-| Chat | ⌘6 | Same |
-| Virtual Machines | ⌘7 | Always |
+| Item             | Shortcut | Enabled                                      |
+|------------------|----------|----------------------------------------------|
+| Projects         | ⌘0       | Always                                       |
+| Dashboard        | ⌘1       | When the selected tab's project has the tool |
+| Tickets          | ⌘2       | Same                                         |
+| Service Map      | ⌘3       | Same                                         |
+| Contracts        | ⌘4       | Same                                         |
+| Builds           | ⌘5       | Same                                         |
+| Chat             | ⌘6       | Same                                         |
+| Virtual Machines | ⌘7       | Always                                       |
 
 Only the available tools and windows are listed ([Available tools](#available-tools)): today, all of them.
 The tool items act on the **selected tab's project**: the selection in Projects, or a tab's project.
 
 The app's tab items follow Bring All to Front, under macOS's names and shortcuts ([Tabs](#tabs)):
 
-| Item | Shortcut | Enabled |
-| --- | --- | --- |
-| Show Previous Tab | ⌃⇧⇥ | When the key window has two tabs or more |
-| Show Next Tab | ⌃⇥ | Same |
-| Move Tab to New Window | — | Same |
-| Merge All Windows | — | When another window is open |
+| Item                   | Shortcut | Enabled                                  |
+|------------------------|----------|------------------------------------------|
+| Show Previous Tab      | ⌃⇧⇥      | When the key window has two tabs or more |
+| Show Next Tab          | ⌃⇥       | Same                                     |
+| Move Tab to New Window | —        | Same                                     |
+| Merge All Windows      | —        | When another window is open              |
 
 **View menu:**
 
-| Item | Shortcut | Enabled |
-| --- | --- | --- |
-| Show Chat Panel / Hide Chat Panel | ⌃⌘C | While the window offers the panel: not in Chat's tab, nor with Settings ▸ Chat's switch off |
+| Item                              | Shortcut | Enabled                                                                                     |
+|-----------------------------------|----------|---------------------------------------------------------------------------------------------|
+| Show Chat Panel / Hide Chat Panel | ⌃⌘C      | While the window offers the panel: not in Chat's tab, nor with Settings ▸ Chat's switch off |
 
 **App menu:** **About Hephaestus V3** opens the [About window](updates.md#about-window), with the version and its
 update, in place of macOS's About panel. Settings… (⌘,) opens Settings, whose Chat pane is described in
@@ -340,13 +388,13 @@ Settings or the About window. Its feedback is about the selected tab.
 
 **Within the tools:**
 
-| Tab | Shortcut | Action |
-| --- | --- | --- |
-| Contracts | ⌘Return | Send the request (not wired yet) |
-| Service Map | ⌘[ | Back to the graph's view before |
-| Tickets | ⌘Return | Add the comment (not wired yet) |
-| Tickets | ⇧⌘Return | Move the ticket to its next step (not wired yet) |
-| Tickets | ⌃⌘1 – ⌃⌘5 | Set the selected ticket's status: Draft, Created, In Progress, In Review, Done (not wired yet) |
-| Chat, chat panel | Return | Send the message |
-| Chat, chat panel | ⌥Return | New line in the message |
-| New Ticket sheet | Esc, Return | Cancel, Create |
+| Tab              | Shortcut    | Action                                                                                         |
+|------------------|-------------|------------------------------------------------------------------------------------------------|
+| Contracts        | ⌘Return     | Send the request (not wired yet)                                                               |
+| Service Map      | ⌘[          | Back to the graph's view before                                                                |
+| Tickets          | ⌘Return     | Add the comment (not wired yet)                                                                |
+| Tickets          | ⇧⌘Return    | Move the ticket to its next step (not wired yet)                                               |
+| Tickets          | ⌃⌘1 – ⌃⌘5   | Set the selected ticket's status: Draft, Created, In Progress, In Review, Done (not wired yet) |
+| Chat, chat panel | Return      | Send the message                                                                               |
+| Chat, chat panel | ⌥Return     | New line in the message                                                                        |
+| New Ticket sheet | Esc, Return | Cancel, Create                                                                                 |

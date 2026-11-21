@@ -312,8 +312,8 @@ V2's chat window: one chat in a window of its own, for keeping it in view beside
 - **Content.** The panel's conversation without its header (`ChatWindowView`, `chat.window`): the transcript,
   the cards, the Claude CLI line, the composer with **Add Files…**, the project's chip, the chat's settings and
   context indicator. The window's title is the chat's title, following each rename; its subtitle the project's
-  name. Under it, the [status bar](navigation.md#status-bar) with the app's version and its ladybug only, as V2's
-  chat windows had (its feedback names the window "Chat", the chat's project and its title).
+  name. Under it, the [status bar](navigation.md#status-bar) with the app's version, the weekly usage and its
+  ladybug only, as V2's chat windows had (its feedback names the window "Chat", the chat's project and its title).
 - **Size.** 720 × 820 pt at first, at least 480 × 480 pt.
 - **States.** Loading (a spinner, `chat.window.loading`) while the projects load; **Chat Not Found** ("It was
   deleted, or its project isn't loaded.", `chat.window.notFound`) for a restored window whose chat is gone. A
