@@ -139,6 +139,8 @@ public final class ChatSession {
     @ObservationIgnored var summaryWaiters: [CheckedContinuation<Void, Never>] = []
     /// The chat each view of the key window shows, by view: no notification for them.
     @ObservationIgnored var keyViews: [UUID: String] = [:]
+    /// The chat each view shows, by view, key window or not: their transcripts stay in memory.
+    @ObservationIgnored var shownViews: [UUID: String] = [:]
     /// Where a deleted chat's files go.
     @ObservationIgnored let trash: Trash
     @ObservationIgnored let now: @Sendable () -> Date
@@ -414,7 +416,9 @@ public final class ChatSession {
     func touch(_ chatID: String) {
         recent.removeAll { $0 == chatID }
         recent.append(chatID)
-        while recent.count > Self.keptTranscripts, let oldest = recent.first(where: { runs[$0] == nil && $0 != chatID }) {
+        // A chat a view shows keeps its transcript, as a running one does: dropping it blanked the view.
+        let shown = Set(shownViews.values)
+        while recent.count > Self.keptTranscripts, let oldest = recent.first(where: { runs[$0] == nil && $0 != chatID && !shown.contains($0) }) {
             recent.removeAll { $0 == oldest }
             transcripts[oldest] = nil
         }

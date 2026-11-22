@@ -1,6 +1,7 @@
 import FileStorage
 import Foundation
 import MCPKit
+import ProjectData
 import Testing
 @testable import ChatData
 
@@ -67,5 +68,25 @@ struct ChatMentionsTests {
         #expect(again.transcripts[id] == nil, "Its transcript isn't kept for it")
         #expect(again.state(of: other) != .waitingAnswers)
         #expect(events.isEmpty, "A first state is no notification")
+    }
+}
+
+@Suite("Transcripts kept in memory")
+@MainActor
+struct KeptTranscriptsTests {
+    @Test("A chat a view shows keeps its transcript when twelve others are read after it; one no view shows doesn't")
+    func shownChatsKeepTheirTranscript() {
+        let session = ChatSession(projects: ProjectSession(dataFolder: nil), tokens: MCPTokens(), device: "Studio")
+        for id in ["SHOWN", "HIDDEN"] {
+            session.transcripts[id] = []
+            session.touch(id)
+        }
+        session.showing("SHOWN", inKeyWindow: false, view: UUID())
+        for index in 0..<ChatSession.keptTranscripts {
+            session.transcripts["C\(index)"] = []
+            session.touch("C\(index)")
+        }
+        #expect(session.transcripts["SHOWN"] != nil)
+        #expect(session.transcripts["HIDDEN"] == nil)
     }
 }

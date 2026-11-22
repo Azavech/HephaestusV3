@@ -149,6 +149,7 @@ extension ChatSession {
     /// What a view shows, `chatID` nil for none, and whether its window is the key window. A chat that a view of
     /// the key window starts to show loses its notification, as when a window opens it.
     public func showing(_ chatID: String?, inKeyWindow: Bool, view: UUID) {
+        shownViews[view] = chatID
         let old = keyViews[view]
         let new = inKeyWindow ? chatID : nil
         keyViews[view] = new

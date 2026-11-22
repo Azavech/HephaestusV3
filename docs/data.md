@@ -861,7 +861,8 @@ appended and never rewritten.
   replaces it, or appends it. A line that isn't JSON, has another `op`, an item type V3 doesn't read or lacks a
   required key is skipped.
 - **Reading.** A transcript is read when its chat opens in a window, off the main thread; the app keeps at most
-  12 in memory besides those of running chats, the oldest read dropped first. A request still waiting in a
+  12 in memory besides those of running chats and of chats a view shows (any window, key or not), the oldest read
+  dropped first. A request still waiting in a
   transcript read while the chat has no process is cancelled: an `update` line with `decision` `deny` and
   `decidedBy` `null`.
 
