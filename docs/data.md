@@ -1460,7 +1460,8 @@ V2's workflows and agents (`ChatAgents.swift`), checked on V2's captures `stream
   `stopped`); its agents still running then stop. A workflow agent completes on its entry's `done` (or fails on
   `error`) or the journal's `result`. A sub-agent ends on the `task_notification` of its call or task, or, when
   not started in the background, on its call's result (failed when it is an error) or the turn's `result`
-  (stopped); a `task_started` of its task while it has ended runs it again (SendMessage resumed it). The
+  (stopped); a `task_started` of its task while it has ended runs it again (SendMessage resumed it), in the background, as V2
+  knew: the turn's result doesn't stop it, its `task_notification` ends it. The
   process's exit stops everything running.
 - **The run's folder.** The Workflow call's result names it: "Task ID: <id>", "Run ID: <id>", "Transcript dir:
   <path>", an absolute path whose last part is the run id. The session reads it at once, then every second

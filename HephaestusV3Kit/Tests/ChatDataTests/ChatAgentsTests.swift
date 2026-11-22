@@ -88,6 +88,29 @@ struct ChatAgentsTests {
         cli.finish(.exited(0))
     }
 
+    @Test("A sub-agent Claude resumes runs in the background: its turn's result doesn't stop it, its notification ends it")
+    func resumedAgent() async throws {
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        let id = try await world.session.send("Resume it", references: [], to: nil, projectID: "ORD")
+        let cli = try #require(world.launcher.chats.first)
+        let lines = try Fixture.lines("stream-background-agent-resume.jsonl")
+        let task = "a4f36739c9911397a"
+        cli.feed(Array(lines[0..<111]))
+        try await world.until { world.session.agents(of: id).agents.contains { $0.taskID == task && $0.state != .running } }
+        // As read back from the agents file after a relaunch: not marked as in the background.
+        var agent = try #require(world.session.agents(of: id).agents.first { $0.taskID == task })
+        agent.inBackground = false
+        world.session.put(agent, in: id)
+        cli.feed(Array(lines[111..<122]))
+        try await world.until { world.session.agents(of: id).agents.first { $0.taskID == task }?.state == .running }
+        try await world.until { world.session.state(of: id) == .idle }
+        #expect(world.session.agents(of: id).agents.first { $0.taskID == task }?.state == .running, "The result doesn't stop it")
+        cli.feed(Array(lines[122...]))
+        try await world.until { world.session.agents(of: id).agents.first { $0.taskID == task }?.state == .completed }
+        cli.finish(.exited(0))
+    }
+
     @Test("A sub-agent's id is the last well-formed agentId line of its call's result")
     func agentIDs() {
         #expect(ChatSession.agentID(inResult: "Async agent launched.\nagentId: a20896a2a89380e93 (internal ID - x)\nmore") == "a20896a2a89380e93")

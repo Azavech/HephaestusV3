@@ -351,9 +351,11 @@ extension ChatSession {
                     agent.taskID = taskID
                     put(agent, in: chatID)
                 } else if var agent = records.agents.first(where: { $0.kind == .subagent && $0.taskID == taskID && $0.state != .running }) {
-                    // Claude resumed it with SendMessage.
+                    // Claude resumed it with SendMessage: it runs in the background, as V2 knew, so its turn's result
+                    // doesn't stop it and its task_notification ends it.
                     agent.state = .running
                     agent.ended = nil
+                    agent.inBackground = true
                     put(agent, in: chatID)
                 }
             default:
