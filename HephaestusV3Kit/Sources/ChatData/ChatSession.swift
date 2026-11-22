@@ -154,6 +154,8 @@ public final class ChatSession {
     @ObservationIgnored var approvals: [String: [String: CheckedContinuation<ApprovalAnswer, Never>]] = [:]
     /// How long a card of the app waits before the app withdraws it: `approvalTimeout`, shorter in tests.
     @ObservationIgnored var approvalLimit = ChatSession.approvalTimeout
+    /// How long a settings, mode or Stop Workflow request waits for the CLI's answer: 30 s, shorter in tests.
+    @ObservationIgnored var controlAnswerLimit: Duration = .seconds(30)
     /// The chats whose CLI failed, until their next message.
     @ObservationIgnored var failed: Set<String> = []
     /// The transcripts appended to since launch, which got their LF check.

@@ -715,11 +715,13 @@ extension ChatSession {
             let mode = ChatPermissionMode(stored: settings.permissionMode)
             run.modeRequests[id] = mode
             run.connection.write(ClaudeInput.control(id, ["subtype": "set_permission_mode", "mode": .string(mode.cliValue)]))
+            expectAnswer(id, of: run)
         }
         if old.ultracode != settings.ultracode {
             let id = run.controlID()
             run.settingsRequests[id] = "Ultracode"
             run.connection.write(ClaudeInput.control(id, ["subtype": "apply_flag_settings", "settings": ["ultracode": .bool(settings.ultracode)]]))
+            expectAnswer(id, of: run)
         }
         if ChatContextWindow(stored: settings.contextWindow) != run.contextWindow, !run.inTurn {
             run.end(closingInput: true, grace: Self.signalGrace)
@@ -728,12 +730,33 @@ extension ChatSession {
             let id = run.controlID()
             run.settingsRequests[id] = "model"
             run.connection.write(ClaudeInput.control(id, ["subtype": "set_model", "model": .string(model)]))
+            expectAnswer(id, of: run)
         }
         if old.effort != effort {
             let id = run.controlID()
             run.settingsRequests[id] = "effort"
             run.mapper.effort = effort
             run.connection.write(ClaudeInput.control(id, ["subtype": "apply_flag_settings", "settings": ["effortLevel": .string(effort.rawValue)]]))
+            expectAnswer(id, of: run)
+        }
+    }
+
+    /// A settings, mode or Stop Workflow request the CLI hasn't answered in `controlAnswerLimit` is forgotten, with
+    /// the warning its refusal adds and `no answer`, as V2 did; an answer coming later is ignored.
+    func expectAnswer(_ requestID: String, of run: ChatRun) {
+        let limit = controlAnswerLimit
+        Task { [weak self, weak run] in
+            try? await Task.sleep(for: limit)
+            guard let self, let run, self.runs[run.chatID] === run else { return }
+            if run.modeRequests.removeValue(forKey: requestID) != nil {
+                self.record(.system(SystemItem(created: self.now(), text: "Claude did not accept the new permission mode now: no answer. It applies the next time Claude starts.",
+                                               level: .warning)), in: run.chatID)
+            } else if let setting = run.settingsRequests.removeValue(forKey: requestID) {
+                self.record(.system(SystemItem(created: self.now(), text: "Claude did not accept the new \(setting) now: no answer. It applies the next time Claude starts.",
+                                               level: .warning)), in: run.chatID)
+            } else if run.stopRequests[requestID] != nil {
+                _ = self.stopAnswered(requestID, success: false, error: nil, run: run)
+            }
         }
     }
 

@@ -583,6 +583,7 @@ extension ChatSession {
         run.stopRequests[requestID] = id
         run.stoppedTasks.insert(id)
         run.connection.write(ClaudeInput.control(requestID, ["subtype": "stop_task", "task_id": .string(id)]))
+        expectAnswer(requestID, of: run)
     }
 
     /// The CLI's answer to Stop Workflow: an error leaves it running, with a line saying so.

@@ -428,6 +428,29 @@ struct ChatSessionTests {
     }
 }
 
+extension ChatSessionTests {
+    @Test("A settings request the CLI doesn't answer in time is forgotten with a warning; a late answer changes nothing")
+    func unansweredSettings() async throws {
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        world.session.controlAnswerLimit = .milliseconds(50)
+        let id = try await world.session.send("Hi", references: [], to: nil, projectID: "ORD")
+        try world.session.setSettings(id, model: "sonnet", effort: .high)
+        let cli = try #require(world.launcher.chats.first)
+        let request = try #require(cli.written.last { $0["request"]?["subtype"] == "set_model" })
+        try await world.until {
+            world.items(id).contains { if case .system(let line) = $0 { line.text == "Claude did not accept the new model now: no answer. It applies the next time Claude starts." } else { false } }
+        }
+        #expect(world.session.runs[id]?.settingsRequests.isEmpty == true)
+        let warnings = world.items(id).count
+        let late = request["request_id"]?.stringValue ?? ""
+        cli.feed(#"{"type":"control_response","response":{"subtype":"error","request_id":"\#(late)","error":"late"}}"#)
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(world.items(id).count == warnings, "A late answer adds nothing")
+        cli.finish(.exited(0))
+    }
+}
+
 @Suite("Launching the CLI")
 struct ChatLaunchTests {
     @Test("Each item a message carries is one line Claude reads after it")

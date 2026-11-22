@@ -1387,6 +1387,9 @@ process:
 - a new context window needs a new process: the app ends it (closing stdin, as when idle) once no turn runs, at
   once when none does; the next message resumes the session with the new `--autocompact`.
 
+A model, effort, mode, Ultracode or Stop Workflow request the CLI hasn't answered after 30 s is forgotten, as V2's
+were: its refusal's warning is added with `no answer` as the reason, and an answer coming later is ignored.
+
 The CLI changes its mode itself too: leaving Plan Only after the card "Claude wants to leave Plan Only", or an
 Always Allow whose suggestions hold `{"type":"setMode","mode":<mode>}`. The chat follows it, as V2's did: a
 `system` `status` line's `permissionMode`, and the mode of such a suggestion once the card is answered, are
