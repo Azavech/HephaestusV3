@@ -140,22 +140,22 @@ final class AppData {
 
     /// The chats that mention a ticket or bundle, as the Tickets window lists them: its own chats are in its Chats.
     var chatMentions: ChatMentionsReader {
-        ChatMentionsReader { [chats] id in
+        ChatMentionsReader { [chats, chatStore] id in
             let own = Set((chats.chats(ofTicket: id) + chats.chats(ofBundle: id)).map(\.id))
-            return chats.chats(mentioning: id).filter { !own.contains($0.id) }.map { Self.row($0, chats) }
+            return chats.chats(mentioning: id).filter { !own.contains($0.id) }.map { Self.row($0, chats, closed: chatStore.isClosed($0)) }
         }
     }
 
     /// A ticket's or bundle's own chats (docs/ui/tickets.md › Chats).
     var itemChats: ItemChatsReader {
-        ItemChatsReader { [chats] id in
+        ItemChatsReader { [chats, chatStore] id in
             let list = TicketIDs.parseBundle(id) != nil ? chats.chats(ofBundle: id) : chats.chats(ofTicket: id)
-            return list.map { Self.row($0, chats) }
+            return list.map { Self.row($0, chats, closed: chatStore.isClosed($0)) }
         }
     }
 
     /// A chat as the Tickets window lists it.
-    private static func row(_ chat: LoadedChat, _ chats: ChatSession) -> MentioningChat {
+    private static func row(_ chat: LoadedChat, _ chats: ChatSession, closed: Bool) -> MentioningChat {
         let state: MentioningChat.State = switch chats.state(of: chat.id) {
         case .starting, .running: .working
         case .waitingPermission, .waitingAnswers: .waiting
@@ -169,7 +169,7 @@ final class AppData {
         case .project, .setup: .chat
         }
         return MentioningChat(id: chat.id, title: chat.file.title, projectID: chat.projectID, updated: chat.file.updated,
-                              state: state, closed: chat.file.closed, kind: kind)
+                              state: state, closed: closed, kind: kind)
     }
 
     // MARK: Implement (docs/ui/tickets.md › Implement)
@@ -242,6 +242,9 @@ final class AppData {
         chatStore = LiveChatStore(session: chats) { name, input in
             operations.registry?[name]?.describe?(input)
         }
+        // A ticket's chats count as closed while it is done, as V2 counted them.
+        let tickets = tickets
+        chatStore.isTicketDone = { id in tickets.snapshot.ticket(id)?.file.status == .done }
     }
 
     /// The registry, once made.

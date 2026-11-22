@@ -25,7 +25,7 @@ public final class LiveChatStore: ChatStore {
     func agentRows(of id: ChatConversation.ID) -> [ChatAgentRow] {
         let records = session.agents(of: id)
         // V2 hid Resume while the agent's chat is closed: resuming it would reopen the chat without a word.
-        let closed = session.chats[id]?.file.closed == true
+        let closed = session.chats[id].map(isClosed) == true
         let works = [.starting, .running, .waitingPermission].contains(session.state(of: id))
         func row(_ agent: ChatAgent) -> ChatAgentRow {
             let workflow = agent.workflowID.flatMap { workflowID in records.workflows.first { $0.id == workflowID } }
@@ -114,7 +114,7 @@ public final class LiveChatStore: ChatStore {
     /// of its running or of the models (`made(_:)`); the text streaming is added to them at each read.
     func conversation(_ id: ChatConversation.ID?) -> ChatConversation? {
         guard let id, let chat = session.chats[id] else { return nil }
-        var conversation = Self.conversation(chat)
+        var conversation = conversation(of: chat)
         let parts = made(id)
         conversation.turns = Self.appending(session.streaming[id], to: parts.turns, isRecorded: parts.itemIDs.contains)
         conversation.waitingQuestions = parts.waitingQuestions
@@ -177,7 +177,7 @@ public final class LiveChatStore: ChatStore {
 
     func conversations(of projects: Set<Project.ID>) -> [ChatConversation] {
         session.chats(of: projects).map { chat in
-            var conversation = Self.conversation(chat)
+            var conversation = conversation(of: chat)
             conversation.mark = switch session.state(of: chat.id) {
             case .starting, .running: .working
             case .waitingPermission, .waitingAnswers: .waiting
@@ -288,11 +288,22 @@ public final class LiveChatStore: ChatStore {
 
     // MARK: Turns
 
-    static func conversation(_ chat: LoadedChat) -> ChatConversation {
+    /// Whether a ticket is done, by id: the app's tickets. A chat of a ticket counts as closed while its ticket is.
+    public var isTicketDone: @MainActor (String) -> Bool = { _ in false }
+
+    /// Whether the chat counts as closed: closed itself, or a ticket's, CI or feedback chat whose ticket is done, as
+    /// V2 counted it.
+    public func isClosed(_ chat: LoadedChat) -> Bool {
+        if chat.file.closed { return true }
+        guard [.ticket, .ci, .feedback].contains(chat.file.kind), let ticketID = chat.file.ticketID else { return false }
+        return isTicketDone(ticketID)
+    }
+
+    func conversation(of chat: LoadedChat) -> ChatConversation {
         var conversation = ChatConversation(id: chat.id, projectID: chat.projectID, title: chat.file.title,
                                             origin: chat.file.origin.flatMap(ToolKind.init(rawValue:)), createdAt: chat.file.created, turns: [],
                                             updated: chat.file.updated)
-        conversation.closed = chat.file.closed
+        conversation.closed = isClosed(chat)
         conversation.contextUsage = chat.file.contextUsage
         return conversation
     }

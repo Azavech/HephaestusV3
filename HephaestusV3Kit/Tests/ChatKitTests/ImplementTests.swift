@@ -34,6 +34,18 @@ struct ImplementChatKitTests {
                              bundleTickets: { $0 == "ORD-B3" ? ["ORD-141", "ORD-142"] : nil })
     }
 
+    @Test("A ticket's chat counts as closed while its ticket is done, as V2 counted it; a bundle's or a project's doesn't")
+    func closedWithTicket() {
+        let chats = session()
+        let store = LiveChatStore(session: chats) { _, _ in nil }
+        var done: Set<String> = []
+        store.isTicketDone = { done.contains($0) }
+        #expect(store.conversations(of: ["ORD"]).filter(\.closed).isEmpty)
+        done = ["ORD-142"]
+        #expect(store.conversations(of: ["ORD"]).filter(\.closed).map(\.id) == ["T"])
+        #expect(store.conversation("T")?.closed == true && store.conversation("B")?.closed == false)
+    }
+
     @Test("Under Ask First an implement chat changes its own items without a card; anything else still asks; Never and Plan Only still refuse")
     func ownItems() async {
         let chats = session()
