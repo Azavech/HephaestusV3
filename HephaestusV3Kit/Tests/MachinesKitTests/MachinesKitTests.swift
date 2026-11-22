@@ -1,5 +1,6 @@
 import AZDesign
 import Foundation
+import MCPKit
 import Testing
 import ToolsFoundation
 @testable import MachinesKit
@@ -322,5 +323,17 @@ struct MachineActionTests {
             try await Task.sleep(for: .milliseconds(10))
         }
         #expect(condition())
+    }
+}
+
+@Suite("Machine tools' paths on this Mac")
+struct MachineToolPathTests {
+    @Test("A path on this Mac is absolute or starts with ~/, expanded to the home folder")
+    func macPath() throws {
+        #expect(try MachineTools.macPath("/tmp/a", argument: "to") == "/tmp/a")
+        #expect(try MachineTools.macPath("~/Downloads/a.txt", argument: "to", home: "/Users/x") == "/Users/x/Downloads/a.txt")
+        #expect(throws: ToolError(.invalid, "from: use an absolute path or a path starting with ~/.")) {
+            try MachineTools.macPath("a.txt", argument: "from")
+        }
     }
 }

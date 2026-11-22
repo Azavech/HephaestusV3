@@ -102,9 +102,10 @@ private struct MachineToolSet {
     static func date(_ date: Date?) -> JSONValue { date.map { .string(ISO8601DateFormatter().string(from: $0)) } ?? .null }
 
     var listImages: ToolOperation {
-        operation("vm_list_images", "Returns the macOS images new virtual machines start from: id, version, build, state (downloading, installing, needsSetup, ready or failed), progress while it downloads or installs, the failure, and the guest account's user name. Only a ready image makes machines.", [], required: [], permission: .read) { _ throws(ToolError) in
+        operation("vm_list_images", "Returns the macOS images new virtual machines start from: id, version, build, state (downloading, installing, needsSetup, ready or failed), progress while it downloads or installs, the failure, the guest account's user name, and diskGB, the size of its disk, which is the smallest disk a machine of it can have. Only a ready image makes machines.", [], required: [], permission: .read) { _ throws(ToolError) in
             .array(host.images.map { image in
                 ["id": .string(image.id), "version": .string(image.version), "build": .string(image.build), "state": .string(image.state.rawValue),
+                 "diskGB": host.library.map { .int($0.folder(image: image.id).diskGB) } ?? .null,
                  "progress": host.progress[image.id].map(JSONValue.double) ?? .null, "failure": image.failure.map(JSONValue.string) ?? .null,
                  "userName": image.userName.map(JSONValue.string) ?? .null, "hasPassword": .bool(!(image.password ?? "").isEmpty),
                  "settingUp": .bool(host.setups[image.id] != nil)].removingNullMembers
@@ -262,12 +263,11 @@ private struct MachineToolSet {
 
     var copyIn: ToolOperation {
         operation("vm_copy_in", "Copies a file or a folder's contents of this Mac into the guest, as the guest's account.", [
-            ("from", .string("An absolute path on this Mac.")), ("to", .string("An absolute path in the guest, or one starting with ~/.")),
+            ("from", .string("An absolute path on this Mac, or one starting with ~/.")), ("to", .string("An absolute path in the guest, or one starting with ~/.")),
         ], required: ["id", "from", "to"], permission: .operateMachines) { arguments throws(ToolError) in
             let id = try arguments.string("id")
-            let from = try arguments.string("from")
+            let from = try MachineTools.macPath(try arguments.string("from"), argument: "from")
             let to = try arguments.string("to")
-            guard from.hasPrefix("/") else { throw ToolError(.invalid, "from: use an absolute path.") }
             try await call { () throws(MachineError) in try await host.copyIn(id, from: URL(fileURLWithPath: from), to: to) }
             return "Copied."
         }
@@ -275,15 +275,23 @@ private struct MachineToolSet {
 
     var copyOut: ToolOperation {
         operation("vm_copy_out", "Copies a file or a folder's contents of the guest to this Mac; a file replaces one of the same name.", [
-            ("from", .string("An absolute path in the guest, or one starting with ~/.")), ("to", .string("An absolute path on this Mac.")),
+            ("from", .string("An absolute path in the guest, or one starting with ~/.")), ("to", .string("An absolute path on this Mac, or one starting with ~/.")),
         ], required: ["id", "from", "to"], permission: .operateMachines) { arguments throws(ToolError) in
             let id = try arguments.string("id")
             let from = try arguments.string("from")
-            let to = try arguments.string("to")
-            guard to.hasPrefix("/") else { throw ToolError(.invalid, "to: use an absolute path.") }
+            let to = try MachineTools.macPath(try arguments.string("to"), argument: "to")
             try await call { () throws(MachineError) in try await host.copyOut(id, from: from, to: URL(fileURLWithPath: to)) }
             return "Copied."
         }
+    }
+}
+
+extension MachineTools {
+    /// A path on this Mac: absolute, or starting with ~/ for the home folder, as V2 took it.
+    static func macPath(_ path: String, argument: String, home: String = NSHomeDirectory()) throws(ToolError) -> String {
+        if path.hasPrefix("~/") { return home + path.dropFirst(1) }
+        guard path.hasPrefix("/") else { throw ToolError(.invalid, "\(argument): use an absolute path or a path starting with ~/.") }
+        return path
     }
 }
 

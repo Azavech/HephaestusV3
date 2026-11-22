@@ -437,6 +437,7 @@ public final class MachineHost {
 
     /// Shuts the guest down through the agent, waiting up to 60 seconds, else stops it at once.
     public func stop(_ id: String) async throws(MachineError) {
+        try requireKnown(id)
         guard let run = runs[id] else { throw MachineError(.conflict, "The virtual machine is not running.") }
         guard run.state != .stopping else {
             _ = await waitForStop(run, seconds: 90)
@@ -514,6 +515,11 @@ public final class MachineHost {
 
     static let diskGrowing = MachineError(.conflict, "The virtual machine's disk is growing.")
 
+    /// An id that is neither a machine nor an image being set up is not found, as V2 answered, before "not running".
+    func requireKnown(_ id: String) throws(MachineError) {
+        guard machine(id) != nil || setups[id] != nil else { throw MachineError(.notFound, "Virtual machine \(id) not found.") }
+    }
+
     /// Stops a running machine at once, then deletes its folder (not to the Trash).
     public func deleteMachine(_ id: String) async throws(MachineError) {
         guard let library, machine(id) != nil else { throw MachineError(.notFound, "Virtual machine \(id) not found.") }
@@ -560,6 +566,7 @@ public final class MachineHost {
     /// One request to a running machine's agent (a setup's too, by its image id).
     public func agentRequest(_ id: String, method: String, params: [String: JSONValue] = [:], data: Data = Data(),
                              timeout: Duration = .seconds(60)) async throws(MachineError) -> GuestAgentResponse {
+        try requireKnown(id)
         guard let run = runs[id] ?? setups[id], run.state == .running else { throw MachineError(.conflict, "The virtual machine is not running.") }
         guard run.agent != nil else { throw MachineError(.unavailable, GuestAgentError.disconnected.localizedDescription) }
         do {

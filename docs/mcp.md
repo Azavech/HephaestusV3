@@ -2689,13 +2689,13 @@ Input schema:
 ### vm_list_images
 
 - **Calls:** the machine host's images ([Data › Virtual machines](data.md#virtual-machines)).
-- **Result:** an array, each image's `id`, `version`, `build`, `state`, `progress` (0 to 1, while it downloads or installs), `failure`, `userName`, `hasPassword`, `settingUp`. The password itself is never returned.
+- **Result:** an array, each image's `id`, `version`, `build`, `state`, `diskGB` (its disk's size, the smallest disk a machine of it can have, as V2 gave it), `progress` (0 to 1, while it downloads or installs), `failure`, `userName`, `hasPassword`, `settingUp`. The password itself is never returned.
 - **Errors:** none.
 
 Description:
 
 ```text
-Returns the macOS images new virtual machines start from: id, version, build, state (downloading, installing, needsSetup, ready or failed), progress while it downloads or installs, the failure, and the guest account's user name. Only a ready image makes machines.
+Returns the macOS images new virtual machines start from: id, version, build, state (downloading, installing, needsSetup, ready or failed), progress while it downloads or installs, the failure, the guest account's user name, and diskGB, the size of its disk, which is the smallest disk a machine of it can have. Only a ready image makes machines.
 ```
 
 Input schema:
@@ -2857,7 +2857,7 @@ Input schema:
 
 - **Calls:** `MachineHost.stop`.
 - **Result:** `Stopped.`
-- **Errors:** a machine that doesn't run (`conflict`).
+- **Errors:** an id that is no machine (`notFound`, `Virtual machine <id> not found.`), as V2 answered; a machine that doesn't run (`conflict`).
 
 Description:
 
@@ -2887,7 +2887,7 @@ Input schema:
 
 - **Calls:** the agent's `exec` ([Guest agent › Methods](guest-agent.md#methods)).
 - **Result:** `exitStatus`, `timedOut`, `stdout`, `stderr`, `truncated`.
-- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`).
+- **Errors:** an id that is no machine (`notFound`, `Virtual machine <id> not found.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`).
 
 Description:
 
@@ -2932,7 +2932,7 @@ Input schema:
 
 - **Calls:** the agent's `screenshot`.
 - **Result:** an image content item, `image/png` ([Tool results](#tool-results)).
-- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Screen Recording permission in the guest (`unavailable`, `The agent has no Screen Recording permission.`).
+- **Errors:** an id that is no machine (`notFound`, `Virtual machine <id> not found.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Screen Recording permission in the guest (`unavailable`, `The agent has no Screen Recording permission.`).
 
 Description:
 
@@ -2962,7 +2962,7 @@ Input schema:
 
 - **Calls:** the agent's `click`.
 - **Result:** `{}`.
-- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Accessibility permission in the guest.
+- **Errors:** an id that is no machine (`notFound`, `Virtual machine <id> not found.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Accessibility permission in the guest.
 
 Description:
 
@@ -3018,7 +3018,7 @@ Input schema:
 
 - **Calls:** the agent's `drag`.
 - **Result:** `{}`.
-- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Accessibility permission in the guest.
+- **Errors:** an id that is no machine (`notFound`, `Virtual machine <id> not found.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Accessibility permission in the guest.
 
 Description:
 
@@ -3068,7 +3068,7 @@ Input schema:
 
 - **Calls:** the agent's `scroll`.
 - **Result:** `{}`.
-- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Accessibility permission in the guest.
+- **Errors:** an id that is no machine (`notFound`, `Virtual machine <id> not found.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Accessibility permission in the guest.
 
 Description:
 
@@ -3114,7 +3114,7 @@ Input schema:
 
 - **Calls:** the agent's `type`.
 - **Result:** `{}`.
-- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Accessibility permission in the guest.
+- **Errors:** an id that is no machine (`notFound`, `Virtual machine <id> not found.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Accessibility permission in the guest.
 
 Description:
 
@@ -3149,7 +3149,7 @@ Input schema:
 
 - **Calls:** the agent's `key`.
 - **Result:** `{}`.
-- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); an unknown key (`unavailable`, `Unknown key <key>.`).
+- **Errors:** an id that is no machine (`notFound`, `Virtual machine <id> not found.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); an unknown key (`unavailable`, `Unknown key <key>.`).
 
 Description:
 
@@ -3197,7 +3197,7 @@ Input schema:
 
 - **Calls:** the agent's `uiTree`, with 120 seconds to answer.
 - **Result:** `app`, `bundleID`, `pid`, `tree`.
-- **Errors:** no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no such app (`unavailable`, `No running app named <app>.`).
+- **Errors:** an id that is no machine (`notFound`, `Virtual machine <id> not found.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no such app (`unavailable`, `No running app named <app>.`).
 
 Description:
 
@@ -3237,7 +3237,7 @@ Input schema:
 
 - **Calls:** `MachineHost.copyIn`: a file through `writeFile`, 8 MiB at a time, with its permission bits; a folder's contents through a tar archive extracted in the guest.
 - **Result:** `Copied.`
-- **Errors:** a relative path (`invalid`); a missing source (`notFound`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); tar failing (`internal`).
+- **Errors:** a relative path (`invalid`; on this Mac, an absolute path or one starting with `~/`, the home folder, as V2 took it); a missing source (`notFound`); an id that is no machine (`notFound`, `Virtual machine <id> not found.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); tar failing (`internal`).
 
 Description:
 
@@ -3252,7 +3252,7 @@ Input schema:
   "additionalProperties" : false,
   "properties" : {
     "from" : {
-      "description" : "An absolute path on this Mac.",
+      "description" : "An absolute path on this Mac, or one starting with ~/.",
       "type" : "string"
     },
     "id" : {
@@ -3277,7 +3277,7 @@ Input schema:
 
 - **Calls:** `MachineHost.copyOut`: a file through `readFile` into a partial file beside the destination, which then takes its place; a folder's contents through a tar archive.
 - **Result:** `Copied.`
-- **Errors:** a relative path (`invalid`); a missing source (`notFound`, `<path> does not exist in the guest.`); a file whose destination is a folder of this Mac (`invalid`, `to: <path> is a folder on this Mac: give the path of the file to write.`), checked before the copy and again before the partial file takes the destination's place, so a folder is never replaced; no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); a destination that can't be written or tar failing (`internal`).
+- **Errors:** a relative path (`invalid`; on this Mac, an absolute path or one starting with `~/`, the home folder, as V2 took it); a missing source (`notFound`, `<path> does not exist in the guest.`); an id that is no machine (`notFound`, `Virtual machine <id> not found.`); a file whose destination is a folder of this Mac (`invalid`, `to: <path> is a folder on this Mac: give the path of the file to write.`), checked before the copy and again before the partial file takes the destination's place, so a folder is never replaced; no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); a destination that can't be written or tar failing (`internal`).
 
 Description:
 
@@ -3300,7 +3300,7 @@ Input schema:
       "type" : "string"
     },
     "to" : {
-      "description" : "An absolute path on this Mac.",
+      "description" : "An absolute path on this Mac, or one starting with ~/.",
       "type" : "string"
     }
   },

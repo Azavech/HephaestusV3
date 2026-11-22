@@ -564,6 +564,8 @@ struct MachineHostTests {
             let image = try await Self.readyImage(host)
             let machine = try await host.createMachine(name: "A", imageID: image.id, cores: 2, memoryGB: 4, diskGB: 64)
             let guest = try #require(host.runs[machine.id]?.guest as? FakeGuest)
+            await #expect(throws: MachineError(.notFound, "Virtual machine NOPE not found.")) { try await host.stop("NOPE") }
+            await #expect(throws: MachineError(.notFound, "Virtual machine NOPE not found.")) { _ = try await host.agentRequest("NOPE", method: "ping") }
             await #expect(throws: MachineError(.conflict, "The virtual machine is running.")) {
                 try await host.updateMachine(machine.id, name: "B", cores: 2, memoryGB: 4, diskGB: 64)
             }
