@@ -1997,7 +1997,10 @@ objects; `oneOf`/`anyOf` take the first; an object takes each property not `read
 `https://example.com`, `example.com`, `192.0.2.1`, `2001:db8::1`), else `string`; a number its `minimum`, else
 `0`; a boolean `true`. JSON media types (`application/json`, `+json`) are written with two-space indentation,
 in the contract's order; a form (`application/x-www-form-urlencoded`) as `name=value&…`, percent-encoded;
-another as text.
+another as text. A sample builds at most 2,000 values and goes at most 64 levels deep, as V2 bounded it: past
+either, a property is left out, as for an unresolved ref, so schemas that refer to each other by many paths
+can't hold the read. Reads of one project's contract share the read in flight; a file event during one reads
+again once it ends.
 
 ### Sending a request
 

@@ -89,6 +89,8 @@ public final class LiveContractStore: ContractStore {
     @ObservationIgnored private let projects: ProjectSession
     @ObservationIgnored private let valuesFile: URL?
     @ObservationIgnored private let client = ContractHTTPClient()
+    /// The reads running, by project: a second caller waits for the one running rather than reading again.
+    @ObservationIgnored private var reading: [String: Task<Void, Never>] = [:]
 
     public init(projects: ProjectSession) {
         self.projects = projects
@@ -99,7 +101,7 @@ public final class LiveContractStore: ContractStore {
             for id in Array(self.loads.keys) {
                 guard let root = self.projects.snapshot.project(id)?.root,
                       batch.contains(where: { $0.path.hasPrefix(root + "/openapi") || $0.kind.contains(.mustRescan) }) else { continue }
-                await self.read(id)
+                await self.read(id, afterChange: true)
             }
         }
     }
@@ -120,7 +122,24 @@ public final class LiveContractStore: ContractStore {
         return nil
     }
 
-    private func read(_ projectID: String) async {
+    /// Reads the project's contract, or waits for the read running. `afterChange`: the file changed since a running
+    /// read started, so one more follows it.
+    private func read(_ projectID: String, afterChange: Bool = false) async {
+        if let running = reading[projectID] {
+            await running.value
+            guard afterChange else { return }
+            if let newer = reading[projectID] {
+                await newer.value
+                return
+            }
+        }
+        let task = Task { await readNow(projectID) }
+        reading[projectID] = task
+        await task.value
+        if reading[projectID] == task { reading[projectID] = nil }
+    }
+
+    private func readNow(_ projectID: String) async {
         guard let root = projects.snapshot.project(projectID)?.root else { return }
         let folder = URL(fileURLWithPath: root, isDirectory: true)
         let file = folder.appendingPathComponent(Self.path)

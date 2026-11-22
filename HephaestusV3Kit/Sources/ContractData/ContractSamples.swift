@@ -11,7 +11,8 @@ enum ContractSamples {
         } else if let first = mediaType["examples"]?.members?.first {
             value = resolver.resolve(first.value, in: file).0["value"]
         } else if let schema = mediaType["schema"] {
-            value = sample(schema, resolver: resolver, file: file, seen: []) ?? .null
+            var budget = maximumValues
+            value = sample(schema, resolver: resolver, file: file, seen: [], budget: &budget) ?? .null
         } else {
             value = nil
         }
@@ -39,8 +40,17 @@ enum ContractSamples {
         return value.json()
     }
 
-    /// A sample of a schema; nil for an unresolved or circular ref (a property is then left out).
-    static func sample(_ raw: ContractValue, resolver: ContractResolver, file: URL, seen: Set<String>) -> ContractValue? {
+    /// The most values one prefilled body builds, and how deep it goes, as V2 bounded it: schemas that refer to each
+    /// other by many paths would otherwise cost factorial time. What is past either is left out, as an unresolved ref.
+    static let maximumValues = 2_000
+    static let maximumDepth = 64
+
+    /// A sample of a schema; nil for an unresolved or circular ref, or past the budget or the depth (a property is
+    /// then left out).
+    static func sample(_ raw: ContractValue, resolver: ContractResolver, file: URL, seen: Set<String>, budget: inout Int,
+                       depth: Int = 0) -> ContractValue? {
+        guard budget > 0, depth <= maximumDepth else { return nil }
+        budget -= 1
         var seen = seen
         if let ref = raw["$ref"]?.string {
             guard !seen.contains(ref) else { return nil }
@@ -54,27 +64,27 @@ enum ContractSamples {
         if let value = schema["const"] { return value }
         if let first = schema["enum"]?.array?.first { return first }
         if let all = schema["allOf"]?.array {
-            let samples = all.compactMap { sample($0, resolver: resolver, file: schemaFile, seen: seen) }
+            let samples = all.compactMap { sample($0, resolver: resolver, file: schemaFile, seen: seen, budget: &budget, depth: depth + 1) }
             let objects = samples.compactMap(\.members)
             if !objects.isEmpty { return .object(objects.flatMap { $0 }) }
             return samples.first
         }
         if let first = (schema["oneOf"] ?? schema["anyOf"])?.array?.first {
-            return sample(first, resolver: resolver, file: schemaFile, seen: seen)
+            return sample(first, resolver: resolver, file: schemaFile, seen: seen, budget: &budget, depth: depth + 1)
         }
         let type = type(of: schema)
         if type == "object" || (type == nil && schema["properties"] != nil) {
             return .object((schema["properties"]?.members ?? []).compactMap { property in
                 let (resolved, _) = resolver.resolve(property.value, in: schemaFile)
                 guard resolved["readOnly"]?.bool != true,
-                      let value = sample(property.value, resolver: resolver, file: schemaFile, seen: seen) else { return nil }
+                      let value = sample(property.value, resolver: resolver, file: schemaFile, seen: seen, budget: &budget, depth: depth + 1) else { return nil }
                 return ContractValue.Member(property.key, value)
             })
         }
         switch type {
         case "array":
             guard let items = schema["items"] else { return .array([]) }
-            return .array(sample(items, resolver: resolver, file: schemaFile, seen: seen).map { [$0] } ?? [])
+            return .array(sample(items, resolver: resolver, file: schemaFile, seen: seen, budget: &budget, depth: depth + 1).map { [$0] } ?? [])
         case "string":
             return .string(formats[schema["format"]?.string ?? ""] ?? "string")
         case "integer", "number":

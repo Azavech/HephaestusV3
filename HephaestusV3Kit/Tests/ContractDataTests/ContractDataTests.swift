@@ -152,6 +152,36 @@ struct ContractTests {
         #expect(response(Data([0xFF, 0xFE, 0x00])).text == nil)
     }
 
+    @Test("A body on schemas that all refer to each other is built within its budget, not once per path")
+    func tangledSchemas() throws {
+        let names = (1...12).map { "S\($0)" }
+        let schemas = names.map { name in
+            "    \(name):\n      type: object\n      properties:\n" + names.filter { $0 != name }.map {
+                "        to\($0): {$ref: '#/components/schemas/\($0)'}\n"
+            }.joined()
+        }.joined()
+        let text = """
+            openapi: 3.0.3
+            info: {title: Tangled, version: '1'}
+            paths:
+              /s:
+                post:
+                  operationId: make
+                  requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/S1'}}}}
+                  responses: {'200': {description: OK}}
+            components:
+              schemas:
+
+            """ + schemas
+        let folder = try ContractFolder(text)
+        defer { folder.remove() }
+        let clock = ContinuousClock()
+        let start = clock.now
+        let make = try #require(try folder.read().operation("make"))
+        #expect(clock.now - start < .seconds(10))
+        #expect(make.requestBody?.mediaTypes.first?.example.hasPrefix("{") == true)
+    }
+
     @Test("A file that isn't an OpenAPI 3 contract can't be read")
     func unreadable() throws {
         let swagger = try ContractFolder("swagger: '2.0'\ninfo: {title: Old}\n")
