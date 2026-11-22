@@ -88,6 +88,7 @@ struct ProjectToolsTests {
     @Test("~/ is the home folder")
     func pathExpansion() throws {
         #expect(try ProjectTools.expanded("~/Developer/x", home: "/Users/someone") == "/Users/someone/Developer/x")
+        #expect(try ProjectTools.expanded("~", home: "/Users/someone") == "/Users/someone")
         #expect(throws: ToolError.self) { try ProjectTools.expanded("x") }
     }
 }

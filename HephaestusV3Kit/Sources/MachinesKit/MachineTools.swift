@@ -296,6 +296,7 @@ private struct MachineToolSet {
 extension MachineTools {
     /// A path on this Mac: absolute, or starting with ~/ for the home folder, as V2 took it.
     static func macPath(_ path: String, argument: String, home: String = NSHomeDirectory()) throws(ToolError) -> String {
+        if path == "~" { return home }
         if path.hasPrefix("~/") { return home + path.dropFirst(1) }
         guard path.hasPrefix("/") else { throw ToolError(.invalid, "\(argument): use an absolute path or a path starting with ~/.") }
         return path

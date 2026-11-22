@@ -415,7 +415,7 @@ Input schema:
 
 ### create_project
 
-- **Calls:** `ProjectSession.create` with the `path` (a leading `~/` is the home folder), the `name`, the
+- **Calls:** `ProjectSession.create` with the `path` (a leading `~/`, or `~` alone, is the home folder, as V2 took it; so are the attachments' paths and the Mac-side paths of `vm_copy_in` and `vm_copy_out`), the `name`, the
   `identifier`, the `type` (`none` when omitted), the `parentID` when given, and `createsFolder`.
 - A `path` that isn't absolute once expanded fails first: `path: use an absolute path or a path starting with
   ~/.` (`invalid`).

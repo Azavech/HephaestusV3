@@ -148,9 +148,9 @@ public enum ProjectTools {
         ToolError(.notFound, "No project \(id).")
     }
 
-    /// `~/` is the home folder; the result must be absolute.
+    /// `~` and `~/` are the home folder, as V2 took them; the result must be absolute.
     static func expanded(_ path: String, home: String = NSHomeDirectory()) throws(ToolError) -> String {
-        let expanded = path.hasPrefix("~/") ? home + path.dropFirst() : path
+        let expanded = path == "~" ? home : path.hasPrefix("~/") ? home + path.dropFirst() : path
         guard expanded.hasPrefix("/") else { throw ToolError(.invalid, "path: use an absolute path or a path starting with ~/.") }
         return expanded
     }

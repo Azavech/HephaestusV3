@@ -462,11 +462,12 @@ extension TicketToolSet {
         }
     }
 
-    /// Paths as Claude gives them: absolute, `~/`, or relative to the project's folder.
+    /// Paths as Claude gives them: absolute, `~` or `~/`, or relative to the project's folder.
     private func files(_ value: JSONValue?, in projectID: String) throws(ToolError) -> [URL] {
         let root = projects.snapshot.project(projectID.uppercased())?.root
         return (value?.arrayValue ?? []).compactMap(\.stringValue).map { path in
             if path.hasPrefix("/") { return URL(fileURLWithPath: path) }
+            if path == "~" { return URL(fileURLWithPath: NSHomeDirectory()) }
             if path.hasPrefix("~/") { return URL(fileURLWithPath: NSHomeDirectory() + path.dropFirst()) }
             return URL(fileURLWithPath: root ?? "/").appendingPathComponent(path).standardizedFileURL
         }

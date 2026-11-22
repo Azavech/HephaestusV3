@@ -365,6 +365,7 @@ struct MachineToolPathTests {
     func macPath() throws {
         #expect(try MachineTools.macPath("/tmp/a", argument: "to") == "/tmp/a")
         #expect(try MachineTools.macPath("~/Downloads/a.txt", argument: "to", home: "/Users/x") == "/Users/x/Downloads/a.txt")
+        #expect(try MachineTools.macPath("~", argument: "to", home: "/Users/x") == "/Users/x")
         #expect(throws: ToolError(.invalid, "from: use an absolute path or a path starting with ~/.")) {
             try MachineTools.macPath("a.txt", argument: "from")
         }
