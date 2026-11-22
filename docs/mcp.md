@@ -3327,16 +3327,16 @@ Input schema:
 
 - **Calls:** a route: `project` opens the Projects window with the project selected (`.project(id)`),
   `projectSettings` its Project Settings window (`.projectSettings(id)`), `ticket` and `bundle` the Tickets
-  window of its project with it selected (`.tool(.tickets, project:, focus: <id>)`); an open window comes
-  forward.
+  window of its project with it selected (`.tool(.tickets, project:, focus: <id>)`), `skill` the System Prompts tab
+  with the internal skill selected (`.systemPrompts(skill:)`, V2's `skill` target); an open window comes forward.
 - **Result:** `{}`.
-- **Errors:** an unknown project, ticket or bundle (`notFound`); no window has appeared yet to open routes
+- **Errors:** an unknown project, ticket, bundle or internal skill (`notFound`, `No internal skill <name>.` for a skill); no window has appeared yet to open routes
   (`unavailable`, `The app has no window to show it in.`).
 
 Description:
 
 ```text
-Opens an item in Hephaestus V3 for the user: a project in the Projects window, a project's settings window, or a ticket or bundle in its project's Tickets window.
+Opens an item in Hephaestus V3 for the user: a project in the Projects window, a project's settings window, a ticket or bundle in its project's Tickets window, or an internal skill in System Prompts.
 ```
 
 Input schema:
@@ -3347,7 +3347,7 @@ Input schema:
   "properties" : {
     "target" : {
       "additionalProperties" : false,
-      "description" : "The item to open. project and projectSettings take projectID, ticket takes ticketID, bundle takes bundleID.",
+      "description" : "The item to open. project and projectSettings take projectID, ticket takes ticketID, bundle takes bundleID, skill takes name.",
       "properties" : {
         "bundleID" : {
           "description" : "Bundle id, such as ORD-B2.",
@@ -3359,8 +3359,13 @@ Input schema:
             "project",
             "projectSettings",
             "ticket",
-            "bundle"
+            "bundle",
+            "skill"
           ],
+          "type" : "string"
+        },
+        "name" : {
+          "description" : "An internal skill's name, such as set-ticket-title.",
           "type" : "string"
         },
         "projectID" : {

@@ -197,7 +197,7 @@ private struct RouteHost<Content: View>: View {
     /// Opens a route: selects the tab that shows it and brings its window forward, or opens a tab
     /// (docs/ui/navigation.md › Routes).
     private var openRouteAction: OpenRouteAction {
-        OpenRouteAction { [openWindow, openSettings, $selectedProjectID, $machineFocus, $machineFocusRequest] route in
+        OpenRouteAction { [openWindow, openSettings, appData, $selectedProjectID, $machineFocus, $machineFocusRequest] route in
             let windows = WindowDirectory.shared
             switch route {
             case .project(let id):
@@ -212,6 +212,10 @@ private struct RouteHost<Content: View>: View {
                 windows.showOrOpen(.tool(tool, project: projectID), focus: focus, openWindow: openWindow)
             case .projectSettings(let id):
                 windows.showOrOpen(.projectSettings(id), openWindow: openWindow)
+            case .systemPrompts(let skill):
+                // The tab selects the skill as it opens, or again when it is already open.
+                if let skill { appData.skillFocus = FocusRequest(skill) }
+                windows.showOrOpen(.systemPrompts, openWindow: openWindow)
             case .settings(let pane):
                 UserDefaults.standard.set(pane.rawValue, forKey: SettingsPane.storageKey)
                 openSettings()

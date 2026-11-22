@@ -34,6 +34,8 @@ nonisolated public enum Route: Hashable, Sendable {
     case chatWindow(chat: String)
     /// The Settings window, on this tab.
     case settings(SettingsPane)
+    /// The System Prompts tab, with this internal skill selected, by its name, as V2's `skill` target.
+    case systemPrompts(skill: String? = nil)
 }
 
 /// A tab of the Settings window, by its stored name.

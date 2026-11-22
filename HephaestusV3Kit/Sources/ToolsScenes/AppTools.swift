@@ -35,15 +35,16 @@ enum AppTools {
     static func openInApp(session: ProjectSession, tickets: TicketSession, open: @escaping @MainActor (Route) -> Bool) -> ToolOperation {
         ToolOperation(
             name: "open_in_app",
-            description: "Opens an item in Hephaestus V3 for the user: a project in the Projects window, a project's settings window, or a ticket or bundle in its project's Tickets window.",
+            description: "Opens an item in Hephaestus V3 for the user: a project in the Projects window, a project's settings window, a ticket or bundle in its project's Tickets window, or an internal skill in System Prompts.",
             inputSchema: .object(properties: [
                 ("target", .object(
-                    "The item to open. project and projectSettings take projectID, ticket takes ticketID, bundle takes bundleID.",
+                    "The item to open. project and projectSettings take projectID, ticket takes ticketID, bundle takes bundleID, skill takes name.",
                     properties: [
-                        ("kind", .string("The item's kind.", oneOf: ["project", "projectSettings", "ticket", "bundle"])),
+                        ("kind", .string("The item's kind.", oneOf: ["project", "projectSettings", "ticket", "bundle", "skill"])),
                         ("projectID", .string("Project identifier, 2 to 8 letters, such as ORD.")),
                         ("ticketID", .string("Ticket id, such as ORD-12.")),
                         ("bundleID", .string("Bundle id, such as ORD-B2.")),
+                        ("name", .string("An internal skill's name, such as set-ticket-title.")),
                     ],
                     required: ["kind"]
                 )),
@@ -62,6 +63,10 @@ enum AppTools {
                     throw ToolError(.notFound, isTicket ? "Ticket \(id) not found." : "Bundle \(id) not found.")
                 }
                 route = .tool(.tickets, project: project, focus: id)
+            case "skill":
+                let name = try target.string("name")
+                guard InternalSkill.all.contains(where: { $0.name == name }) else { throw ToolError(.notFound, "No internal skill \(name).") }
+                route = .systemPrompts(skill: name)
             default:
                 let id = try target.string("projectID")
                 guard session.snapshot.project(id) != nil else { throw ToolError(.notFound, "No project \(id).") }

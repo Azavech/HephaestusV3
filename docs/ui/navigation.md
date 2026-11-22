@@ -192,6 +192,7 @@ panel and the chat's **Open** buttons all use routes.
 | `.projectSettings(id)`          | The project's Project Settings tab.                                                                                                                                                                                                                                             |
 | `.chatWindow(chat:)`            | The chat's own window ([Chat › Chat windows](chat.md#chat-windows)): the one already showing it, un-minimized and brought forward, or a new one. Not a tab: chat windows are a scene of their own, never merged into the others.                                                |
 | `.settings(pane)`               | The Settings window, on that tab (`SettingsPane`: `general`, `projects`, `mcp`, `machines`, `chat`, `notifications`, `updates`). The tab is stored as `settings.pane` in the user defaults, so Settings also opens on the last tab shown. Used by the chat's **Open Settings**. |
+| `.systemPrompts(skill:)`        | The System Prompts tab, with the internal skill of that name selected, as V2's `skill` target: an open tab comes forward and selects it again (`open_in_app` with kind `skill`).                                                                                                |
 
 **Focus formats**, the item a tool selects when a route opens it:
 

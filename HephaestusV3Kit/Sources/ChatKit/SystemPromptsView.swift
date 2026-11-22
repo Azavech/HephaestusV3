@@ -213,6 +213,14 @@ public struct SystemPromptsView: View {
     @Environment(\.chatStore) private var chatStore
 
     public var body: some View {
+        splitView
+            // A route to a skill selects it, by its name, also when the tab is already open.
+            .onFocusRequest { name in
+                if model.skills.contains(where: { $0.name == name }) { model.selection = name }
+            }
+    }
+
+    private var splitView: some View {
         NavigationSplitView {
             List(model.skills, selection: $model.selection) { skill in
                 Label {

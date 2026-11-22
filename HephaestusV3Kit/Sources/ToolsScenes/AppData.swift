@@ -34,6 +34,8 @@ final class AppData {
 
     let session: ProjectSession
     let directory = ProjectDirectory(projects: [], state: .loading)
+    /// A route's ask to select an internal skill in System Prompts.
+    var skillFocus: FocusRequest?
     /// The app's log (docs/data.md › App log), made once the data folder is known.
     @ObservationIgnored private(set) var appLog = AppLog(url: nil)
     /// The project selected in Projects, which is one tab in the whole app; kept for the next launch, as V2 did. Held
