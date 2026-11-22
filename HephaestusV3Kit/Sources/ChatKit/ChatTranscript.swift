@@ -321,6 +321,14 @@ struct MessageFiles: View {
                         Button(String(localized: "Open", bundle: #bundle, comment: "Opens a file of a message in Quick Look")) { previewed = url }
                         Button(String(localized: "Open With Default App", bundle: #bundle)) { NSWorkspace.shared.open(url) }
                         Button(String(localized: "Show in Finder", bundle: #bundle)) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                        if file.contentType?.conforms(to: .image) == true {
+                            // As V2's transcript offered it.
+                            Button(String(localized: "Copy Image", bundle: #bundle)) {
+                                guard let image = NSImage(contentsOf: url) else { return }
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.writeObjects([image])
+                            }
+                        }
                     }
                 }
                 .accessibilityIdentifier("chat.file.\(turnID).\(file.id)")

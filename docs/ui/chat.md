@@ -114,7 +114,8 @@ apart and wrapping onto more lines (AZDesign's `FlowStack`). Each is AZDesign's 
   or when it can't be (a missing file), the `photo` symbol stands in.
 - Another file shows as a capsule: its type's icon, its name and its size.
 - A click opens the file in Quick Look, whose arrows step through the message's other files. Tooltip "Open
-  *name*". The context menu has **Open**, **Open With Default App** and **Show in Finder**.
+  *name*". The context menu has **Open**, **Open With Default App** and **Show in Finder**, then **Copy Image** for an
+  image, as V2's transcript had.
 - A file whose path breaks the rule of message files is shown dimmed and opens nothing.
 - A feedback message of V3 1.0.31 to 1.0.33 has no files of its own: its `- Screenshot:` and `- Attachment:`
   lines that name a file of the chat's own folder show as its files (default chosen at design time).

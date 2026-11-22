@@ -362,6 +362,9 @@
     "Copy Conversation" : {
 
     },
+    "Copy Image" : {
+
+    },
     "Custom" : {
       "comment" : "The animation card's row of an animation of the user's own"
     },
