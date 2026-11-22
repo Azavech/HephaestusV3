@@ -160,6 +160,7 @@ struct EditMachineSheet: View {
     @State private var memoryGB: Int
     @State private var diskGB: Int
     @State private var error: String?
+    @State private var working = false
 
     @Environment(\.dismiss) private var dismiss
 
@@ -188,12 +189,17 @@ struct EditMachineSheet: View {
             .formStyle(.grouped)
             SheetError(message: error)
             SheetButtons(action: String(localized: "Save", bundle: #bundle), identifier: "machines.editMachine",
-                         enabled: !name.trimmingCharacters(in: .whitespaces).isEmpty, working: false) {
-                do {
-                    try model.store.updateMachine(machine.id, name: name, cores: cores, memoryGB: memoryGB, diskGB: diskGB)
-                    dismiss()
-                } catch {
-                    self.error = error.localizedDescription
+                         enabled: !name.trimmingCharacters(in: .whitespaces).isEmpty, working: working) {
+                working = true
+                error = nil
+                Task {
+                    defer { working = false }
+                    do {
+                        try await model.store.updateMachine(machine.id, name: name, cores: cores, memoryGB: memoryGB, diskGB: diskGB)
+                        dismiss()
+                    } catch {
+                        self.error = error.localizedDescription
+                    }
                 }
             }
         }

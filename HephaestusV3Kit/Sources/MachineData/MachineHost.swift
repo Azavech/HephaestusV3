@@ -129,6 +129,8 @@ public final class MachineHost {
     @ObservationIgnored private let guestTools: GuestTools?
     @ObservationIgnored private let now: () -> Date
     @ObservationIgnored private var tasks: [String: Task<Void, Never>] = [:]
+    /// The machines whose disk grows, away from the main thread: they can't start, be edited or be deleted meanwhile.
+    @ObservationIgnored private var growing: Set<String> = []
     @ObservationIgnored private var installQueue: [String] = []
     /// Seconds between two looks at the DHCP leases, and how many.
     @ObservationIgnored var addressPoll: (interval: Duration, tries: Int) = (.seconds(3), 60)
@@ -388,11 +390,19 @@ public final class MachineHost {
         guard image.state == .ready else { throw MachineError(.conflict, "The image is not Ready.") }
         try Self.check(cores: cores, memoryGB: memoryGB, diskGB: diskGB, minimumDisk: library.folder(image: imageID).diskGB)
         guard canStartAnother else { throw .tooMany }
+        // The clone and the grown disk copy the recovery partition, seconds of disk work: away from the main thread.
+        let created = now()
+        let made = await Task.detached { () -> Result<MachineFile, StorageError> in
+            do throws(StorageError) {
+                return .success(try library.createMachine(named: name, image: image, cores: cores, memoryGB: memoryGB, diskGB: diskGB, now: created))
+            } catch {
+                return .failure(error)
+            }
+        }.value
         var machine: MachineFile
-        do {
-            machine = try library.createMachine(named: name, image: image, cores: cores, memoryGB: memoryGB, diskGB: diskGB, now: now())
-        } catch {
-            throw MachineError(.internal, "The virtual machine could not be created: \(error.description)")
+        switch made {
+        case .success(let file): machine = file
+        case .failure(let error): throw MachineError(.internal, "The virtual machine could not be created: \(error.description)")
         }
         machine.macAddress = MachineConfiguration.newMACAddress()
         try? library.write(machine)
@@ -404,6 +414,7 @@ public final class MachineHost {
     public func start(_ id: String) async throws(MachineError) {
         guard let library, var machine = machine(id) else { throw MachineError(.notFound, "Virtual machine \(id) not found.") }
         guard runs[id] == nil else { throw MachineError(.conflict, "The virtual machine is running.") }
+        guard !growing.contains(id) else { throw Self.diskGrowing }
         guard backend.supportsMachines else { throw .needsAppleSilicon }
         guard canStartAnother else { throw .tooMany }
         if machine.macAddress == nil {
@@ -462,19 +473,30 @@ public final class MachineHost {
     /// A stopped machine's name, cores, memory and disk; a larger disk is grown, and the guest's container
     /// grows at the next start.
     @discardableResult
-    public func updateMachine(_ id: String, name: String, cores: Int, memoryGB: Int, diskGB: Int) throws(MachineError) -> MachineFile {
+    public func updateMachine(_ id: String, name: String, cores: Int, memoryGB: Int, diskGB: Int) async throws(MachineError) -> MachineFile {
         guard let library, var machine = machine(id) else { throw MachineError(.notFound, "Virtual machine \(id) not found.") }
         guard runs[id] == nil else { throw MachineError(.conflict, "The virtual machine is running.") }
+        guard !growing.contains(id) else { throw Self.diskGrowing }
         let name = try Self.checkedName(name)
         let folder = library.folder(machine: id)
         let current = machine.diskGB ?? folder.diskGB
         try Self.check(cores: cores, memoryGB: memoryGB, diskGB: diskGB, minimumDisk: current)
         if diskGB > current {
-            do {
-                _ = try GuestDisk.grow(folder.disk, to: UInt64(diskGB) * MachineLibrary.bytesPerGB)
-            } catch {
-                throw MachineError(.internal, "The virtual machine could not be changed: \(MachineFailure.message(of: error))")
-            }
+            // Growing moves the recovery partition, seconds of disk work: away from the main thread.
+            growing.insert(id)
+            defer { growing.remove(id) }
+            let disk = folder.disk
+            let size = UInt64(diskGB) * MachineLibrary.bytesPerGB
+            let failure = await Task.detached { () -> String? in
+                do {
+                    _ = try GuestDisk.grow(disk, to: size)
+                    return nil
+                } catch {
+                    return MachineFailure.message(of: error)
+                }
+            }.value
+            if let failure { throw MachineError(.internal, "The virtual machine could not be changed: \(failure)") }
+            machine = self.machine(id) ?? machine
             machine.growContainer = true
         }
         machine.name = name
@@ -490,9 +512,12 @@ public final class MachineHost {
         return machine
     }
 
+    static let diskGrowing = MachineError(.conflict, "The virtual machine's disk is growing.")
+
     /// Stops a running machine at once, then deletes its folder (not to the Trash).
     public func deleteMachine(_ id: String) async throws(MachineError) {
         guard let library, machine(id) != nil else { throw MachineError(.notFound, "Virtual machine \(id) not found.") }
+        guard !growing.contains(id) else { throw Self.diskGrowing }
         if let run = runs[id] {
             await run.guest.stop()
             ended(run)

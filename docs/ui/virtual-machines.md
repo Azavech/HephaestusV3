@@ -209,7 +209,7 @@ A grouped form, at least 420 × 380 points, titled **New Machine**:
 
 ### Edit Machine
 
-A stopped machine's **Name**, **Cores**, **Memory** and **Disk** (from its current size), footer "A larger disk grows the guest's container at the next start.", **Cancel** and **Save**.
+A stopped machine's **Name**, **Cores**, **Memory** and **Disk** (from its current size), footer "A larger disk grows the guest's container at the next start.", **Cancel** and **Save**. Save shows a small progress indicator while a larger disk grows, which takes seconds and leaves the app usable; a refusal shows its message under the form.
 
 ### Add Image
 

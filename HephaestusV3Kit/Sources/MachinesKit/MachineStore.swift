@@ -37,7 +37,7 @@ protocol MachineStore: AnyObject {
     func stop(_ id: VirtualMachine.ID) async throws(MachineError)
     func pause(_ id: VirtualMachine.ID) async throws(MachineError)
     func resume(_ id: VirtualMachine.ID) async throws(MachineError)
-    func updateMachine(_ id: VirtualMachine.ID, name: String, cores: Int, memoryGB: Int, diskGB: Int) throws(MachineError)
+    func updateMachine(_ id: VirtualMachine.ID, name: String, cores: Int, memoryGB: Int, diskGB: Int) async throws(MachineError)
     func deleteMachine(_ id: VirtualMachine.ID) async throws(MachineError)
     func setDefaults(_ values: MachineDefaults) throws(MachineError)
     func shell(_ id: VirtualMachine.ID, command: String, asRoot: Bool) async throws(MachineError) -> ShellResult
@@ -130,8 +130,8 @@ public final class LiveMachineStore: MachineStore {
     func stop(_ id: VirtualMachine.ID) async throws(MachineError) { try await host.stop(id) }
     func pause(_ id: VirtualMachine.ID) async throws(MachineError) { try await host.pause(id) }
     func resume(_ id: VirtualMachine.ID) async throws(MachineError) { try await host.resume(id) }
-    func updateMachine(_ id: VirtualMachine.ID, name: String, cores: Int, memoryGB: Int, diskGB: Int) throws(MachineError) {
-        try host.updateMachine(id, name: name, cores: cores, memoryGB: memoryGB, diskGB: diskGB)
+    func updateMachine(_ id: VirtualMachine.ID, name: String, cores: Int, memoryGB: Int, diskGB: Int) async throws(MachineError) {
+        try await host.updateMachine(id, name: name, cores: cores, memoryGB: memoryGB, diskGB: diskGB)
     }
     func deleteMachine(_ id: VirtualMachine.ID) async throws(MachineError) { try await host.deleteMachine(id) }
     func setDefaults(_ values: MachineDefaults) throws(MachineError) { try host.setDefaults(values) }
@@ -233,7 +233,7 @@ final class SampleMachineStore: MachineStore {
     func pause(_ id: VirtualMachine.ID) async throws(MachineError) { setState(id, .paused) }
     func resume(_ id: VirtualMachine.ID) async throws(MachineError) { setState(id, .running) }
 
-    func updateMachine(_ id: VirtualMachine.ID, name: String, cores: Int, memoryGB: Int, diskGB: Int) throws(MachineError) {
+    func updateMachine(_ id: VirtualMachine.ID, name: String, cores: Int, memoryGB: Int, diskGB: Int) async throws(MachineError) {
         guard let index = machines.firstIndex(where: { $0.id == id }) else { throw MachineError(.notFound, "Virtual machine \(id) not found.") }
         let old = machines[index]
         machines[index] = VirtualMachine(id: id, name: name, system: old.system, systemVersion: old.systemVersion, state: old.state, cores: cores,

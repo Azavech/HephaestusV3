@@ -564,17 +564,17 @@ struct MachineHostTests {
             let image = try await Self.readyImage(host)
             let machine = try await host.createMachine(name: "A", imageID: image.id, cores: 2, memoryGB: 4, diskGB: 64)
             let guest = try #require(host.runs[machine.id]?.guest as? FakeGuest)
-            #expect(throws: MachineError(.conflict, "The virtual machine is running.")) {
-                try host.updateMachine(machine.id, name: "B", cores: 2, memoryGB: 4, diskGB: 64)
+            await #expect(throws: MachineError(.conflict, "The virtual machine is running.")) {
+                try await host.updateMachine(machine.id, name: "B", cores: 2, memoryGB: 4, diskGB: 64)
             }
             try await host.stop(machine.id)
             #expect(guest.stopped == 1 && guest.shutDowns == 0)
             #expect(host.runs.isEmpty)
-            #expect(throws: MachineError(.invalid, "diskGB: use a number from 64 to 2048.")) {
-                try host.updateMachine(machine.id, name: "B", cores: 2, memoryGB: 4, diskGB: 40)
+            await #expect(throws: MachineError(.invalid, "diskGB: use a number from 64 to 2048.")) {
+                try await host.updateMachine(machine.id, name: "B", cores: 2, memoryGB: 4, diskGB: 40)
             }
             // Within this Mac's ranges: a release runner has 3 cores and 7 GB.
-            let edited = try host.updateMachine(machine.id, name: "B", cores: min(4, MachineDefaults.hostCores),
+            let edited = try await host.updateMachine(machine.id, name: "B", cores: min(4, MachineDefaults.hostCores),
                                                 memoryGB: min(8, MachineDefaults.hostMemoryGB), diskGB: 80)
             #expect(edited.name == "B" && edited.growContainer)
             #expect(host.library!.folder(machine: machine.id).diskGB == 80)
