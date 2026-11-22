@@ -98,6 +98,8 @@ struct ImageDetail: View {
                     .foregroundStyle(.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Button(String(localized: "Set Up…", bundle: #bundle), systemImage: "wrench.and.screwdriver") {
+                    // An account typed but not saved is saved first, so Type Password works in the setup.
+                    if model.accountChanged(image.id) { try? model.saveAccount(of: image.id) }
                     model.perform(image.id, String(localized: "Set Up failed", bundle: #bundle)) { [store = model.store, id = image.id] in
                         try await store.startSetup(id)
                     }
@@ -134,8 +136,6 @@ struct ImageDetail: View {
 private struct GuestAccountSection: View {
     let image: MachineImage
     let model: MachinesModel
-    @State private var userName = ""
-    @State private var password = ""
     @State private var error: String?
 
     var body: some View {
@@ -148,10 +148,14 @@ private struct GuestAccountSection: View {
                 .font(.callout)
                 .foregroundStyle(.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
-            TextField(String(localized: "User name", bundle: #bundle), text: $userName)
+            TextField(String(localized: "User name", bundle: #bundle), text: Binding {
+                model.account(of: image.id).userName
+            } set: { model.editAccount(of: image.id, userName: $0) })
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("machines.imageDetail.userName")
-            SecureField(String(localized: "Password", bundle: #bundle), text: $password)
+            SecureField(String(localized: "Password", bundle: #bundle), text: Binding {
+                model.account(of: image.id).password
+            } set: { model.editAccount(of: image.id, password: $0) })
                 .textFieldStyle(.roundedBorder)
                 .accessibilityIdentifier("machines.imageDetail.password")
             HStack {
@@ -161,19 +165,17 @@ private struct GuestAccountSection: View {
                 Spacer()
                 Button(String(localized: "Save Account", bundle: #bundle)) {
                     do {
-                        try model.store.setAccount(image.id, userName: userName, password: password)
+                        try model.saveAccount(of: image.id)
                         error = nil
                     } catch {
                         self.error = error.localizedDescription
                     }
                 }
-                .disabled(userName == (image.userName ?? "") && password == (model.store.password(ofImage: image.id) ?? ""))
+                .disabled(!model.accountChanged(image.id))
                 .accessibilityIdentifier("machines.imageDetail.saveAccount")
             }
         }
-        .onChange(of: image.id, initial: true) {
-            userName = image.userName ?? ""
-            password = model.store.password(ofImage: image.id) ?? ""
+        .onChange(of: image.id) {
             error = nil
         }
     }

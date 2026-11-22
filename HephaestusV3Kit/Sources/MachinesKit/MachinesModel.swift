@@ -38,6 +38,37 @@ final class MachinesModel {
     private(set) var busy: Set<String> = []
     /// A machine or image waiting for Delete's confirmation.
     var pendingDeletion: MachineSelection?
+
+    // MARK: Guest account
+
+    /// The guest account typed but not saved, by image: kept across Set Up… and tab switches. No draft shows the
+    /// stored values, so the fields follow vm_set_account.
+    private(set) var accountDrafts: [MachineImage.ID: (userName: String, password: String)] = [:]
+
+    /// The account the image's fields show: the draft, else the stored one.
+    func account(of id: MachineImage.ID) -> (userName: String, password: String) {
+        accountDrafts[id] ?? (image(id)?.userName ?? "", store.password(ofImage: id) ?? "")
+    }
+
+    func editAccount(of id: MachineImage.ID, userName: String? = nil, password: String? = nil) {
+        var draft = account(of: id)
+        if let userName { draft.userName = userName }
+        if let password { draft.password = password }
+        accountDrafts[id] = draft
+    }
+
+    /// Whether the fields differ from the stored account.
+    func accountChanged(_ id: MachineImage.ID) -> Bool {
+        guard let draft = accountDrafts[id] else { return false }
+        return draft.userName != (image(id)?.userName ?? "") || draft.password != (store.password(ofImage: id) ?? "")
+    }
+
+    /// Save Account, and Set Up… with a changed account: the draft stored, then dropped.
+    func saveAccount(of id: MachineImage.ID) throws(MachineError) {
+        guard let draft = accountDrafts[id] else { return }
+        try store.setAccount(id, userName: draft.userName, password: draft.password)
+        accountDrafts[id] = nil
+    }
     /// Opened on a machine a route named: an iPhone's layout starts on its page.
     let opensSelection: Bool
 

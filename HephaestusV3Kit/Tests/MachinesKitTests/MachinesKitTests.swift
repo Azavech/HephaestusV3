@@ -279,6 +279,18 @@ struct MachineActionTests {
         #expect(model.machines.map(\.id) == ["other"])
     }
 
+    @Test("A guest account typed is kept by image until it is saved; no draft shows the stored one")
+    func accountDraft() throws {
+        let model = MachinesModel(store: MockMachineStore(storedMachines: []), selection: .image("ready-image"))
+        #expect(!model.accountChanged("ready-image"))
+        model.editAccount(of: "ready-image", userName: "dev")
+        model.selection = nil
+        model.selection = .image("ready-image")
+        #expect(model.account(of: "ready-image").userName == "dev" && model.accountChanged("ready-image"))
+        try model.saveAccount(of: "ready-image")
+        #expect(!model.accountChanged("ready-image"))
+    }
+
     @Test("A machine that stopped with a failure shows its message once")
     func failures() {
         let store = SampleMachineStore(machines: [.mock(id: "alpha", state: .stopped)], images: [], failures: ["alpha": "The guest crashed."])
