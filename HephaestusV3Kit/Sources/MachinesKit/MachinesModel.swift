@@ -116,7 +116,13 @@ final class MachinesModel {
         case .image(let id):
             perform(id, String(localized: "Delete failed", bundle: #bundle)) { [store] in try await store.deleteImage(id) }
         }
-        if selection == pending { selection = machines.first { .machine($0.id) != pending }.map { .machine($0.id) } }
+        // The next selection survives the deletion: an image takes its machines with it.
+        if selection == pending {
+            selection = switch pending {
+            case .machine: machines.first { .machine($0.id) != pending }.map { .machine($0.id) }
+            case .image(let id): machines.first { $0.imageID != id }.map { .machine($0.id) }
+            }
+        }
     }
 
     /// The failure a machine or setup stopped with, shown once.

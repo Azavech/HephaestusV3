@@ -163,7 +163,7 @@ Selecting an image replaces the screen and inspector with the image's page, on t
    - **Needs setup:** "macOS is installed. Set it up once: complete Setup Assistant, turn off SIP and install the guest agent. Machines then start from it." in the secondary color, then **Set Up…** (`wrench.and.screwdriver`, bordered prominent), which starts the setup machine; disabled while 2 run. A failure shows the alert **Set Up failed**.
    - **Failed:** the failure's message with `exclamationmark.triangle.fill`, in the danger color.
 4. **Guest Account.** A headline, a sentence ("The account created in Setup Assistant. Type Password types this password into the image's machines."), a **User name** field, a **Password** secure field and **Save Account**, enabled when a value changed. A refused value shows its message beside the button.
-5. **Delete Image…** (`trash`, destructive): asks first ([Alerts](#alerts)).
+5. **Delete Image…** (`trash`, destructive): asks first ([Alerts](#alerts)). The selection then moves to the first machine of another image, or to nothing: never to a machine the deletion removes.
 
 ![The image page of macOS 27.1, waiting for its setup: its rows, the explanation with Set Up…, the guest account and Delete Image…](images/machines-image.png)
 *An image waiting for its setup (sample store). 1100 × 760 points.*

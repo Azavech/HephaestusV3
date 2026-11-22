@@ -269,11 +269,14 @@ struct MachineActionTests {
     func imageDeletion() async throws {
         var made = VirtualMachine.mock(id: "made", state: .stopped)
         made.imageID = "ready-image"
-        let model = MachinesModel(store: MockMachineStore(storedMachines: [made]), selection: .image("ready-image"))
+        var other = VirtualMachine.mock(id: "other", state: .stopped)
+        other.imageID = "another-image"
+        let model = MachinesModel(store: MockMachineStore(storedMachines: [made, other]), selection: .image("ready-image"))
         model.pendingDeletion = .image("ready-image")
         model.confirmDeletion()
+        #expect(model.selection == .machine("other"), "The selection goes to a machine the deletion keeps")
         try await waitUntil { model.image("ready-image") == nil }
-        #expect(model.machines.isEmpty)
+        #expect(model.machines.map(\.id) == ["other"])
     }
 
     @Test("A machine that stopped with a failure shows its message once")
