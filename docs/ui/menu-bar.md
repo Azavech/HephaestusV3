@@ -18,7 +18,8 @@ you picked, and brings that window forward instead of opening a duplicate.
 - **On opening.** Each opening starts afresh: the filter field is empty and has the keyboard focus, and the
   first row is highlighted. The panel starts afresh whenever its window becomes key or stops being key,
   and after each action, so it never reopens on the last filter or highlight, even when the menu bar
-  extra keeps its view between openings.
+  extra keeps its view between openings. Its list follows the projects as they change, open or not: a
+  project created, renamed or removed meanwhile shows as it is now.
 
 The panel is a `MenuBarExtra` in the window style (`ToolsScenes`), so it is a panel, not a menu.
 [Navigation](navigation.md#windows) lists it with the app's windows.

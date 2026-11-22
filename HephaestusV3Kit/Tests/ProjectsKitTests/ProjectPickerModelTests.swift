@@ -10,6 +10,24 @@ struct ProjectPickerModelTests {
         #expect(ProjectPickerModel(store: MockProjectStore(), highlighting: "BK").highlighted == "BK")
     }
 
+    @Test("The list follows the projects: a new one is listed, the highlight stays on its project, or moves when it goes")
+    func followsProjects() {
+        let projects = MockProjectStore().projects
+        let model = ProjectPickerModel(projects: projects, highlighting: "B")
+        var renamed = projects
+        renamed[0] = MockProjectStore.project("A", "Alpha Renamed", .service, contract: "1.0.0", environments: ["Staging", "Production"])
+        model.update(projects: renamed)
+        #expect(model.tree.project("A")?.name == "Alpha Renamed")
+        #expect(model.highlighted == "B")
+        model.query = "renamed"
+        #expect(model.entries.map(\.project.id) == ["A"])
+        model.query = ""
+        model.highlight("B")
+        model.update(projects: renamed.filter { $0.id != "B" && $0.parentID != "B" })
+        #expect(model.highlighted == "A", "The highlighted project was removed: the first row takes it")
+        #expect(!model.entries.contains { $0.project.id == "B" })
+    }
+
     @Test("Each change of the filter highlights the first match")
     func filterHighlightsFirstMatch() {
         let model = ProjectPickerModel(store: MockProjectStore())

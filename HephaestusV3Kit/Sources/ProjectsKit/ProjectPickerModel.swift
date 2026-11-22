@@ -8,26 +8,47 @@ import ToolsFoundation
 /// The switcher lists every project but lets you pick only those with its window's tool.
 @Observable
 final class ProjectPickerModel {
-    /// The projects as a tree, from the store.
-    let tree: ProjectTree
+    /// The projects as a tree, from the store, then as `update(projects:)` gives them.
+    private(set) var tree: ProjectTree
     /// The tool a project needs to be picked; nil when every project can be.
     let requiredTool: ToolKind?
     /// The filter: a project's name or identifier. Each change highlights the first match.
     var query = "" {
         didSet {
             if query != oldValue {
+                sections = tree.sections(matching: query)
                 highlightFirst()
             }
         }
     }
+    /// The rows by kind: the tree, or the matches alone while filtering. Kept, not computed at each read: the
+    /// panel reads it for each of its rows and shortcuts.
+    private(set) var sections: [ProjectListSection]
     /// The row Return acts on: the first match, the arrow keys, or the pointer.
     private(set) var highlighted: Project.ID?
 
     /// A list without a filter, highlighting `id` when it can be picked, otherwise the first row that can.
-    init(store: any ProjectStore, requiredTool: ToolKind? = nil, highlighting id: Project.ID? = nil) {
-        self.tree = ProjectTree(store.projects)
+    convenience init(store: any ProjectStore, requiredTool: ToolKind? = nil, highlighting id: Project.ID? = nil) {
+        self.init(projects: store.projects, requiredTool: requiredTool, highlighting: id)
+    }
+
+    init(projects: [Project], requiredTool: ToolKind? = nil, highlighting id: Project.ID? = nil) {
+        let tree = ProjectTree(projects)
+        self.tree = tree
+        sections = tree.sections(matching: "")
         self.requiredTool = requiredTool
         reset(highlighting: id)
+    }
+
+    /// Follows the projects as they change (one created, renamed or removed while the list is kept): the filter
+    /// stays, and the highlight stays on its project while it is listed and can be picked, else goes to the
+    /// first row that can.
+    func update(projects: [Project]) {
+        tree = ProjectTree(projects)
+        sections = tree.sections(matching: query)
+        if highlightedProject == nil {
+            highlightFirst()
+        }
     }
 
     // MARK: Contents
@@ -35,11 +56,6 @@ final class ProjectPickerModel {
     /// Whether the filter holds text: the list then shows the matches alone, flat.
     var isFiltering: Bool {
         !ProjectTree.normalized(query).isEmpty
-    }
-
-    /// The rows by kind: the tree, or the matches alone while filtering.
-    var sections: [ProjectListSection] {
-        tree.sections(matching: query)
     }
 
     /// The rows in list order.

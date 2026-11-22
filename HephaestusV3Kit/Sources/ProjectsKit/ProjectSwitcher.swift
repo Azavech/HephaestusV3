@@ -6,6 +6,8 @@ import ToolsFoundation
 ///
 /// Switching changes this window only, so two windows of the same tool can show two projects.
 public struct ProjectSwitcher: View {
+    /// Every project, as the app holds them now: the list follows their changes.
+    let projects: [Project]
     @Binding var selection: Project.ID
     /// Projects without this tool are listed but can't be picked.
     let tool: ToolKind
@@ -15,11 +17,12 @@ public struct ProjectSwitcher: View {
     @State private var isPresented = false
 
     public init(projects: [Project], selection: Binding<Project.ID>, tool: ToolKind) {
+        self.projects = projects
         _selection = selection
         self.tool = tool
-        _model = State(initialValue: ProjectPickerModel(
-            store: SampleProjectStore(projects: projects), requiredTool: tool, highlighting: selection.wrappedValue
-        ))
+        // Empty, so that the model each redraw builds and SwiftUI drops costs nothing: the projects come with
+        // `update(projects:)`.
+        _model = State(initialValue: ProjectPickerModel(projects: [], requiredTool: tool))
     }
 
     public var body: some View {
@@ -42,6 +45,9 @@ public struct ProjectSwitcher: View {
         }
         .help(String(localized: "Switch Project", bundle: #bundle))
         .accessibilityIdentifier("toolbar.projectSwitcher")
+        .onChange(of: projects, initial: true) {
+            model.update(projects: projects)
+        }
         .popover(isPresented: $isPresented, arrowEdge: .bottom) {
             ProjectSwitcherList(model: model, current: selection) { project in
                 isPresented = false
@@ -57,7 +63,7 @@ public struct ProjectSwitcher: View {
     }
 
     private var current: Project? {
-        model.tree.project(selection)
+        projects.first { $0.id == selection }
     }
 }
 

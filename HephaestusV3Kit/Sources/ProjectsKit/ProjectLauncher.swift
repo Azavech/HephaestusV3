@@ -8,13 +8,16 @@ import ToolsFoundation
 ///
 /// It opens routes only; ToolsScenes decides whether a window already shows the project.
 public struct ProjectLauncher: View {
-    @State private var model: ProjectPickerModel
+    /// Every project, as the app holds them now: the panel follows their changes, also while the menu bar extra
+    /// keeps it between openings.
+    let projects: [Project]
+    @State private var model = ProjectPickerModel(projects: [])
     @FocusState private var isFilterFocused: Bool
     /// Whether the panel is open: its window is key while it shows.
     @Environment(\.appearsActive) private var appearsActive
 
     public init(projects: [Project]) {
-        _model = State(initialValue: ProjectPickerModel(store: SampleProjectStore(projects: projects)))
+        self.projects = projects
     }
 
     public var body: some View {
@@ -27,6 +30,9 @@ public struct ProjectLauncher: View {
             }
             .onChange(of: appearsActive) { _, isActive in
                 startAfresh(focusing: isActive)
+            }
+            .onChange(of: projects, initial: true) {
+                model.update(projects: projects)
             }
     }
 

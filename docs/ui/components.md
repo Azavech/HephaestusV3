@@ -40,7 +40,10 @@ Each is a style, a modifier or a small view that takes values, bindings and clos
 
 The first toolbar item of every tool window (`ProjectSwitcher`).
 
-- **Label.** The project's icon in its tint, then its name, with the toolbar's label padding.
+- **Label.** The project's icon in its tint, then its name, with the toolbar's label padding. The label and
+  the popover's list follow the projects as they change: a project renamed, created or removed shows as it
+  is now, also while the popover is open, which keeps its filter and highlight while the highlighted project
+  is still listed.
 - **Click.** Opens a popover, 300 × 380 pt at the default text size, larger with larger text:
   - a **Filter Projects** field;
   - the projects as in the Projects window's sidebar: by kind (Services, Apps, Libraries), each sub project
