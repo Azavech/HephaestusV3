@@ -60,6 +60,9 @@ public struct StreamMapper: Sendable {
 
     /// Blocks by message id, then index.
     private var blocks: [String: [Int: Block]] = [:]
+    /// The next block index of each message, kept past `finish()`: a background agent's message goes on after the
+    /// main turn's result.
+    private var nextIndex: [String: Int] = [:]
     /// The message each `message_start` opened, by `parent_tool_use_id` ("" for the main conversation).
     private var latestMessage: [String: String] = [:]
     private var models: [String: String] = [:]
@@ -133,6 +136,7 @@ public struct StreamMapper: Sendable {
         }
         blocks = [:]
         latestMessage = [:]
+        if nextIndex.count > 512 { nextIndex = [:] }
         models = [:]
         return items
     }
@@ -256,7 +260,11 @@ public struct StreamMapper: Sendable {
     /// the next index of the message (a block that wasn't streamed).
     private mutating func claim(messageID: String, type: String) -> Int {
         var known = blocks[messageID] ?? [:]
-        let index = known.filter { $0.value.type == type && !$0.value.final }.keys.min() ?? ((known.keys.max() ?? -1) + 1)
+        // After a result line cleared the blocks, a message still arriving (a background agent's) goes on from its
+        // next index, so its blocks keep ids of their own.
+        let index = known.filter { $0.value.type == type && !$0.value.final }.keys.min()
+            ?? max((known.keys.max() ?? -1) + 1, nextIndex[messageID] ?? 0)
+        nextIndex[messageID] = max(nextIndex[messageID] ?? 0, index + 1)
         var block = known[index] ?? Block(type: type)
         block.final = true
         known[index] = block

@@ -182,6 +182,17 @@ struct StreamMapperTests {
         #expect(mapper.map(Data(#"{"type":"system","subtype":"status","status":null}"#.utf8)) == [.ignored("system/status")])
     }
 
+    @Test("A background agent's message that goes on after the main turn's result keeps ids of its own")
+    func indexesAfterResult() {
+        var mapper = StreamMapper()
+        let first = mapper.map(Data(#"{"type":"assistant","parent_tool_use_id":"toolu_P","message":{"id":"msg_A","role":"assistant","model":"claude-x","content":[{"type":"text","text":"One"}]}}"#.utf8))
+        _ = mapper.map(Data(#"{"type":"result","subtype":"success","is_error":false,"duration_ms":5,"result":"ok"}"#.utf8))
+        let second = mapper.map(Data(#"{"type":"assistant","parent_tool_use_id":"toolu_P","message":{"id":"msg_A","role":"assistant","model":"claude-x","content":[{"type":"text","text":"Two"}]}}"#.utf8))
+        func ids(_ outputs: [StreamOutput]) -> [String] { outputs.compactMap { if case .item(let item) = $0 { item.id } else { nil } } }
+        #expect(ids(first) == ["msg_A#0"])
+        #expect(ids(second) == ["msg_A#1"])
+    }
+
     @Test("A result after Stop says so; another error says the CLI's reason")
     func results() {
         var mapper = StreamMapper()
