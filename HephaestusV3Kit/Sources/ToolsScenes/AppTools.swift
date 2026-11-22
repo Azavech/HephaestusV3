@@ -22,7 +22,10 @@ enum AppTools {
                          maps: LiveServiceMapStore, machines: MachineHost, implementer: Implementer,
                          open: @escaping @MainActor (Route) -> Bool) -> ToolRegistry {
         let feedback = FeedbackLink(isUnlinked: { chats.isUnlinkedFeedback($0) }, link: { chats.linkFeedback($0, toTicket: $1) })
-        return ToolRegistry(ProjectTools.operations(session: session) + TicketTools.operations(tickets: tickets, projects: session, feedback: feedback)
+        let ticketCounts: @MainActor (String) -> [String: Int] = { id in
+            (tickets.snapshot.tickets[id] ?? []).reduce(into: [:]) { counts, ticket in counts[ticket.file.status.rawValue, default: 0] += 1 }
+        }
+        return ToolRegistry(ProjectTools.operations(session: session, ticketCounts: ticketCounts) + TicketTools.operations(tickets: tickets, projects: session, feedback: feedback)
             + ChatTools.operations(chats: chats, projects: session) + implementer.operations() + BuildTools.operations(projects: session)
             + ContractTools.operations(contracts: contracts, projects: session) + ClusterTools.operations(maps: maps, projects: session)
             + MachineTools.operations(host: machines) + [openInApp(session: session, tickets: tickets, open: open)])

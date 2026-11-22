@@ -49,6 +49,7 @@ struct ProjectToolsTests {
             #expect(session.snapshot.project("ORD") != nil)
             let listed = try JSONValue.parse(Data(await call(mcp, "list_projects", [:]).text.utf8))
             #expect(listed.arrayValue?.compactMap { $0["id"]?.stringValue } == ["ORD"])
+            #expect(listed.arrayValue?.first?["ownTicketCounts"] == ["draft": 0, "todo": 0, "in_progress": 0, "review": 0, "done": 0])
             let updated = await call(mcp, "update_project", ["projectID": "ORD", "name": "Orders API", "color": "#34c759", "icon": "hammer"])
             #expect(!updated.isError)
             #expect(session.snapshot.project("ORD")?.file.color == "#34C759")

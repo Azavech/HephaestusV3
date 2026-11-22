@@ -8,9 +8,12 @@ import ToolsFoundation
 /// calls the Projects window and Project Settings make.
 public enum ProjectTools {
     /// `list_projects`, `get_project`, `create_project`, `update_project`, `remove_project`, in this order.
+    /// `ticketCounts` gives a project's own tickets by status (`draft`, `todo`, `in_progress`, `review`, `done`),
+    /// for `list_projects`; none by default.
     @MainActor
-    public static func operations(session: ProjectSession) -> [ToolOperation] {
-        [list(session), get(session), create(session), update(session), remove(session)]
+    public static func operations(session: ProjectSession,
+                                  ticketCounts: @escaping @MainActor (String) -> [String: Int] = { _ in [:] }) -> [ToolOperation] {
+        [list(session, ticketCounts: ticketCounts), get(session), create(session), update(session), remove(session)]
     }
 
     static let projectID = ToolSchema.string("Project identifier, 2 to 8 letters, such as ORD.")
@@ -19,14 +22,20 @@ public enum ProjectTools {
     // MARK: Operations
 
     @MainActor
-    static func list(_ session: ProjectSession) -> ToolOperation {
+    static func list(_ session: ProjectSession, ticketCounts: @escaping @MainActor (String) -> [String: Int]) -> ToolOperation {
         ToolOperation(
             name: "list_projects",
-            description: "Returns every project in Hephaestus V3, sub projects included, each with its identifier, name, type, folder, parent and sub projects.",
+            description: "Returns every project in Hephaestus V3, sub projects included, each with its identifier, name, type, color, icon, folder, parent and sub projects, and its tickets' counts by status: ownTicketCounts for its own tickets, ticketCounts with its sub projects' too.",
             inputSchema: .object(), permission: .read,
             describe: ProjectTools.describe("list_projects")
         ) { @MainActor _ throws(ToolError) in
-            try encode(session.snapshot.projects.map(ProjectSummaryJSON.init))
+            let snapshot = session.snapshot
+            return try encode(snapshot.projects.map { project in
+                let own = ProjectSummaryJSON.counts(ticketCounts(project.id))
+                let family = snapshot.family(of: project.id).map { ProjectSummaryJSON.counts(ticketCounts($0.id)) }
+                let total = family.reduce(into: [String: Int]()) { sum, counts in sum.merge(counts, uniquingKeysWith: +) }
+                return ProjectSummaryJSON(project, ownTicketCounts: own, ticketCounts: total)
+            })
         }
     }
 
@@ -172,19 +181,35 @@ struct ProjectSummaryJSON: Encodable {
     let id: String
     let name: String
     let type: String
+    let color: String?
+    let icon: String?
     let folder: String
     let parentID: String?
     let subprojects: [String]
     let fileIssue: String?
+    /// Its own tickets by status, and with its sub projects' (V2's `ownTicketCounts` and `ticketCounts`).
+    let ownTicketCounts: [String: Int]
+    let ticketCounts: [String: Int]
 
-    init(_ project: LoadedProject) {
+    /// The five statuses, each present, zero when no ticket has it.
+    static let statuses = ["draft", "todo", "in_progress", "review", "done"]
+
+    static func counts(_ given: [String: Int]) -> [String: Int] {
+        Dictionary(uniqueKeysWithValues: statuses.map { ($0, given[$0] ?? 0) })
+    }
+
+    init(_ project: LoadedProject, ownTicketCounts: [String: Int] = counts([:]), ticketCounts: [String: Int] = counts([:])) {
         id = project.id
         name = project.file.name
         type = project.file.type.rawValue
+        color = project.file.color
+        icon = project.file.icon
         folder = project.root
         parentID = project.parentID
         subprojects = project.childIDs
         fileIssue = project.fileIssue
+        self.ownTicketCounts = ownTicketCounts
+        self.ticketCounts = ticketCounts
     }
 }
 

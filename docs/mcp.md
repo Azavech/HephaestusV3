@@ -363,13 +363,15 @@ carries the guest account's password: Type Password in the window types it.
 ### list_projects
 
 - **Calls:** the session's snapshot.
-- **Result:** an array, each project's `id`, `name`, `type`, `folder`, `parentID`, `subprojects` and
-  `fileIssue`, depth first: each top-level project followed by its sub projects.
+- **Result:** an array, each project's `id`, `name`, `type`, `color` and `icon` (when set), `folder`, `parentID`,
+  `subprojects`, `fileIssue`, and, as V2 gave them, `ownTicketCounts` (its own tickets by status: `draft`, `todo`,
+  `in_progress`, `review`, `done`, each present) and `ticketCounts` (with every sub project's), depth first: each
+  top-level project followed by its sub projects.
 
 Description:
 
 ```text
-Returns every project in Hephaestus V3, sub projects included, each with its identifier, name, type, folder, parent and sub projects.
+Returns every project in Hephaestus V3, sub projects included, each with its identifier, name, type, color, icon, folder, parent and sub projects, and its tickets' counts by status: ownTicketCounts for its own tickets, ticketCounts with its sub projects' too.
 ```
 
 Input schema:
