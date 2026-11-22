@@ -308,11 +308,13 @@ extension ChatSession {
                     noteBackgroundWork(run)
                 }
             case .cliTurnOpened(let first, let problem):
-                run.notificationPending = false
-                noteBackgroundWork(run)
+                // The turn first, then the owed turn's end: the background work's end must not end a process whose
+                // turn just opened (a changed context window waits for the turn).
                 run.cliTurnOpen = true
                 run.inTurn = true
                 run.idleTimer?.cancel()
+                run.notificationPending = false
+                noteBackgroundWork(run)
                 if first {
                     run.initialized = true
                     run.startTimer?.cancel()
@@ -723,7 +725,8 @@ extension ChatSession {
             run.connection.write(ClaudeInput.control(id, ["subtype": "apply_flag_settings", "settings": ["ultracode": .bool(settings.ultracode)]]))
             expectAnswer(id, of: run)
         }
-        if ChatContextWindow(stored: settings.contextWindow) != run.contextWindow, !run.inTurn {
+        // A new context window waits for the turn and for the background work, as docs/data.md says.
+        if ChatContextWindow(stored: settings.contextWindow) != run.contextWindow, !run.inTurn, !run.hasBackgroundWork {
             run.end(closingInput: true, grace: Self.signalGrace)
         }
         if old.model != model {

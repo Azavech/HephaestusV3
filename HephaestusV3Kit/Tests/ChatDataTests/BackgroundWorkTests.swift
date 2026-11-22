@@ -41,6 +41,27 @@ struct BackgroundWorkTests {
         #expect(!world.session.backgroundWork.contains(id))
     }
 
+    @Test("A changed context window waits for the background work and the turn it owes, then ends the process")
+    func contextWindowWaits() async throws {
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        let id = try await world.session.send("Run it in the background", references: [], to: nil, projectID: "ORD")
+        let cli = try #require(world.launcher.chats.first)
+        let lines = try Fixture.lines("stream-background-bash.jsonl")
+        cli.feed(Array(lines[0..<29]))
+        try await world.until { world.session.state(of: id) == .idle && world.session.backgroundWork.contains(id) }
+        var settings = try #require(world.session.chats[id]?.file.settings)
+        settings.contextWindow = "200k"
+        try world.session.setSettings(id, settings)
+        #expect(!cli.inputClosed, "The background task still runs")
+        cli.feed(Array(lines[29..<34]))
+        try await world.until { world.session.state(of: id) == .running }
+        #expect(!cli.inputClosed, "The turn the CLI owes runs")
+        cli.feed(Array(lines[34...]))
+        try await world.until { cli.inputClosed }
+        cli.finish(.exited(0))
+    }
+
     @Test("The lines map to the running tasks and the ended task")
     func mapping() {
         var mapper = StreamMapper(effort: .high, now: { Date() })
