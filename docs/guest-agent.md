@@ -108,7 +108,12 @@ or start with `~/`.
   guest's layout or `return`, `enter`, `tab`, `space`, `delete`, `forwardDelete`, `escape`, the arrows, `home`,
   `end`, `pageUp`, `pageDown`, `f1` to `f20` (`Unknown key <key>.`).
 - **uiTree**: each element `role`, `subrole`, `title`, `value` (cut at 2,000), `description`, `identifier`,
-  `enabled`, `focused`, `frame`, `children`; at most 5,000 elements, 5 seconds per element.
+  `enabled`, `focused`, `frame`, `children`; at most 5,000 elements, 5 seconds per element, and 60 seconds in all,
+  well before the host gives up at 120: the tree read so far is the answer. An app that doesn't answer for an
+  element (`cannotComplete`) ends the walk, so that it costs 5 seconds once, not once per element left. An agent
+  installed before this rule keeps the old walk until its image is set up again.
+- **type** takes 8 ms a character and 28 ms a line break or tab; the host waits 60 seconds plus that time
+  (`vm_type`), and refuses a text whose typing would pass 230 seconds.
 - Events and the tree need Accessibility, the screenshot Screen Recording: without them, `The agent has no
   Accessibility permission.`, `The agent has no Screen Recording permission.`
 

@@ -217,7 +217,7 @@ Reads ipsw.me's list ("Reading the versions from ipsw.me…"), then a **Version*
 
 ### Open Shell
 
-At least 560 × 380 points, titled **Shell of *name***: a **Command** field in the code font (Return runs it), **As root**, **Run**; the output below on the sunken surface, standard output then standard error in the code font, selectable, and "Exit status *n*", "Timed out", with "output cut at 1 MB" when cut, in the danger color when not 0. "Runs /bin/zsh -lc in the account's home folder, with a timeout of 60 seconds." and **Done** at the bottom.
+At least 560 × 380 points, titled **Shell of *name***: a **Command** field in the code font (Return runs it), **As root**, **Run**; the output below on the sunken surface, standard output then standard error in the code font, selectable, and "Exit status *n*", "Timed out", with "output cut at 1 MB" when cut, in the danger color when not 0. Only the output's last 2,000 lines, at most 200 KB, are laid out, made once when the answer comes: a longer one shows "Shows the last 2,000 lines." and **Copy Output**, which copies all of it (`machines.shell.copy`). "Runs /bin/zsh -lc in the account's home folder, with a timeout of 60 seconds." and **Done** at the bottom.
 
 ![The Open Shell sheet of Tools test Mac](images/machines-shell.png)
 *Open Shell, before a command.*

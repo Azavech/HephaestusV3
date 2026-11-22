@@ -237,7 +237,14 @@ private struct MachineToolSet {
         operation("vm_type", "Types text where the guest's keyboard focus is, whatever its keyboard layout; a line break presses Return.", [
             ("text", .string("The text to type.")),
         ], required: ["id", "text"], permission: .operateMachines) { arguments throws(ToolError) in
-            try await agent(arguments, "type", ["text": .string(try arguments.string("text"))])
+            let text = try arguments.string("text")
+            // The agent types about 10 ms a character and 30 ms a line break or tab: the wait grows with the text, and a
+            // text the CLI's 5 minutes for a call can't hold is refused before anything is typed.
+            let typing = MachineTools.typingTime(of: text)
+            guard typing <= MachineTools.longestTyping else {
+                throw ToolError(.invalid, "text: too long to type in one call (about \(MachineTools.longestTyping.components.seconds * 100) characters at most). Copy it into the guest with vm_copy_in.")
+            }
+            return try await agent(arguments, "type", ["text": .string(text)], timeout: .seconds(60) + typing)
         }
     }
 
@@ -305,4 +312,16 @@ private extension JSONValue {
 
 private extension Dictionary where Key == String, Value == JSONValue {
     var removingNullMembers: JSONValue { JSONValue.object(self).removingNullMembers }
+}
+
+extension MachineTools {
+    /// How long the agent takes to type `text`, as V2's agent types: 8 ms a character and 28 ms a line break or tab,
+    /// rounded up.
+    nonisolated static func typingTime(of text: String) -> Duration {
+        let breaks = text.reduce(0) { $0 + ($1.isNewline || $1 == "\t" ? 1 : 0) }
+        return .milliseconds(10 * text.count + 30 * breaks)
+    }
+
+    /// The most typing one call waits for, so that it ends within the CLI's 5 minutes for a tool call.
+    nonisolated static let longestTyping = Duration.seconds(230)
 }

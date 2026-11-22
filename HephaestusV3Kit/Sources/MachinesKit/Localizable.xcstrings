@@ -108,6 +108,9 @@
     "Copy" : {
 
     },
+    "Copy Output" : {
+
+    },
     "Cores" : {
 
     },
@@ -367,6 +370,9 @@
 
     },
     "Show Inspector" : {
+
+    },
+    "Shows the last %lld lines." : {
 
     },
     "Shutting Down" : {

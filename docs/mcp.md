@@ -3121,9 +3121,10 @@ Input schema:
 
 ### vm_type
 
-- **Calls:** the agent's `type`.
+- **Calls:** the agent's `type`, waiting 60 seconds plus the typing's time: 10 ms a character and 30 ms a line
+  break or tab.
 - **Result:** `{}`.
-- **Errors:** an id that is no machine (`notFound`, `Virtual machine <id> not found.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Accessibility permission in the guest.
+- **Errors:** a text whose typing would pass 230 seconds, so that the call ends within the CLI's 5 minutes (`invalid`, `text: too long to type in one call (about 23000 characters at most). Copy it into the guest with vm_copy_in.`); an id that is no machine (`notFound`, `Virtual machine <id> not found.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); no Accessibility permission in the guest.
 
 Description:
 

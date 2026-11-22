@@ -8,6 +8,8 @@ enum AgentAccessibility {
     static let maximumElements = 5_000
     /// A `value` is cut at this many characters.
     static let maximumValueLength = 2_000
+    /// The walk stops after this long, well before the host gives up at 120 s: what was read so far is the answer.
+    static let walkLimit: TimeInterval = 60
     /// How long an app may take to answer for one element, in seconds. Set on the system-wide
     /// element, it holds for every element of the process; set on an app's element, it would
     /// hold for that element alone and leave its windows and controls the default.
@@ -30,7 +32,9 @@ enum AgentAccessibility {
         var remaining = maximumElements
         let scale = AgentScreen.scale()
         let origin = CGDisplayBounds(CGMainDisplayID()).origin
-        let tree = describe(element, depth: 1, maximumDepth: maximumDepth, remaining: &remaining, scale: scale, origin: origin)
+        let deadline = Date().addingTimeInterval(walkLimit)
+        let tree = describe(element, depth: 1, maximumDepth: maximumDepth, remaining: &remaining, deadline: deadline, scale: scale,
+                            origin: origin)
         return AgentResult(json: [
             "app": clean(application.localizedName ?? ""),
             "bundleID": clean(application.bundleIdentifier ?? ""),
@@ -72,12 +76,14 @@ enum AgentAccessibility {
         Int(exactly: (Double(points) * scale).rounded())
     }
 
-    private static func describe(_ element: AXUIElement, depth: Int, maximumDepth: Int, remaining: inout Int, scale: Double,
-                                 origin: CGPoint) -> [String: Any] {
+    private static func describe(_ element: AXUIElement, depth: Int, maximumDepth: Int, remaining: inout Int, deadline: Date,
+                                 scale: Double, origin: CGPoint) -> [String: Any] {
         remaining -= 1
         var values: CFArray?
-        guard AXUIElementCopyMultipleAttributeValues(element, attributes as CFArray, [], &values) == .success,
-              let list = values as? [Any], list.count == attributes.count else {
+        let status = AXUIElementCopyMultipleAttributeValues(element, attributes as CFArray, [], &values)
+        guard status == .success, let list = values as? [Any], list.count == attributes.count else {
+            // An app that stopped answering costs one messaging timeout, not one per element left: the walk ends.
+            if status == .cannotComplete { remaining = 0 }
             return [:]
         }
         func value(_ index: Int) -> Any? {
@@ -114,8 +120,12 @@ enum AgentAccessibility {
         if depth < maximumDepth, let children = value(10) as? [AXUIElement], !children.isEmpty {
             var described: [[String: Any]] = []
             for child in children where remaining > 0 {
-                described.append(describe(child, depth: depth + 1, maximumDepth: maximumDepth, remaining: &remaining, scale: scale,
-                                          origin: origin))
+                if Date() >= deadline {
+                    remaining = 0
+                    break
+                }
+                described.append(describe(child, depth: depth + 1, maximumDepth: maximumDepth, remaining: &remaining, deadline: deadline,
+                                          scale: scale, origin: origin))
             }
             if !described.isEmpty {
                 node["children"] = described

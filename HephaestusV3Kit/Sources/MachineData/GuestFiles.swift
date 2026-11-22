@@ -24,7 +24,7 @@ public enum GuestShell {
 
 extension MachineHost {
     /// The agent's `readFile` and `writeFile` move 8 MiB at a time.
-    public static let chunkSize = 8_388_608
+    nonisolated public static let chunkSize = 8_388_608
 
     /// Copies a file or folder of this Mac into the guest: a file 8 MiB at a time with its permission bits, a
     /// folder's contents through a tar archive.
@@ -81,7 +81,8 @@ extension MachineHost {
         try await Self.tar(["-x", "-p", "-f", archive.path, "-C", destination.path])
     }
 
-    private func copyFileIn(_ id: String, _ source: URL, to destination: String) async throws(MachineError) {
+    /// Off the main actor: each 8 MiB chunk is read here, and only the agent's requests go to the main actor.
+    nonisolated private func copyFileIn(_ id: String, _ source: URL, to destination: String) async throws(MachineError) {
         let handle: FileHandle
         let mode: Int?
         do {
@@ -117,7 +118,8 @@ extension MachineHost {
         }
     }
 
-    private func copyFileOut(_ id: String, _ source: String, to destination: URL, mode: Int?) async throws(MachineError) {
+    /// Off the main actor: each chunk is written here, and only the agent's requests go to the main actor.
+    nonisolated private func copyFileOut(_ id: String, _ source: String, to destination: URL, mode: Int?) async throws(MachineError) {
         let manager = FileManager.default
         let partial = destination.deletingLastPathComponent().appendingPathComponent(".\(destination.lastPathComponent).\(UUID().uuidString)")
         do {
@@ -208,7 +210,7 @@ extension MachineHost {
         }
     }
 
-    private static func cannotWrite(_ url: URL, _ error: any Error) -> MachineError {
+    nonisolated private static func cannotWrite(_ url: URL, _ error: any Error) -> MachineError {
         MachineError(.internal, "\(url.path) cannot be written: \(MachineFailure.message(of: error))")
     }
 }

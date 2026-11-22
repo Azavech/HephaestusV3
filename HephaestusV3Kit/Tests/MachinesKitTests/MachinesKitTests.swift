@@ -343,6 +343,24 @@ struct MachineActionTests {
 
 @Suite("Machine tools' paths on this Mac")
 struct MachineToolPathTests {
+    @Test("Open Shell lays out the last 2,000 lines of an output, at most 200 KB")
+    func shellTail() {
+        #expect(ShellOutput.tail(of: "a\nb") == ShellOutput(text: "a\nb", isCut: false))
+        let long = (1...3_000).map(String.init).joined(separator: "\n")
+        let tail = ShellOutput.tail(of: long)
+        #expect(tail.isCut && tail.text.hasPrefix("1001\n") && tail.text.hasSuffix("3000"))
+        let wide = ShellOutput.tail(of: String(repeating: "x", count: 300_000))
+        #expect(wide.isCut && wide.text.utf8.count == ShellOutput.shownBytes)
+    }
+
+    @Test("vm_type waits as long as the typing takes, and a text over 230 s of typing is refused")
+    func typingTime() {
+        #expect(MachineTools.typingTime(of: "abc") == .milliseconds(30))
+        #expect(MachineTools.typingTime(of: "a\nb\tc") == .milliseconds(50 + 60))
+        #expect(MachineTools.typingTime(of: String(repeating: "x", count: 23_000)) <= MachineTools.longestTyping)
+        #expect(MachineTools.typingTime(of: String(repeating: "x", count: 23_001)) > MachineTools.longestTyping)
+    }
+
     @Test("A path on this Mac is absolute or starts with ~/, expanded to the home folder")
     func macPath() throws {
         #expect(try MachineTools.macPath("/tmp/a", argument: "to") == "/tmp/a")

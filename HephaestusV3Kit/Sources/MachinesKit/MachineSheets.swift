@@ -1,3 +1,4 @@
+import AppKit
 import AZDesign
 import AZDesignCode
 import MachineData
@@ -297,6 +298,8 @@ struct ShellSheet: View {
     @State private var command = ""
     @State private var asRoot = false
     @State private var result: ShellResult?
+    /// What the sheet lays out of the result's output: its end, made once when the result comes.
+    @State private var shown = ShellOutput(text: "", isCut: false)
     @State private var error: String?
     @State private var running = false
 
@@ -323,13 +326,26 @@ struct ShellSheet: View {
                         ProgressView().controlSize(.small)
                     }
                     if let result {
-                        Text(verbatim: result.stdout + result.stderr)
+                        Text(verbatim: shown.text)
                             .codeFont(.callout)
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        Text(status(result))
-                            .font(.caption)
-                            .foregroundStyle(result.exitStatus == 0 ? Color.textSecondary : Color.danger)
+                        HStack(spacing: 8) {
+                            Text(status(result))
+                                .font(.caption)
+                                .foregroundStyle(result.exitStatus == 0 ? Color.textSecondary : Color.danger)
+                            if shown.isCut {
+                                Text("Shows the last \(ShellOutput.shownLines) lines.", bundle: #bundle)
+                                    .font(.caption)
+                                    .foregroundStyle(.textSecondary)
+                                Button(String(localized: "Copy Output", bundle: #bundle)) {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(result.stdout + result.stderr, forType: .string)
+                                }
+                                .controlSize(.small)
+                                .accessibilityIdentifier("machines.shell.copy")
+                            }
+                        }
                     }
                     if let error {
                         Text(error).foregroundStyle(.danger)
@@ -371,10 +387,34 @@ struct ShellSheet: View {
         Task {
             defer { running = false }
             do {
-                result = try await model.store.shell(machine.id, command: command, asRoot: asRoot)
+                let answer = try await model.store.shell(machine.id, command: command, asRoot: asRoot)
+                let output = answer.stdout + answer.stderr
+                shown = await Task.detached { ShellOutput.tail(of: output) }.value
+                result = answer
             } catch {
                 self.error = error.localizedDescription
             }
         }
+    }
+}
+
+/// What Open Shell lays out of an output: its last `shownLines` lines, at most `shownBytes`. One text of the agent's
+/// 2 MB would hold the window while it is laid out.
+nonisolated struct ShellOutput: Equatable, Sendable {
+    let text: String
+    let isCut: Bool
+
+    static let shownLines = 2_000
+    static let shownBytes = 200_000
+
+    static func tail(of output: String) -> ShellOutput {
+        let lines = output.split(separator: "\n", omittingEmptySubsequences: false)
+        var kept = lines.suffix(shownLines).joined(separator: "\n")
+        var isCut = lines.count > shownLines
+        if kept.utf8.count > shownBytes {
+            kept = String(decoding: kept.utf8.suffix(shownBytes), as: UTF8.self)
+            isCut = true
+        }
+        return ShellOutput(text: kept, isCut: isCut)
     }
 }
