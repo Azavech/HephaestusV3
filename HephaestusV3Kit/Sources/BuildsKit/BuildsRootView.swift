@@ -62,6 +62,9 @@ public struct BuildsRootView: View {
         .onChange(of: model.chatSubject, initial: true) { _, subject in
             reportChatSubject(subject)
         }
+        .onChange(of: layout, initial: true) { _, layout in
+            model.selectsNewest = layout != .phone
+        }
         // The shown mode's list is read when it shows, then every 30 s while it does.
         .task(id: model.mode) {
             while !Task.isCancelled {
@@ -211,7 +214,9 @@ public struct BuildsRootView: View {
                     }
                     .accessibilityIdentifier("builds.runs.compact")
                 } page: { id in
-                    if let run = model.runs.first(where: { $0.id == id }) {
+                    // The selected run with its jobs once read, as the Mac and iPad layouts show it; the list's
+                    // run has none.
+                    if let run = (model.currentRun?.id == id ? model.currentRun : nil) ?? model.runs.first(where: { $0.id == id }) {
                         VSplitView {
                             RunInspector(run: run, selectedStep: $model.selectedStep, model: model)
                                 .id(run.id)

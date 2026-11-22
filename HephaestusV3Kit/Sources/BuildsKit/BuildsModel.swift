@@ -85,6 +85,9 @@ final class BuildsModel {
     private var runID: WorkflowRun.ID?
     /// A route's focus that names nothing read yet: applied once the lists are read.
     private var pendingFocus: String?
+    /// Whether a read selects the newest run or release when none is selected: not at iPhone width, where a
+    /// selection opens its page over the list (the view sets it from its layout).
+    var selectsNewest = true
 
     /// The builds of `project`, with the item `focus` names selected: a run (`1288`) or a release
     /// (`release:v1.4.0`). Without one, or with one that names nothing here, the newest run.
@@ -170,8 +173,12 @@ final class BuildsModel {
         await store.refresh(project, releases: mode == .releases)
         isRefreshing = false
         if let pendingFocus { select(focus: pendingFocus) }
-        if runID == nil || !runs.contains(where: { $0.id == runID }), let first = runs.first { selectedRunID = first.id }
-        if selectedReleaseID == nil || !releases.contains(where: { $0.id == selectedReleaseID }) { selectedReleaseID = releases.first?.id }
+        if runID == nil ? selectsNewest : !runs.contains(where: { $0.id == runID }), let first = runs.first {
+            selectedRunID = first.id
+        }
+        if selectedReleaseID == nil ? selectsNewest : !releases.contains(where: { $0.id == selectedReleaseID }) {
+            selectedReleaseID = releases.first?.id
+        }
         if mode == .runs { await loadSelectedRun() }
     }
 

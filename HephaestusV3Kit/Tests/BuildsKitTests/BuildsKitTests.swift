@@ -125,6 +125,19 @@ struct ModelTests {
         #expect(model.pageOnOpen == nil)
     }
 
+    @Test("At iPhone width a read selects nothing when nothing is selected, so no page opens over the list")
+    func phoneReadKeepsNoSelection() async {
+        let model = BuildsModel(project: project, focus: nil, store: store)
+        model.selectsNewest = false
+        model.selectedRunID = nil
+        model.selectedReleaseID = nil
+        await model.refresh()
+        #expect(model.selectedRunID == nil && model.selectedReleaseID == nil)
+        model.selectsNewest = true
+        await model.refresh()
+        #expect(model.selectedRunID == 3 && model.selectedReleaseID == "v2.0.0-rc.1")
+    }
+
     @Test("A second route to the same run selects it again after the user picked another")
     func routeToSameRun() {
         let model = BuildsModel(project: project, focus: "3", store: store)
