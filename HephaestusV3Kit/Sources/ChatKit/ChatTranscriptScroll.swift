@@ -62,9 +62,16 @@ struct TranscriptScrollView: View {
                     .accessibilityIdentifier("chat.jumpToLatest")
                 }
             }
-            .onChange(of: currentMatch) {
+            .onChange(of: currentMatch, initial: true) {
                 if let currentMatch {
-                    withMotion(.layout) { proxy.scrollTo(currentMatch, anchor: .center) }
+                    // The lazy stack knows a turn's id before it draws the turn: go to the turn first, then, once
+                    // it is drawn, to the block.
+                    if let turn = conversation.turns.first(where: { $0.blocks.contains { $0.id == currentMatch } })?.id {
+                        proxy.scrollTo(turn, anchor: .center)
+                    }
+                    Task { @MainActor in
+                        withMotion(.layout) { proxy.scrollTo(currentMatch, anchor: .center) }
+                    }
                 }
             }
         }
