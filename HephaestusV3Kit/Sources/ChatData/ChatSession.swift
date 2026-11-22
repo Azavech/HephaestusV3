@@ -143,7 +143,9 @@ public final class ChatSession {
     @ObservationIgnored var port = SettingsFile.defaultMCPPort
     @ObservationIgnored var runs: [String: ChatRun] = [:]
     /// The app's own approvals, waiting for the user, by chat then request id.
-    @ObservationIgnored var approvals: [String: [String: CheckedContinuation<Bool, Never>]] = [:]
+    @ObservationIgnored var approvals: [String: [String: CheckedContinuation<ApprovalAnswer, Never>]] = [:]
+    /// How long a card of the app waits before the app withdraws it: `approvalTimeout`, shorter in tests.
+    @ObservationIgnored var approvalLimit = ChatSession.approvalTimeout
     /// The chats whose CLI failed, until their next message.
     @ObservationIgnored var failed: Set<String> = []
     /// The transcripts appended to since launch, which got their LF check.
@@ -169,6 +171,9 @@ public final class ChatSession {
     static let idleTimeout: Duration = .seconds(20 * 60)
     /// The pause between the steps of Stop and of an ending process.
     static let signalGrace: Duration = .seconds(5)
+    /// A card of the app no one answers is withdrawn after this, before the CLI gives up on its call
+    /// (`ChatLaunch.toolTimeout`, 30 minutes): the call doesn't run.
+    static let approvalTimeout: Duration = .seconds(29 * 60)
 
     public init(projects: ProjectSession, tokens: MCPTokens, launcher: any ClaudeLaunching = SystemClaudeLauncher(),
                 runner: any ProcessRunning = SystemProcessRunner.shared, device: String,

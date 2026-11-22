@@ -568,7 +568,7 @@ extension ChatSession {
             run.connection.write(allow ? ClaudeInput.allow(requestID, input: input, permissions: decision == .allowAlways ? suggestions : nil)
                                        : ClaudeInput.deny(requestID, message: note))
         } else if let continuation = approvals[chatID]?.removeValue(forKey: requestID) {
-            continuation.resume(returning: allow)
+            continuation.resume(returning: allow ? .allowed : .refused)
         } else {
             return
         }
@@ -609,25 +609,39 @@ extension ChatSession {
     }
 
     /// Asks the user about a call of the app's tool `name` with `input`, from the chat's Claude: a card in the
-    /// chat, answered with Allow or Don't Allow. False when the chat has no process, and when the request is
-    /// cancelled (Stop, the process's end, quitting).
-    public func requestApproval(_ chatID: String, tool name: String, input: JSONValue) async -> Bool {
-        guard runs[chatID] != nil else { return false }
+    /// chat, answered with Allow or Don't Allow. Refused when the chat has no process, and when the request is
+    /// cancelled (Stop, the process's end, quitting); expired when no one answered in `approvalLimit`.
+    public func requestApproval(_ chatID: String, tool name: String, input: JSONValue) async -> ApprovalAnswer {
+        guard runs[chatID] != nil else { return .refused }
         let request = PermissionRequestItem(requestID: UUID().uuidString.lowercased(), created: now(),
                                             toolName: "mcp__\(MCPProtocol.serverName)__\(name)", input: input)
         record(.permissionRequest(request), in: chatID)
+        let limit = approvalLimit
         return await withCheckedContinuation { continuation in
             approvals[chatID, default: [:]][request.requestID] = continuation
             refreshState(chatID)
+            Task { [weak self] in
+                try? await Task.sleep(for: limit)
+                self?.expireApproval(chatID, requestID: request.requestID)
+            }
         }
     }
 
     func cancelApprovals(of chatID: String, by device: String?) {
         for (id, continuation) in approvals[chatID] ?? [:] {
-            continuation.resume(returning: false)
+            continuation.resume(returning: .refused)
             decide(chatID, requestID: id, decision: .deny, by: device)
         }
         approvals[chatID] = nil
+    }
+
+    /// A card still waiting after `approvalLimit`: the app withdraws it as it does on Stop, so that it can't be
+    /// answered once the CLI has given up on the call (docs/mcp.md › Permissions).
+    func expireApproval(_ chatID: String, requestID: String) {
+        guard let continuation = approvals[chatID]?.removeValue(forKey: requestID) else { return }
+        continuation.resume(returning: .expired)
+        decide(chatID, requestID: requestID, decision: .deny, by: nil)
+        refreshState(chatID)
     }
 
     /// Records the decision of a permission request in its item.
@@ -783,4 +797,10 @@ extension ChatSession {
 struct OutgoingMessage {
     var text: String
     var images: [ClaudeImage] = []
+}
+
+/// How a card of the app ended: allowed, refused (Don't Allow, Stop, the process's end, quitting), or withdrawn
+/// by the app because no one answered in time.
+public enum ApprovalAnswer: Sendable, Hashable {
+    case allowed, refused, expired
 }

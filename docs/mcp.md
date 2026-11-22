@@ -205,13 +205,18 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 | `removeProjects` | `remove_project` | runs | Change projects Never refuses; otherwise a card |
 
 - A card is a `permissionRequest` item of the chat (`ChatSession.requestApproval`): the call waits until the
-  user answers, Stop, or the chat's process ends. The CLI waits up to `MCP_TOOL_TIMEOUT`, 30 minutes.
+  user answers, Stop, or the chat's process ends, for 29 minutes at most. Then the app withdraws the card, as Stop
+  does (refused, by no one), and the call doesn't run; a late answer does nothing.
+- The CLI gives up on a call of the app's tools after 30 minutes, and on one that sends nothing after 30 minutes
+  too: the chat's MCP configuration gives the server a `timeout` of 1,800,000 ms, which raises the CLI's limit for
+  a silent call (5 minutes by default for an HTTP server, `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT`), and the CLI gets
+  `MCP_TOOL_TIMEOUT` with the same value ([Data › Launch](data.md#launch)).
 - A refusal is a tool error (`forbidden`) with one of these messages: `The user doesn't let Claude change
   tickets from chats (Settings ▸ Chat).`, `The user doesn't let Claude change projects from chats (Settings ▸
   Chat).`, `The user doesn't let Claude start or cancel builds from chats (Settings ▸ Chat).`, `The user doesn't let
   Claude call APIs that change data from chats (Settings ▸ Chat).`, `The user doesn't let Claude operate deployments
   from chats (Settings ▸ Chat).`, `The user doesn't let Claude operate virtual machines from chats (Settings ▸ Chat).`,
-  `The user didn't allow this call.`
+  `The user didn't allow this call.`, `No one answered the card in 29 minutes: the call didn't run.`
 - The permissions are the user defaults `chat.ticketChanges` and `chat.projectChanges`: `never`, `askFirst`
   (the default) or `always`; `chat.apiCalls`, `chat.clusterChanges` and `chat.machineChanges`, the same; and `chat.buildStarts`: `never` (the default) or
   `askFirst`.

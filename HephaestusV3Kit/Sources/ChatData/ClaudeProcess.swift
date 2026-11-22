@@ -67,8 +67,11 @@ public struct ChatLaunch: Sendable, Hashable {
         return arguments
     }
 
-    /// The CLI's time limit for a tool call, in milliseconds: a call waits while the user decides on its card.
-    public static let toolTimeout = "1800000"
+    /// The CLI's time limit for a call of the app's tools, in milliseconds: a call waits while the user decides on
+    /// its card. The MCP configuration gives it as the server's `timeout` too, which also lifts the CLI's limit for
+    /// a call that sends nothing (5 minutes by default for an HTTP server).
+    public static let toolTimeoutMilliseconds = 1_800_000
+    public static let toolTimeout = String(toolTimeoutMilliseconds)
 
     public var request: ProcessRequest {
         var environment = ShellEnvironment.forChildren(environment)
@@ -89,10 +92,11 @@ public struct ChatLaunch: Sendable, Hashable {
     /// The app's internal skills, as a plugin the chat can call them from (`--plugin-dir`); nil leaves them out.
     public var pluginDir: URL?
 
-    /// The MCP configuration file: the app's server on 127.0.0.1 with the chat's token.
+    /// The MCP configuration file: the app's server on 127.0.0.1 with the chat's token, and its time limit.
     public static func mcpConfiguration(port: Int, token: String) -> Data {
         JSONValue.object(["mcpServers": [MCPProtocol.serverName: [
             "type": "http", "url": .string("http://127.0.0.1:\(port)/mcp"), "headers": ["Authorization": .string("Bearer \(token)")],
+            "timeout": .int(toolTimeoutMilliseconds),
         ]]]).data
     }
 }

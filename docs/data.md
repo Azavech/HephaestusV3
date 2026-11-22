@@ -1308,7 +1308,7 @@ The arguments, one element each, no shell:
   the user's: the internal skills chats call, as the user wrote them, regenerated before each launch ([Chat
   plugin](#chat-plugin)). When it can't be written, the CLI starts without `--plugin-dir` and the chat gets a
   warning, "Skills could not be prepared: <reason>".
-- The MCP configuration, mode 0600: `{"mcpServers":{"hephaestus":{"type":"http","url":"http://127.0.0.1:<port>/mcp","headers":{"Authorization":"Bearer <token>"}}}}`, the token a new chat token
+- The MCP configuration, mode 0600: `{"mcpServers":{"hephaestus":{"type":"http","url":"http://127.0.0.1:<port>/mcp","headers":{"Authorization":"Bearer <token>"},"timeout":1800000}}}`, the token a new chat token
   ([MCP › Authentication](mcp.md#authentication)), revoked with the file when the process ends.
 
 Then the app writes `{"type":"control_request","request_id":"hephaestus-1","request":{"subtype":"initialize"}}`

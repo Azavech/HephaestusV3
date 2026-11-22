@@ -286,10 +286,28 @@ struct ChatSessionTests {
         guard case .permissionRequest(let request)? = world.items(id).last else { Issue.record("no card"); return }
         #expect(request.toolName == "mcp__hephaestus__add_comment" && request.isPending)
         world.session.answer(id, requestID: request.requestID, allow: true)
-        #expect(await answer.value)
+        #expect(await answer.value == .allowed)
         guard case .permissionRequest(let answered)? = world.items(id).last else { Issue.record("no card"); return }
         #expect(answered.decision == .allow && answered.decidedBy == "Studio")
         #expect(world.session.state(of: id) == .starting)
+        world.launcher.chats.first?.finish(.exited(0))
+    }
+
+    @Test("A card no one answers is withdrawn before the CLI gives up: the call doesn't run, a late answer does nothing")
+    func approvalExpires() async throws {
+        #expect(ChatSession.approvalTimeout < .milliseconds(ChatLaunch.toolTimeoutMilliseconds))
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        world.session.approvalLimit = .milliseconds(50)
+        let id = try await world.session.send("Comment", references: [], to: nil, projectID: "ORD")
+        let answer = Task { await world.session.requestApproval(id, tool: "add_comment", input: ["ticketID": "ORD-1", "text": "Done"]) }
+        #expect(await answer.value == .expired)
+        guard case .permissionRequest(let request)? = world.items(id).last else { Issue.record("no card"); return }
+        #expect(request.decision == .deny && request.decidedBy == nil)
+        #expect(world.session.state(of: id) == .starting)
+        world.session.answer(id, requestID: request.requestID, allow: true)
+        guard case .permissionRequest(let late)? = world.items(id).last else { Issue.record("no card"); return }
+        #expect(late.decision == .deny, "A late answer changes nothing")
         world.launcher.chats.first?.finish(.exited(0))
     }
 
@@ -304,7 +322,7 @@ struct ChatSessionTests {
         let pending = Task { await world.session.requestApproval(id, tool: "add_comment", input: [:]) }
         try await world.until { world.items(id).filter { if case .permissionRequest(let request) = $0 { request.isPending } else { false } }.count == 2 }
         world.session.stop(id)
-        #expect(await pending.value == false)
+        #expect(await pending.value == .refused)
         let answers = cli.written.filter { $0["type"] == "control_response" }
         #expect(answers.first?["response"]?["response"]?["behavior"] == "deny")
         #expect(answers.first?["response"]?["response"]?["message"] == "The user stopped Claude.")
@@ -404,9 +422,10 @@ struct ChatLaunchTests {
         #expect(ClaudeCLI.locate(setting: nil, processEnvironment: [:], shellPATH: "/nowhere", home: "/nowhere") == .failure(.notFound))
     }
 
-    @Test("The MCP configuration names the app's server with the chat's token")
+    @Test("The MCP configuration names the app's server with the chat's token, and its 30-minute limit")
     func configuration() throws {
         let value = try JSONValue.parse(ChatLaunch.mcpConfiguration(port: 47830, token: "abc"))
-        #expect(value == ["mcpServers": ["hephaestus": ["type": "http", "url": "http://127.0.0.1:47830/mcp", "headers": ["Authorization": "Bearer abc"]]]])
+        #expect(value == ["mcpServers": ["hephaestus": ["type": "http", "url": "http://127.0.0.1:47830/mcp", "headers": ["Authorization": "Bearer abc"],
+                                                        "timeout": 1_800_000]]])
     }
 }

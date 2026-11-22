@@ -38,8 +38,11 @@ public enum ChatGate {
             case .bypassPermissions: return nil
             case .dontAsk: return ToolError(.forbidden, "The chat doesn't ask (Don't Ask): \(refusal)")
             default:
-                let allowed = await chats.requestApproval(chatID, tool: operation.name, input: arguments)
-                return allowed ? nil : ToolError(.forbidden, "The user didn't allow this call.")
+                switch await chats.requestApproval(chatID, tool: operation.name, input: arguments) {
+                case .allowed: return nil
+                case .refused: return ToolError(.forbidden, "The user didn't allow this call.")
+                case .expired: return ToolError(.forbidden, "No one answered the card in 29 minutes: the call didn't run.")
+                }
             }
         }
         let permission: ChangePermission
