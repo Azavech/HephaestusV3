@@ -100,6 +100,28 @@ struct OwnWritesLockTrashTests {
         #expect(!writes.isOwnWrite(path: "/p", data: Data("a".utf8)))
     }
 
+    @Test("A write through a linked folder is recognized under the path file events give, links resolved")
+    func ownWritesThroughLinks() throws {
+        try withTemporaryFolder { folder in
+            let real = folder.appendingPathComponent("real", isDirectory: true)
+            try FileManager.default.createDirectory(at: real, withIntermediateDirectories: true)
+            let link = folder.appendingPathComponent("link")
+            try FileManager.default.createSymbolicLink(at: link, withDestinationURL: real)
+            // The temporary folder itself is under /var, which file events report as /private/var.
+            let resolved = try #require(realpath(real.path, nil))
+            defer { free(resolved) }
+            let eventFolder = String(cString: resolved)
+            #expect(eventFolder != link.path)
+            let writes = OwnWrites()
+            let data = Data("a".utf8)
+            writes.recordWrite(path: link.appendingPathComponent("a.yml").path, sha256: AtomicFile.sha256(data))
+            #expect(writes.isOwnWrite(path: eventFolder + "/a.yml", data: data))
+            writes.recordRemoval(path: link.appendingPathComponent("gone.yml").path)
+            #expect(writes.isOwnRemoval(path: eventFolder + "/gone.yml"))
+            #expect(!writes.isOwnRemoval(path: eventFolder + "/a.yml"))
+        }
+    }
+
     @Test("The lock is exclusive until it is released")
     func lock() throws {
         try withTemporaryFolder { folder in

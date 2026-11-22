@@ -2377,7 +2377,9 @@ Every file is written in these steps (`AtomicFile.write`):
 5. The temporary file is renamed onto the destination: readers see the old content or the new one, never a
    mix.
 6. The SHA-256 of the written bytes is recorded for the path (`OwnWrites`), so that the file event the write
-   causes is recognized ([Outside changes](#outside-changes)).
+   causes is recognized ([Outside changes](#outside-changes)). The path is kept with its folder's symbolic links
+   resolved, as file events give it (`/private/tmp/…` for `/tmp/…`, a linked folder's target), and so is a
+   removal's.
 
 When a step fails, the temporary file is deleted and the write fails with `<path> cannot be written:
 <reason>`.
