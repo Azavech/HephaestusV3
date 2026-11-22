@@ -230,15 +230,15 @@ entry.
 
 Each property shows its name (`caption`, semibold, `textSecondary`) above its value (`textPrimary`).
 
-| Property         | Value                                                                                                                         |
-|------------------|-------------------------------------------------------------------------------------------------------------------------------|
-| **Status**       | The status badge.                                                                                                             |
-| **Priority**     | The priority badge, or "None" in `textSecondary`: a menu that sets None, Low, Medium, High or Urgent at once.                 |
-| **Reporter**     | Who created the ticket: "You" or "Claude".                                                                                    |
-| **Bundle**       | Each bundle's title after `shippingbox` in `accent`, one per line (a ticket may be in several), or "None" in `textSecondary`. |
-| **Created On**   | Day, month and year, such as "9 Nov 2026".                                                                                    |
-| **Last Updated** | Day, month and year.                                                                                                          |
-| **Labels**       | One capsule per label (`caption`, on `surfaceSunken`), or "None".                                                             |
+| Property         | Value                                                                                                                                                                                                                                                                                            |
+|------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Status**       | The status badge.                                                                                                                                                                                                                                                                                |
+| **Priority**     | The priority badge, or "None" in `textSecondary`: a menu that sets None, Low, Medium, High or Urgent at once.                                                                                                                                                                                    |
+| **Reporter**     | Who created the ticket: "You" or "Claude".                                                                                                                                                                                                                                                       |
+| **Bundle**       | Each bundle's title after `shippingbox` in `accent`, one per line (a ticket may be in several), or "None" in `textSecondary`. A click shows the bundle, as V2's ids did: its row in the sidebar, or its project's Tickets for a sub project's bundle (help "Show ORD-B3", `ticket.bundle.<id>`). |
+| **Created On**   | Day, month and year, such as "9 Nov 2026".                                                                                                                                                                                                                                                       |
+| **Last Updated** | Day, month and year.                                                                                                                                                                                                                                                                             |
+| **Labels**       | One capsule per label (`caption`, on `surfaceSunken`), or "None".                                                                                                                                                                                                                                |
 
 The Bundle property shows the bundle the ticket is in among its own project's bundles. In a parent's
 window, a sub project's ticket shows its bundle too, though the sidebar lists only the parent's own bundles:

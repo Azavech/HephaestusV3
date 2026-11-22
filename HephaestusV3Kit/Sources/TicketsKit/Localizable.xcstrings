@@ -603,6 +603,9 @@
     "Show" : {
 
     },
+    "Show %@" : {
+      "comment" : "Shows a bundle of the ticket"
+    },
     "Show All Tickets" : {
 
     },

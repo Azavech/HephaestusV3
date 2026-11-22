@@ -182,7 +182,13 @@ struct TicketDetailView: View {
     }
 
     private func properties(columns: [GridItem]) -> some View {
-        TicketProperties(ticket: ticket, bundles: model.bundles(of: ticket), columns: columns) { priority in
+        TicketProperties(ticket: ticket, bundles: model.bundles(of: ticket), columns: columns, onBundle: { bundle in
+            if model.family.contains(where: { $0.id == bundle.projectID }) {
+                model.select(focus: bundle.id)
+            } else {
+                openRoute(.tool(.tickets, project: bundle.projectID, focus: bundle.id))
+            }
+        }) { priority in
             Task { await model.setPriority(priority, of: ticket) }
         }
     }
@@ -487,6 +493,8 @@ private struct TicketProperties: View {
     let ticket: Ticket
     let bundles: [TicketBundle]
     let columns: [GridItem]
+    /// Shows a bundle of the ticket.
+    let onBundle: (TicketBundle) -> Void
     let onPriority: (TicketPriority?) -> Void
 
     var body: some View {
@@ -528,13 +536,21 @@ private struct TicketProperties: View {
                 } else {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(bundles) { bundle in
-                            Label {
-                                Text(verbatim: bundle.title)
-                            } icon: {
-                                Image(systemName: "shippingbox")
-                                    .foregroundStyle(.accent)
-                                    .accessibilityHidden(true)
+                            // A click shows the bundle, as V2's ids did: its row in this window, or its project's Tickets.
+                            Button {
+                                onBundle(bundle)
+                            } label: {
+                                Label {
+                                    Text(verbatim: bundle.title)
+                                } icon: {
+                                    Image(systemName: "shippingbox")
+                                        .foregroundStyle(.accent)
+                                        .accessibilityHidden(true)
+                                }
                             }
+                            .buttonStyle(.plain)
+                            .help(String(localized: "Show \(bundle.id)", bundle: #bundle, comment: "Shows a bundle of the ticket"))
+                            .accessibilityIdentifier("ticket.bundle.\(bundle.id)")
                         }
                     }
                 }
