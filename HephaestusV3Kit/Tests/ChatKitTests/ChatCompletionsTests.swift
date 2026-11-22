@@ -129,7 +129,7 @@ struct ChatFilesTests {
         #expect(missing.files.isEmpty && missing.failure?.hasSuffix("can't be read.") == true)
     }
 
-    @Test("A paste of files gives them; of an image, a PNG named for its time; of text, nothing")
+    @Test("A paste of files gives them; of an image, its data, written as a PNG named for its time; of text, nothing")
     func pasting() throws {
         let board = NSPasteboard(name: NSPasteboard.Name("HephaestusV3Tests-\(UUID().uuidString)"))
         defer { board.releaseGlobally() }
@@ -138,7 +138,7 @@ struct ChatFilesTests {
         try Data("x".utf8).write(to: file)
         board.clearContents()
         board.writeObjects([file as NSURL])
-        #expect(ChatFiles.pasted(from: board) == [file])
+        #expect(ChatFiles.take(from: board) == .files([file]))
 
         board.clearContents()
         let image = NSImage(size: NSSize(width: 4, height: 4), flipped: false) { rect in
@@ -148,7 +148,8 @@ struct ChatFilesTests {
         }
         board.writeObjects([image])
         let date = ISODate.date(from: "2026-11-17T21:05:09Z")!
-        let pasted = try #require(ChatFiles.pasted(from: board, now: date)?.first)
+        guard case .image(let data)? = ChatFiles.take(from: board) else { Issue.record("no image"); return }
+        let pasted = try #require(ChatFiles.write(image: data, now: date))
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
@@ -159,12 +160,12 @@ struct ChatFilesTests {
 
         board.clearContents()
         board.setString("plain text", forType: .string)
-        #expect(ChatFiles.pasted(from: board) == nil)
+        #expect(ChatFiles.take(from: board) == nil)
 
         // Text beside a picture of it, as Numbers or Word copy cells: the text pastes.
         board.clearContents()
         board.writeObjects(["cells as text" as NSString, image])
-        #expect(ChatFiles.pasted(from: board) == nil)
+        #expect(ChatFiles.take(from: board) == nil)
     }
 }
 

@@ -141,12 +141,21 @@ extension ChatSession {
         var carried: [ChatItemReference] = []
         var sentImages = images
         if !files.isEmpty, let folder = folder(of: id) {
-            let stored = try MessageAttachment.store(files.map { ($0, $0.lastPathComponent) }, chatID: id,
-                                                     in: folder.chatsFolder.appendingPathComponent(id, isDirectory: true))
+            let sources = files.map { (url: $0, name: $0.lastPathComponent) }
+            let destination = folder.chatsFolder.appendingPathComponent(id, isDirectory: true)
+            // Off the main actor: copying files of up to 20 MB and converting images take time.
+            let copied = await Task.detached(priority: .userInitiated) { () -> Result<[(url: URL, attachment: MessageAttachment)], ChatError> in
+                do throws(ChatError) {
+                    return .success(try MessageAttachment.store(sources, chatID: id, in: destination))
+                } catch {
+                    return .failure(error)
+                }
+            }.value
+            let stored = try copied.get()
             attachments = stored.map(\.attachment)
             carried = stored.map { ChatItemReference(tool: ChatItemReference.fileTool, projectID: projectID, focus: $0.url.path, title: $0.attachment.name) }
-            sentImages += stored.filter { ClaudeImage.isImage(contentType: $0.attachment.contentType, url: $0.url) }
-                .compactMap { ClaudeImage(contentsOf: $0.url) }
+            sentImages += await ClaudeImage.load(stored.filter { ClaudeImage.isImage(contentType: $0.attachment.contentType, url: $0.url) }
+                .map(\.url))
         }
         post(message, references: references, images: sentImages, attachments: attachments, carried: carried, to: id, cli: cli,
              liftsQuestionBlock: fromUser)

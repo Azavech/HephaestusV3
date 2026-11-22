@@ -39,6 +39,12 @@ public struct ClaudeImage: Sendable, Hashable {
     }
 
     /// The image file at `url`, scaled; nil when it can't be read as an image.
+    /// The images of `urls`, read and converted off the caller's actor, in order; those that aren't images are left
+    /// out. A large picture takes time to decode and scale.
+    public static func load(_ urls: [URL]) async -> [ClaudeImage] {
+        await Task.detached(priority: .userInitiated) { urls.compactMap { ClaudeImage(contentsOf: $0) } }.value
+    }
+
     public init?(contentsOf url: URL) {
         guard let data = FileManager.default.contents(atPath: url.path) else { return nil }
         self.init(data)

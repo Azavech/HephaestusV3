@@ -340,9 +340,11 @@ As V2's composer did, a message can carry files, in the Chat window and in the p
 - **Dropping** files anywhere on the conversation (the transcript, the cards, the composer) adds them.
 - **⌘V** in the field, while the pasteboard holds files, adds them; while it holds an image without a file and without text (as V2: text beside a picture of it, as Numbers or Word copy, pastes as text), the
   image is written as a PNG named `Pasted Image <yyyy-MM-dd> at <HH.mm.ss>.png` (local time) in a temporary
-  folder and added; text pastes as text (AZDesign's `pastesFiles`).
+  folder and added; text pastes as text (AZDesign's `pastesFiles`). The key press is answered at once: the
+  pasteboard's image data is taken then, and converted and written off the main thread, its chip showing when
+  the file is ready.
 - Each file shows as a chip after the others (`PendingFileChip`): the Finder's icon for it, its name cut in the
-  middle, its size, and a remove button (`xmark`, "Remove *name*"); a chip is at most 240 pt wide. A file is
+  middle, its size (both read once per file, not at each key typed), and a remove button (`xmark`, "Remove *name*"); a chip is at most 240 pt wide. A file is
   added once.
 - **Refused**, with the reason over the composer and nothing added: a folder ("Folders cannot be attached."), a
   file over 20 MB ("*name* is larger than 20 MB."), or files over 20 MB together ("The attachments of one request

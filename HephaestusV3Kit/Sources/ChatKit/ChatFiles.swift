@@ -29,15 +29,35 @@ enum ChatFiles {
         }
     }
 
-    /// The files the pasteboard holds, or its image as a PNG written to a temporary folder, named `Pasted Image
-    /// <yyyy-MM-dd> at <HH.mm.ss>.png` in local time, as Tickets names one, when it holds no text; nil otherwise
-    /// (text pastes as text, even beside the picture Numbers, Keynote or Word put with it, as in V2).
-    static func pasted(from pasteboard: NSPasteboard = .general, now: Date = Date()) -> [URL]? {
+    /// What a paste takes: the pasteboard's files, or its image's data as it holds it.
+    enum Paste: Equatable {
+        case files([URL])
+        case image(Data)
+    }
+
+    /// What the pasteboard gives, read at once, so that the key press is answered without waiting: its files, or its
+    /// image's data when it holds no text; nil otherwise (text pastes as text, even beside the picture Numbers,
+    /// Keynote or Word put with it, as in V2). The image is written by `write(image:now:)`, off the main actor.
+    static func take(from pasteboard: NSPasteboard = .general) -> Paste? {
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty {
-            return urls
+            return .files(urls)
         }
-        guard pasteboard.availableType(from: [.string]) == nil, let image = NSImage(pasteboard: pasteboard), let tiff = image.tiffRepresentation,
-              let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return nil }
+        guard pasteboard.availableType(from: [.string]) == nil else { return nil }
+        if let data = pasteboard.data(forType: .png) ?? pasteboard.data(forType: .tiff) { return .image(data) }
+        return NSImage(pasteboard: pasteboard)?.tiffRepresentation.map(Paste.image)
+    }
+
+    /// A pasted image as a PNG written to a temporary folder, named `Pasted Image <yyyy-MM-dd> at <HH.mm.ss>.png` in
+    /// local time, as Tickets names one; nil when it can't be read or written.
+    nonisolated static func write(image data: Data, now: Date) -> URL? {
+        let png: Data
+        if data.starts(with: [0x89, 0x50, 0x4E, 0x47]) {
+            png = data
+        } else if let converted = NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:]) {
+            png = converted
+        } else {
+            return nil
+        }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
@@ -49,7 +69,7 @@ enum ChatFiles {
         } catch {
             return nil
         }
-        return [file]
+        return file
     }
 
     /// Removes the temporary copies of pasted images once they are sent: the chat keeps its own.
@@ -71,17 +91,8 @@ struct PendingFileChip: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
-                .resizable()
-                .frame(width: 14, height: 14)
-                .accessibilityHidden(true)
-            Text(verbatim: url.lastPathComponent)
-                .lineLimit(1)
+            FileFacts(url: url, iconSize: 14)
                 .truncationMode(.middle)
-            if let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize {
-                Text(Int64(size), format: .byteCount(style: .file))
-                    .foregroundStyle(.textSecondary)
-            }
             Button(String(localized: "Remove \(url.lastPathComponent)", bundle: #bundle), systemImage: "xmark", action: remove)
                 .labelStyle(.iconOnly)
                 .buttonStyle(.borderless)
@@ -111,5 +122,38 @@ struct AddFilesButton: View {
             .buttonStyle(.borderless)
             .help(String(localized: "Add Files…", bundle: #bundle))
             .accessibilityIdentifier("chat.composer.addFiles")
+    }
+}
+
+/// A file's icon, name and size, read once per file rather than at each draw: a composer draws at every key typed.
+struct FileFacts: View {
+    let url: URL
+    let iconSize: CGFloat
+
+    @State private var icon: NSImage?
+    @State private var size: Int?
+
+    var body: some View {
+        Group {
+            if let icon {
+                Image(nsImage: icon)
+                    .resizable()
+            } else {
+                Image(systemName: "doc")
+            }
+        }
+        .frame(width: iconSize, height: iconSize)
+        .accessibilityHidden(true)
+        .task(id: url) {
+            icon = NSWorkspace.shared.icon(forFile: url.path)
+            let url = url
+            size = await Task.detached { try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize }.value
+        }
+        Text(verbatim: url.lastPathComponent)
+            .lineLimit(1)
+        if let size {
+            Text(Int64(size), format: .byteCount(style: .file))
+                .foregroundStyle(.textSecondary)
+        }
     }
 }

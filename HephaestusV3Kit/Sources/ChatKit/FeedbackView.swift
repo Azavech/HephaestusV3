@@ -25,6 +25,8 @@ final class FeedbackModel {
     var comment = ""
     /// The window's PNG, in a temporary folder; nil when the window couldn't be captured.
     let screenshot: URL?
+    /// The screenshot, read when the sheet opens.
+    @ObservationIgnored let screenshotImage: NSImage?
     /// Whether Send sends the screenshot; on each time the sheet opens.
     var includesScreenshot = true
     /// The files added, in the order they were added.
@@ -48,6 +50,8 @@ final class FeedbackModel {
         projectID = project.id
         projectName = project.name
         self.screenshot = screenshot
+        // Read once: the sheet draws again at each key of the comment.
+        screenshotImage = screenshot.flatMap(NSImage.init(contentsOf:))
         self.context = context
         self.settings = settings
         self.cli = cli
@@ -257,7 +261,7 @@ public struct FeedbackView: View {
     /// The PNG scaled to fit 480 × 300 points, dimmed while left out; the eye in its top-right corner leaves it
     /// out or puts it back, and a click elsewhere opens it in Quick Look.
     @ViewBuilder private var screenshot: some View {
-        if let url = model.screenshot, let image = NSImage(contentsOf: url) {
+        if let url = model.screenshot, let image = model.screenshotImage {
             ZStack(alignment: .topTrailing) {
                 Image(nsImage: image)
                     .resizable()
@@ -307,15 +311,7 @@ public struct FeedbackView: View {
                 HStack(spacing: 6) {
                     ForEach(model.files, id: \.self) { url in
                         HStack(spacing: 4) {
-                            Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
-                                .resizable()
-                                .frame(width: 16, height: 16)
-                            Text(verbatim: url.lastPathComponent)
-                                .lineLimit(1)
-                            if let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize {
-                                Text(Int64(size), format: .byteCount(style: .file))
-                                    .foregroundStyle(.textSecondary)
-                            }
+                            FileFacts(url: url, iconSize: 16)
                             Button {
                                 model.remove(url)
                             } label: {

@@ -457,8 +457,17 @@ public final class ChatPanelModel {
     /// ⌘V in the composer: the pasteboard's files, or its image, go with the next message; false lets the field
     /// paste its text.
     func pasteFiles() -> Bool {
-        guard let pasted = ChatFiles.pasted() else { return false }
-        addFiles(pasted)
+        guard let paste = ChatFiles.take() else { return false }
+        switch paste {
+        case .files(let urls):
+            addFiles(urls)
+        case .image(let data):
+            // Converted and written off the main actor: the key press is answered at once.
+            let now = Date()
+            Task {
+                if let file = await Task.detached(operation: { ChatFiles.write(image: data, now: now) }).value { addFiles([file]) }
+            }
+        }
         return true
     }
 

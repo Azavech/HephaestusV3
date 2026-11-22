@@ -88,7 +88,7 @@ extension ChatSession {
         let attachments = report.screenshot == nil ? stored : Array(stored.dropFirst())
         let message = FeedbackReport.message(comment: comment, context: report.context, screenshot: screenshot?.path,
                                              attachments: attachments.map(\.path))
-        let images = stored.filter { ClaudeImage.isImage(contentType: nil, url: $0) }.compactMap { ClaudeImage(contentsOf: $0) }
+        let images = await ClaudeImage.load(stored.filter { ClaudeImage.isImage(contentType: nil, url: $0) })
         post(message, references: [], images: images, attachments: recorded, to: id, cli: cli)
         return id
     }

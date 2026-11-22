@@ -1811,7 +1811,8 @@ An image Claude gets (`ClaudeImage` in FileStorage): a feedback chat's images, a
 get_attachment](mcp.md#get_attachment)). ImageIO's thumbnail of the file, its orientation applied, at most
 1568 pixels on its longest side (a smaller image keeps its size), as PNG, or as JPEG at quality 0.8 when the PNG
 would be over 3,750,000 bytes. A file is an image when its content type, or else its extension, conforms to
-`public.image`; one ImageIO can't read isn't sent.
+`public.image`; one ImageIO can't read isn't sent. A message's files are stored and their images converted off
+the main actor (`ClaudeImage.load`), so a large picture doesn't hold the app while it is sent.
 
 ### Chat loading and outside changes
 
