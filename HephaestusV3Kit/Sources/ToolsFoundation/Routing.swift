@@ -84,15 +84,35 @@ nonisolated extension FocusedValues {
 
 /// A route's ask to select an item in a window that is already open. Every request is a new value,
 /// even for the item asked for last time, so a tool selects it again after the user picked another.
+/// A request is acted on once: a tool view made again later with it (its tab selected anew) doesn't select
+/// the item a second time.
 ///
 /// A window opened by a route gets the focus in its value instead, and selects it as it starts.
 nonisolated public struct FocusRequest: Equatable, Sendable {
     /// The tool's id for the item, in the route's focus format.
     public let focus: String
     private let id = UUID()
+    /// Shared by every copy of the request: whether a view has acted on it.
+    private let delivery = Delivery()
 
     public init(_ focus: String) {
         self.focus = focus
+    }
+
+    /// The focus, the first time it is asked for; nil afterwards.
+    @MainActor func take() -> String? {
+        guard !delivery.done else { return nil }
+        delivery.done = true
+        return focus
+    }
+
+    public static func == (lhs: FocusRequest, rhs: FocusRequest) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    @MainActor private final class Delivery {
+        var done = false
+        nonisolated init() {}
     }
 }
 
@@ -109,8 +129,8 @@ nonisolated extension EnvironmentValues {
 }
 
 extension View {
-    /// Runs `select` with the focus of each route that arrives while this window is open, so the tool
-    /// selects the item without starting afresh.
+    /// Runs `select` with the focus of each route that arrives while this window is open, or that waited for
+    /// its tab to be drawn, so the tool selects the item without starting afresh.
     public func onFocusRequest(_ select: @escaping (String) -> Void) -> some View {
         modifier(FocusRequestModifier(select: select))
     }
@@ -121,9 +141,10 @@ private struct FocusRequestModifier: ViewModifier {
     @Environment(\.focusRequest) private var request
 
     func body(content: Content) -> some View {
-        content.onChange(of: request) { _, request in
-            if let request {
-                select(request.focus)
+        // `initial`: a tab that wasn't the selected one is drawn with the request already in its environment.
+        content.onChange(of: request, initial: true) { _, request in
+            if let focus = request?.take() {
+                select(focus)
             }
         }
     }

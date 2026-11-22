@@ -866,9 +866,9 @@ Projects and Virtual Machines aren't tools: they have no `ToolKind`.
 | `OpenRouteAction` | Wraps `@MainActor @Sendable (Route) -> Void`; called as `openRoute(route)`. |
 | `EnvironmentValues.openRoute` | The action. Its default does nothing, so previews open nothing. |
 | `FocusedValues.activeProject` | `Project?`: the key window's selected tab's project, for the menu commands. |
-| `FocusRequest` | `Equatable, Sendable`: `focus: String` plus a private `UUID`, so every request is a new value, even for the same item. |
+| `FocusRequest` | `Equatable, Sendable`: `focus: String` plus a private `UUID`, so every request is a new value, even for the same item. Acted on once: its copies share whether a view took it (`take()`, main actor), so a tool view made again later doesn't select the item twice. |
 | `EnvironmentValues.focusRequest` | `FocusRequest?`: the latest route's request for this tab. Default nil. |
-| `View.onFocusRequest(_ select: @escaping (String) -> Void)` | Runs `select(request.focus)` on each change of `focusRequest` (through a private `FocusRequestModifier`). |
+| `View.onFocusRequest(_ select: @escaping (String) -> Void)` | Runs `select(request.focus)` for a `focusRequest` not yet taken, on each change and on the view's first value (through a private `FocusRequestModifier`): a tab that wasn't the selected one is drawn with the request already in its environment. |
 
 A route's focus reaches a tool in one of two ways:
 
@@ -876,7 +876,8 @@ A route's focus reaches a tool in one of two ways:
    model's initializer, which selects it.
 2. **A tab already open** gets a new `FocusRequest` in its environment (`Workspace.focusRequests`). The root
    view applies `onFocusRequest { model.select(focus: $0) }`, which selects the item without starting afresh:
-   filters, modes and scroll positions stay.
+   filters, modes and scroll positions stay. A tab that wasn't the selected one is selected first and drawn
+   with the request, which it takes as it appears.
 
 The focus formats are listed in [Navigation › Routes](ui/navigation.md#routes) and under each kit below.
 

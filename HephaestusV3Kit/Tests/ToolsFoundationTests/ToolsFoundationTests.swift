@@ -1,4 +1,6 @@
+import AppKit
 import Foundation
+import SwiftUI
 import Testing
 @testable import ToolsFoundation
 
@@ -11,6 +13,39 @@ struct RouteTests {
         #expect(first != second)
         #expect(first == first)
         #expect(second.focus == "ORD-142")
+    }
+
+    @Test("A request is acted on once, by whichever view takes it first, its copies included")
+    @MainActor func focusTakenOnce() {
+        let request = FocusRequest("ORD-142")
+        let copy = request
+        #expect(request.take() == "ORD-142")
+        #expect(copy.take() == nil)
+        #expect(FocusRequest("ORD-142").take() == "ORD-142")
+    }
+
+    @Test("A tab drawn with a request already in its environment selects the item, once (HEPH-14)")
+    @MainActor func focusOnFirstDraw() async throws {
+        final class Selections { var focuses: [String] = [] }
+        let selections = Selections()
+        let request = FocusRequest("ORD-142")
+        func draw() async throws {
+            let view = Color.clear.frame(width: 20, height: 20)
+                .onFocusRequest { selections.focuses.append($0) }
+                .environment(\.focusRequest, request)
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 20, height: 20), styleMask: [.borderless],
+                                  backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.contentView = NSHostingView(rootView: view)
+            window.contentView?.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(100))
+            window.contentView = nil
+            window.close()
+        }
+        try await draw()
+        #expect(selections.focuses == ["ORD-142"])
+        try await draw()
+        #expect(selections.focuses == ["ORD-142"], "The tab drawn again doesn't select the item twice")
     }
 
     @Test("A reference opens its tool's window on its item")
