@@ -13,7 +13,9 @@ public final class LiveChatStore: ChatStore {
 
     /// Whether an existing chat holds an unsent draft: the automatic restart for an update waits until none does
     /// (docs/ui/updates.md › Restart rules).
-    public var hasDrafts: Bool { !drafts.isEmpty }
+    /// Unsent drafts of chats that still exist: a deleted chat's can't be sent or lost, so it never holds the
+    /// automatic restart for an update.
+    public var hasDrafts: Bool { drafts.ids.contains { session.chats[$0] != nil } }
 
     var cliStatus: ClaudeStatus? { session.status }
 
@@ -305,6 +307,8 @@ public final class LiveChatStore: ChatStore {
 
     func delete(_ id: ChatConversation.ID) throws(ChatSendError) {
         do throws(ChatError) { try session.delete(id) } catch { throw ChatSendError(message: error.description) }
+        ChatFiles.clean(drafts.files(of: id))
+        drafts.forget(id)
     }
 
     func resume(_ id: ChatConversation.ID) async throws(ChatSendError) {

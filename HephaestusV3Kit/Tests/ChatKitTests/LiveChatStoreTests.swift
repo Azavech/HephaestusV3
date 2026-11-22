@@ -280,3 +280,26 @@ private extension ChatBlock.Content {
         return self
     }
 }
+
+@Suite("Drafts of deleted chats")
+@MainActor
+struct ChatDraftsForgetTests {
+    @Test("Only text other than white space, or files, counts; a deleted chat's draft is forgotten")
+    func drafts() {
+        let drafts = ChatDrafts()
+        drafts.setText(" \n", of: "A")
+        #expect(drafts.isEmpty, "White space alone can't be sent")
+        drafts.setText("Hello", of: "A")
+        drafts.setFiles([URL(fileURLWithPath: "/tmp/a.png")], of: "B")
+        #expect(drafts.ids == ["A", "B"])
+        drafts.forget("A")
+        #expect(drafts.ids == ["B"] && drafts.text(of: "A").isEmpty)
+    }
+
+    @Test("A draft of a chat that no longer exists holds no restart")
+    func hasDraftsOfExistingChats() {
+        let store = LiveChatStore(session: bareSession()) { _, _ in nil }
+        store.drafts.setText("Unsent", of: "GONE")
+        #expect(!store.hasDrafts)
+    }
+}

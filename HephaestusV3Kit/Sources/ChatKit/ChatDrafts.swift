@@ -29,8 +29,20 @@ final class ChatDrafts {
         files[id] = new
     }
 
-    /// Whether a chat holds unsent text or files, which a restart for an update would lose.
-    var isEmpty: Bool { texts.isEmpty && files.isEmpty }
+    /// The chats holding unsent files, or text other than white space, which Send would take and a restart for an
+    /// update would lose.
+    var ids: Set<ChatConversation.ID> {
+        Set(texts.filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.keys).union(files.keys)
+    }
+
+    /// Whether a chat holds unsent text or files.
+    var isEmpty: Bool { ids.isEmpty }
+
+    /// Drops a deleted chat's draft.
+    func forget(_ id: ChatConversation.ID) {
+        texts[id] = nil
+        files[id] = nil
+    }
 }
 
 /// A view's composer: the draft of the chat it shows, the store's, or of its new chat, its own.
