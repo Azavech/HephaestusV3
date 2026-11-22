@@ -219,6 +219,21 @@ struct DashboardContentTests {
 
 @Suite("Edit mode")
 struct DashboardEditModeTests {
+    @Test("Add Widget measures the new widget with the window's stores, not samples")
+    @MainActor
+    func addWidgetMeasuresInWindowEnvironment() {
+        var environment = EnvironmentValues()
+        environment[MeasuredRowsKey.self] = 12
+        let widget = DashboardWidget(kind: .recentBuilds)
+        let withRows = DashboardWidgetCard<MeasuredRows>.neededHeight(
+            of: widget, width: 400, content: MeasuredRows(), environment: environment
+        )
+        let empty = DashboardWidgetCard<MeasuredRows>.neededHeight(
+            of: widget, width: 400, content: MeasuredRows(), environment: EnvironmentValues()
+        )
+        #expect(withRows > empty + 100)
+    }
+
     @Test("Done closes the settings popover and ends a drag")
     func endEditing() {
         let (model, _) = editingModel()
@@ -445,5 +460,23 @@ struct DashboardSettingsTests {
         let first = DashboardSlot.slots(of: model.widgets)[0]
         model.update(first) { $0.count = 9 }
         #expect(store.layouts["TLS"]?.widgets?.allSatisfy { $0.cells == nil } == true)
+    }
+}
+
+/// How many rows `MeasuredRows` shows: the stand-in for a store the window's environment holds.
+private struct MeasuredRowsKey: EnvironmentKey {
+    static let defaultValue = 0
+}
+
+/// A widget's content whose height depends on its environment, as Recent Builds does on the build store.
+private struct MeasuredRows: View {
+    @Environment(\.self) private var environment
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(0..<environment[MeasuredRowsKey.self], id: \.self) { _ in
+                Text(verbatim: "Run").frame(height: 20)
+            }
+        }
     }
 }

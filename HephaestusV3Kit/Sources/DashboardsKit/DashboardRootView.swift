@@ -52,6 +52,8 @@ public struct DashboardRootView<WidgetContent: View>: View {
 
     @Environment(\.windowLayout) private var layout
     @Environment(\.availableTools) private var availableTools
+    /// The window's environment, which `Add Widget` measures a new widget in: its stores and folder, not samples.
+    @Environment(\.self) private var environment
     /// The Dashboard's own width, which picks the grid or the list. Wide until measured.
     @State private var viewWidth: CGFloat = 10_000
     /// The list's width, which sets its cards' width.
@@ -493,7 +495,8 @@ public struct DashboardRootView<WidgetContent: View>: View {
         let metrics = model.metrics
         let widget = DashboardWidget(kind: kind)
         let height = DashboardWidgetCard<WidgetContent>.neededHeight(
-            of: widget, width: metrics.length(DashboardGrid.halfWidth), content: widgetContent(widget, model.context)
+            of: widget, width: metrics.length(DashboardGrid.halfWidth), content: widgetContent(widget, model.context),
+            environment: environment
         )
         model.add(kind, rows: metrics.cells(holding: height))
     }
@@ -737,14 +740,18 @@ struct DashboardWidgetCard<Content: View>: View {
     }
 
     /// The height a widget needs at a width for its title row, its content and its padding, for a
-    /// widget that is not in the list yet: `Add Widget` gives it the rows that hold it.
-    static func neededHeight(of widget: DashboardWidget, width: CGFloat, content: Content) -> CGFloat {
+    /// widget that is not in the list yet: `Add Widget` gives it the rows that hold it. The measuring view is
+    /// outside the window, so it gets the window's `environment`: without it, the content would read the
+    /// sample stores instead of the project's.
+    static func neededHeight(of widget: DashboardWidget, width: CGFloat, content: Content,
+                             environment: EnvironmentValues) -> CGFloat {
         let view = VStack(alignment: .leading, spacing: spacing) {
             DashboardWidgetTitleRow(widget: widget, editing: true)
             sized(content, kind: widget.kind)
         }
         .padding(DashboardGridMetrics.padding)
         .frame(width: width)
+        .environment(\.self, environment)
         return NSHostingView(rootView: view).fittingSize.height
     }
 }

@@ -292,7 +292,8 @@ drag in progress ends, and a settings popover closes, when edit mode ends or whe
   Builds**; **Instances** for a service project; then **Service Graph**, **Busiest Calls**, **Failed
   Requests** and **Requests per Minute** when the project's graph shows. The chosen widget is
   appended to the list with default settings and a new id, at column 0 under every widget, 12 columns wide
-  and as many rows tall as its content needs at that width; then it rises by the placement rule.
+  and as many rows tall as its content needs at that width, measured with the project's own data, as the
+  window holds it then; then it rises by the placement rule.
 
 ### Moving and resizing without the pointer
 
