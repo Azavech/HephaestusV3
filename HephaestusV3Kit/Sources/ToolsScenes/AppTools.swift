@@ -25,7 +25,8 @@ enum AppTools {
         let ticketCounts: @MainActor (String) -> [String: Int] = { id in
             (tickets.snapshot.tickets[id] ?? []).reduce(into: [:]) { counts, ticket in counts[ticket.file.status.rawValue, default: 0] += 1 }
         }
-        return ToolRegistry(ProjectTools.operations(session: session, ticketCounts: ticketCounts) + TicketTools.operations(tickets: tickets, projects: session, feedback: feedback)
+        return ToolRegistry(ProjectTools.operations(session: session, ticketCounts: ticketCounts) + TicketTools.operations(tickets: tickets, projects: session, feedback: feedback,
+                                                                                                                   replyModel: { chats.replyModel(of: $0) })
             + ChatTools.operations(chats: chats, projects: session) + implementer.operations() + BuildTools.operations(projects: session)
             + ContractTools.operations(contracts: contracts, projects: session) + ClusterTools.operations(maps: maps, projects: session)
             + MachineTools.operations(host: machines) + [openInApp(session: session, tickets: tickets, open: open)])

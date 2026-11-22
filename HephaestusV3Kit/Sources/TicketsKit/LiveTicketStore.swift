@@ -16,6 +16,10 @@ public final class LiveTicketStore: TicketStore {
         self.session = session
     }
 
+    /// How a comment Claude added from a chat names its model and effort, "(Opus 5.5 · Extra High)": the app gives the
+    /// CLI's model names. Nil leaves "Claude".
+    public static var commentCaption: @MainActor (_ model: String, _ effort: String?) -> String? = { _, _ in nil }
+
     var phase: TicketStorePhase {
         session.isLoaded ? .ready : .loading
     }
@@ -183,7 +187,8 @@ public final class LiveTicketStore: TicketStore {
         let base = file.history.count
         for (index, comment) in file.comments.enumerated() {
             let author: TicketAuthor = comment.author == .claude ? .claude : .user
-            ranked.append((1, TicketEvent(id: base + index, kind: .commented, text: TicketWords.commented(by: author), date: comment.created,
+            let caption = author == .claude ? comment.model.flatMap { commentCaption($0, comment.effort) } : nil
+            ranked.append((1, TicketEvent(id: base + index, kind: .commented, text: TicketWords.commented(by: author, caption: caption), date: comment.created,
                                           comment: comment.text, commentID: comment.id, author: author,
                                           attachments: comment.attachments.map(attachment), editedAt: comment.updated)))
         }

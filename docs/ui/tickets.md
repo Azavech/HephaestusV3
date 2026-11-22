@@ -346,16 +346,16 @@ at the trailing edge (`callout`, `textSecondary`, such as "10 Nov at 07:00"). A 
 the entry, in a rounded box on the `surface` color with 12 pt of padding. The text can be selected and
 copied.
 
-| Entry              | Symbol                   | Sentences ("You" for the user, "Claude" for Claude)                                                          |
-|--------------------|--------------------------|--------------------------------------------------------------------------------------------------------------|
-| Drafted            | `sparkles`               | "You drafted this ticket", "Claude drafted this ticket"                                                      |
-| Created            | `plus.circle`            | "You created this ticket", "Claude created this ticket"                                                      |
-| Status changed     | `arrow.right.circle`     | "You moved it from Created to In Progress"                                                                   |
-| Renamed            | `character.cursor.ibeam` | "You renamed it from “*old*” to “*new*”"; an automatic rename (author `automatic`): "It was named “*title*”" |
-| Link added         | `link`                   | "You made it depend on ORD-139", "You related it to ORD-139"                                                 |
-| Link removed       | `minus.circle`           | "You removed its dependency on ORD-139", "You removed its relation to ORD-139"                               |
-| Description edited | `pencil`                 | "You edited the description"                                                                                 |
-| Commented          | `text.bubble`            | "Claude commented", with the comment (Markdown) and its files under it                                       |
+| Entry              | Symbol                   | Sentences ("You" for the user, "Claude" for Claude)                                                                                                                   |
+|--------------------|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Drafted            | `sparkles`               | "You drafted this ticket", "Claude drafted this ticket"                                                                                                               |
+| Created            | `plus.circle`            | "You created this ticket", "Claude created this ticket"                                                                                                               |
+| Status changed     | `arrow.right.circle`     | "You moved it from Created to In Progress"                                                                                                                            |
+| Renamed            | `character.cursor.ibeam` | "You renamed it from “*old*” to “*new*”"; an automatic rename (author `automatic`): "It was named “*title*”"                                                          |
+| Link added         | `link`                   | "You made it depend on ORD-139", "You related it to ORD-139"                                                                                                          |
+| Link removed       | `minus.circle`           | "You removed its dependency on ORD-139", "You removed its relation to ORD-139"                                                                                        |
+| Description edited | `pencil`                 | "You edited the description"                                                                                                                                          |
+| Commented          | `text.bubble`            | "Claude commented", or "Claude (Opus 5.5 · Extra High) commented" for a comment Claude added from a chat, as V2's, with the comment (Markdown) and its files under it |
 
 - **Comments.** "(edited)" follows the sentence of a comment whose text was changed (help: the edit's date).
   Its files show as in [Attachments](#attachments), without **Remove…**: a comment's files go with it. The

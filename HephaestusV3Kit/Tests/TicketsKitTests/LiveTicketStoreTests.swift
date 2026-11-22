@@ -23,6 +23,22 @@ struct LiveTicketStoreTests {
         }
     }
 
+    @Test("A comment Claude added from a chat names its model and effort, as V2's did; others say Claude or You")
+    @MainActor
+    func commentModel() {
+        var file = TicketFile(id: "ORD-2", title: "Main", status: .todo, created: date)
+        var claude = CommentEntry(id: UUID(), author: .claude, created: date, text: "Done")
+        claude.model = "claude-opus-5-5"
+        claude.effort = "xhigh"
+        file.comments = [claude, CommentEntry(id: UUID(), author: .claude, created: date, text: "External"),
+                         CommentEntry(id: UUID(), author: .user, created: date, text: "Thanks")]
+        let saved = LiveTicketStore.commentCaption
+        defer { LiveTicketStore.commentCaption = saved }
+        LiveTicketStore.commentCaption = { model, effort in "(\(model) · \(effort ?? "-"))" }
+        let texts = LiveTicketStore.events(of: file).filter { $0.kind == .commented }.map(\.text)
+        #expect(texts == ["Claude (claude-opus-5-5 · xhigh) commented", "Claude commented", "You commented"])
+    }
+
     @Test("A ticket shows its declared and inverse links, whether it is blocked, and its history with its comments")
     func mapping() {
         let other = TicketFile(id: "ORD-1", title: "Other", status: .inProgress, created: date)

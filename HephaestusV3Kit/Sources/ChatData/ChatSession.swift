@@ -363,6 +363,16 @@ public final class ChatSession {
         return ClaudeCommand.marking(list, syncedPlugins: ClaudeCommand.syncedPlugins(claudeFolder: folder))
     }
 
+    /// The CLI model id and effort of the chat's latest reply that has a model, as a comment Claude adds keeps them;
+    /// nil without one in memory.
+    public func replyModel(of chatID: String) -> (model: String, effort: String?)? {
+        guard let items = transcripts[chatID] else { return nil }
+        for case .assistant(let text) in items.reversed() {
+            if let model = text.model { return (model, text.effort?.rawValue) }
+        }
+        return nil
+    }
+
     public func state(of chatID: String) -> ChatState {
         states[chatID] ?? .idle
     }

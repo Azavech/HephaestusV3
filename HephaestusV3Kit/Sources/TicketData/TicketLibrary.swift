@@ -426,8 +426,10 @@ public actor TicketLibrary {
 
     // MARK: Comments and attachments
 
-    /// Adds a comment: its files first, then the ticket file. A comment has text, files, or both.
-    public func addComment(to id: String, text: String, files: [URL], by actor: TicketActor) throws(TicketError) -> TicketSnapshot {
+    /// Adds a comment: its files first, then the ticket file. A comment has text, files, or both. `model` and `effort`:
+    /// for a comment Claude adds from a chat, the CLI model id and the effort of the reply that made the call, as V2's.
+    public func addComment(to id: String, text: String, files: [URL], by actor: TicketActor, model: String? = nil,
+                           effort: String? = nil) throws(TicketError) -> TicketSnapshot {
         var (file, projectID) = try storedTicket(id)
         let text = TicketRules.normalized(text)
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !files.isEmpty else {
@@ -436,7 +438,12 @@ public actor TicketLibrary {
         let checked = try checkedFiles(files)
         let attachments = try copy(checked, into: file.id, in: projectID)
         let date = now()
-        file.comments.append(CommentEntry(id: UUID(), author: actor.author, created: date, text: text, attachments: attachments))
+        var comment = CommentEntry(id: UUID(), author: actor.author, created: date, text: text, attachments: attachments)
+        if actor.isClaude {
+            comment.model = model
+            comment.effort = model == nil ? nil : effort
+        }
+        file.comments.append(comment)
         file.updated = date
         do {
             try write(file, in: projectID)

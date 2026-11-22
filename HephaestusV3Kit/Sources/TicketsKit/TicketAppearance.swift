@@ -83,8 +83,11 @@ enum TicketWords {
             : String(localized: "You edited the description", bundle: #bundle)
     }
 
-    static func commented(by author: TicketAuthor) -> String {
-        author == .claude ? String(localized: "Claude commented", bundle: #bundle) : String(localized: "You commented", bundle: #bundle)
+    static func commented(by author: TicketAuthor, caption: String? = nil) -> String {
+        if author == .claude, let caption {
+            return String(localized: "Claude \(caption) commented", bundle: #bundle, comment: "With the model and effort: Claude (Opus 5.5 · Extra High) commented")
+        }
+        return author == .claude ? String(localized: "Claude commented", bundle: #bundle) : String(localized: "You commented", bundle: #bundle)
     }
 }
 

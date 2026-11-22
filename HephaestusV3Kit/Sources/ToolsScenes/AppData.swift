@@ -242,6 +242,9 @@ final class AppData {
         chatStore = LiveChatStore(session: chats) { name, input in
             operations.registry?[name]?.describe?(input)
         }
+        // A comment Claude added names the model and effort that wrote it, as V2's did.
+        let chatSession = chats
+        LiveTicketStore.commentCaption = { model, effort in ChatModelNames.caption(model: model, effort: effort, models: chatSession.models) }
         // A ticket's chats count as closed while it is done, as V2 counted them.
         let tickets = tickets
         chatStore.isTicketDone = { id in tickets.snapshot.ticket(id)?.file.status == .done }

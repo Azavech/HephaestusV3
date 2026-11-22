@@ -25,8 +25,10 @@ public enum TicketTools {
     /// The ticket tools, then the bundle tools, in the order of docs/mcp.md. `feedback` links the first ticket a
     /// feedback chat's Claude creates to that chat.
     @MainActor
-    public static func operations(tickets: TicketSession, projects: ProjectSession, feedback: FeedbackLink? = nil) -> [ToolOperation] {
-        let tools = TicketToolSet(tickets: tickets, projects: projects, feedback: feedback)
+    public static func operations(tickets: TicketSession, projects: ProjectSession, feedback: FeedbackLink? = nil,
+                                  replyModel: @escaping @MainActor (String) -> (model: String, effort: String?)? = { _ in nil }) -> [ToolOperation] {
+        var tools = TicketToolSet(tickets: tickets, projects: projects, feedback: feedback)
+        tools.replyModel = replyModel
         return [tools.listTickets, tools.getTicket, tools.getAttachment, tools.createTicket, tools.updateTicket, tools.deleteTicket, tools.setTicketStatus,
                 tools.addComment, tools.updateComment, tools.deleteComment, tools.removeAttachment,
                 tools.listBundles, tools.getBundle, tools.createBundle, tools.updateBundle, tools.setBundleStatus, tools.deleteBundle]
@@ -54,6 +56,8 @@ private struct TicketToolSet {
     let tickets: TicketSession
     let projects: ProjectSession
     let feedback: FeedbackLink?
+    /// The model and effort of a chat's latest reply, by chat id: a comment Claude adds keeps them.
+    var replyModel: @MainActor (String) -> (model: String, effort: String?)? = { _ in nil }
 
     init(tickets: TicketSession, projects: ProjectSession, feedback: FeedbackLink?) {
         self.tickets = tickets
@@ -250,7 +254,10 @@ extension TicketToolSet {
             let id = try arguments.string("ticketID")
             let files = try files(arguments["attachments"], in: TicketIDs.parseTicket(id.uppercased())?.project ?? "")
             let text = try arguments.string("text")
-            try await run { library throws(TicketError) in _ = try await library.addComment(to: id, text: text, files: files, by: TicketTools.claude) }
+            let reply = MCPCaller.current.chatID.flatMap(replyModel)
+            try await run { library throws(TicketError) in
+                _ = try await library.addComment(to: id, text: text, files: files, by: TicketTools.claude, model: reply?.model, effort: reply?.effort)
+            }
             return try await ticketResult(id)
         }
     }

@@ -414,6 +414,15 @@ struct TicketLibraryTests {
             == .notFound("Attachment \(comment.attachments[0].id.uuidString) not found."))
         _ = try await world.library.deleteComment(comment.id, of: id)
         #expect(await world.ticket(id)?.file.comments == [])
+        // Claude's comment from a chat keeps the reply's model and effort, through an edit; the user's keeps none.
+        let modeled = try await world.library.addComment(to: id, text: "From a chat", files: [], by: World.claude, model: "claude-opus-5-5",
+                                                         effort: "xhigh")
+        let kept = try #require(modeled.ticket(id)?.file.comments.last)
+        #expect(kept.model == "claude-opus-5-5" && kept.effort == "xhigh")
+        _ = try await world.library.updateComment(kept.id, of: id, text: "Edited")
+        #expect(await world.ticket(id)?.file.comments.last?.model == "claude-opus-5-5")
+        let mine = try await world.library.addComment(to: id, text: "Mine", files: [], by: World.me, model: "claude-opus-5-5")
+        #expect(mine.ticket(id)?.file.comments.last?.model == nil)
         #expect(world.trashedNames == [comment.attachments[0].path.components(separatedBy: "/").last!])
     }
 

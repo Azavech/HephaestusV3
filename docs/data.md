@@ -622,7 +622,8 @@ written. Every other unknown key is kept ([Unknown keys](#unknown-keys)).
 
 **Comment** (`CommentEntry`): `id` (UUID, required), `author` (`user` or `claude`, required), `created` (date,
 required), `updated` (date or `null`, when the text was last edited), `text` (Markdown, default `""`),
-`attachments` (`[AttachmentEntry]`), `model` and `effort` (strings or `null`, kept as read). A comment has text
+`attachments` (`[AttachmentEntry]`), `model` and `effort` (strings or `null`: for a comment Claude adds from a chat,
+the CLI model id and the effort of the chat's latest reply, as V2's; kept through an edit; absent otherwise). A comment has text
 that isn't empty once trimmed, at least one attachment, or both.
 
 **Ticket link** (`TicketLinkEntry`): `kind` (`dependsOn` or `related`) and `ticket` (a ticket id of the same

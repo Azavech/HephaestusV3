@@ -357,3 +357,12 @@ struct ModelRow: View {
 #Preview("Settings, Largest Text", traits: .largestText, .fixedLayout(width: 520, height: 440)) {
     ChatSettingsView(previewStatus: ClaudeStatus(path: "/Users/you/.local/bin/claude", version: "2.1.322"))
 }
+
+/// How the app names a model and an effort outside a chat, as a reply's caption does.
+public enum ChatModelNames {
+    /// "(Opus 5.5 · Extra High)", or "(Opus 5.5)" without an effort: the model's name among `models`.
+    @MainActor public static func caption(model: String, effort: String?, models: [ClaudeModel]) -> String {
+        let parts = [ClaudeModel.name(of: model, in: models)] + [effort.flatMap(Effort.init(rawValue:)).map(ReplySettingsRows.title)].compactMap { $0 }
+        return "(" + parts.joined(separator: " · ") + ")"
+    }
+}

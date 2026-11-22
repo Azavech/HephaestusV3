@@ -141,6 +141,9 @@
     "Claude" : {
       "comment" : "Claude, as the author of a ticket"
     },
+    "Claude %@ commented" : {
+      "comment" : "With the model and effort: Claude (Opus 5.5 · Extra High) commented"
+    },
     "Claude commented" : {
 
     },
