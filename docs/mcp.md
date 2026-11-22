@@ -1237,14 +1237,16 @@ Input schema:
 
 - **Calls:** the chat session: the chats of the project and its loaded sub projects, the latest `updated` first.
 - **Result:** an array of chats' JSON: `id`, `project`, `title`, `kind`, `created`, `updated`, `model`,
-  `effort`, `state` (`idle`, `starting`, `running`, `waitingPermission`, `error`), and when set `origin`,
-  `ticket`, `bundle`.
+  `effort`, `permissionMode`, `state` (`idle`, `starting`, `running`, `waitingPermission`, `waitingAnswers`,
+  `error`), `closed`, `backgroundWork`, `questionsBlocked`, and when set `orchestrator` (the chat that started it),
+  `contextUsage` (`usedTokens`, `windowTokens`, `bufferTokens`, as last read), `origin`, `ticket`, `bundle`, as V2's
+  chat tools gave them (but its cost, which V3 leaves out).
 - **Errors:** an unknown project (`notFound`, `Project <ID> not found.`).
 
 Description:
 
 ```text
-Returns a project's chats, its sub projects' included, the latest first: id, project, title, kind, created, updated, origin, model, effort and state.
+Returns a project's chats, its sub projects' included, the latest first: id, project, title, kind, created, updated, origin, model, effort, permissionMode, state, closed, backgroundWork, questionsBlocked, the orchestrator that started it, and its context usage when known.
 ```
 
 Input schema:

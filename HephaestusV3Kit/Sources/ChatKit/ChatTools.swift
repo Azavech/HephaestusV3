@@ -133,7 +133,7 @@ public enum ChatTools {
     static func listChats(_ chats: ChatSession, _ projects: ProjectSession) -> ToolOperation {
         ToolOperation(
             name: "list_chats",
-            description: "Returns a project's chats, its sub projects' included, the latest first: id, project, title, kind, created, updated, origin, model, effort and state.",
+            description: "Returns a project's chats, its sub projects' included, the latest first: id, project, title, kind, created, updated, origin, model, effort, permissionMode, state, closed, backgroundWork, questionsBlocked, the orchestrator that started it, and its context usage when known.",
             inputSchema: .object(properties: [("projectID", .string("Project identifier, 2 to 8 letters, such as ORD."))], required: ["projectID"]),
             permission: .read,
             describe: { arguments in
@@ -392,7 +392,15 @@ public enum ChatTools {
             "kind": .string(chat.file.kind.rawValue), "created": .string(ISODate.string(from: chat.file.created)),
             "updated": .string(ISODate.string(from: chat.file.updated)), "model": .string(chat.file.settings.model),
             "effort": .string(chat.file.settings.effort.rawValue), "state": .string(state),
+            // V2's: whether it is closed, its mode, whether it may ask, and its background work.
+            "closed": .bool(chat.file.closed), "permissionMode": .string(chat.file.settings.permissionMode),
+            "questionsBlocked": .bool(chat.file.questionsBlocked), "backgroundWork": .bool(chats.backgroundWork.contains(chat.id)),
         ]
+        if let orchestrator = chat.file.orchestratorChatID { object["orchestrator"] = .string(orchestrator) }
+        if let usage = chat.file.contextUsage {
+            object["contextUsage"] = ["usedTokens": .int(usage.usedTokens), "windowTokens": .int(usage.windowTokens),
+                                      "bufferTokens": .int(usage.bufferTokens)]
+        }
         if let origin = chat.file.origin { object["origin"] = .string(origin) }
         if let ticket = chat.file.ticketID { object["ticket"] = .string(ticket) }
         if let bundle = chat.file.bundleID { object["bundle"] = .string(bundle) }

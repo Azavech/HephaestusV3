@@ -77,3 +77,22 @@ struct MadeConversationTests {
         #expect(view != ChatTurnView(turn: turn, projectID: "ORD", compact: false, decide: { _, _ in }, matches: ["b1"]))
     }
 }
+
+@Suite("Chats as the chat tools give them")
+@MainActor
+struct ChatJSONTests {
+    @Test("A chat's JSON says whether it is closed, its mode, who started it, whether it may ask and its background work, as V2's")
+    func fields() throws {
+        let session = ChatSession(projects: ProjectSession(dataFolder: nil), tokens: MCPTokens(), device: "Studio")
+        var file = ChatFile(id: "A", title: "Why", created: Date())
+        file.closed = true
+        file.orchestratorChatID = "B"
+        file.questionsBlocked = true
+        file.settings.permissionMode = "plan"
+        session.chats = ["A": LoadedChat(file: file, projectID: "ORD")]
+        session.backgroundWork = ["A"]
+        let json = ChatTools.json(try #require(session.chats["A"]), session)
+        #expect(json["closed"] == true && json["orchestrator"] == "B" && json["questionsBlocked"] == true)
+        #expect(json["permissionMode"] == "plan" && json["backgroundWork"] == true && json["contextUsage"] == nil)
+    }
+}
