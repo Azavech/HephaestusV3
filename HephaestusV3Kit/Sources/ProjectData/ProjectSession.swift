@@ -220,15 +220,57 @@ public final class ProjectSession {
         await updateWatchedFolders()
         let batches = hub.batches
         watching = Task { [weak self] in
-            for await batch in batches {
-                guard let library = self?.library else { return }
+            for await events in batches {
+                guard let self, let library else { return }
+                // Most events are nobody's: a virtual machine's disk, a chat's transcript lines, build output, logs.
+                let batch = Self.relevant(events, roots: roots())
+                guard !batch.isEmpty else { continue }
                 let snapshot = await library.handle(batch)
-                await self?.applyAndRewatch(snapshot)
-                for observer in self?.batchObservers ?? [] {
+                await applyAndRewatch(snapshot)
+                for observer in batchObservers {
                     await observer(batch)
                 }
             }
         }
+    }
+
+    /// The events a reader of the projects' files may need, each path once with its kinds merged: what the library
+    /// reads (`ProjectLibrary.isRelevant`), anything in a `.hephaestus` folder but a chat's transcript lines and its
+    /// folder of files, a contract's files under `openapi/`, and anything when events were dropped. The others reach
+    /// no reader, so a batch of them goes nowhere (docs/data.md › Outside changes).
+    nonisolated static func relevant(_ events: [FileEvent], roots: Set<String>) -> [FileEvent] {
+        var kept: [FileEvent] = []
+        var index: [String: Int] = [:]
+        for event in events where keeps(event, roots: roots) {
+            if let at = index[event.path] {
+                kept[at].kind.formUnion(event.kind)
+            } else {
+                index[event.path] = kept.count
+                kept.append(event)
+            }
+        }
+        return kept
+    }
+
+    nonisolated static func keeps(_ event: FileEvent, roots: Set<String>) -> Bool {
+        if event.kind.contains(.mustRescan) || event.kind.contains(.rootChanged) { return true }
+        if ProjectLibrary.isRelevant(event, roots: roots) { return true }
+        let path = event.path
+        if let marker = path.range(of: "/.hephaestus/") {
+            let inside = path[marker.upperBound...]
+            guard inside.hasPrefix("chats/") else { return true }
+            // A chat's file, not its transcript, which the session appends to at each item, nor its folder of files.
+            let name = inside.dropFirst("chats/".count)
+            return !name.contains("/") && name.hasSuffix(".yml")
+        }
+        return roots.contains { path == $0 + "/openapi" || path.hasPrefix($0 + "/openapi/") }
+    }
+
+    /// The loaded projects' folders and those of the entries that didn't load, as written and with symbolic links
+    /// resolved, as file events give them.
+    private func roots() -> Set<String> {
+        let paths = snapshot.projects.map(\.root) + snapshot.issues.map(\.path)
+        return Set(paths.flatMap { [$0, URL(fileURLWithPath: $0).resolvingSymlinksInPath().path] })
     }
 
     private func applyAndRewatch(_ snapshot: ProjectSnapshot?) async {

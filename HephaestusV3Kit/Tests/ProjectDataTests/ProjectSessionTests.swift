@@ -130,6 +130,32 @@ struct ProjectSessionTests {
         }
     }
 
+    @Test("Only events a reader needs reach the library and the observers, each path once")
+    func relevantEvents() {
+        let roots: Set<String> = ["/p/orders"]
+        func event(_ path: String, _ kind: FileEvent.Kind = .modified) -> FileEvent { FileEvent(path: path, kind: kind) }
+        let kept = ProjectSession.relevant([
+            event("/data/VirtualMachines/Machines/1/Disk.img"),
+            event("/data/Logs/claude-C1.log"),
+            event("/p/orders/build/DerivedData/x.o", .created),
+            event("/p/orders/.hephaestus/chats/C1.jsonl"),
+            event("/p/orders/.hephaestus/chats/C1/1-file.png", .created),
+            event("/p/orders/.hephaestus/project.yml"),
+            event("/p/orders/.hephaestus/ticket/ORD-1.yml"),
+            event("/p/orders/.hephaestus/ticket/ORD-1.yml", .renamed),
+            event("/p/orders/.hephaestus/chats/C1.yml"),
+            event("/p/orders/openapi/contract.yaml"),
+            event("/p/orders/.git/config"),
+            event("/data/registry.yml"),
+            event("/data/Worktrees", .mustRescan),
+        ], roots: roots)
+        #expect(kept.map(\.path) == [
+            "/p/orders/.hephaestus/project.yml", "/p/orders/.hephaestus/ticket/ORD-1.yml", "/p/orders/.hephaestus/chats/C1.yml",
+            "/p/orders/openapi/contract.yaml", "/p/orders/.git/config", "/data/registry.yml", "/data/Worktrees",
+        ])
+        #expect(kept[1].kind == [.modified, .renamed], "One path once, its kinds merged")
+    }
+
     @Test("A project file changed outside the app shows in the session")
     func outsideChange() async throws {
         try await withTemporaryFolderAsync { world in

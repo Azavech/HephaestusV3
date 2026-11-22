@@ -2431,6 +2431,11 @@ each change as if it had made it.
 - **Batches**: events are collected until 300 ms pass without a new one, or 2 seconds after the first,
   whichever comes first, then handed over as one batch, in the order they came. A git checkout that touches a
   thousand files is one batch; a stream of changes still shows within 2 seconds.
+- **What reaches the readers** (`ProjectSession.relevant`): the events some reader needs, each path once with its
+  kinds merged: what the projects reload for (below), anything in a `.hephaestus` folder but a chat's
+  transcript lines and its folder of files, a contract's files under `openapi/`, and dropped events. A batch
+  with none of them goes nowhere: a running virtual machine's disk, a chat's transcript at work, build output
+  or the logs no longer make the tickets and the chats read again every 2 seconds.
 - **Own changes**: a file whose SHA-256 equals V3's last write of that path is ignored, and so is the absence
   of a file V3 removed.
 - **Watched folders**: the data folder and the folder of each top-level project, and of each registry entry
