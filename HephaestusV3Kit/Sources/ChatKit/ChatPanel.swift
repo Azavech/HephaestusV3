@@ -154,9 +154,12 @@ public struct ChatPanel: View {
     }
 
     /// V2's pop-up of the project's chats: the one shown, the others to switch to, the latest first, each with
-    /// its mark; then Open in New Window. A closed chat is listed only while it shows.
+    /// its mark; then Open in New Window. A closed chat is listed only while it shows, and a ticket's, bundle's, CI or
+    /// feedback chat only while it shows too: their items list them, as V2's did.
     private func chatPicker(title: String?) -> some View {
-        let chats = model.store.conversations(of: [project.id]).filter { !$0.closed || $0.id == model.conversationID }
+        let chats = model.store.conversations(of: [project.id]).filter {
+            (!$0.closed && !$0.isItemChat) || $0.id == model.conversationID
+        }
         return Menu {
             Picker(String(localized: "Chats", bundle: #bundle, comment: "The panel's list of the project's chats"),
                    selection: Binding(get: { model.conversationID }, set: { model.show($0) })) {

@@ -21,6 +21,8 @@ struct ChatConversation: Identifiable, Hashable {
     var waitingPicker: PickerItem?
     /// Closed, as V2's Close left it: listed only while closed chats show, its composer replaced.
     var closed = false
+    /// A ticket's, bundle's, CI or feedback chat: its item lists it, the panel's Chats pop-up doesn't, as V2's didn't.
+    var isItemChat = false
     /// What the list's row marks: work, a wait for the user, or an error; nil when idle.
     var mark: ChatMark?
     /// How much of the context the conversation used, as the CLI last said.

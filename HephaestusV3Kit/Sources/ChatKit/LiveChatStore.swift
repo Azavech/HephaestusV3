@@ -304,6 +304,7 @@ public final class LiveChatStore: ChatStore {
                                             origin: chat.file.origin.flatMap(ToolKind.init(rawValue:)), createdAt: chat.file.created, turns: [],
                                             updated: chat.file.updated)
         conversation.closed = isClosed(chat)
+        conversation.isItemChat = [.ticket, .bundle, .ci, .feedback].contains(chat.file.kind)
         conversation.contextUsage = chat.file.contextUsage
         return conversation
     }
