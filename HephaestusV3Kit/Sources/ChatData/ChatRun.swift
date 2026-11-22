@@ -310,7 +310,7 @@ extension ChatSession {
                     run.notificationPending = true
                     noteBackgroundWork(run)
                 }
-            case .cliTurnOpened(let first, let problem):
+            case .cliTurnOpened(let first, let problem, let model, let mode):
                 // The turn first, then the owed turn's end: the background work's end must not end a process whose
                 // turn just opened (a changed context window waits for the turn).
                 run.cliTurnOpen = true
@@ -322,6 +322,10 @@ extension ChatSession {
                     run.initialized = true
                     run.startTimer?.cancel()
                     if chats[chatID]?.file.sessionStarted == false { change(chatID) { $0.sessionStarted = true } }
+                    if let settings = chats[chatID]?.file.settings {
+                        record(.system(SystemItem(created: now(), text: Self.sessionStartText(model: model, mode: mode, settings: settings, models: models),
+                                                  level: .info)), in: chatID)
+                    }
                     if let problem {
                         record(.system(SystemItem(created: now(), text: "The Hephaestus tools aren't available in this session: the app's MCP server is \(problem).",
                                                   level: .warning)), in: chatID)
@@ -749,6 +753,16 @@ extension ChatSession {
 
     /// A settings, mode or Stop Workflow request the CLI hasn't answered in `controlAnswerLimit` is forgotten, with
     /// the warning its refusal adds and `no answer`, as V2 did; an answer coming later is ignored.
+    /// The line a process's first `system/init` adds, as V2's did: `Session started · <model name> · effort <effort> ·
+    /// <mode label>`, then ` · Ultracode` when on. The chat's settings stand for what the line lacks.
+    nonisolated static func sessionStartText(model: String?, mode: String?, settings: ChatSettings, models: [ClaudeModel]) -> String {
+        let cliMode = mode ?? ChatPermissionMode(stored: settings.permissionMode).cliValue
+        var text = "Session started · \(ClaudeModel.name(of: model ?? settings.model, in: models)) · effort \(settings.effort.rawValue)"
+            + " · \(ChatPermissionMode.systemLineLabel(cliMode))"
+        if settings.ultracode { text += " · Ultracode" }
+        return text
+    }
+
     func expectAnswer(_ requestID: String, of run: ChatRun) {
         let limit = controlAnswerLimit
         Task { [weak self, weak run] in

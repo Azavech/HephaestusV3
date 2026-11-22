@@ -9,7 +9,7 @@ public enum StreamOutput: Sendable, Hashable {
     case delta(itemID: String, text: String)
     /// `system/init`: a CLI turn opens. `first` for the first of the process; `mcpProblem` says why the app's
     /// MCP server isn't usable in the session (`failed`, `missing`…), nil when it is.
-    case cliTurnOpened(first: Bool, mcpProblem: String?)
+    case cliTurnOpened(first: Bool, mcpProblem: String?, model: String? = nil, permissionMode: String? = nil)
     /// `command_lifecycle`: what the CLI did with the message whose line had `uuid`.
     case commandState(uuid: String, state: String)
     /// `can_use_tool`: the CLI asks before a call, with its `permission_suggestions`, the rules Always Allow keeps.
@@ -148,7 +148,8 @@ public struct StreamMapper: Sendable {
         case "init":
             let first = !initialized
             initialized = true
-            return [.cliTurnOpened(first: first, mcpProblem: first ? Self.mcpProblem(line["mcp_servers"]) : nil)]
+            return [.cliTurnOpened(first: first, mcpProblem: first ? Self.mcpProblem(line["mcp_servers"]) : nil,
+                                   model: line["model"]?.stringValue, permissionMode: line["permissionMode"]?.stringValue)]
         case "status":
             var outputs: [StreamOutput] = []
             if let mode = line["permissionMode"]?.stringValue {

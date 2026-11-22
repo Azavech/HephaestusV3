@@ -897,12 +897,19 @@ The `system` lines V3 writes:
 | No `system/init` within 60 s                                | error   | `Claude did not start within 60 seconds.`                                                                                                      |
 | The CLI exits during a turn, not ended by the app           | error   | `Claude exited with code <n>: <last line of its standard error>`, or `Claude exited with code <n>.`, or `Claude was terminated by signal <n>.` |
 | The CLI starts while the app's MCP server isn't listening   | warning | `Hephaestus MCP server unavailable: <the server's message>`                                                                                    |
+| A process's first `system/init`, as V2's                    | info    | `Session started · <model name> · effort <effort> · <mode>`, then ` · Ultracode` when on                                                       |
 | The first `system/init` lists no usable `hephaestus` server | warning | `The Hephaestus tools aren't available in this session: the app's MCP server is <failed, needs-auth, disabled or missing>.`                    |
 | A resumed session the CLI doesn't find                      | warning | `Claude's session for this chat was not found. A new session started: Claude doesn't remember this chat's earlier messages.`                   |
 | The CLI refuses a model or effort change                    | warning | `Claude did not accept the new <model or effort> now: <reason>. It applies the next time Claude starts.`                                       |
 | Stop                                                        | info    | `Stopped by the user.`                                                                                                                         |
 | The app quits during a turn                                 | warning | `Stopped because Hephaestus quit.`                                                                                                             |
 | A compaction                                                | info    | `Conversation compacted (<automatic or manual>, <tokens> tokens before)`, tokens as `24.6K`, `967K`, `1.2M`                                    |
+
+In the session start line, `<model name>` is the name of the line's `model` (`ClaudeModel.name`: the
+model that resolves to it, else the one whose value it is, else the id, so `claude-opus-5-5` reads `Opus 5.5`);
+`<mode>` names its `permissionMode` as V2 did: Ask every time (`default`), Accept edits, Plan only, Auto, Don't
+ask, Allow all, and a mode V3 doesn't know as reported. The chat's settings stand for a model or mode the line
+lacks; the effort is the chat's.
 
 #### Questions
 

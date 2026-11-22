@@ -208,6 +208,19 @@ public enum ChatPermissionMode: String, Sendable, Hashable, CaseIterable {
 
     /// What `set_permission_mode` and the CLI's `init` call it: `default` for Ask Every Time.
     public var cliValue: String { self == .manual ? "default" : rawValue }
+
+    /// How the session start line names a mode the CLI reports, as V2's: a mode it doesn't know as reported.
+    public static func systemLineLabel(_ cliMode: String) -> String {
+        switch cliMode == "default" ? .manual : ChatPermissionMode(rawValue: cliMode) {
+        case .manual?: "Ask every time"
+        case .acceptEdits?: "Accept edits"
+        case .plan?: "Plan only"
+        case .auto?: "Auto"
+        case .dontAsk?: "Don't ask"
+        case .bypassPermissions?: "Allow all"
+        case nil: cliMode
+        }
+    }
 }
 
 /// A chat's context window, as V2's Context menu had them: the model's own, or where the CLI compacts.

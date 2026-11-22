@@ -266,7 +266,7 @@ struct ChatSessionTests {
         let id = try await world.session.send("Run it", references: [], to: nil, projectID: "ORD")
         let cli = try #require(world.launcher.chats.first)
         cli.feed(try Fixture.lines("stream-bash-allowed.jsonl"))
-        try await world.until { world.session.state(of: id) == .idle && world.items(id).count == 6 }
+        try await world.until { world.session.state(of: id) == .idle && world.items(id).count == 7 }
         #expect(world.session.chats[id]?.file.sessionStarted == true)
         let kinds = world.items(id).map { item -> String in
             switch item {
@@ -279,7 +279,11 @@ struct ChatSessionTests {
             default: "other"
             }
         }
-        #expect(kinds == ["user", "system", "toolUse", "toolResult", "assistant", "result"], "The capture has no MCP server: a warning")
+        #expect(kinds == ["user", "system", "system", "toolUse", "toolResult", "assistant", "result"],
+                "The session start line, then a warning: the capture has no MCP server")
+        if case .system(let start) = world.items(id)[1] {
+            #expect(start.level == .info && start.text == "Session started · Haiku 5.5 · effort high · Ask every time", "The CLI's model id by its name")
+        }
         let file = try String(contentsOf: world.repo.appendingPathComponent(".hephaestus/chats/\(id).jsonl"), encoding: .utf8)
         #expect(Transcript.replay(Data(file.utf8)) == world.items(id))
         #expect(world.session.streaming[id] == nil)

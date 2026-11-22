@@ -132,10 +132,26 @@ struct StreamMapperTests {
         outputs.compactMap { if case .item(let item) = $0 { item } else if case .result(let result) = $0 { .result(result) } else { nil } }
     }
 
+    @Test("The session start line names the model, the effort and the mode as V2's did; the settings stand for what init lacks")
+    func sessionStart() {
+        var settings = ChatSettings()
+        settings.effort = .high
+        let models = [ClaudeModel(value: "opus", displayName: "Opus 5.5", description: "", resolvedModel: "claude-opus-5-5")]
+        #expect(ChatSession.sessionStartText(model: "claude-opus-5-5", mode: "default", settings: settings, models: models)
+                == "Session started · Opus 5.5 · effort high · Ask every time")
+        settings.ultracode = true
+        settings.permissionMode = ChatPermissionMode.plan.rawValue
+        #expect(ChatSession.sessionStartText(model: nil, mode: nil, settings: settings, models: models)
+                == "Session started · default · effort high · Plan only · Ultracode")
+        #expect(ChatSession.sessionStartText(model: "claude-x", mode: "someNewMode", settings: ChatSettings(), models: [])
+                .hasSuffix("claude-x · effort \(ChatSettings().effort.rawValue) · someNewMode"))
+    }
+
     @Test("A call, its result and the reply: items with their ids; the text streams first")
     func bashAllowed() throws {
         let outputs = try run("stream-bash-allowed.jsonl")
-        #expect(outputs.first == .cliTurnOpened(first: true, mcpProblem: "missing"), "The capture has no MCP server")
+        #expect(outputs.first == .cliTurnOpened(first: true, mcpProblem: "missing", model: "claude-haiku-5-5", permissionMode: "default"),
+                "The capture has no MCP server")
         let items = items(outputs)
         #expect(items.map(\.id) == ["msg_011CgbN99ugMwKEYBQfCEoiP#0", "toolu_01JGkKXVVCvtBiysD3rhiEXj#result", "msg_011CgbN9DUEEzm4yYRLnxmCV#0", items[3].id])
         guard case .toolUse(let call) = items[0], case .toolResult(let result) = items[1], case .assistant(let reply) = items[2],
