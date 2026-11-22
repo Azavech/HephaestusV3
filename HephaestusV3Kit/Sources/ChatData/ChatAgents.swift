@@ -606,6 +606,7 @@ extension ChatSession {
         guard let agent = agents(of: chatID).agents.first(where: { $0.id == agentID }), agent.kind == .subagent,
               agent.state == .failed || agent.state == .stopped, let taskID = agent.taskID,
               let projectID = chats[chatID]?.projectID else { throw .invalid("This agent can't be resumed.") }
+        guard chats[chatID]?.file.closed != true else { throw .invalid("Reopen the chat to resume its agent.") }
         _ = try await send("\(InternalSkill.resumeAgent.command) \(agent.title) (agent id \(taskID))", references: [], to: chatID, projectID: projectID,
                            origin: nil, title: nil, images: [], files: [], fromUser: false)
     }

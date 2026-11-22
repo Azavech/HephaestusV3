@@ -24,12 +24,16 @@ public final class LiveChatStore: ChatStore {
 
     func agentRows(of id: ChatConversation.ID) -> [ChatAgentRow] {
         let records = session.agents(of: id)
+        // V2 hid Resume while the agent's chat is closed: resuming it would reopen the chat without a word.
+        let closed = session.chats[id]?.file.closed == true
+        let works = [.starting, .running, .waitingPermission].contains(session.state(of: id))
         func row(_ agent: ChatAgent) -> ChatAgentRow {
             let workflow = agent.workflowID.flatMap { workflowID in records.workflows.first { $0.id == workflowID } }
             return ChatAgentRow(id: agent.id, chatID: id, kind: agent.kind == .workflow ? .workflowAgent : .subagent, title: agent.title,
                                 phase: agent.phase, name: nil, state: agent.state, workflowID: agent.workflowID,
-                                canResume: agent.kind == .subagent && (agent.state == .failed || agent.state == .stopped) && agent.taskID != nil,
-                                workflowRuns: workflow?.state == .running)
+                                canResume: agent.kind == .subagent && (agent.state == .failed || agent.state == .stopped) && agent.taskID != nil
+                                    && !closed,
+                                workflowRuns: workflow?.state == .running, chatWorks: works)
         }
         var rows: [ChatAgentRow] = []
         for workflow in records.workflows {

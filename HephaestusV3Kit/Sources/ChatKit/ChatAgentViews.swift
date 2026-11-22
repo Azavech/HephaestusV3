@@ -19,10 +19,13 @@ struct ChatAgentRow: Identifiable, Hashable {
     let state: ChatAgentState
     /// A workflow's id; for a workflow agent, its workflow's.
     let workflowID: String?
-    /// A sub-agent that failed or stopped and has its id: Resume can ask Claude to go on with it.
+    /// A sub-agent that failed or stopped and has its id, in a chat that isn't closed: Resume can ask Claude to go
+    /// on with it.
     let canResume: Bool
     /// The workflow runs: Stop Workflow stops it.
     let workflowRuns: Bool
+    /// The agent's chat has a turn at work: a Resume clicked is enabled again once it ends, as in V2.
+    var chatWorks = false
 
     /// The list's tag of the row, beside the chats' ids: `agent|<chat>|<id>` or `workflow|<chat>|<id>`.
     var tag: String { Self.tag(kind == .workflow ? "workflow" : "agent", chatID: chatID, id: id) }
@@ -141,6 +144,8 @@ struct AgentDetailView: View {
         }
         .task(id: row.id) { await store.openAgent(row.id, in: row.chatID) }
         .onChange(of: row.state) { if row.state == .running { resuming = false } }
+        // The turn Resume started ended without the agent running again: Resume can be clicked again.
+        .onChange(of: row.chatWorks) { if !row.chatWorks { resuming = false } }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.agent")
     }

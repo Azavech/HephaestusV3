@@ -413,12 +413,15 @@ their agents, and the sub-agents it starts with the Agent tool ([Data › Agents
   that agent's row. Without agents: "No agents yet".
 - **Agent view** (`chat.agent`): the header with the title, "Agent" or "Agent · *phase*", its mark; **Stop**
   (`chat.agent.stop`) for an agent of a running workflow, which stops the whole workflow; **Resume**
-  (`arrow.uturn.forward`, `chat.agent.resume`) for a sub-agent that failed or stopped and whose id is known. Then
+  (`arrow.uturn.forward`, `chat.agent.resume`) for a sub-agent that failed or stopped and whose id is known, while
+  its chat isn't closed (resuming would reopen it; the session refuses with "Reopen the chat to resume its
+  agent."). Then
   its transcript, read-only, as the chat's (no composer, no cards to answer): a workflow agent's as read from the
   CLI's folder, a sub-agent's made of the chat's own items, its task first.
 - **Resume** sends the chat `/hephaestus-skills:resume-agent <title> (agent id <id>)`, the call of the internal
   skill `resume-agent`, whose text tells Claude to resume the agent with SendMessage ([System
-  Prompts](system-prompts.md)); disabled until the agent runs again. A failure shows over the transcript. (V2
+  Prompts](system-prompts.md)); disabled until the agent runs again or the chat's turn ends, as in V2. A failure
+  shows over the transcript. (V2
   sent a fixed sentence; every text Claude acts on is an internal skill, the user's rule.)
 - The panel and chat windows show no agent rows, as V2's inspector showed none.
 
