@@ -1466,7 +1466,8 @@ V2's workflows and agents (`ChatAgents.swift`), checked on V2's captures `stream
 - **Files.** Each new record or change appends the whole record to `.hephaestus/chats/<CHAT-ID>/agents.jsonl`, V2's
   file: `{"workflow":{…}}` or `{"agent":{…}}` per line, the last of an id winning when read; a record read
   running reads stopped. A workflow agent's items go to `.hephaestus/chats/<CHAT-ID>/agents/<AGENT-ID>.jsonl`,
-  in the chat transcript's format. A sub-agent's transcript isn't stored again: it is the chat's items of its
+  in the chat transcript's format, an item the file holds skipped. Only their ids stay in memory, read once from
+  the file; the items themselves are read when the agent's view opens, and kept for the 12 agents opened last. A sub-agent's transcript isn't stored again: it is the chat's items of its
   call (its `prompt` as a `user` item `<call id>#prompt`, then every item whose `parentToolUseID` is its call or
   a call of an agent among them, with their results). The agents file is read with the chat's mentions, after
   `reload()`; a workflow agent's file when its view opens (`openAgent`).

@@ -90,8 +90,13 @@ public final class ChatSession {
     public internal(set) var backgroundWork: Set<String> = []
     /// Each chat's workflows and agents, once read (docs/data.md › Agents).
     public internal(set) var agentRecords: [String: ChatAgents] = [:]
-    /// The workflow agents' transcripts read.
+    /// The workflow agents' transcripts read for a view: the `keptTranscripts` latest opened (`openedAgents`).
     public internal(set) var agentTranscripts: [String: [ChatItem]] = [:]
+    /// The ids of the items each workflow agent's file holds, read once from it: new lines skip them. Only the
+    /// ids stay in memory for an agent whose view never opened.
+    @ObservationIgnored var agentItemIDs: [String: Set<String>] = [:]
+    /// The workflow agents whose transcript is in memory, the latest opened last.
+    @ObservationIgnored var openedAgents: [String] = []
     /// The folders of the workflows launched, and their readers.
     @ObservationIgnored var workflowFolders: [String: (chatID: String, folder: URL)] = [:]
     @ObservationIgnored var workflowReaders: [String: WorkflowFolderReader] = [:]

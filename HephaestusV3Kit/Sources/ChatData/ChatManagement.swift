@@ -151,6 +151,12 @@ extension ChatSession {
                 throw .storage(.trashFailed(path: url.path, reason: String(describing: error)))
             }
         }
+        for agent in agentRecords[chatID]?.agents ?? [] {
+            agentTranscripts[agent.id] = nil
+            agentItemIDs[agent.id] = nil
+            openedAgents.removeAll { $0 == agent.id }
+        }
+        agentRecords[chatID] = nil
         chats[chatID] = nil
         transcripts[chatID] = nil
         states[chatID] = nil

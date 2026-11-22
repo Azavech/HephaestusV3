@@ -30,6 +30,7 @@ struct ChatAgentsTests {
         let agents = world.session.agents(of: id).agents
         #expect(agents.map(\.id) == ["abd107d9822b6600d", "afa76c5ae2246d66b"] && agents.map(\.title) == ["probe-a", "probe-b"])
         #expect(agents.allSatisfy { $0.kind == .workflow && $0.workflowID == "wflx39ys6" && $0.phase == "Probe" && $0.state == .completed })
+        #expect(world.session.agentTranscripts.isEmpty, "No agent's items stay in memory until its view opens")
         await world.session.openAgent("abd107d9822b6600d", in: id)
         let transcript = world.session.agentTranscript("abd107d9822b6600d", in: id)
         #expect(transcript.contains { if case .toolUse(let use) = $0 { use.name == "Bash" } else { false } })

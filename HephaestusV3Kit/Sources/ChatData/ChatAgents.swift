@@ -492,17 +492,27 @@ extension ChatSession {
         }
     }
 
-    /// Adds items to a workflow agent's transcript, in memory when read and in its file; one it has is skipped.
+    /// Adds items to a workflow agent's file, and to its transcript in memory when a view read it; one it has is
+    /// skipped.
     func addAgentItems(_ items: [ChatItem], agent: String, in chatID: String) {
-        loadAgentTranscript(agent, in: chatID)
-        var known = agentTranscripts[agent] ?? []
-        let new = items.filter { item in !known.contains { $0.id == item.id } }
+        var known = agentItemIDs[agent] ?? knownItemIDs(of: agent, in: chatID)
+        var new: [ChatItem] = []
+        for item in items where known.insert(item.id).inserted {
+            new.append(item)
+        }
         guard !new.isEmpty, let folder = agentsFolder(chatID)?.appendingPathComponent("agents", isDirectory: true) else { return }
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let url = folder.appendingPathComponent("\(agent).jsonl")
         try? Transcript.append(new.reduce(into: Data()) { $0 += Transcript.line(.add, $1) }, to: url, endingLine: true)
-        known += new
-        agentTranscripts[agent] = known
+        agentItemIDs[agent] = known
+        agentTranscripts[agent]?.append(contentsOf: new)
+    }
+
+    /// The ids of a workflow agent's items: from its transcript in memory, else from its file.
+    private func knownItemIDs(of agent: String, in chatID: String) -> Set<String> {
+        if let items = agentTranscripts[agent] { return Set(items.map(\.id)) }
+        let data = agentsFolder(chatID).flatMap { try? Data(contentsOf: $0.appendingPathComponent("agents/\(agent).jsonl")) } ?? Data()
+        return Set(Transcript.replay(data).map(\.id))
     }
 
     /// An agent's transcript: a workflow agent's from its file; a sub-agent's from the chat's own items, its
@@ -553,6 +563,11 @@ extension ChatSession {
     }
 
     private func loadAgentTranscript(_ agentID: String, in chatID: String) {
+        openedAgents.removeAll { $0 == agentID }
+        openedAgents.append(agentID)
+        while openedAgents.count > Self.keptTranscripts {
+            agentTranscripts[openedAgents.removeFirst()] = nil
+        }
         guard agentTranscripts[agentID] == nil else { return }
         let data = agentsFolder(chatID).flatMap { try? Data(contentsOf: $0.appendingPathComponent("agents/\(agentID).jsonl")) } ?? Data()
         agentTranscripts[agentID] = Transcript.replay(data)
