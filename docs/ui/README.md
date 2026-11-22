@@ -42,6 +42,7 @@ strings and tests. The shared, generic components come from AZDesign, whose refe
 | [Chat](chat.md) | The Chat window, the chat panel beside every tool, Settings ▸ Chat |
 | [Virtual Machines](virtual-machines.md) | The Mac's virtual machines |
 | [System Prompts](system-prompts.md) | The app's internal Claude skills and their content |
+| [Memories](memories.md) | Claude's memories: the global ones and each project's |
 
 ## Conventions
 

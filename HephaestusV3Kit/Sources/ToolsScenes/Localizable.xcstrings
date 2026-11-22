@@ -149,6 +149,9 @@
     "General" : {
       "comment" : "The Settings tab of the app's general settings"
     },
+    "Global Memories" : {
+
+    },
     "HEPHAESTUS_MCP_PORT sets the port to %@ while the app runs." : {
 
     },
@@ -169,6 +172,9 @@
     },
     "MCP" : {
       "comment" : "The Settings tab of the MCP server"
+    },
+    "Memories" : {
+
     },
     "Merge All Windows" : {
 

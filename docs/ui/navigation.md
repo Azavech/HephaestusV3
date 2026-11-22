@@ -6,7 +6,7 @@ reused, and the menus and shortcuts that reach them.
 ## Windows
 
 The app has one kind of window, which holds **tabs** that the app draws itself (the user's choice): each tab
-shows Projects, one tool for one project, a project's settings, Virtual Machines, or System Prompts. The windows' pages call a
+shows Projects, one tool for one project, a project's settings, Virtual Machines, System Prompts, or Memories. The windows' pages call a
 tab by its old window's name, "the Tickets window", meaning the tab.
 
 | Tab                  | How many                                          | Opens                                          | Page                                    |
@@ -21,6 +21,7 @@ tab by its old window's name, "the Tickets window", meaning the tab.
 | **Virtual Machines** | One in the app                                    | ⌘7 (Window menu)                               | [Virtual Machines](virtual-machines.md) |
 | **Project Settings** | One per project                                   | ⇧⌘, (File menu), Projects' More menu           | [Project Settings](project-settings.md) |
 | **System Prompts**   | One in the app                                    | ⌥⌘, (App menu)                                 | [System Prompts](system-prompts.md)     |
+| **Memories**         | One in the app                                    | ⌘9 and ⇧⌘M (Window menu)                       | [Memories](memories.md)                 |
 
 | Other window       | Kind          | Opens                               | Size         | Page                                                                                                                                                                                                                                                                                                    |
 |--------------------|---------------|-------------------------------------|--------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -193,6 +194,7 @@ panel and the chat's **Open** buttons all use routes.
 | `.chatWindow(chat:)`            | The chat's own window ([Chat › Chat windows](chat.md#chat-windows)): the one already showing it, un-minimized and brought forward, or a new one. Not a tab: chat windows are a scene of their own, never merged into the others.                                                |
 | `.settings(pane)`               | The Settings window, on that tab (`SettingsPane`: `general`, `projects`, `mcp`, `machines`, `chat`, `notifications`, `updates`). The tab is stored as `settings.pane` in the user defaults, so Settings also opens on the last tab shown. Used by the chat's **Open Settings**. |
 | `.systemPrompts(skill:)`        | The System Prompts tab, with the internal skill of that name selected, as V2's `skill` target: an open tab comes forward and selects it again (`open_in_app` with kind `skill`).                                                                                                |
+| `.memories(scope:)`             | The Memories tab, on the global memories (`global` or nil) or a project's, by its id: an open tab comes forward and shows that scope ([Memories](memories.md)).                                                                                                                 |
 
 **Focus formats**, the item a tool selects when a route opens it:
 
@@ -215,9 +217,9 @@ every window with its tabs.
   stay. A second route to the same item selects it again, even after the user picked another.
 - **Otherwise** the route opens a new tab, which starts on the focus: a tab of the frontmost window, or a window
   of its own, as [Settings ▸ General](#settings--general) says.
-- **Projects, Virtual Machines, System Prompts and each project's Project Settings** are one tab each in the
+- **Projects, Virtual Machines, System Prompts, Memories and each project's Project Settings** are one tab each in the
   app. A route to them
-  selects that tab, and selects its project or machine there.
+  selects that tab, and selects its project, machine, skill or memories there.
 - **The Window menu's items** follow the same rules.
 - **File ▸ New Window (⌘N), New Tab (⌘T) and the tab bar's +** are the ways to get a second tab of a tool and
   project. Routes keep selecting the first one.
@@ -241,8 +243,8 @@ blur over its first rows and no toolbar-high band at the top of its columns.
   scrolls sideways. Each shows its symbol and title, in `callout`: `textPrimary` and a `surface` capsule when
   selected, `textSecondary` otherwise, with a faint capsule under the pointer. A click selects it.
 - **Titles.** A tool's tab reads the tool, then its project's name ("Tickets – Orders"); Project Settings reads
-  "Project Settings – Orders"; then "Projects" and "Virtual Machines". Symbols: the tool's, `folder`,
-  `gearshape`, `desktopcomputer`. Long titles are cut in the middle.
+  "Project Settings – Orders"; then "Projects", "Virtual Machines", "System Prompts" and "Memories". Symbols: the tool's, `folder`,
+  `gearshape`, `desktopcomputer`, `text.book.closed`, `brain`. Long titles are cut in the middle.
 - **Close button** (`xmark`) at a tab's right end, on the selected tab and under the pointer. Closing a window's
   last tab closes the window.
 - **+** at the bar's right end (`tabs.new`, "New Tab (⌘T)"): a new tab of the selected tab's tool and project,
@@ -354,16 +356,18 @@ closes the tab and ⇧⌘W the window. These replace the items SwiftUI adds for 
 
 **Window menu**, above the list of open windows:
 
-| Item             | Shortcut | Enabled                                      |
-|------------------|----------|----------------------------------------------|
-| Projects         | ⌘0       | Always                                       |
-| Dashboard        | ⌘1       | When the selected tab's project has the tool |
-| Tickets          | ⌘2       | Same                                         |
-| Service Map      | ⌘3       | Same                                         |
-| Contracts        | ⌘4       | Same                                         |
-| Builds           | ⌘5       | Same                                         |
-| Chat             | ⌘6       | Same                                         |
-| Virtual Machines | ⌘7       | Always                                       |
+| Item             | Shortcut | Enabled                                                                                       |
+|------------------|----------|-----------------------------------------------------------------------------------------------|
+| Projects         | ⌘0       | Always                                                                                        |
+| Dashboard        | ⌘1       | When the selected tab's project has the tool                                                  |
+| Tickets          | ⌘2       | Same                                                                                          |
+| Service Map      | ⌘3       | Same                                                                                          |
+| Contracts        | ⌘4       | Same                                                                                          |
+| Builds           | ⌘5       | Same                                                                                          |
+| Chat             | ⌘6       | Same                                                                                          |
+| Virtual Machines | ⌘7       | Always                                                                                        |
+| Memories         | ⌘9       | Always: the selected tab's project's memories, else the global ones ([Memories](memories.md)) |
+| Global Memories  | ⇧⌘M      | Always                                                                                        |
 
 Only the available tools and windows are listed ([Available tools](#available-tools)): today, all of them.
 The tool items act on the **selected tab's project**: the selection in Projects, or a tab's project.

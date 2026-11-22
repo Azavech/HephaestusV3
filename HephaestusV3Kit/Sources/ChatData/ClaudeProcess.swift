@@ -5,8 +5,8 @@ import Foundation
 import MCPKit
 import Synchronization
 
-/// How a chat's CLI process is started (docs/architecture.md › ChatData › Launch). Nothing of it is text
-/// written for Claude: no system prompt, no hook, no skill.
+/// How a chat's CLI process is started (docs/architecture.md › ChatData › Launch). No text of the code's for Claude:
+/// no hook; the only system prompt is the internal skill `chat-memories`, which the user edits.
 public struct ChatLaunch: Sendable, Hashable {
     public var cliPath: String
     public var chatID: String
@@ -31,6 +31,14 @@ public struct ChatLaunch: Sendable, Hashable {
     public var permissionMode: ChatPermissionMode = .manual
     public var ultracode = false
     public var contextWindow: ChatContextWindow = .auto
+    /// Folders Claude reads and writes besides the working directory (`--add-dir`): the global memories folder.
+    public var addedFolders: [String] = []
+    /// Permission rules the CLI applies without asking, besides the app's tools: `Read(//<folder>/**)` for the memory
+    /// folders a sub project inherits.
+    public var readRules: [String] = []
+    /// Text appended to the CLI's own system prompt: the internal skill `chat-memories`, filled (docs/data.md ›
+    /// Memories › In chats).
+    public var appendedSystemPrompt: String?
 
     public init(cliPath: String, chatID: String, resume: Bool, model: String, effort: Effort, mcpConfig: URL, tools: [String],
                 disallowedTools: [String] = [ClaudeFileTools.question], workingDirectory: String, environment: [String: String],
@@ -62,8 +70,10 @@ public struct ChatLaunch: Sendable, Hashable {
         arguments += ["--permission-prompt-tool", "stdio"]
         arguments += ["--disallowedTools", disallowedTools.joined(separator: ",")]
         arguments += ["--strict-mcp-config", "--mcp-config", mcpConfig.path]
-        arguments += ["--allowedTools", tools.map { "mcp__\(MCPProtocol.serverName)__\($0)" }.joined(separator: ",")]
+        arguments += ["--allowedTools", (tools.map { "mcp__\(MCPProtocol.serverName)__\($0)" } + readRules).joined(separator: ",")]
         if let pluginDir { arguments += ["--plugin-dir", pluginDir.path] }
+        for folder in addedFolders { arguments += ["--add-dir", folder] }
+        if let appendedSystemPrompt { arguments += ["--append-system-prompt", appendedSystemPrompt] }
         return arguments
     }
 

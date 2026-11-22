@@ -2,6 +2,7 @@ import Darwin
 import ExternalTools
 import FileStorage
 import Foundation
+import MemoryData
 import MCPKit
 import ProjectData
 
@@ -235,6 +236,22 @@ extension ChatSession {
                                 effort: chat.file.settings.effort, mcpConfig: config, tools: toolNames,
                                 disallowedTools: ClaudeFileTools.disallowed(edits: fileEdits()), workingDirectory: root(ofChat: chatID) ?? project.root,
                                 environment: projects.tools.environment, pluginDir: plugin)
+        // The memories, as V2 gave them to every chat: the global folder, and a sub project's parents' folders.
+        var ancestors: [(id: String, name: String, root: String)] = []
+        var parentID = project.parentID
+        while let id = parentID, let parent = projects.snapshot.project(id), !ancestors.contains(where: { $0.id == id }) {
+            ancestors.append((parent.id, parent.file.name, parent.root))
+            parentID = parent.parentID
+        }
+        let memories = MemoryContext.load(locations: memoryLocations(projects.tools.environment), root: project.root,
+                                          ancestors: ancestors)
+        if memories.globalFolderReady {
+            launch.addedFolders = [memories.globalFolder]
+        } else {
+            appLog.write(.warning, "chats", "the global memories folder \(memories.globalFolder) cannot be created: \(memories.globalFolderFailure ?? "")")
+        }
+        launch.readRules = memories.readRules
+        launch.appendedSystemPrompt = memories.render(dataFolder.readSkill(.chatMemories).content)
         launch.permissionMode = ChatPermissionMode(stored: chat.file.settings.permissionMode)
         launch.ultracode = chat.file.settings.ultracode
         launch.contextWindow = ChatContextWindow(stored: chat.file.settings.contextWindow)

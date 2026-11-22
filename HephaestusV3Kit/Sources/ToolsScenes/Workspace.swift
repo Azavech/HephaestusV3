@@ -15,13 +15,15 @@ nonisolated enum WorkspaceContent: Codable, Hashable, Sendable {
     case machines
     /// The internal skills' content; one in the whole app.
     case systemPrompts
+    /// Claude's memories, global and per project; one in the whole app.
+    case memories
 
     /// The project the tab shows, if it shows one by itself.
     var projectID: Project.ID? {
         switch self {
         case .tool(_, let project): project
         case .projectSettings(let project): project
-        case .projects, .machines, .systemPrompts: nil
+        case .projects, .machines, .systemPrompts, .memories: nil
         }
     }
 

@@ -75,9 +75,10 @@ reads.
 | `implement-bundle`     | V3's own text, [below](#implement-skills)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `default`, High (a chat's defaults; the app never runs it itself)                | **Implement All…** and `implement_bundle`: the first message of a bundle's chat, `/hephaestus-skills:implement-bundle <bundle id>`. V2's skill of the same name; V3 writes its own text.                                                                                                                                                                                                                                                                                             |
 | `watch-ci`             | V3's own text, [below](#ci-skill)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | `default`, High (a chat's defaults; the app never runs it itself)                | A CI chat's first message, `/hephaestus-skills:watch-ci <commit>` with its project attached, which `watch_ci` starts after a push ([Chat › Implement chats](chat.md#implement-chats)). V2's CI chats had a skill as their system prompt; V3 calls one, as its other chats do, with its own text (no V2 prompt).                                                                                                                                                                      |
 | `comment-answer`       | Adapted from V2's, [below](#comment-answer-skill)                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | `default`, High (default chosen at design time)                                  | A comment of the user that mentions Claude ([Tickets › Comment answers](tickets.md#comment-answers)): the app runs it in the project's folder, with the CLI's Read, Grep and Glob, at most 5 minutes, and posts its answer as Claude's comment. V2's internal skill of the same name; V3 adapts V2's text.                                                                                                                                                                           |
+| `chat-memories`        | V3's own text, [below](#memories-skill)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | `default`, High (unused: the app never runs it)                                  | Every chat, at each launch of its CLI: its content, with `{{globalMemoriesFolder}}`, `{{globalMemories}}` and `{{parentMemories}}` filled, is appended to the CLI's system prompt; blank, nothing is ([Data › Memories › In chats](../data.md#in-chats)). V2's common skill said it; V3 has no common skill, so this one holds V2's memory rules alone.                                                                                                                              |
 
 **Called skills.** `report-feedback`, `resume-chat`, `resume-agent`, `implement-ticket`, `implement-bundle` and `watch-ci` are called from chats (V2's called skills); `set-ticket-title`,
-`notification-summary` and `comment-answer` the app runs itself. Every chat's CLI gets the called skills as the plugin `hephaestus-skills` ([Data › Chat
+`notification-summary` and `comment-answer` the app runs itself; `chat-memories` ends every chat's system prompt. Every chat's CLI gets the called skills as the plugin `hephaestus-skills` ([Data › Chat
 plugin](../data.md#chat-plugin)), so a message starting with `/hephaestus-skills:<name>` calls one: Claude gets
 the skill's content, then the rest of the message. A chat that calls a skill keeps its own model and effort. The
 skills the app runs itself aren't in the plugin: no chat sees them. The page shows a called skill as any other:
@@ -192,6 +193,29 @@ Rules:
 - Change a status only when the comment asks for it, and never the status of a done ticket: tell the user to do it.
 - When the app answers forbidden or invalid, report its message in your reply and don't work around it.
 - Report only what you did and checked, and name every change you made to the ticket.
+```
+
+### Memories skill
+
+`chat-memories`' default content, V3's own from V2's common skill: where the global memories are and what goes
+there, and the memories a sub project inherits, read-only. The app fills its placeholders at each launch: the
+global memories folder, its `MEMORY.md`, and for each inherited folder `<name> (<id>), <folder>:` then its
+`MEMORY.md` ([Memories](memories.md)).
+
+```text
+# Global memories
+
+Besides the memory folder of this project, which the Claude CLI gives you, you have global memories: memories that hold for every project, which every chat of every project receives. Their folder is {{globalMemoriesFolder}}. Its files have the format of your project memories: one .md file per memory, with name, description and metadata.type in its front matter, and one line per memory in the folder's MEMORY.md. The global MEMORY.md follows, empty while it has no line:
+
+{{globalMemories}}
+
+Decide per memory where you save it: a memory that holds for every project goes to the global memories folder, with its line in the global MEMORY.md; the other memories go to the project's memory folder. When a line of the global MEMORY.md concerns your work, read that memory's file.
+
+# Memories of the parent projects
+
+When this project is a sub project, the memories Claude saved for its parent projects follow, nearest parent first: each parent's name, identifier and memory folder, then its MEMORY.md. Nothing follows for a top-level project. Read a memory file of these folders with your file tools when it is relevant, as you read your own memories. Never write in these folders: save every new memory in your own memory folder or, when it holds for every project, in the global memories folder.
+
+{{parentMemories}}
 ```
 
 ## Previews

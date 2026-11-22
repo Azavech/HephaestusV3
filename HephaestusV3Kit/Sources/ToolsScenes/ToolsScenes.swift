@@ -5,6 +5,7 @@ import ChatKit
 import ContractsKit
 import DashboardsKit
 import MachinesKit
+import MemoriesKit
 import ProjectData
 import ProjectsKit
 import ServiceMapKit
@@ -216,6 +217,10 @@ private struct RouteHost<Content: View>: View {
                 // The tab selects the skill as it opens, or again when it is already open.
                 if let skill { appData.skillFocus = FocusRequest(skill) }
                 windows.showOrOpen(.systemPrompts, openWindow: openWindow)
+            case .memories(let scope):
+                // The tab shows the scope as it opens, or again when it is already open.
+                appData.memoryFocus = FocusRequest(scope ?? MemoryScope.global.focus)
+                windows.showOrOpen(.memories, focus: scope, openWindow: openWindow)
             case .settings(let pane):
                 UserDefaults.standard.set(pane.rawValue, forKey: SettingsPane.storageKey)
                 openSettings()
@@ -444,6 +449,12 @@ private struct ToolMenuItems: View {
     @FocusedValue(\.activeProject) private var project
     @Environment(\.openWindow) private var openWindow
 
+    /// The Memories tab on a scope: `global` or a project's id.
+    private func showMemories(_ scope: String) {
+        AppData.shared.memoryFocus = FocusRequest(scope)
+        WindowDirectory.shared.showOrOpen(.memories, focus: scope, openWindow: openWindow)
+    }
+
     var body: some View {
         Button(String(localized: "Projects", bundle: #bundle)) {
             WindowDirectory.shared.showOrOpen(.projects, openWindow: openWindow)
@@ -470,6 +481,16 @@ private struct ToolMenuItems: View {
             }
             .keyboardShortcut("7")
         }
+
+        // Claude's memories: the key window's project's, else the global ones, as V2's Memories (⌘9) and Global Memories (⇧⌘M).
+        Button(String(localized: "Memories", bundle: #bundle)) {
+            showMemories(project?.id ?? MemoryScope.global.focus)
+        }
+        .keyboardShortcut("9")
+        Button(String(localized: "Global Memories", bundle: #bundle)) {
+            showMemories(MemoryScope.global.focus)
+        }
+        .keyboardShortcut("m", modifiers: [.command, .shift])
 
         Divider()
     }

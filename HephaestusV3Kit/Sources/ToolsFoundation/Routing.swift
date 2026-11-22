@@ -36,6 +36,9 @@ nonisolated public enum Route: Hashable, Sendable {
     case settings(SettingsPane)
     /// The System Prompts tab, with this internal skill selected, by its name, as V2's `skill` target.
     case systemPrompts(skill: String? = nil)
+    /// The Memories tab, on the global memories (nil or `global`) or a project's, by its id, as V2's Memories section
+    /// and Global Memories view.
+    case memories(scope: String? = nil)
 }
 
 /// A tab of the Settings window, by its stored name.

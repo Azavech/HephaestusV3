@@ -1,0 +1,141 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "A description is required." : {
+
+    },
+    "A memory named “%@” already exists." : {
+
+    },
+    "Body" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Claude saves here what it learns that holds for every project." : {
+
+    },
+    "Claude saves what it learns about you and this project in %@." : {
+
+    },
+    "Create" : {
+
+    },
+    "Description" : {
+
+    },
+    "Edit" : {
+
+    },
+    "Editing…" : {
+
+    },
+    "Feedback" : {
+      "comment" : "A memory's type"
+    },
+    "File MEMORY.md was not found." : {
+
+    },
+    "Filter" : {
+
+    },
+    "Global Memories" : {
+
+    },
+    "Inherited from %@" : {
+
+    },
+    "Memories" : {
+
+    },
+    "Memories Unavailable" : {
+
+    },
+    "Memory %@ was not found." : {
+
+    },
+    "Mode" : {
+
+    },
+    "Move to Trash" : {
+
+    },
+    "Move to Trash failed" : {
+
+    },
+    "Move to Trash…" : {
+
+    },
+    "Move “%@” to the Trash?" : {
+
+    },
+    "Name" : {
+
+    },
+    "New Memory" : {
+
+    },
+    "New Memory…" : {
+
+    },
+    "No Global Memories" : {
+
+    },
+    "No Memories" : {
+
+    },
+    "Not saved: %@" : {
+
+    },
+    "OK" : {
+
+    },
+    "Other" : {
+      "comment" : "A memory's type"
+    },
+    "Other Front Matter" : {
+
+    },
+    "Preview" : {
+
+    },
+    "Project" : {
+      "comment" : "A memory's type"
+    },
+    "Projects" : {
+
+    },
+    "Read only: edit it in %@." : {
+
+    },
+    "Reference" : {
+      "comment" : "A memory's type"
+    },
+    "Reveal in Finder" : {
+
+    },
+    "Saved" : {
+
+    },
+    "Select a memory" : {
+
+    },
+    "Split" : {
+
+    },
+    "Try Again" : {
+
+    },
+    "Type" : {
+
+    },
+    "Use 1–64 lowercase letters, digits and single hyphens." : {
+
+    },
+    "User" : {
+      "comment" : "A memory's type"
+    }
+  },
+  "version" : "1.0"
+}

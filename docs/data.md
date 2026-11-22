@@ -166,6 +166,8 @@ The files that belong to this Mac rather than to a project.
 - `summaries` (WARNING): a notification summary that failed, with the chat's id and the reason.
 - `answers` (WARNING): a comment answer that failed or ran out of time, with the ticket, the comment's id and the
   reason ([UI › Tickets › Comment answers](ui/tickets.md#comment-answers)).
+- `chats` (WARNING): `the global memories folder <path> cannot be created: <reason>` ([Memories › In
+  chats](#in-chats)).
 
 ## Project folder
 
@@ -1327,8 +1329,10 @@ The arguments, one element each, no shell:
   --permission-prompt-tool stdio
   --disallowedTools AskUserQuestion      (AskUserQuestion,Edit,Write,NotebookEdit under Never)
   --strict-mcp-config --mcp-config <data folder>/Runtime/mcp/<CHAT-ID>.json
-  --allowedTools mcp__hephaestus__<tool>,mcp__hephaestus__<tool>,…
+  --allowedTools mcp__hephaestus__<tool>,mcp__hephaestus__<tool>,…[,Read(/<inherited memory folder>/**),…]
   --plugin-dir <data folder>/Runtime/plugins
+  --add-dir <global memories folder>
+  --append-system-prompt <chat-memories, filled>   (unless the skill is blank)
 ```
 
 - No `--tools`: Claude has every one of the CLI's own tools, as in V2 (files, the shell, the web, agents,
@@ -1339,8 +1343,10 @@ The arguments, one element each, no shell:
   server alone.
 - `--allowedTools` lists every tool of the app's server: the CLI runs them without asking, and the app's server
   asks the user before a change, as Settings ▸ Chat says ([MCP › Permissions](mcp.md#permissions)).
-- No system prompt and no hook: V3 sends Claude nothing written for it besides its tools' descriptions and the
-  line of a message's item ([Decisions › What Claude reads](decisions.md#what-claude-reads)). The one plugin is
+- No hook, and no system prompt of the code's: V3 sends Claude nothing written for it besides its tools'
+  descriptions, the line of a message's item ([Decisions › What Claude reads](decisions.md#what-claude-reads)) and
+  the internal skill `chat-memories`, which the user edits, appended with the memories' folders ([Memories › In
+  chats](#in-chats)). The one plugin is
   the user's: the internal skills chats call, as the user wrote them, regenerated before each launch ([Chat
   plugin](#chat-plugin)). When it can't be written, the CLI starts without `--plugin-dir` and the chat gets a
   warning, "Skills could not be prepared: <reason>".
@@ -2287,6 +2293,107 @@ access.
   valid token, it makes one and writes it, the file's other keys kept. `replaceExternalToken(with:)` writes a
   new one the same way. The mode is set to 0600 after each write.
 
+## Memories
+
+What Claude remembers (V2's memories, brought over on the user's request, 22 November 2026): Markdown files the
+Claude CLI writes in a memory folder of its configuration folder, one folder per repository, listed in an index,
+`MEMORY.md`, which the CLI reads at the start of the project's sessions; and the **global memories**, a folder every
+chat of every project gets. The user edits them in [Memories](ui/memories.md); Claude writes them with its own file
+tools: no MCP tool reads or writes them. `MemoryData` ([Architecture › MemoryData](architecture.md#memorydata)).
+
+### Memory folders
+
+The memory folder of a project is the one the CLI uses for a chat in the project's folder, as V2 resolved it (its
+rules, checked by V2 with Claude Code 2.1.309; `MemoryLocations.projectFolder(root:)`):
+
+1. **Start path.** The project's folder with its links resolved (`realpath(3)`), in Unicode normalization form C.
+2. **Repository.** Going up to `/`, the first folder holding a `.git` folder or file.
+3. **Base.** A linked worktree (its `.git` a file `gitdir: <git folder>`, whose `commondir` names the common folder,
+   whose `worktrees` holds the git folder, whose `gitdir` points back) gives its main working tree, or the common
+   folder of a bare repository; any other repository its root; outside git, the start path. A path holding `\` or
+   a network path stops at the root.
+4. **Folder name.** Every UTF-16 unit of the base but an ASCII letter or digit becomes `-`. A name over 200 units
+   keeps its first 200, then `-` and the base-36 absolute value of the base's Java `String.hashCode`.
+5. **Configuration folder.** `CLAUDE_CONFIG_DIR` of the chats' environment (the login shell's) when set and not
+   empty, a relative one under the home folder; else `~/.claude`.
+6. **`autoMemoryDirectory`.** The first settings source whose value is a string gives it, a `null` or a missing key
+   leaving it to the next: the managed settings (`/Library/Application Support/ClaudeCode/managed-settings.json`,
+   then the `.json` files of `managed-settings.d/` by name, the last holding the key winning); the local settings
+   (`.claude/settings.local.json` of the main working tree, else of the project's folder); the project's
+   `.claude/settings.json`; the user's `<configuration folder>/settings.json`. Files are read as strict JSON, after
+   a byte order mark; a missing or invalid file, or a value neither a string nor `null`, gives nothing. A value
+   starting `~/` is under the home folder and must stay in it; it is normalized (`.`, `..`, repeated `/`), its final
+   separators removed, and used when absolute, at least 3 units, without NUL and not a network or special path
+   (`//`, `/??/`, `/net/`, `/Network`, `/.vol`, `/.file`, `/.nofollow`, `/.resolve`). A refused string gives the
+   default folder, without trying the next source. The folder is the value itself.
+7. **Folder.** That folder, else `<configuration folder>/projects/<folder name>/memory`.
+
+So a sub project in its parent's repository shares the parent's folder, and a worktree chat writes in its
+project's. The **global memories folder** is `<configuration folder>/memory`; `autoMemoryDirectory` doesn't move
+it. Each is resolved again at each read and each chat launch.
+
+**Inherited folders.** A sub project inherits the memory folder of each ancestor, nearest parent first, but its own
+and one already listed, with the nearest ancestor that has it (`MemoryLocations.inherited`). A top-level project
+inherits none.
+
+### Memory files
+
+A memory is a file directly in the folder whose name ends with `.md`, but `MEMORY.md` and names starting with `.`
+(letter case ignored); subfolders are ignored. The file name identifies it. A file is skipped when larger than
+20 MiB, not UTF-8, or its front matter has no closing line or isn't a YAML mapping.
+
+When the first line is exactly `---`, the lines up to the next `---` line are the front matter; the body is all
+after that line, else the whole file:
+
+| Key             | Rules                                                                                                                                       |
+|-----------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| `name`          | The memory's name; missing, empty or not a string: the file name without `.md`                                                              |
+| `description`   | What it holds; `""` when missing or not a string                                                                                            |
+| `metadata.type` | `user`, `feedback`, `project` or `reference`; a top-level `type` counts when `metadata` has none, as the CLI reads it; anything else: Other |
+| Any other key   | Kept as it is when the app writes the file; shown under Other Front Matter                                                                  |
+
+**Writing** (`MemoryFolder.create`, `update`, `delete`, `writeIndex`; atomic writes):
+
+- `name`, `description` and `metadata.type` are replaced in place; a missing `name` and `description` are added
+  first, in this order, a missing `type` last in `metadata`, a missing `metadata` last; a `metadata` that isn't a
+  mapping refuses a type: "type: the metadata of <file> is not a mapping.". A top-level `type` stays. The front
+  matter is written in the files' YAML layout (two-space indentation, a string with a line break as a literal
+  block); a change of the body alone keeps it as written, comments included.
+- A file without front matter gets one when a key is set, or an empty one when its new body starts with a `---`
+  line. The body is written verbatim. Line breaks of a description and a body become LF.
+- A name the app writes is 1 to 64 lowercase letters and digits in groups joined by single hyphens, never
+  `memory`. A name is taken when another memory has it or a file or folder `<name>.md` other than the memory's own
+  exists, as the volume compares names: "A memory named <name> already exists.".
+
+| Change              | Steps, in order                                                                                                                                                                                                                                                                                    |
+|---------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Create              | Writes `<name>.md` with its name, description and type and an empty body; appends `- [<name>](<name>.md) — <description on one line>` to `MEMORY.md`, after a line break when the file doesn't end with one; the folder and `MEMORY.md` made when missing                                          |
+| Rename (a new name) | Writes the change, renames the file `<new name>.md` (kept when that is already the memory's file); in `MEMORY.md`, link targets `<old file>` and `./<old file>` become the new file; `[[old name]]` becomes `[[new name]]` in the other memories, in file name order, nothing else of them changed |
+| Delete              | Removes the lines of `MEMORY.md` that link to the file, then moves it to the Trash; `[[name]]` links elsewhere stay                                                                                                                                                                                |
+| Save `MEMORY.md`    | Replaces the whole file, the folder made when missing                                                                                                                                                                                                                                              |
+
+`MEMORY.md` is read before the first step of a create, rename or delete, so one that can't be read changes nothing;
+a failed step stops the change, the steps done staying.
+
+### In chats
+
+At each launch of a chat's CLI ([Launch](#launch)), whatever its kind (`MemoryContext.load`):
+
+1. The global memories folder is resolved with the chats' environment and made when missing; the CLI gets it with
+   `--add-dir`, so Claude reads and writes it with its file tools under the chat's permission mode. When it can't
+   be made, the chat starts without it and the app's log gets a warning ([App log](#app-log)).
+2. The folders the project inherits that exist get a `Read(/<folder>/**)` rule in `--allowedTools`, and the same
+   for the folder with its links resolved when it differs: Claude reads them without asking, and can't write them.
+   A path holding `*`, `?`, `[`, `\` or a control character, or ending with white space, gets none.
+3. The internal skill `chat-memories` ([Internal skills](#internal-skills)) is filled and appended to the CLI's
+   system prompt with `--append-system-prompt`; a blank skill appends nothing. Its placeholders:
+   `{{globalMemoriesFolder}}`, the folder; `{{globalMemories}}`, its `MEMORY.md`; `{{parentMemories}}`, for each
+   inherited folder `<name> (<id>), <folder>:` then its `MEMORY.md`, a blank line between, empty for a top-level
+   project. A `MEMORY.md` is given as the CLI limits its own: LF line breaks, trimmed, its first 200 lines, at most
+   25,000 UTF-16 units cut at a line break; empty when missing or unreadable.
+
+Internal skill runs (titles, summaries, comment answers) get no memories, as V2's comment answers.
+
 ## Internal skills
 
 The app's own Claude skills, whose list and names the code defines (`InternalSkill.all` in ChatData) and whose
@@ -2299,8 +2406,9 @@ content the user writes in [System Prompts](ui/system-prompts.md). A V3 addition
   `report-feedback`, `resume-chat`, `resume-agent`, `implement-ticket`, `implement-bundle` and `watch-ci`, which chats call (`isCalledFromChats`), through the [chat plugin](#chat-plugin):
   a feedback chat's first message calls `report-feedback` ([Feedback chats](#feedback-chats)), Resume calls
   `resume-chat` ([Closing and deleting chats](#closing-and-deleting-chats)), an agent's Resume `resume-agent` ([Agents](#agents)),
-  Implement `implement-ticket` and Implement All `implement-bundle` ([Implement chats](#implement-chats)), a CI chat's first message `watch-ci` ([CI chats](#ci-chats)). The first two are empty by default;
-  `resume-chat`, `resume-agent`, `notification-summary`, `implement-ticket`, `implement-bundle`, `watch-ci` and `comment-answer` hold V3's own text, which the user's saved file replaces. Every text the app has Claude act on
+  Implement `implement-ticket` and Implement All `implement-bundle` ([Implement chats](#implement-chats)), a CI chat's first message `watch-ci` ([CI chats](#ci-chats)); and
+  `chat-memories`, which ends every chat's system prompt ([Memories › In chats](#in-chats)). The first two are empty by default;
+  `resume-chat`, `resume-agent`, `notification-summary`, `implement-ticket`, `implement-bundle`, `watch-ci`, `comment-answer` and `chat-memories` hold V3's own text, which the user's saved file replaces. Every text the app has Claude act on
   is an internal skill, never written in the code (the user's rule, 17 November 2026).
 - **File**: `<data folder>/skills/<name>/SKILL.md`, Claude's skill layout. Written atomically by
   `DataFolder.writeSkill(_:of:)`, its folder made when missing: a front matter with `name` (the code's),

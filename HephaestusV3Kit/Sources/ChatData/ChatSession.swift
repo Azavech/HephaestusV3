@@ -1,6 +1,7 @@
 import ExternalTools
 import FileStorage
 import Foundation
+import MemoryData
 import MCPKit
 import Observation
 import ProjectData
@@ -153,6 +154,9 @@ public final class ChatSession {
     @ObservationIgnored var port = SettingsFile.defaultMCPPort
     /// The app's log, for the background Claude calls that fail (docs/data.md › App log).
     @ObservationIgnored public var appLog = AppLog(url: nil)
+    /// Where the memories are for the chats' environment (docs/data.md › Memories): the home folder's `~/.claude`;
+    /// tests give a temporary folder.
+    @ObservationIgnored public var memoryLocations: ([String: String]) -> MemoryLocations = { MemoryLocations(environment: $0) }
     /// Why the app's MCP server isn't listening, its bind error; nil while it listens. A chat whose Claude starts
     /// meanwhile says so in its transcript, as V2's did.
     @ObservationIgnored public var mcpUnavailable: String?

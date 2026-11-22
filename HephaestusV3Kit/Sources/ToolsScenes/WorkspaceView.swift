@@ -4,6 +4,7 @@ import ChatKit
 import ContractsKit
 import DashboardsKit
 import MachinesKit
+import MemoriesKit
 import ProjectsKit
 import ServiceMapKit
 import SwiftUI
@@ -189,6 +190,7 @@ private struct WorkspaceWindow: View {
         case .projectSettings: String(localized: "Project Settings", bundle: #bundle)
         case .machines: String(localized: "Virtual Machines", bundle: #bundle)
         case .systemPrompts: String(localized: "System Prompts", bundle: #bundle)
+        case .memories: String(localized: "Memories", bundle: #bundle)
         }
     }
 
@@ -205,6 +207,7 @@ private struct WorkspaceWindow: View {
         case .projectSettings: "gearshape"
         case .machines: "desktopcomputer"
         case .systemPrompts: "text.book.closed"
+        case .memories: "brain"
         }
     }
 
@@ -272,6 +275,12 @@ private struct TabContentView: View {
             SystemPromptsView(state: workspace.state(for: tab) { SystemPromptsTabState(store: appData.skillStore) })
                 .environment(\.focusRequest, appData.skillFocus)
                 .toolbar { ChatPanelToolbarItem() }
+        case .memories:
+            MemoriesView(state: workspace.state(for: tab) {
+                MemoriesTabState(directory: appData.directory, locations: appData.memoryLocations, scope: MemoryScope(focus: tab.focus))
+            })
+            .environment(\.focusRequest, appData.memoryFocus)
+            .toolbar { ChatPanelToolbarItem() }
         }
     }
 }
@@ -467,6 +476,7 @@ struct TabBar: View {
         case .projectSettings(let project): "projectSettings.\(project)"
         case .machines: "machines"
         case .systemPrompts: "systemPrompts"
+        case .memories: "memories"
         }
     }
 }

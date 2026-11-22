@@ -10,6 +10,7 @@ import ExternalTools
 import FileStorage
 import MachineData
 import MachinesKit
+import MemoryData
 import MCPKit
 import Observation
 import ProjectData
@@ -36,6 +37,13 @@ final class AppData {
     let directory = ProjectDirectory(projects: [], state: .loading)
     /// A route's ask to select an internal skill in System Prompts.
     var skillFocus: FocusRequest?
+    /// The scope a route asks the Memories tab to show: `global` or a project's id.
+    var memoryFocus: FocusRequest?
+
+    /// Where the memories are, for the chats' environment as the login shell gives it (docs/data.md › Memories).
+    var memoryLocations: () -> MemoryLocations {
+        { [session] in MemoryLocations(environment: session.tools.environment) }
+    }
     /// The app's log (docs/data.md › App log), made once the data folder is known.
     @ObservationIgnored private(set) var appLog = AppLog(url: nil)
     /// The project selected in Projects, which is one tab in the whole app; kept for the next launch, as V2 did. Held

@@ -2,6 +2,7 @@ import Darwin
 import ExternalTools
 import FileStorage
 import Foundation
+import MemoryData
 import MCPKit
 import ProjectData
 import Synchronization
@@ -143,6 +144,10 @@ final class ChatWorld {
         session = ChatSession(projects: projects, tokens: tokens, launcher: launcher, runner: runner, device: "Studio",
                               processEnvironment: [:], trash: .folder(root.appendingPathComponent("Trash")),
                               catalogs: try .fixtures(in: root.appendingPathComponent("Catalogs")))
+        // The memories of a temporary home, never the user's.
+        let home = root.appendingPathComponent("home").path
+        let managed = root.appendingPathComponent("managed").path
+        session.memoryLocations = { MemoryLocations(home: home, environment: $0, managedFolder: managed) }
         await session.start(tools: ["list_tickets", "add_comment"], port: 47999)
         try await until { !self.session.status.checking && self.session.models != ClaudeModel.fallback }
     }
@@ -277,7 +282,13 @@ struct ChatSessionTests {
         let cli = try #require(world.launcher.chats.first)
         let arguments = cli.request.arguments
         #expect(arguments.contains("--session-id") && arguments.contains(id) && !arguments.contains("--resume"))
-        #expect(!arguments.contains("--append-system-prompt") && !arguments.contains("--settings"))
+        #expect(!arguments.contains("--settings"))
+        // The memories: the global folder to read and write, and the skill chat-memories, filled, as the system prompt's end.
+        let global = world.root.appendingPathComponent("home/.claude/memory").path
+        let added = try #require(arguments.firstIndex(of: "--add-dir"))
+        #expect(arguments[added + 1] == global && FileManager.default.fileExists(atPath: global))
+        let appended = try #require(arguments.firstIndex(of: "--append-system-prompt"))
+        #expect(arguments[appended + 1].contains("Their folder is \(global)."))
         let plugins = try #require(arguments.firstIndex(of: "--plugin-dir"))
         #expect(arguments[plugins + 1] == world.root.appendingPathComponent("Data/Runtime/plugins").path)
         #expect(!arguments.contains("--tools"))

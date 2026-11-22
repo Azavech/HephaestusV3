@@ -201,8 +201,37 @@ public struct InternalSkill: Hashable, Sendable, Identifiable {
         - Report only what you did and checked, and name every change you made to the ticket.
         """)
 
+    /// The memories every chat gets, as V2's common skill gave them (docs/data.md › Memories › In chats): appended to
+    /// the CLI's system prompt at each launch, its placeholders filled with the global memories folder and its
+    /// `MEMORY.md`, and the memories the project inherits from its parents. Blank, nothing is appended.
+    public static let chatMemories = InternalSkill(name: "chat-memories", defaultContent: """
+        # Global memories
+
+        Besides the memory folder of this project, which the Claude CLI gives you, you have global memories: memories \
+        that hold for every project, which every chat of every project receives. Their folder is \
+        {{globalMemoriesFolder}}. Its files have the format of your project memories: one .md file per memory, with \
+        name, description and metadata.type in its front matter, and one line per memory in the folder's MEMORY.md. The \
+        global MEMORY.md follows, empty while it has no line:
+
+        {{globalMemories}}
+
+        Decide per memory where you save it: a memory that holds for every project goes to the global memories folder, \
+        with its line in the global MEMORY.md; the other memories go to the project's memory folder. When a line of the \
+        global MEMORY.md concerns your work, read that memory's file.
+
+        # Memories of the parent projects
+
+        When this project is a sub project, the memories Claude saved for its parent projects follow, nearest parent \
+        first: each parent's name, identifier and memory folder, then its MEMORY.md. Nothing follows for a top-level \
+        project. Read a memory file of these folders with your file tools when it is relevant, as you read your own \
+        memories. Never write in these folders: save every new memory in your own memory folder or, when it holds for \
+        every project, in the global memories folder.
+
+        {{parentMemories}}
+        """)
+
     public static let all: [InternalSkill] = [.setTicketTitle, .reportFeedback, .resumeChat, .notificationSummary, .resumeAgent,
-                                              .implementTicket, .implementBundle, .watchCI, .commentAnswer]
+                                              .implementTicket, .implementBundle, .watchCI, .commentAnswer, .chatMemories]
 
     /// The plugin that gives chats the skills they call, as V2 named it.
     public static let pluginName = "hephaestus-skills"
