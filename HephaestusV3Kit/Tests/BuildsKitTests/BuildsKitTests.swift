@@ -1,5 +1,6 @@
 import ExternalTools
 import Foundation
+import Synchronization
 import Testing
 import ToolsFoundation
 @testable import BuildsKit
@@ -463,6 +464,33 @@ private struct GitHubRunForTests: Decodable {
 @Suite("The store's repository")
 @MainActor
 struct BuildRepositoryTests {
+    @Test("Two reads of one job's log at once run gh once; past 12 logs read, the oldest is dropped")
+    func sharedLogReads() async throws {
+        let gh = SlowGH()
+        let store = LiveBuildStore(cli: { GitHubCLI(gh: "/opt/homebrew/bin/gh", environment: [:], runner: gh) },
+                                   temporary: FileManager.default.temporaryDirectory, page: { _ in "https://github.com/example/orders" })
+        let project = try #require(Project.samples.first)
+        func run(job: Int) -> WorkflowRun {
+            WorkflowRun(id: job, title: "t", workflow: "CI", branch: "main", commit: "abc", status: .success, startedAt: Date(),
+                        duration: 1, jobs: [Job(name: "Test", status: .success, duration: 1,
+                                               steps: [Step(name: "Run tests", status: .success, duration: 1)], jobID: job)])
+        }
+        let step = StepReference(job: "Test", step: "Run tests")
+        async let first: Void = store.loadLog(of: step, in: run(job: 33), of: project)
+        async let second: Void = store.loadLog(of: step, in: run(job: 33), of: project)
+        _ = await (first, second)
+        #expect(gh.logReads == 1)
+        guard case .loaded(let lines) = store.log(of: step, in: run(job: 33), of: project) else { Issue.record("not read"); return }
+        #expect(lines == ["ok"])
+        for job in 100..<(100 + LiveBuildStore.keptLogs) {
+            await store.loadLog(of: step, in: run(job: job), of: project)
+        }
+        if case .loaded = store.log(of: step, in: run(job: 33), of: project) { Issue.record("The oldest log stays") }
+        if case .loaded = store.log(of: step, in: run(job: 100 + LiveBuildStore.keptLogs - 1), of: project) {} else {
+            Issue.record("The newest log went")
+        }
+    }
+
     @Test("A second read of a list running returns once the list is read, not at once")
     func secondReadWaits() async throws {
         let gate = ReadGate()
@@ -515,5 +543,17 @@ private final class ReadGate {
         isOpen = true
         waiters.forEach { $0.resume() }
         waiters.removeAll()
+    }
+}
+
+/// gh answering every job log with one line, a little later, and counting the log reads.
+private final class SlowGH: ProcessRunning {
+    private let reads = Mutex(0)
+    var logReads: Int { reads.withLock { $0 } }
+
+    func run(_ request: ProcessRequest, input: Data?, timeout: Duration?) async throws -> ProcessResult {
+        if request.arguments.contains("--log") { reads.withLock { $0 += 1 } }
+        try await Task.sleep(for: .milliseconds(30))
+        return ProcessResult(termination: .exited(0), standardOutput: Data("Test\tRun tests\t2026-11-07T21:27:01.1234567Z ok\n".utf8))
     }
 }

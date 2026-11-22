@@ -1861,7 +1861,9 @@ option and its value are one argument; a run's id and a tag come after `--`.
   (GitHub names a step without `name:` after its action, such as `Run actions/cache@v4`) keep their own lines, the
   n-th segment for the n-th step of that name, and are two rows in the window. gh gives a job's log once the job has completed. A job whose log archive has no file per step comes as `UNKNOWN STEP`
   (`StepLogs.unknownStep`): every step of that job then shows the job's whole log, in the window and in
-  `get_run_log`. The project's GitHub page is read from its settings at each read (`LiveBuildStore`'s `page`), so a
+  `get_run_log`. The store keeps the 12 job logs read last, by job; an older one is read again when a window shows
+  it. A run's jobs and a job's log asked while the same read runs wait for that read, and the jobs of a run gone
+  from the list are dropped. The project's GitHub page is read from its settings at each read (`LiveBuildStore`'s `page`), so a
   page added or changed in Project Settings applies to an open Builds tab.
 - **Releases**: GitHub's REST answer gives each release's `tag_name`, `name`, `body` (the notes), `draft`,
   `prerelease`, `created_at`, `published_at` and `assets` (`name`, `size`); drafts are left out; the release

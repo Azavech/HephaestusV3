@@ -117,6 +117,12 @@ public final class LiveBuildStore: BuildStore {
     @ObservationIgnored private let downloads: URL
     /// The reads running, by repository and list: a second caller waits for the one running rather than reading again.
     @ObservationIgnored private var refreshing: [String: Task<Void, Never>] = [:]
+    /// The reads of a run's jobs and of a job's log running, by repository and item: shared, as the lists' are.
+    @ObservationIgnored private var loading: [String: Task<Void, Never>] = [:]
+    /// The job logs kept, oldest read first, by repository and job id: past `keptLogs`, the oldest is dropped and
+    /// read again when a window shows it.
+    @ObservationIgnored private var logOrder: [(repository: String, job: Int)] = []
+    static let keptLogs = 12
     /// Returns once gh can be looked for: the projects' session's first lookup of the tools.
     @ObservationIgnored private let toolsReady: @MainActor () async -> Void
     /// A project's GitHub page as its settings say now, by id: a tab keeps the project it opened with.
@@ -206,8 +212,12 @@ public final class LiveBuildStore: BuildStore {
             } else {
                 let list = try await builds.runs().map { Self.run($0) }
                 // The details stay until a new read replaces them (`BuildsModel.loadSelectedRun`): dropping them
-                // emptied a running run's jobs and log pane at every read.
-                update(project) { $0.runs = .loaded(list) }
+                // emptied a running run's jobs and log pane at every read. Those of a run gone from the list go.
+                let listed = Set(list.map(\.id))
+                update(project) {
+                    $0.runs = .loaded(list)
+                    $0.details = $0.details.filter { listed.contains($0.key) }
+                }
             }
         } catch {
             update(project) { releases ? ($0.releases = .failed(error.description)) : ($0.runs = .failed(error.description)) }
@@ -215,8 +225,10 @@ public final class LiveBuildStore: BuildStore {
     }
 
     func load(run id: WorkflowRun.ID, of project: Project) async {
-        guard let builds = try? builds(project), let read = try? await builds.run(id) else { return }
-        update(project) { $0.details[id] = Self.run(read) }
+        await shared(key(project) + "#run\(id)") { [self] in
+            guard let builds = try? builds(project), let read = try? await builds.run(id) else { return }
+            update(project) { $0.details[id] = Self.run(read) }
+        }
     }
 
     func loadLog(of step: StepReference, in run: WorkflowRun, of project: Project) async {
@@ -226,11 +238,38 @@ public final class LiveBuildStore: BuildStore {
             update(project) { $0.logs[job.jobID] = .failed(String(localized: "The log shows once the job has finished.", bundle: #bundle)) }
             return
         }
-        do throws(BuildError) {
-            let steps = try await builds(project).log(job: job.jobID)
-            update(project) { $0.logs[job.jobID] = .loaded(steps) }
-        } catch {
-            update(project) { $0.logs[job.jobID] = .failed(error.description) }
+        let repository = key(project)
+        await shared(repository + "#log\(job.jobID)") { [self] in
+            if case .loaded? = repositories[repository]?.logs[job.jobID] { return }
+            do throws(BuildError) {
+                let steps = try await builds(project).log(job: job.jobID)
+                update(project) { $0.logs[job.jobID] = .loaded(steps) }
+                keep(log: job.jobID, of: repository)
+            } catch {
+                update(project) { $0.logs[job.jobID] = .failed(error.description) }
+            }
+        }
+    }
+
+    /// Runs `work` unless the same read runs: then waits for that one.
+    private func shared(_ key: String, _ work: @escaping @MainActor () async -> Void) async {
+        if let running = loading[key] {
+            await running.value
+            return
+        }
+        let task = Task { await work() }
+        loading[key] = task
+        await task.value
+        if loading[key] == task { loading[key] = nil }
+    }
+
+    /// Notes a job log just read, and drops the oldest past `keptLogs`: each is a whole job's log.
+    private func keep(log job: Int, of repository: String) {
+        logOrder.removeAll { $0.repository == repository && $0.job == job }
+        logOrder.append((repository, job))
+        while logOrder.count > Self.keptLogs {
+            let oldest = logOrder.removeFirst()
+            repositories[oldest.repository]?.logs[oldest.job] = nil
         }
     }
 
