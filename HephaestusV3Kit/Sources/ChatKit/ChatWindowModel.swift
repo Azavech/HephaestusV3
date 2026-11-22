@@ -167,9 +167,10 @@ final class ChatWindowModel {
         ChatSuggestion.project
     }
 
-    /// Selects the conversation a route asks for, when the list has it.
+    /// Selects the conversation a route asks for, when the project or a sub project has it: a closed one too,
+    /// which the list then shows while it is selected, as a new window would select it.
     func select(focus: String) {
-        guard sections.contains(where: { $0.conversations.contains { $0.id == focus } }) else { return }
+        guard conversationSummary(focus) != nil else { return }
         selection = focus
     }
 

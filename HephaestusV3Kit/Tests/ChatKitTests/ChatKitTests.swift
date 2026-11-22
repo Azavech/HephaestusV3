@@ -319,6 +319,16 @@ struct ChatWindowModelTests {
         #expect(model.selection == "ord-old")
     }
 
+    @Test("A route's focus selects a closed conversation while the list hides closed ones, and the list shows it")
+    func focusOnClosed() throws {
+        try store.close("ord-old")
+        let model = ChatWindowModel(project: orders, focus: "ord-new", store: store)
+        #expect(model.hidesClosed && !model.sections.flatMap(\.conversations).contains { $0.id == "ord-old" })
+        model.select(focus: "ord-old")
+        #expect(model.selection == "ord-old")
+        #expect(model.sections.flatMap(\.conversations).contains { $0.id == "ord-old" })
+    }
+
     @Test("A parent lists its sub projects' conversations, grouped in tree order")
     func grouped() {
         let shop = ChatWindowModel(project: Project.sample("SHOP")!, focus: nil, store: store)
