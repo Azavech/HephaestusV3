@@ -57,12 +57,14 @@ public struct UpdateInstaller: Sendable {
             await relaunchApp(app, activate: activate)
         }
 
-        // Step 8: the build's cache folder.
+        // Step 8: the build's cache folder, then its copy's path forgotten again: LaunchServices can register the
+        // copy between step 5's forgetting and the swap, and keeps that record once the copy has moved.
         do {
             try FileManager.default.removeItem(at: folder)
         } catch {
             log("Deleting \(folder.path) failed: \(error.localizedDescription)")
         }
+        await tools.unregister(update)
         return .installed
     }
 

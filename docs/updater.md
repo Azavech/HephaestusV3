@@ -210,7 +210,9 @@ and open again, false on an ordinary quit.
 7. The app opens again **by its path**: `/usr/bin/open`, `-g` when `activate` was false, one `--env NAME=value`
    per `HEPHAESTUS_*` variable of the Updater's environment, then `/Applications/HephaestusV3.app`. Never by its
    bundle id, which could open another copy. LaunchServices then registers the new version at that path.
-8. `<build>/` is deleted, and the Updater ends with status 0.
+8. `<build>/` is deleted, then the cached copy's path is forgotten in LaunchServices again (`lsregister -u` takes a
+   path no longer there): LaunchServices can register the copy between step 5's forgetting and the swap, and keeps
+   that record once the copy has moved. The Updater ends with status 0.
 
 A failure of steps 6 to 8 is logged and doesn't change the status. At the next launch the app removes the
 `NSQuitAlwaysKeepsWindows` it set, once macOS has restored the windows, so that later quits follow the user's

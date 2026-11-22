@@ -45,8 +45,8 @@ public struct UpdateTools: Sendable {
     public static let system = UpdateTools(
         run: { await ProcessRunner.run($0, $1) },
         unpack: { await DiskImage.copyApp(from: $0, to: $1, run: { await ProcessRunner.run($0, $1) }) },
+        // A path no longer there is forgotten too: LaunchServices keeps the record of a copy moved or deleted.
         unregister: { app in
-            guard FileManager.default.fileExists(atPath: app.path) else { return }
             _ = await ProcessRunner.run(LaunchServices.lsregister, ["-u", app.path])
         }
     )

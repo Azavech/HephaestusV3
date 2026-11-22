@@ -177,7 +177,7 @@ struct InstallerTests {
         #expect(try FileManager.default.contentsOfDirectory(atPath: applications.path) == ["HephaestusV3.testbundle"])
         #expect(getxattr(installed.path, UpdateInstaller.quarantineAttribute, nil, 0, 0, XATTR_NOFOLLOW) == -1)
         #expect(!FileManager.default.fileExists(atPath: cache.appendingPathComponent("80").path))
-        #expect(tools.unregistered.withLock { $0 } == [update.path])
+        #expect(tools.unregistered.withLock { $0 } == [update.path, update.path], "Before the swap, and again once the cache is gone")
         #expect(tools.ran("/usr/bin/open") == [["/usr/bin/open", "-g", "--env", "HEPHAESTUS_DATA_DIR=/tmp/x", installed.path]])
     }
 
