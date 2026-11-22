@@ -241,6 +241,10 @@ struct ChatGateTests {
         #expect(await ChatGate.check(.chat("C"), operation(.changeTickets), [:], chats: chats, defaults: defaults, mode: .plan)
             == ToolError(.forbidden, "The chat is in Plan Only: Claude plans and changes nothing."))
         #expect(await ChatGate.check(.chat("C"), operation(.read), [:], chats: chats, defaults: defaults, mode: .plan) == nil)
+        // A GET reads and a chat closing itself changes nothing of the user's: they run under Plan Only, as in V2.
+        #expect(await ChatGate.check(.chat("C"), operation(.callAPIs), ["operation": "GET /orders"], chats: chats, defaults: defaults, mode: .plan) == nil)
+        #expect(await ChatGate.check(.chat("C"), operation(.callAPIs), ["operation": "POST /orders"], chats: chats, defaults: defaults, mode: .plan)?.code == .forbidden)
+        #expect(await ChatGate.check(.chat("C"), operation(.closeChats), ["chatIDs": ["c"]], chats: chats, defaults: defaults, mode: .plan) == nil)
         defaults.set("never", forKey: ChatPreferences.ticketChangesKey)
         #expect(await ChatGate.check(.chat("C"), operation(.changeTickets), [:], chats: chats, defaults: defaults, mode: .bypassPermissions)?.code == .forbidden)
     }

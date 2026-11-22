@@ -31,7 +31,14 @@ public enum ChatGate {
         // The chat's permission mode, as V2's: Plan Only changes nothing; Don't Ask refuses what would ask; Allow
         // All runs it. Never stays a refusal.
         let mode = given ?? ChatPermissionMode(stored: chats.chats[chatID]?.file.settings.permissionMode ?? "")
-        if mode == .plan, ![.read, .renameChats, .askUser].contains(operation.permission) {
+        // A GET or HEAD api_call reads, and closing the chat itself or the chats it started changes nothing of the
+        // user's: they run under Plan Only as V2's did.
+        let operationText = arguments["operation"]?.stringValue ?? ""
+        let readsAPI = operation.permission == .callAPIs && (operationText.hasPrefix("GET ") || operationText.hasPrefix("HEAD "))
+        let closesOwn = operation.permission == .closeChats && (arguments["chatIDs"]?.arrayValue ?? []).compactMap(\.stringValue).allSatisfy {
+            $0.uppercased() == chatID || chats.chats[$0.uppercased()]?.file.orchestratorChatID == chatID
+        }
+        if mode == .plan, ![.read, .renameChats, .askUser].contains(operation.permission), !readsAPI, !closesOwn {
             return ToolError(.forbidden, "The chat is in Plan Only: Claude plans and changes nothing.")
         }
         func ask(_ refusal: String) async -> ToolError? {

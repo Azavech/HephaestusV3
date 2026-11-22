@@ -245,7 +245,8 @@ report ([Data › CI chats](data.md#ci-chats)).
 
 A chat's permission mode refines the column of a chat's Claude ([UI › Chat › Chat settings](ui/chat.md#chat-settings)):
 under Plan Only every group but `read`, `renameChats` and `askUser` is refused (`The chat is in Plan Only: Claude
-plans and changes nothing.`); under Don't Ask what would show a card is refused (`The chat doesn't ask (Don't
+plans and changes nothing.`), but for an `api_call` whose operation starts with `GET ` or `HEAD `, which reads, and
+a `close_chat` naming only the chat itself and the chats it started, as V2's hook let them run; under Don't Ask what would show a card is refused (`The chat doesn't ask (Don't
 Ask): …`); under Allow All it runs. A permission set to Never stays a refusal.
 
 ## External use
