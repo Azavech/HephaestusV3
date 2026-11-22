@@ -555,36 +555,43 @@ private struct ListCardContent<Content: View>: View {
     @State private var smallest: CGFloat = 0
 
     var body: some View {
+        // The content once, live, with a probe beside it that takes its narrowest width: a hidden second copy ran its
+        // tasks, such as a service widget's reads of the cluster, a second time.
+        let measured = NarrowestWidthProbe {
+            content
+            Color.clear
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
+                    smallest = width
+                }
+        }
         Group {
             if smallest > available + 0.5 {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    content
+                    measured
                 }
             } else {
-                content
+                measured
             }
         }
         .frame(width: available, alignment: .leading)
-        .background {
-            SmallestWidth {
-                content
-            }
-            .hidden()
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width in
-                smallest = width
-            }
-        }
     }
 }
 
-/// Sizes its view at the narrowest it can be.
-nonisolated private struct SmallestWidth: Layout {
+/// Places its first view as proposed, and its second, a probe, as wide as the first can narrowest be.
+nonisolated private struct NarrowestWidthProbe: Layout {
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        subviews.first?.sizeThatFits(ProposedViewSize(width: 0, height: nil)) ?? .zero
+        subviews.first?.sizeThatFits(proposal) ?? .zero
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(width: 0, height: nil))
+        guard let content = subviews.first else { return }
+        content.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
+        if subviews.count > 1 {
+            let narrowest = content.sizeThatFits(ProposedViewSize(width: 0, height: nil)).width
+            subviews[1].place(at: bounds.origin, proposal: ProposedViewSize(width: narrowest, height: 0))
+        }
     }
 }
 

@@ -376,7 +376,9 @@ row, with no edit mode (the user's choice):
   grid. Rows are 16 points apart, with a 16-point margin.
 - The order is the grid's: by row, then by column.
 - Each widget is as wide as the list, whatever its content. Content that can't be as narrow, such as the
-  Tickets counts, which never truncate, scrolls sideways inside its widget; text that can truncate does.
+  Tickets counts, which never truncate, scrolls sideways inside its widget; text that can truncate does. Its
+  narrowest width is measured on the widget itself, with an empty probe beside it: each widget is made once, so
+  its reads (a service widget's of the cluster, Recent Builds' of GitHub) run once.
   The Service Graph's map is 260 points tall and the Requests per Minute chart 120 points.
 - Clicks work as on the grid.
 - There is no **Edit** button. Edit mode in progress ends when the Dashboard becomes a list, and **Edit**
