@@ -281,7 +281,8 @@ that chat's draft, and coming back shows this one's. A new chat's draft, before 
 (the Chat window's new-chat prompt, a panel's empty state); when its first message, or a suggestion, starts the
 chat, what wasn't sent becomes the chat's draft. **New Chat** starts an empty one and leaves the others as they
 are. Sending clears the text sent, unless it changed meanwhile, and the files sent. Drafts last as long as the
-app runs, as in V2. Deleting a chat drops its draft and the files pasted into it. A draft counts as unsent work
+app runs, as in V2. Deleting a chat drops its draft and the files pasted into it; a view that still showed it, in
+another tab or a panel, starts a new chat with the next message instead of failing. A draft counts as unsent work
 (the update's restart, the quit's question) only for a chat that still exists, and only when it holds files or
 text other than white space, which Send would take.
 

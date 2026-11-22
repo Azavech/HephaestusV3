@@ -329,6 +329,14 @@ struct ChatWindowModelTests {
         #expect(model.sections.flatMap(\.conversations).contains { $0.id == "ord-old" })
     }
 
+    @Test("A message to a chat deleted elsewhere while shown starts a new chat instead of failing")
+    func sendAfterDeletion() async throws {
+        let model = ChatWindowModel(project: orders, focus: "ord-old", store: store)
+        try store.delete("ord-old")
+        #expect(await model.send("Still there?", reader: reader()))
+        #expect(model.selection != "ord-old" && model.failure == nil)
+    }
+
     @Test("A parent lists its sub projects' conversations, grouped in tree order")
     func grouped() {
         let shop = ChatWindowModel(project: Project.sample("SHOP")!, focus: nil, store: store)

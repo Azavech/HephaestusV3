@@ -278,7 +278,8 @@ final class ChatWindowModel {
     /// Messages from the Chat window carry the project, not an item. The draft stays.
     @discardableResult
     func send(_ text: String, files: [URL] = [], reader: ToolReader) async -> Bool {
-        let target = selection == Self.newChatID ? nil : selection
+        // A chat deleted elsewhere while shown: the message starts a new chat instead of failing.
+        let target = (selection == Self.newChatID ? nil : selection).flatMap { store.conversation($0) != nil ? $0 : nil }
         do throws(ChatSendError) {
             let id = try await store.send(text, to: target, project: project, origin: nil, attachments: [], files: files, reader: reader)
             failure = nil

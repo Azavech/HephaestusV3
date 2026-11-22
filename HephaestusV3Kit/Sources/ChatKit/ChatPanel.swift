@@ -426,6 +426,8 @@ public final class ChatPanelModel {
     @discardableResult
     func send(_ text: String, files: [URL] = [], project: Project, origin: ToolKind, subject: ChatReference?, reader: ToolReader) async -> Bool {
         let attachments = attachment(for: subject).map { [$0] } ?? []
+        // A chat deleted elsewhere while shown: the message starts a new chat instead of failing.
+        if let id = conversationID, store.conversation(id) == nil { conversationID = nil }
         do throws(ChatSendError) {
             let id = try await store.send(text, to: conversationID, project: project, origin: origin, attachments: attachments,
                                           files: files, reader: reader)
