@@ -121,6 +121,14 @@ struct ChatFilesTests {
         #expect(refused.files == [log] && refused.failure == "Folders cannot be attached.")
     }
 
+    @Test("Only files that are there can be added: a web link or a missing file is refused, with why")
+    func addingOnlyFiles() {
+        let web = ChatFiles.adding([URL(string: "https://example.com/a.png")!], to: [])
+        #expect(web.files.isEmpty && web.failure == "Only files can be attached, not https://example.com/a.png.")
+        let missing = ChatFiles.adding([URL(fileURLWithPath: "/nowhere/gone-\(UUID().uuidString).txt")], to: [])
+        #expect(missing.files.isEmpty && missing.failure?.hasSuffix("can't be read.") == true)
+    }
+
     @Test("A paste of files gives them; of an image, a PNG named for its time; of text, nothing")
     func pasting() throws {
         let board = NSPasteboard(name: NSPasteboard.Name("HephaestusV3Tests-\(UUID().uuidString)"))

@@ -346,7 +346,9 @@ As V2's composer did, a message can carry files, in the Chat window and in the p
   added once.
 - **Refused**, with the reason over the composer and nothing added: a folder ("Folders cannot be attached."), a
   file over 20 MB ("*name* is larger than 20 MB."), or files over 20 MB together ("The attachments of one request
-  exceed 20 MB.").
+  exceed 20 MB."). Only files that are there are added: a web link or picture dragged from a browser is refused
+  ("Only files can be attached, not *link*."), and so is a file gone since ("*name* can't be read."), rather than
+  making a chip that can't be sent.
 - **Sending** works with text, files or both; Return sends files without text too. Once sent, the chips clear
   (the draft's text too, unless it changed meanwhile), and the temporary copies of pasted images are deleted;
   when sending fails, the files stay. The panel's **New Chat** clears them.

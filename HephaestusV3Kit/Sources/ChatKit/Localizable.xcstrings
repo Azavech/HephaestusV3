@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ can't be read." : {
+
+    },
     "%@ is larger than 20 MB." : {
 
     },
@@ -644,6 +647,9 @@
     },
     "Old" : {
       "comment" : "The text an edit replaces"
+    },
+    "Only files can be attached, not %@." : {
+
     },
     "Open" : {
       "comment" : "Opens a file of a message in Quick Look\nOpens an item in its tool's window"

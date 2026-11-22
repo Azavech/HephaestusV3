@@ -9,6 +9,14 @@ enum ChatFiles {
     /// `files` with `added` after them, each once, and why some weren't added: a folder, or a file over the
     /// limits (as `MessageAttachment.check` says).
     static func adding(_ added: [URL], to files: [URL]) -> (files: [URL], failure: String?) {
+        // Only files that are there: a web link or a picture dragged from a browser, or a file gone since, would
+        // make a chip that can't be sent.
+        if let link = added.first(where: { !$0.isFileURL }) {
+            return (files, String(localized: "Only files can be attached, not \(link.absoluteString).", bundle: #bundle))
+        }
+        if let missing = added.first(where: { (try? $0.checkResourceIsReachable()) != true }) {
+            return (files, String(localized: "\(missing.lastPathComponent) can't be read.", bundle: #bundle))
+        }
         var result = files
         for url in added where !result.contains(url) {
             result.append(url)
