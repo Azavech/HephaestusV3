@@ -660,6 +660,9 @@ bundles.
 - `name` is the file's name with `/`, `:` and control characters (U+0000–U+001F, U+007F) replaced by `_`, `file`
   when empty, and the part before the extension shortened by whole characters until `<id>-<name>` fits in 213
   UTF-8 bytes, so that the atomic write's temporary name stays within 255 (`TicketRules.attachmentName`).
+  The name comes from the file's last component; a file under a `.hephaestus/` folder whose name starts with a
+  UUID and `-`, as the app stores them (a feedback chat's screenshot, another ticket's attachment), loses that
+  prefix, as in V2: `<UUID>-screenshot.png` is attached as `screenshot.png` (`TicketRules.sourceName(of:)`).
 - `contentType` is the MIME type of the name's extension (`UTType(filenameExtension:)?.preferredMIMEType`),
   else `application/octet-stream`. Images, shown as thumbnails: `image/png`, `jpeg`, `gif`, `heic`, `heif`,
   `tiff`, `bmp`, `webp`.

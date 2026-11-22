@@ -152,6 +152,15 @@ struct TicketLibraryTests {
         #expect(await world.ticket(other)?.file.title == "Mine")
     }
 
+    @Test("A file stored under .hephaestus/ is attached under its own name, without the app's UUID prefix")
+    func sourceName() {
+        let uuid = "6F9619FF-8B86-D011-B42D-00C04FC964FF"
+        #expect(TicketRules.sourceName(of: URL(fileURLWithPath: "/p/.hephaestus/chats/C/\(uuid)-screenshot.png")) == "screenshot.png")
+        #expect(TicketRules.sourceName(of: URL(fileURLWithPath: "/p/Downloads/\(uuid)-screenshot.png")) == "\(uuid)-screenshot.png",
+                "Outside .hephaestus the name stays")
+        #expect(TicketRules.sourceName(of: URL(fileURLWithPath: "/p/.hephaestus/chats/C/not-a-uuid-name.png")) == "not-a-uuid-name.png")
+    }
+
     @Test("A title from Claude's answer: its first line, without a heading's marks or quotes, cut to 200 characters")
     func titleFromAnswer() {
         #expect(TicketRules.title(fromAnswer: "\n  Tabs close on click  \nBecause…") == "Tabs close on click")

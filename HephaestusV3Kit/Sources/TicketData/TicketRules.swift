@@ -137,6 +137,16 @@ public enum TicketRules {
 
     /// A file name as stored: `/`, `:` and control characters become `_`, an empty name `file`, and the part
     /// before the extension is shortened by whole characters until `<id>-<name>` fits in 213 bytes.
+    /// The name an attachment takes from its file: its last component, without the `<UUID>-` the app puts before
+    /// the names it stores under a `.hephaestus/` folder (a feedback chat's screenshot, another ticket's
+    /// attachment), as V2 did, so that `<UUID>-screenshot.png` is attached as `screenshot.png`.
+    public static func sourceName(of url: URL) -> String {
+        let name = url.lastPathComponent
+        guard url.pathComponents.contains(".hephaestus"), name.count > 37, name[name.index(name.startIndex, offsetBy: 36)] == "-",
+              UUID(uuidString: String(name.prefix(36))) != nil else { return name }
+        return String(name.dropFirst(37))
+    }
+
     public static func attachmentName(_ name: String, id: UUID) -> String {
         var cleaned = String(name.unicodeScalars.map { scalar -> Character in
             scalar == "/" || scalar == ":" || scalar.value < 0x20 || scalar.value == 0x7F ? "_" : Character(scalar)

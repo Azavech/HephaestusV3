@@ -752,7 +752,7 @@ public actor TicketLibrary {
         var result: [AttachmentEntry] = []
         for file in files {
             let id = UUID()
-            let name = TicketRules.attachmentName(file.url.lastPathComponent, id: id)
+            let name = TicketRules.attachmentName(TicketRules.sourceName(of: file.url), id: id)
             let path = "attachments/\(ticketID)/\(id.uuidString)-\(name)"
             let destination = folder.dataFolder.appendingPathComponent(path)
             do {
