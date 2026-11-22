@@ -165,7 +165,7 @@ has only its header and **New Bundle**.*
   order); **Implement…** ([Implement](#implement)), which first selects the ticket;
   **Set Status ▸** with the five statuses; **Add to Bundle ▸** with the project's
   bundles that don't hold it, then **New Bundle…** (the [bundle sheet](#bundle-sheet) with the ticket
-  checked); **Remove from *bundle*** for each bundle that holds it; **Delete…**.
+  checked, for a bundle of the ticket's own project, a sub project's included, as V2's); **Remove from *bundle*** for each bundle that holds it; **Delete…**.
 - **Delete** (⌘⌫, Edit ▸ Delete, or **Delete…**) asks "Delete *ORD-142*?", "Their files and attachments move to
   the Trash.", with **Delete** and **Cancel**, then removes it from its bundles and the other tickets' links and
   moves its file and its attachments to the Trash. The first ticket of the list is then selected.

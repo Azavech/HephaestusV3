@@ -506,8 +506,11 @@ final class TicketsModel {
     // MARK: Bundles
 
     /// Opens the bundle sheet for a new bundle, with `tickets` checked.
+    /// The bundle goes in the project of the tickets it starts with, which can be a sub project's, as V2's did; with
+    /// none, in the window's.
     func startNewBundle(with tickets: [Ticket.ID] = []) {
-        bundleDraft = BundleDraft(bundleID: nil, projectID: project.id, title: "", ticketIDs: tickets)
+        let projectID = tickets.first.flatMap { store.ticket($0)?.projectID } ?? project.id
+        bundleDraft = BundleDraft(bundleID: nil, projectID: projectID, title: "", ticketIDs: tickets)
     }
 
     /// Opens the bundle sheet on a bundle's title and tickets.

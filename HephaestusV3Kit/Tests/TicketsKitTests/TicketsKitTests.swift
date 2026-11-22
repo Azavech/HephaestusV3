@@ -476,6 +476,15 @@ struct TicketChangeTests {
         #expect(model.filter == .all)
     }
 
+    @Test("New Bundle… from a sub project's ticket makes the bundle in that ticket's project")
+    func newBundleInTicketsProject() {
+        let shop = model("SHOP")
+        shop.startNewBundle(with: ["ORD-2"])
+        #expect(shop.bundleDraft?.projectID == "ORD")
+        shop.startNewBundle()
+        #expect(shop.bundleDraft?.projectID == "SHOP")
+    }
+
     @Test("A new bundle lists no done ticket unless checked; a bundle's edit lists them all; New Bundle says why it can't")
     func bundlePicker() {
         let orders = model("ORD")
