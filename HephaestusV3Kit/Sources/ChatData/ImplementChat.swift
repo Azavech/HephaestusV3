@@ -316,7 +316,17 @@ extension ChatSession {
             message = ImplementChat.report(ticketID: chat.file.ticketID ?? chat.file.title, turn: lastTurn(chatID),
                                            stopped: lastTurnStopped(chatID), failed: new == .error)
         }
-        post(message, references: [], images: [], to: orchestratorID, cli: cli)
+        guard transcripts[orchestratorID] == nil else {
+            post(message, references: [], images: [], to: orchestratorID, cli: cli)
+            return
+        }
+        // Its transcript isn't read, as after a relaunch or 20 idle minutes: it's read first, so that its turn's
+        // result images, agents and cards are kept as a sent message's are.
+        Task {
+            await open(orchestratorID)
+            guard !quitting, chats[orchestratorID] != nil else { return }
+            post(message, references: [], images: [], to: orchestratorID, cli: cli)
+        }
     }
 
     /// Waits until no other worktree is being made.

@@ -1696,6 +1696,8 @@ Mac, which starts a turn there after the one at work and reopens it when closed:
   without `parentToolUseID`, empty without one; `<reason>` is the turn's last `system` item of level `error`, else
   the last `result`'s `summary`.
 - A CI chat reports the same way, with its own messages ([CI chats](#ci-chats)).
+- An orchestrator whose transcript isn't in memory, as after a relaunch or 20 idle minutes, has it read first,
+  then gets the message, so that its turn keeps its result images, agents and cards as any sent message's does.
 - Nothing is sent when the orchestrator chat is gone or the CLI isn't available, nor for a turn that ends waiting
   for answers (`waitingAnswers`): the turn after the answers reports.
 - [Chat events](#chat-events): a chat with an `orchestrator` reports no `finished`, and its orchestrator reports

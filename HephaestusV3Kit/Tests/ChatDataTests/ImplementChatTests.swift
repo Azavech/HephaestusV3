@@ -294,6 +294,31 @@ struct ImplementChatTests {
         world.launcher.chats.forEach { $0.finish(.exited(0)) }
     }
 
+    @Test("A report to an orchestrator whose transcript isn't read reads it first, so its turn is kept in memory")
+    func reportReadsOrchestrator() async throws {
+        let world = try await ChatWorld(runner: GitRecorder(), git: true)
+        defer { Task { await world.close() } }
+        let bundleChat = try await world.session.startImplementChat(
+            ImplementChat(.bundle("ORD-B3"), projectID: "ORD", itemTitle: "Checkout reliability", settings: ChatSettings())
+        ) { _ throws(ChatError) in }
+        let id = try await world.session.startImplementChat(
+            ImplementChat(.ticket("ORD-142", orchestrator: ImplementChat.Orchestrator(chatID: bundleChat, bundleID: "ORD-B3")),
+                          projectID: "ORD", itemTitle: "Retry storm", settings: ChatSettings())
+        ) { _ throws(ChatError) in }
+        let cli = try #require(world.launcher.chats.last)
+        let first = world.items(bundleChat).compactMap { if case .user(let message) = $0 { message.text } else { nil } }
+        #expect(!first.isEmpty)
+        // As after a relaunch: the bundle chat's transcript is on disk only.
+        world.session.transcripts[bundleChat] = nil
+        cli.feed(try Fixture.lines("stream-bash-allowed.jsonl"))
+        func messages() -> [String] {
+            world.items(bundleChat).compactMap { if case .user(let message) = $0 { message.text } else { nil } }
+        }
+        try await world.until { messages().contains { $0.hasPrefix("Chat of ORD-142") } }
+        #expect(Array(messages().prefix(first.count)) == first, "The transcript was read before the report was added")
+        world.launcher.chats.forEach { $0.finish(.exited(0)) }
+    }
+
     @Test("A report says the turn was stopped, ended in error with its reason, or finished with the final reply")
     func reportTexts() {
         let date = Date(timeIntervalSince1970: 0)
