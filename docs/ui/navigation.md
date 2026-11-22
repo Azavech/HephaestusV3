@@ -323,6 +323,15 @@ badge and bounce don't depend on them.
 
 Previews: **All On**, **Summary Off, Dark**, **Not Stored**.
 
+## Quitting
+
+A quit (⌘Q, the Dock's Quit, logging out) while chats are at work, wait for the user or have background work,
+virtual machines, setups, installs or image downloads run, or chats hold unsent drafts asks first, as V2 did:
+"Quit Hephaestus V3?", with the update restart's parts ("2 chats will be stopped. 1 virtual machine will be
+stopped. Unsent drafts will be lost.", [Updates › The restart](updates.md)), **Quit** (default) and **Cancel**,
+which keeps the app running. An idle app, or one showing only a sheet, quits at once. The restart for an update
+asks with its own alert and doesn't ask again. `HephaestusAppDelegate.applicationShouldTerminate` asks.
+
 ## Menus and shortcuts
 
 **File menu**, as in any Mac app (the user's choice): ⌘N opens a window, ⌘T a tab, ⇧⌘N creates an item, ⌘W

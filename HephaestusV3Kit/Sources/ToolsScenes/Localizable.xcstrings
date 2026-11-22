@@ -242,6 +242,12 @@
     "Projects" : {
 
     },
+    "Quit" : {
+      "comment" : "The button that quits the app anyway"
+    },
+    "Quit Hephaestus V3?" : {
+      "comment" : "The alert when quitting while chats or virtual machines work"
+    },
     "Regenerate" : {
 
     },

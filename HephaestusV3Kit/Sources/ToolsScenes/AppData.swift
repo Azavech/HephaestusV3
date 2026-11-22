@@ -262,6 +262,7 @@ final class AppData {
         notifier.start()
         machineHost.load()
         updates.runningWork = { [weak self] in self?.runningWork ?? RunningWork() }
+        QuitConfirmation.runningWork = { [weak self] in self?.runningWork ?? RunningWork() }
         updates.start(dataFolder: session.dataFolder)
         await tickets.start()
         // A ticket created without a title, by anyone, gets one from `set-ticket-title` (docs/ui/tickets.md ›

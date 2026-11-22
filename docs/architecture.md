@@ -193,11 +193,16 @@ import ToolsScenes
 
 @main
 struct HephaestusV3App: App {
+    @NSApplicationDelegateAdaptor(HephaestusAppDelegate.self) private var delegate
+
     var body: some Scene {
         ToolsScenes()
     }
 }
 ```
+
+`HephaestusAppDelegate` (ToolsScenes, `QuitConfirmation.swift`) answers `applicationShouldTerminate` only: the
+quit's question ([UI › Navigation › Quitting](ui/navigation.md#quitting)).
 
 ## The package
 

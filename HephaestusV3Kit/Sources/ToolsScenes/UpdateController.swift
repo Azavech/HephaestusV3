@@ -380,6 +380,7 @@ final class UpdateController {
         quittingPosted = true
         post(.appQuitting(restart: true, activate: NSApp.isActive))
         if await waitForInstalling() {
+            QuitConfirmation.confirmed = true
             NSApp.terminate(nil)
             return
         }

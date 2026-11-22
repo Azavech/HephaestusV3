@@ -146,7 +146,8 @@ update](../updater.md#restart-for-an-update)). When the Updater doesn't answer w
 running and shows an alert: "The Updater didn't answer; the update wasn't installed.", with OK. It doesn't restart
 by itself for that build again; Install, the Update item and Update Now start the restart again.
 
-An ordinary quit (⌘Q) with an update `ready` installs it as the app quits; the next opening runs the new version.
+An ordinary quit (⌘Q) with an update `ready` installs it as the app quits, once the quit goes on ([Navigation ›
+Quitting](navigation.md#quitting)); the next opening runs the new version.
 
 Defaults chosen at design time: the drafts and sheets in the idle rule, the alert's texts and its parts, the 2
 seconds, the windows kept over the restart. V2's restart rules, its alert and its automatic restart are the

@@ -8,6 +8,13 @@ import UpdateData
 @MainActor
 @Suite("Updates")
 struct UpdateTests {
+    @Test("A quit asks with the restart alert's parts while something works; an idle app quits at once")
+    func quitMessage() {
+        #expect(QuitConfirmation.message(RunningWork()) == nil)
+        #expect(QuitConfirmation.message(RunningWork(sheet: true)) == nil, "A sheet alone doesn't ask")
+        #expect(QuitConfirmation.message(RunningWork(chats: 2)) == UpdateController.restartMessage(RunningWork(chats: 2)))
+    }
+
     @Test("The restart alert says what the restart stops or loses, and nothing when the app is idle")
     func restartMessage() {
         #expect(UpdateController.restartMessage(RunningWork()) == "")
