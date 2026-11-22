@@ -321,12 +321,16 @@ public final class LiveChatStore: ChatStore {
             var row = call(use, root: root)
             let result = results[use.toolUseID]
             if let result {
-                let firstLine = result.text.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+                // The first line only: a result can hold 100,000 characters, and the turns are made again at
+                // each item a running chat records.
+                func firstLine() -> String {
+                    result.text.split(maxSplits: 1, whereSeparator: \.isNewline).first.map(String.init) ?? ""
+                }
                 if result.isError {
                     row.failed = true
-                    row.detail = firstLine
+                    row.detail = firstLine()
                 } else if row.reference == nil, row.detail == nil {
-                    row.detail = firstLine
+                    row.detail = firstLine()
                 }
             }
             var details = ChatToolDetails(name: use.name, server: use.server, input: Self.input(use), result: result?.text)

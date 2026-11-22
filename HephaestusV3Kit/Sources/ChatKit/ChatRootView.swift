@@ -246,7 +246,7 @@ public struct ChatRootView: View {
                 }
                 TranscriptScrollView(conversation: conversation, activity: model.activity, padding: layout == .phone ? 16 : 24,
                                      decide: { approval, allow in model.decide(approval, allow: allow) }, stop: model.stop,
-                                     findQuery: model.findQuery,
+                                     findMatches: Set(matches),
                                      currentMatch: matches.isEmpty ? nil : matches[((model.findIndex % matches.count) + matches.count) % matches.count])
                     .id(conversation.id)
             } else {

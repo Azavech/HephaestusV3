@@ -17,15 +17,15 @@ struct ChatTranscript: View {
     let decide: (ChatApproval.ID, Bool) -> Void
     /// Stops Claude's turn; nil where nothing can be stopped (the samples).
     var stop: (() -> Void)?
-    /// What Find looks for: the blocks that hold it are highlighted.
-    var findQuery = ""
+    /// The blocks Find found, highlighted.
+    var findMatches: Set<ChatBlock.ID> = []
     /// The match Find shows, outlined.
     var currentMatch: ChatBlock.ID?
     /// Leaves out the cards still waiting, which show over the composer: each shows once, then here with its answer.
     var hidesWaitingApprovals = false
 
     var body: some View {
-        let matches = Set(ChatFind.matches(of: findQuery, in: conversation))
+        let matches = findMatches
         LazyVStack(alignment: .leading, spacing: compact ? 16 : 22) {
             ForEach(conversation.turns) { turn in
                 // A turn that didn't change isn't drawn again: the one at work changes at each word Claude writes.

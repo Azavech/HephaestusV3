@@ -11,8 +11,8 @@ struct TranscriptScrollView: View {
     var padding: CGFloat
     let decide: (ChatApproval.ID, Bool) -> Void
     var stop: (() -> Void)?
-    /// What Find looks for; empty for nothing.
-    var findQuery = ""
+    /// The blocks Find found, searched once by the caller.
+    var findMatches: Set<ChatBlock.ID> = []
     /// The match Find shows, by block id.
     var currentMatch: ChatBlock.ID?
 
@@ -24,7 +24,7 @@ struct TranscriptScrollView: View {
             ScrollView {
                 // A card waiting shows over the composer only, and here once answered.
                 ChatTranscript(conversation: conversation, activity: activity, compact: compact, decide: decide, stop: stop,
-                               findQuery: findQuery, currentMatch: currentMatch, hidesWaitingApprovals: true)
+                               findMatches: findMatches, currentMatch: currentMatch, hidesWaitingApprovals: true)
                     .padding(padding)
             }
             .scrollPosition($position)
