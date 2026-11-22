@@ -71,6 +71,8 @@ as JSON.`
 | response | agent | `{"type": "response", "id": <integer>, "result": <object>}` or `{…, "error": <string>}` |
 
 The agent answers a connection's requests one at a time, in order. An unknown method is `Unknown method <name>.`
+The host writes them one at a time too, the next once the agent has answered the last: a request whose caller
+gave up while it waited its turn, timed out or cancelled, is never written, so it can't run in the guest later.
 The status: `version` (`3.0`), `sip` (`disabled`, `enabled` or `unknown`, from `csrutil
 status`), `user`, `osVersion`, `osBuild`, `accessibility`, `screenRecording`.
 

@@ -160,9 +160,11 @@ public struct GuestAgentResponse: Sendable, Hashable {
 }
 
 /// The host side of one connection of the agent: it reads the hello, sends requests and gives each its
-/// response. The descriptor is read on a thread of its own and written on a serial queue. When the connection
-/// ends, every waiting request fails with `disconnected`, `closer` runs, then `onClose`. Only the end of the
-/// read loop closes the descriptor.
+/// response. The descriptor is read on a thread of its own and written on a serial queue. The agent serves one
+/// request at a time, so the host writes one at a time too, the next once the agent has answered: a request
+/// whose caller gave up while it waited its turn (timed out or cancelled) is never written, so it can't run in
+/// the guest later. When the connection ends, every waiting request fails with `disconnected`, `closer` runs,
+/// then `onClose`. Only the end of the read loop closes the descriptor.
 public final class GuestAgentConnection: @unchecked Sendable {
     public static let protocolVersion = 1
     public static let helloTimeout: Duration = .seconds(10)
@@ -175,6 +177,10 @@ public final class GuestAgentConnection: @unchecked Sendable {
     private var currentStatus: GuestAgentStatus?
     private var nextID = 1
     private var pending: [Int: CheckedContinuation<GuestAgentResponse, any Error>] = [:]
+    /// The requests not written yet, in the order they were made.
+    private var queue: [(id: Int, frame: GuestAgentFrame)] = []
+    /// The request the agent has and hasn't answered yet, whether or not its caller still waits.
+    private var inFlight: Int?
     private var hello: CheckedContinuation<GuestAgentStatus, any Error>?
     private var isFinished = false
 
@@ -229,23 +235,14 @@ public final class GuestAgentConnection: @unchecked Sendable {
                 let finished = lock.withLock { () -> Bool in
                     if isFinished { return true }
                     pending[id] = continuation
+                    queue.append((id, frame))
                     return false
                 }
                 if finished {
                     continuation.resume(throwing: GuestAgentError.disconnected)
                     return
                 }
-                writeQueue.async { [self] in
-                    guard !lock.withLock({ isFinished }) else {
-                        fail(id, with: GuestAgentError.disconnected)
-                        return
-                    }
-                    do {
-                        try frame.write(to: descriptor)
-                    } catch {
-                        fail(id, with: error)
-                    }
-                }
+                sendNext()
             }
         } onCancel: {
             fail(id, with: CancellationError())
@@ -301,9 +298,43 @@ public final class GuestAgentConnection: @unchecked Sendable {
         }
     }
 
+    /// Writes the next request whose caller still waits, when the agent has none to answer.
+    private func sendNext() {
+        let next = lock.withLock { () -> (id: Int, frame: GuestAgentFrame)? in
+            guard inFlight == nil, !isFinished else { return nil }
+            while !queue.isEmpty {
+                let request = queue.removeFirst()
+                if pending[request.id] != nil {
+                    inFlight = request.id
+                    return request
+                }
+            }
+            return nil
+        }
+        guard let next else { return }
+        writeQueue.async { [self] in
+            guard !lock.withLock({ isFinished }) else {
+                fail(next.id, with: GuestAgentError.disconnected)
+                return
+            }
+            do {
+                try next.frame.write(to: descriptor)
+            } catch {
+                lock.withLock { if inFlight == next.id { inFlight = nil } }
+                fail(next.id, with: error)
+                sendNext()
+            }
+        }
+    }
+
     private func receive(_ frame: GuestAgentFrame) {
         guard frame.json["type"]?.stringValue == "response", let id = frame.json["id"]?.intValue else { return }
-        guard let continuation = lock.withLock({ pending.removeValue(forKey: id) }) else { return }
+        let continuation = lock.withLock { () -> CheckedContinuation<GuestAgentResponse, any Error>? in
+            if inFlight == id { inFlight = nil }
+            return pending.removeValue(forKey: id)
+        }
+        sendNext()
+        guard let continuation else { return }
         if let message = frame.json["error"]?.stringValue {
             continuation.resume(throwing: GuestAgentError.failed(message: message))
         } else {
@@ -323,6 +354,8 @@ public final class GuestAgentConnection: @unchecked Sendable {
             defer {
                 hello = nil
                 pending.removeAll()
+                queue.removeAll()
+                inFlight = nil
             }
             return (hello, Array(pending.values))
         }

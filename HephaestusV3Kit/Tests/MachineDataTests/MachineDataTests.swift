@@ -3,6 +3,7 @@ import FileStorage
 import Foundation
 import MCPKit
 import ProjectData
+import Synchronization
 import Testing
 import Virtualization
 @testable import MachineData
@@ -316,6 +317,11 @@ struct DHCPLeaseTests {
     }
 }
 
+/// The methods a test agent read, in order, from its own thread.
+private final class ReceivedMethods: Sendable {
+    let methods = Mutex<[String]>([])
+}
+
 @Suite("Guest agent protocol")
 struct GuestAgentProtocolTests {
     @Test("A frame carries its two lengths big-endian, then the JSON object and the data")
@@ -357,6 +363,39 @@ struct GuestAgentProtocolTests {
         await #expect(throws: GuestAgentError.failed(message: "It failed.")) { _ = try await connection.request("fail") }
         connection.close()
         await #expect(throws: GuestAgentError.self) { _ = try await connection.request("status") }
+    }
+
+    @Test("One request at a time: one its caller gave up on while it waited its turn is never written")
+    func oneAtATime() async throws {
+        var pair: [Int32] = [0, 0]
+        #expect(socketpair(AF_UNIX, SOCK_STREAM, 0, &pair) == 0)
+        let host = pair[0], agent = pair[1]
+        let received = ReceivedMethods()
+        let release = DispatchSemaphore(value: 0)
+        // An agent that serves one request at a time, as the real one does; `hold` waits until released.
+        let thread = Thread {
+            try? GuestAgentFrame(json: ["type": "hello", "protocol": 1, "status": ["version": "3.0", "sip": "disabled"]]).write(to: agent)
+            while let frame = try? GuestAgentFrame.read(from: agent) {
+                let method = frame.json["method"]?.stringValue ?? ""
+                received.methods.withLock { $0.append(method) }
+                if method == "hold" { release.wait() }
+                try? GuestAgentFrame(json: ["type": "response", "id": frame.json["id"] ?? 0, "result": [:]]).write(to: agent)
+            }
+            close(agent)
+        }
+        thread.start()
+        let connection = try await GuestAgentConnection.open(descriptor: host, closer: { close(host) })
+        let held = Task { try await connection.request("hold") }
+        while received.methods.withLock({ $0 }) != ["hold"] { try await Task.sleep(for: .milliseconds(10)) }
+        await #expect(throws: GuestAgentError.timedOut(method: "click")) {
+            _ = try await connection.request("click", timeout: .milliseconds(100))
+        }
+        let after = Task { try await connection.request("status") }
+        release.signal()
+        _ = try await held.value
+        _ = try await after.value
+        #expect(received.methods.withLock { $0 } == ["hold", "status"], "The click that timed out was never sent")
+        connection.close()
     }
 
     @Test("Shell words quote single quotes, and ~/ stays the account's home folder")
