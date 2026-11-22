@@ -40,8 +40,8 @@ enum SceneID {
 public struct ToolsScenes: Scene {
     /// The project data and the directory every window reads.
     @State private var appData = AppData()
-    /// The project selected in Projects, which is one tab in the whole app.
-    @State private var selectedProjectID: Project.ID?
+    /// The project selected in Projects, which is one tab in the whole app; kept for the next launch, as V2 did.
+    @AppStorage("projects.selection") private var selectedProjectID: Project.ID?
     /// The machine the Virtual Machines tab opens on.
     @State private var machineFocus: String?
     /// A route's ask to select a machine in the open Virtual Machines tab.

@@ -18,7 +18,7 @@ the previews' sample projects, with every tool.
 
 | Way | What happens |
 | --- | --- |
-| **Launch** | The window opens at launch. Once the projects are loaded, the first one is selected. Default size 1040 × 680 pt. |
+| **Launch** | The window opens at launch. Once the projects are loaded, the project selected last is selected again, as V2 did; when it is no longer loaded, or at the first launch, the first project. Default size 1040 × 680 pt. |
 | **Window › Projects** (⌘0) | Brings the open Projects window forward, un-minimized, or opens it. The selection doesn't change. |
 | **Show All Projects** in the project switcher | Opens the Projects window with the tool window's project selected. |
 | **Show All Projects** in the menu bar panel | Opens the Projects window with the highlighted project selected. See [Menu bar](menu-bar.md). |
@@ -499,8 +499,8 @@ tool symbols.
   that each tool will report its own events through a shared protocol.
 - **Unused environments:** Orders, Payments and Edge Gateway have environments of their own in the sample
   data, named like Shop's, so the overview and every tool list Shop's.
-- **Not saved:** the selection starts on the first project at each launch, and the sidebar's folding lasts
-  while the window is open.
+- **Saved:** the selected project, for the next launch (`projects.selection`). **Not saved:** the sidebar's
+  folding, which lasts while the window is open.
 
 ## Previews
 

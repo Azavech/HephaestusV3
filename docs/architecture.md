@@ -2218,6 +2218,7 @@ identifiers from it (`chat.composer.field`, `chat.composer.send`).
 | --- | --- | --- | --- |
 | Chat panel offered | `UserDefaults.standard` (`@AppStorage`) | `chat.showsPanel` | `Bool`, default true |
 | Settings' tab | same | `settings.pane` | `SettingsPane` raw value, default `general` |
+| Projects' selected project | same | `projects.selection` | `Project.ID`, none at first; a project no longer loaded gives way to the first |
 | A chat window's chat | Window restoration | — | `ChatWindowValue` (`Codable`) |
 | Claude's permissions | same | `chat.ticketChanges`, `chat.projectChanges`, `chat.apiCalls`, `chat.clusterChanges`, `chat.machineChanges` | `ChangePermission` raw value, default `askFirst` |
 | Build starts permission | same | `chat.buildStarts` | `ChangePermission` raw value, default `never` |
@@ -2225,7 +2226,8 @@ identifiers from it (`chat.composer.field`, `chat.composer.send`).
 | A window's tabs, each tab's focus and the selected tab | Window restoration | — | `WorkspaceValue` (`Codable`) |
 
 Everything else lasts as long as the app runs: selections, filters, folded parents, drafts. Chats are files
-of their projects ([Data › Chats](data.md#chats)). The Projects window's selection starts on `ORD` at each launch.
+of their projects ([Data › Chats](data.md#chats)). The Projects window's selection starts on the project selected
+last, `ORD` at the first launch.
 
 The files of [Data](data.md) (the project files, `registry.yml`, `current-environments.yml`) are read and
 written by the data targets, which the windows reach through the app's live stores.
