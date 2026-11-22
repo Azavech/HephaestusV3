@@ -815,6 +815,8 @@ private struct AttachmentStrip: View {
     /// Only a ticket's own files are removed one by one; a comment's go with it.
     let removable: Bool
     let onOpen: (TicketAttachment) -> Void
+    /// The file Save As… writes elsewhere, while its panel shows.
+    @State private var saving: AttachmentCopy?
 
     var body: some View {
         FlowStack(spacing: 8) {
@@ -833,6 +835,15 @@ private struct AttachmentStrip: View {
                                 }
                             }
                         }
+                        Button(String(localized: "Save As…", bundle: #bundle)) {
+                            Task {
+                                if let url = await model.url(of: attachment, in: ticket) {
+                                    saving = AttachmentCopy(url: url, name: attachment.name)
+                                } else {
+                                    model.failure = String(localized: "\(attachment.name) can't be found.", bundle: #bundle)
+                                }
+                            }
+                        }
                         if removable {
                             Divider()
                             Button(String(localized: "Remove…", bundle: #bundle), role: .destructive) {
@@ -843,6 +854,36 @@ private struct AttachmentStrip: View {
                     .accessibilityIdentifier("ticket.attachment.\(attachment.id.uuidString)")
             }
         }
+        .fileExporter(isPresented: Binding { saving != nil } set: { if !$0 { saving = nil } }, document: saving,
+                      contentType: .data, defaultFilename: saving?.name) { result in
+            if case .failure(let error) = result {
+                model.failure = error.localizedDescription
+            }
+            saving = nil
+        }
+    }
+}
+
+/// An attachment's file as Save As… writes it: a copy of the stored file, under the name the user picks. Its type
+/// is `data`, which every file's conforms to, so the name keeps its own extension.
+private struct AttachmentCopy: FileDocument {
+    static let readableContentTypes: [UTType] = []
+    static let writableContentTypes: [UTType] = [.data]
+
+    let url: URL
+    let name: String
+
+    init(url: URL, name: String) {
+        self.url = url
+        self.name = name
+    }
+
+    init(configuration: ReadConfiguration) throws {
+        throw CocoaError(.fileReadUnsupportedScheme)
+    }
+
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
+        try FileWrapper(url: url, options: .immediate)
     }
 }
 

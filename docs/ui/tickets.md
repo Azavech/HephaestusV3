@@ -263,8 +263,9 @@ added too. Without files the section reads "Drop files here or click Add Files�
 thumbnail at most 96 pt high and 192 pt wide, read at that size, with its name under it (a format ImageIO can't
 read, such as SVG, shows the `photo` symbol instead); other files as capsules with their type's icon, name and
 size. A click opens Quick Look. The context menu has
-**Open**, **Open With Default App**, **Show in Finder** and **Remove…** ("Remove *name*?", "The file moves to
-the Trash."). Each file is at most 20 MB, and the files of one change at most 20 MB together
+**Open**, **Open With Default App**, **Show in Finder**, **Save As…** (a save panel on the file's name, which
+writes a copy where the user picks, as V2's did; a file gone reads "*name* can't be found.") and **Remove…**
+("Remove *name*?", "The file moves to the Trash."); a comment's files have no **Remove…**. Each file is at most 20 MB, and the files of one change at most 20 MB together
 ([Data › Attachments](../data.md#attachments)).
 
 ### Linked

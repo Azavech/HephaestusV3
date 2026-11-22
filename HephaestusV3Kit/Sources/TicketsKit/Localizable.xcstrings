@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ can't be found." : {
+
+    },
     "%@ depends on %@, which are not done. Implement it anyway?" : {
       "comment" : "The first value is a ticket id, the second other tickets' ids separated by commas",
       "localizations" : {
@@ -583,6 +586,9 @@
       "comment" : "The kind of an item a ticket links to"
     },
     "Save" : {
+
+    },
+    "Save As…" : {
 
     },
     "Save as Draft" : {
