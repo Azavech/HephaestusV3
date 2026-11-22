@@ -27,13 +27,18 @@ public struct ContractsRootView: View {
         self.init(model: ContractsModel(project: project, focus: focus, store: store))
     }
 
+    /// The project as loaded now, given by a tab; nil keeps the model's.
+    private var loadedProject: Project?
+
     init(model: ContractsModel) {
         _model = State(initialValue: model)
     }
 
     /// The contract a tab keeps.
-    public init(state: ContractsTabState) {
+    /// The contract a tab keeps, given `project` as loaded now, which its model takes.
+    public init(state: ContractsTabState, project: Project? = nil) {
         self.init(model: state.model)
+        loadedProject = project
     }
 
     /// The operations column: shown on a Mac, folded behind the sidebar button on an iPad.
@@ -82,6 +87,9 @@ public struct ContractsRootView: View {
             }
         }
         // The contract is read when the window shows, and again when its files change.
+        .onChange(of: loadedProject, initial: true) {
+            if let loadedProject { model.update(project: loadedProject) }
+        }
         .task {
             await model.refresh()
         }

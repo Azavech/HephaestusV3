@@ -14,7 +14,7 @@ nonisolated struct OperationSection: Identifiable, Hashable, Sendable {
 /// the request goes to, and the request being written.
 @Observable
 final class ContractsModel {
-    let project: Project
+    private(set) var project: Project
     let store: any ContractStore
     /// A focus waiting for the contract to be read.
     private var pendingFocus: String?
@@ -138,6 +138,16 @@ final class ContractsModel {
 
     var environments: [DeploymentEnvironment] {
         project.deploymentEnvironments
+    }
+
+    /// The project as its settings are now (a tab keeps the one it opened with): a URL set in Project Settings
+    /// applies at once. The environment picked stays while the project has it, else its current or first one.
+    func update(project new: Project) {
+        guard new.id == project.id, new != project else { return }
+        project = new
+        if !new.deploymentEnvironments.contains(where: { $0.name == environmentName }) {
+            environmentName = new.currentEnvironment ?? new.deploymentEnvironments.first?.name ?? ""
+        }
     }
 
     /// The environment the request goes to; nil for a project without environments.

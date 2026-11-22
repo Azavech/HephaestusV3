@@ -325,7 +325,7 @@ private struct ToolTab: View {
         case .contracts:
             ContractsRootView(state: workspace.state(for: tab) {
                 ContractsTabState(project: project, focus: tab.focus, store: appData.contractStore)
-            })
+            }, project: project)
         case .builds:
             BuildsRootView(state: workspace.state(for: tab) { BuildsTabState(project: project, focus: tab.focus, store: appData.buildStore) })
         case .chat:

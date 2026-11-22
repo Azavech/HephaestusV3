@@ -451,6 +451,17 @@ struct ContractSendTests {
         #expect(store.environments == ["Production"] && model.environmentName == "Production")
     }
 
+    @Test("A tab's model takes the project as loaded now: a new environment applies, the picked one stays while it exists")
+    func projectUpdate() {
+        let store = MockContractStore(contracts: ["BIL": billing])
+        let model = ContractsModel(project: project(environments: ["Local"]), focus: nil, store: store)
+        #expect(model.environments.map(\.name) == ["Local"])
+        model.update(project: project(environments: ["Local", "Staging"]))
+        #expect(model.environments.map(\.name) == ["Local", "Staging"] && model.environmentName == "Local")
+        model.update(project: project(environments: ["Staging"]))
+        #expect(model.environmentName == "Staging" && model.environment?.url == "https://staging.example.com")
+    }
+
     @Test("Cancel stops a request being sent: Send comes back and Last Response keeps what it showed")
     func cancel() async throws {
         let store = MockContractStore(contracts: ["ORD": try #require(SampleContractStore().contract(of: "ORD"))])
