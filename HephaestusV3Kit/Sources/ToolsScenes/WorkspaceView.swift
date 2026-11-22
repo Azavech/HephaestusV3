@@ -82,7 +82,8 @@ private struct WorkspaceWindow: View {
                 }
                 TabContentView(tab: tab, workspace: workspace, appData: appData, selectedProjectID: $selectedProjectID,
                         machineFocus: machineFocus, machineFocusRequest: machineFocusRequest, underTabBar: workspace.showsTabBar)
-                    .id(tab.id)
+                    // The content too: a tab switched to another project starts its tool afresh, on its new state.
+                    .id(TabIdentity(tab))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -529,4 +530,16 @@ private struct TabButton: View {
 nonisolated extension FocusedValues {
     /// The key window's tabs.
     @Entry var workspace: Workspace?
+}
+
+/// A tab's view identity: its id and what it shows, so that the tool's views, and the models they keep in their
+/// state, are made again when the tab shows another project.
+struct TabIdentity: Hashable {
+    let id: WorkspaceTab.ID
+    let content: WorkspaceContent
+
+    init(_ tab: WorkspaceTab) {
+        id = tab.id
+        content = tab.content
+    }
 }

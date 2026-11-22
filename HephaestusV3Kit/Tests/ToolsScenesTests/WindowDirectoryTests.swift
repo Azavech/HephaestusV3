@@ -75,6 +75,8 @@ struct WorkspaceTests {
         let moved = workspace.tab(tab.id)!
         #expect(moved.content == .tool(.tickets, project: "SHOP"))
         #expect(workspace.state(for: moved) { NSObject() } !== state)
+        #expect(TabIdentity(moved) != TabIdentity(tab), "The tool's views are made again, on the new state")
+        #expect(TabIdentity(workspace.tab(other.id)!) == TabIdentity(other))
         #expect(workspace.lastProjectID == "SHOP")
         workspace.remove(tab.id)
         #expect(!workspace.keepsState(of: tab.id))

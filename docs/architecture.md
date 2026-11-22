@@ -1120,7 +1120,7 @@ For the selected tab: `offersChatPanel = chatPanelEnabled && tool != .chat`; `sh
 showsChatPanel ? 341 : 0)`.
 
 1. An `HStack(spacing: 0)`: a `VStack(spacing: 0)` of `TabBar` and a `Divider` while `showsTabBar`, then the
-   selected tab's `TabContentView` (`.id(tab.id)`, filling); then, in the `.mac` layout with the panel shown, a `Divider` and the
+   selected tab's `TabContentView` (`.id(TabIdentity(tab))`: the tab's id and content, so that a tab switched to another project makes its tool's views, and the models they keep, again; filling); then, in the `.mac` layout with the panel shown, a `Divider` and the
    panel, 341 wide, with `.motionTransition(.panel, edge: .trailing)`.
 2. In `.pad` and `.phone`, the panel is an overlay at the trailing edge instead: after a `Divider` (not in
    `.phone`), 341 wide (the window's width in `.phone`), with a shadow of radius 14 in `.pad`.
