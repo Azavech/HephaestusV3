@@ -328,8 +328,17 @@ private struct ChatList: View {
     @Bindable var model: ChatWindowModel
 
     @Environment(\.openRoute) private var openRoute
+    /// The closed chats filter, kept per window across launches, as V2's was.
+    @SceneStorage("chat.hidesClosed") private var hidesClosed = true
 
     var body: some View {
+        list
+            .onChange(of: hidesClosed, initial: true) {
+                model.hidesClosed = hidesClosed
+            }
+    }
+
+    private var list: some View {
         List(selection: $model.selectedIDs) {
             ForEach(model.sections) { section in
                 if model.isGrouped {
@@ -362,7 +371,7 @@ private struct ChatList: View {
         .toolbar {
             ToolbarItem {
                 Button {
-                    model.hidesClosed.toggle()
+                    hidesClosed.toggle()
                 } label: {
                     Label(model.hidesClosed ? String(localized: "Show Closed Chats", bundle: #bundle) : String(localized: "Hide Closed Chats", bundle: #bundle),
                           systemImage: model.hidesClosed ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
