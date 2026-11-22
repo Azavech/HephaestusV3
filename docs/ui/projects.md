@@ -163,7 +163,8 @@ first.
 - A `GroupBox` filling the width, its height 40% of the overview's width, between 280 and 520 points.
 - Its content is the Dashboard's Service Graph widget, drawn by the Service Map through the app's
   `dashboardWidgetRenderer`, over the last hour ([Dashboard › Widgets](dashboard.md)): the whole map, the
-  project's own service as its focus, read when it shows and every 5 seconds while it does. A click opens the
+  project's own service as its focus, read when it shows and every 5 seconds while it does; selecting another
+  project reads that one instead, even when both have an environment of the same name. A click opens the
   Service Map. While the map has no services, it says why: "Reading the map of <environment>…", kubectl's
   message in red, or "No services in <namespace>."
 - In previews and tests nothing draws other tools' widgets, so the section doesn't show.

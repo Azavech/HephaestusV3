@@ -31,8 +31,9 @@ public struct ServiceMapDashboardWidget: View {
 
     public var body: some View {
         content
-            // The map is read when the widget shows, then every 5 s while it does.
-            .task(id: "\(context.environment?.name ?? "")|\(context.window)") {
+            // The map is read when the widget shows, then every 5 s while it does; another project starts again,
+            // as the Projects overview shows one project after another in the same widget.
+            .task(id: "\(context.project.id)|\(context.environment?.name ?? "")|\(context.window)") {
                 guard let environment = context.environment else { return }
                 while !Task.isCancelled {
                     await store.refresh(context.project, environment: environment.name, window: context.window)
