@@ -2135,7 +2135,9 @@ from the app bundle.`), fills `Runtime/guest/` with `install.sh` and `hephaestus
 and boots the image's own disk with the default cores and memory and the shared folder.
 
 - **Restart in Recovery**: shuts the guest down through the agent, else asks with the framework's stop request
-  (macOS asks in the guest); stops it at once after 30 seconds; starts it with `startUpFromMacOSRecovery`.
+  (macOS asks in the guest); stops it at once after 30 seconds; starts it with `startUpFromMacOSRecovery`. Only
+  the agent's refusal counts as not asked: a connection that ends before the agent answers, or no answer in time,
+  may be the guest going down, so the wait applies then too, as for Stop and Finish Setup.
 - **Finish Setup**: only with the agent connected and SIP off (`The agent is not connected with SIP off.`): the
   agent runs `/sbin/shutdown -h now` as root, the host waits up to 60 seconds, then stops it, and the image
   becomes `ready`.

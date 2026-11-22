@@ -443,7 +443,10 @@ final class FakeGuest: GuestMachine {
         return GuestAgentResponse(result: ["exitStatus": 0, "stdout": "ok"])
     }
 
-    func requestStop() throws {}
+    /// The requests to stop sent as the power button would.
+    var stopRequests = 0
+
+    func requestStop() throws { stopRequests += 1 }
 
     func connectAgent(sip: GuestAgentStatus.SIP) { events?(.agentConnected(GuestAgentStatus(version: "3.0", sip: sip))) }
 }
@@ -564,6 +567,23 @@ struct MachineHostTests {
             #expect(guest.shutDowns == 1)
             #expect(host.setups.isEmpty)
             #expect(host.image(image.id)?.state == .ready)
+        }
+    }
+
+    @Test("Restart in Recovery waits for the guest when the agent's connection ends before it answers the shutdown")
+    func recoveryAfterDisconnect() async throws {
+        try await withTemporaryFolder { folder in
+            let host = try Self.host(folder)
+            let image = try await host.addImage(build: "27C61")
+            try await Self.waitUntil { host.image(image.id)?.state == .needsSetup }
+            try await host.startSetup(image.id)
+            let guest = try #require(host.setups[image.id]?.guest as? FakeGuest)
+            guest.connectAgent(sip: .enabled)
+            guest.shutDownError = GuestAgentError.disconnected
+            try await host.restartInRecovery(image.id)
+            #expect(guest.stopped == 0, "The guest shut itself down: the power wasn't cut")
+            #expect(guest.stopRequests == 0, "The agent's shutdown counts as asked")
+            #expect(guest.started.last == true)
         }
     }
 

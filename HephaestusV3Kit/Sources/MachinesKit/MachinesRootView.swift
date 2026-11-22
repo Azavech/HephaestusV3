@@ -125,9 +125,11 @@ public struct MachinesRootView: View {
         switch model.pendingDeletion {
         case .image(let id)?:
             let count = model.machines.count { $0.imageID == id }
-            return count == 0
-                ? String(localized: "The image's folder and its disk are deleted, not moved to the Trash.", bundle: #bundle)
-                : String(localized: "The image and its \(count) machines are deleted, with their disks, not moved to the Trash.", bundle: #bundle)
+            return switch count {
+            case 0: String(localized: "The image's folder and its disk are deleted, not moved to the Trash.", bundle: #bundle)
+            case 1: String(localized: "The image and its machine are deleted, with their disks, not moved to the Trash.", bundle: #bundle)
+            default: String(localized: "The image and its \(count) machines are deleted, with their disks, not moved to the Trash.", bundle: #bundle)
+            }
         default:
             return String(localized: "A running machine stops at once. Its folder and disk are deleted, not moved to the Trash.", bundle: #bundle)
         }

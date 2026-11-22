@@ -342,7 +342,16 @@ public final class MachineHost {
         run.isRestarting = true
         defer { run.isRestarting = false }
         var asked = false
-        if run.agent != nil, (try? await run.guest.shutDownGuest()) != nil { asked = true }
+        if run.agent != nil {
+            do {
+                try await run.guest.shutDownGuest()
+                asked = true
+            } catch {
+                // As `shutDownThroughAgent`: only the agent's refusal means it didn't ask; a connection that ends
+                // before the answer may be the guest going down.
+                if case GuestAgentError.failed = error {} else { asked = true }
+            }
+        }
         if !asked { asked = (try? run.guest.requestStop()) != nil }
         var stopped = false
         if asked { stopped = await waitForStop(run, seconds: 30) }

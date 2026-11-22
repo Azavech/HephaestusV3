@@ -432,6 +432,9 @@
     "The image and its %lld machines are deleted, with their disks, not moved to the Trash." : {
 
     },
+    "The image and its machine are deleted, with their disks, not moved to the Trash." : {
+
+    },
     "The image's folder and its disk are deleted, not moved to the Trash." : {
 
     },

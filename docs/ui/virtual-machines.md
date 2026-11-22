@@ -226,7 +226,7 @@ At least 560 × 380 points, titled **Shell of *name***: a **Command** field in t
 
 | Alert | When | Buttons |
 | --- | --- | --- |
-| **Delete “*name*”?** (confirmation dialog) | Delete Machine…, Delete Image…, Cancel Download | **Delete** (destructive), Cancel. The message: "A running machine stops at once. Its folder and disk are deleted, not moved to the Trash." for a machine; for an image, "The image's folder and its disk are deleted, not moved to the Trash." or "The image and its *n* machines are deleted, with their disks, not moved to the Trash." |
+| **Delete “*name*”?** (confirmation dialog) | Delete Machine…, Delete Image…, Cancel Download | **Delete** (destructive), Cancel. The message: "A running machine stops at once. Its folder and disk are deleted, not moved to the Trash." for a machine; for an image, "The image's folder and its disk are deleted, not moved to the Trash.", "The image and its machine are deleted, with their disks, not moved to the Trash." with one machine, or "The image and its *n* machines are deleted, with their disks, not moved to the Trash." |
 | **Start failed**, **Stop failed**, **Pause failed**, **Delete failed**, **Set Up failed**, **Restart in Recovery failed**, **Finish Setup failed**, **Type Password failed** | The action failed | **OK**, with the message. |
 | ***name* stopped** | A machine or setup stopped by itself with a failure | **OK**, with the framework's message. Shown once. |
 
