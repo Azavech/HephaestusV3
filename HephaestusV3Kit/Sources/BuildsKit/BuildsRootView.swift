@@ -730,17 +730,18 @@ private struct LogPane: View {
         .accessibilityIdentifier("builds.log")
     }
 
+    /// The lines, made as they scroll into view: a CI log of tens of thousands of lines shows at once. The
+    /// widest number sizes the numbers' column, and the longest line, hidden behind the rows, the scroll width.
     private func lineGrid(_ lines: [String]) -> some View {
-            ScrollView([.vertical, .horizontal]) {
-                Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 3) {
-                    ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
-                        GridRow {
-                            Text(index + 1, format: .number)
-                                .foregroundStyle(.textSecondary)
-                                .gridColumnAlignment(.trailing)
-                            Text(verbatim: line)
-                                .foregroundStyle(color(of: LogLineKind(line)))
-                                .fixedSize()
+            let longest = lines.indices.max { lines[$0].utf8.count < lines[$1].utf8.count }.map { lines[$0] } ?? ""
+            return ScrollView([.vertical, .horizontal]) {
+                ZStack(alignment: .topLeading) {
+                    logRow(number: lines.count, line: longest, numbers: lines.count)
+                        .hidden()
+                        .accessibilityHidden(true)
+                    LazyVStack(alignment: .leading, spacing: 3) {
+                        ForEach(lines.indices, id: \.self) { index in
+                            logRow(number: index + 1, line: lines[index], numbers: lines.count)
                         }
                     }
                 }
@@ -752,6 +753,22 @@ private struct LogPane: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(.surfaceSunken)
             .accessibilityIdentifier("builds.log.lines")
+    }
+
+    /// A log line after its number, right-aligned in a column as wide as the largest number (the code font's
+    /// digits are monospaced).
+    private func logRow(number: Int, line: String, numbers: Int) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
+            Text(numbers, format: .number)
+                .hidden()
+                .overlay(alignment: .trailing) {
+                    Text(number, format: .number)
+                        .foregroundStyle(.textSecondary)
+                }
+            Text(verbatim: line)
+                .foregroundStyle(color(of: LogLineKind(line)))
+                .fixedSize()
+        }
     }
 
     private func color(of kind: LogLineKind) -> Color {

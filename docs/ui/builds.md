@@ -179,7 +179,9 @@ job's name (secondary), `chevron.forward`, the step's name (semibold), the run n
 **Lines**, under a divider, on the `surfaceSunken` color: a line number (secondary, right-aligned) and the
 line, in Fira Code at the `callout` size, with its ligatures (AZDesign's code font). Lines don't wrap: the
 log scrolls both ways and starts at its top-left corner. The text is selectable. 14 pt padding, 16 pt
-between the columns, 3 pt between lines. Identifier: `builds.log.lines`.
+between the columns, 3 pt between lines. The lines are made as they scroll into view, so a log of tens of
+thousands of lines shows at once: the numbers' column is as wide as the largest number, and the scroll width is
+the longest line's. Identifier: `builds.log.lines`.
 
 | Line starts with | Color |
 | --- | --- |
