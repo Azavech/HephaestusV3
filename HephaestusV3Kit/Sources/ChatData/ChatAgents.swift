@@ -565,12 +565,16 @@ extension ChatSession {
         guard let run = runs[chatID], let workflow = agents(of: chatID).workflows.first(where: { $0.id == id }), workflow.state == .running else { return }
         let requestID = run.controlID()
         run.stopRequests[requestID] = id
+        run.stoppedTasks.insert(id)
         run.connection.write(ClaudeInput.control(requestID, ["subtype": "stop_task", "task_id": .string(id)]))
     }
 
     /// The CLI's answer to Stop Workflow: an error leaves it running, with a line saying so.
     func stopAnswered(_ requestID: String, success: Bool, error: String?, run: ChatRun) -> Bool {
         guard let id = run.stopRequests.removeValue(forKey: requestID) else { return false }
+        if !success {
+            run.stoppedTasks.remove(id)
+        }
         if !success, let workflow = agents(of: run.chatID).workflows.first(where: { $0.id == id }) {
             record(.system(SystemItem(created: now(), text: "The workflow “\(workflow.summary)” was not stopped: \(error ?? "no answer").",
                                       level: .warning)), in: run.chatID)

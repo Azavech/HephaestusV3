@@ -1491,7 +1491,8 @@ For each process (`ChatRun`): the tasks running (`backgroundTasks`), every task 
 
 1. `background_tasks_changed` replaces the tasks running.
 2. A `task_notification` of a listed task, read while no CLI turn is open, makes a turn owed: the CLI then starts
-   a turn on its own to give Claude the task's result.
+   a turn on its own to give Claude the task's result. Not the one of a workflow that Stop Workflow stopped with
+   `stop_task` (`stoppedTasks`, dropped again when the CLI refuses): the CLI starts no turn for it, as V2 knew.
 3. A `system/init` ends the owed turn; the turn it opens makes the chat running, as any.
 4. The process's exit drops both.
 

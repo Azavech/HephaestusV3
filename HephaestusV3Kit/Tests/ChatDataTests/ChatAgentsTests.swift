@@ -82,6 +82,8 @@ struct ChatAgentsTests {
         try await world.until { world.session.agents(of: id).workflows.first?.state == .stopped }
         #expect(world.session.agents(of: id).agents.allSatisfy { $0.state != .running })
         #expect(!world.items(id).contains { if case .system(let line) = $0 { line.text.contains("was not stopped") } else { false } })
+        try await world.until { world.session.state(of: id) == .idle }
+        #expect(!world.session.backgroundWork.contains(id), "The CLI owes no turn for a workflow Stop Workflow stopped")
         cli.finish(.exited(0))
     }
 

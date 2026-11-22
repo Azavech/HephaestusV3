@@ -51,6 +51,8 @@ final class ChatRun {
     var backgroundTasks: Set<String> = []
     var listedTasks: Set<String> = []
     var notificationPending = false
+    /// The workflows Stop Workflow stopped: the CLI owes no turn for their end, as V2 knew.
+    var stoppedTasks: Set<String> = []
 
     /// Background work runs: a task, or the turn that will report one.
     var hasBackgroundWork: Bool { !backgroundTasks.isEmpty || notificationPending }
@@ -298,7 +300,7 @@ extension ChatSession {
                 run.listedTasks.formUnion(ids)
                 noteBackgroundWork(run)
             case .taskNotification(let id):
-                if !run.cliTurnOpen, run.listedTasks.contains(id) {
+                if !run.cliTurnOpen, run.listedTasks.contains(id), !run.stoppedTasks.contains(id) {
                     run.notificationPending = true
                     noteBackgroundWork(run)
                 }
