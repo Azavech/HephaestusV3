@@ -294,7 +294,8 @@ selects its project.
 disk: <path>.", then "Its sub project is removed with it." or "Its <n> sub projects are removed with it."
 when it has some. **Remove** (destructive) takes the project and its sub projects out of the list; no file
 changes. The Claude processes of their chats end, as V2's did. **Cancel** closes the alert. The selection moves to the nearest ancestor still listed, else to the
-first project. A failure shows "Can’t Remove “<name>”" with the reason.
+first project. A Projects tab that appears once the projects are loaded checks its selection the same way: one no
+longer listed (removed while another tab showed) or none gives way to the first project (on a Mac or an iPad). A failure shows "Can’t Remove “<name>”" with the reason.
 
 ## Settings ▸ Projects
 

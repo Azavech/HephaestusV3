@@ -112,6 +112,11 @@ public struct ProjectsRootView: View {
         // binding, the sidebar and the overview through the model.
         .onAppear {
             model.select(selection)
+            // A tab drawn once the projects are loaded checks its selection too: none, or one no longer listed
+            // (removed while another tab showed), gives way as a change of the list does. An iPhone starts on the list.
+            if model.state == .ready, layout != .phone {
+                model.keepSelection()
+            }
         }
         .onChange(of: selection) { _, id in
             model.select(id)
