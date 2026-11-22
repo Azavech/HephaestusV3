@@ -1694,7 +1694,8 @@ Mac, which starts a turn there after the one at work and reopens it when closed:
 - Nothing is sent when the orchestrator chat is gone or the CLI isn't available, nor for a turn that ends waiting
   for answers (`waitingAnswers`): the turn after the answers reports.
 - [Chat events](#chat-events): a chat with an `orchestrator` reports no `finished`, and its orchestrator reports
-  `finished` only while none of its chats is `starting`, `running` or `waitingPermission`.
+  `finished` only while none of its chats is `starting`, `running` or `waitingPermission`, or has background work,
+  as V2's did.
 
 **Questions blocked.** While a chat's `questionsBlocked` is true, `ask_questions` and the six picker requests fail
 with `forbidden` and `This chat implements a ticket: it asks the user nothing until the user writes in it.`, but

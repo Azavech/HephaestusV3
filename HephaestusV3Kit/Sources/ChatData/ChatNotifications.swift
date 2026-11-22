@@ -60,7 +60,8 @@ extension ChatSession {
         guard let onEvent, let old, let chat = chats[chatID] else { return }
         let waiting: Set<ChatState> = [.waitingPermission, .waitingAnswers]
         let kind: ChatEvent.Kind
-        if waiting.contains(new), !waiting.contains(old) {
+        // From any other state, the other waiting one included (docs/data.md › Chat events, V2).
+        if waiting.contains(new) {
             kind = .needsYou
         } else if new == .idle, [.starting, .running, .waitingPermission].contains(old), !lastTurnStopped(chatID) {
             // A chat a bundle's chat started reports its turn there; the bundle's chat finishes once none of its

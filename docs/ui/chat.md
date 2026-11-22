@@ -1084,7 +1084,7 @@ notifications, as [Settings ▸ Notifications](navigation.md#settings--notificat
   that already wait; nor for the error state, nor a turn ended with Stop.
 - **Orchestrated chats**, as V2's: a ticket chat a bundle's chat started, and a CI chat, post no **Finished**
   (their turns are reported to the chat that started them instead, [Implement chats](#implement-chats)), and that
-  chat posts **Finished** only while none of the chats it started is at work. **Needs you** is posted for every
+  chat posts **Finished** only while none of the chats it started is at work, background work included. **Needs you** is posted for every
   chat.
 - **The notification.** Title "<project identifier> · <chat title>", such as "ORD · Fix the totals"; body the
   detail, or the summary below; the default sound. Its identifier is `chat/<chat id>`: a chat has one

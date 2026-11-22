@@ -288,6 +288,9 @@ struct ImplementChatTests {
         #expect(!events.contains { $0.chatID == id && $0.kind == .finished }, "Its turn is reported, not notified")
         try await world.until { bundleCLI.written.contains { $0["message"]?["content"]?.arrayValue?.last?["text"]?.stringValue?.hasPrefix("Chat of ORD-142") == true } }
         #expect(!world.session.isOrchestrating(bundleChat))
+        world.session.backgroundWork.insert(id)
+        #expect(world.session.isOrchestrating(bundleChat), "A chat with background work still counts as at work, as in V2")
+        world.session.backgroundWork.remove(id)
         world.launcher.chats.forEach { $0.finish(.exited(0)) }
     }
 

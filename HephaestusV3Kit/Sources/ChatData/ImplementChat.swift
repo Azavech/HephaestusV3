@@ -277,9 +277,9 @@ extension ChatSession {
         }
     }
 
-    /// Whether one of the chats `chatID` orchestrates is at work.
+    /// Whether one of the chats `chatID` orchestrates is at work: in a turn, or with background work, as V2 counted.
     func isOrchestrating(_ chatID: String) -> Bool {
-        chats.values.contains { $0.file.orchestratorChatID == chatID && state(of: $0.id).isRunning }
+        chats.values.contains { $0.file.orchestratorChatID == chatID && (state(of: $0.id).isRunning || backgroundWork.contains($0.id)) }
     }
 
     /// The folder an orchestrated ticket chat works in: its worktree's, while its orchestrator exists, it is its
