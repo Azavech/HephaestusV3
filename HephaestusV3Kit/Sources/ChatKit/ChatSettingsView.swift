@@ -156,18 +156,21 @@ struct ReplySettingsRows: View {
             }
         }
         .accessibilityIdentifier("\(identifier).model")
-        if !efforts.isEmpty {
-            Picker(String(localized: "Effort", bundle: #bundle, comment: "How hard Claude thinks"), selection: Binding(get: { settings.effort }, set: { effort in
-                var changed = settings
-                changed.effort = effort
-                set(changed)
-            })) {
-                ForEach(efforts, id: \.self) { effort in
-                    Text(Self.title(effort)).tag(effort)
-                }
+        // As V2's menu: the five levels always, those the model lacks disabled, so that a stored level outside the
+        // model's list still shows; the whole menu disabled for a model without an effort setting.
+        Picker(String(localized: "Effort", bundle: #bundle, comment: "How hard Claude thinks"), selection: Binding(get: { settings.effort }, set: { effort in
+            var changed = settings
+            changed.effort = effort
+            set(changed)
+        })) {
+            ForEach(Effort.allCases, id: \.self) { effort in
+                Text(Self.title(effort)).tag(effort)
+                    .disabled(!efforts.contains(effort))
             }
-            .accessibilityIdentifier("\(identifier).effort")
         }
+        .disabled(efforts.isEmpty)
+        .help(efforts.isEmpty ? String(localized: "This model has no effort setting.", bundle: #bundle) : "")
+        .accessibilityIdentifier("\(identifier).effort")
         if isChat {
             Picker(String(localized: "Permissions", bundle: #bundle, comment: "A chat's permission mode"), selection: Binding(
                 get: { ChatPermissionMode(stored: settings.permissionMode) },

@@ -990,6 +990,9 @@
     "This conversation is over" : {
 
     },
+    "This model has no effort setting." : {
+
+    },
     "Through %@, as if you did it" : {
       "comment" : "How Claude would make a change: through a tool, such as Tickets"
     },
