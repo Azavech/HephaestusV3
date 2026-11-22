@@ -158,7 +158,9 @@ has only its header and **New Bundle**.*
   is ORD-142; for Shop, whose own tickets come first, SHOP-14.
 - **No match.** When the filter lets no ticket through, the list says so and offers **Show All Tickets** (see
   [States](#states)).
-- **Context menu** of a row: **Implement…** ([Implement](#implement)), which first selects the ticket;
+- **Copy.** ⌘C (Edit ▸ Copy) copies the selected ticket's id, such as `ORD-142`, as V2 did.
+- **Context menu** of a row: **Copy ID** (`doc.on.doc`; **Copy IDs** for several, one per line, in the list's
+  order); **Implement…** ([Implement](#implement)), which first selects the ticket;
   **Set Status ▸** with the five statuses; **Add to Bundle ▸** with the project's
   bundles that don't hold it, then **New Bundle…** (the [bundle sheet](#bundle-sheet) with the ticket
   checked); **Remove from *bundle*** for each bundle that holds it; **Delete…**.
@@ -195,7 +197,7 @@ description.
 
 ### Header
 
-- **Ticket id** (`callout`, `textSecondary`, monospaced digits), such as ORD-142, and at the trailing edge
+- **Ticket id** (`callout`, `textSecondary`, monospaced digits), such as ORD-142, selectable, and at the trailing edge
   **Implement…** (`hammer`, ⇧⌘I, [Implement](#implement)), then **Edit** (`pencil`, ⌘E, help "Edit the Ticket
   (⌘E)"), which opens the [editor](#editor). Both are borderless buttons with their title and symbol.
 - **Title** (`title`, semibold, `textPrimary`). It can be selected and copied, and it is a heading for

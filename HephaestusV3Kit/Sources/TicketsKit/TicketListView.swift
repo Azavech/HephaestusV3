@@ -20,6 +20,11 @@ enum TicketListState: Hashable {
 struct TicketListView<RowMenu: View>: View {
     let state: TicketListState
     @Binding var selection: Ticket.ID?
+
+    /// ⌘C: the selected ticket's id (V2's Copy ID).
+    private var copied: [NSItemProvider] {
+        selection.map { [NSItemProvider(object: TicketIDCopy.text([$0]) as NSString)] } ?? []
+    }
     var onNewTicket: () -> Void = {}
     var onShowAll: () -> Void = {}
     var onRetry: () -> Void = {}
@@ -75,6 +80,7 @@ struct TicketListView<RowMenu: View>: View {
                 .scrollContentBackground(.hidden)
                 .contextMenu(forSelectionType: Ticket.ID.self) { ids in rowMenu(ids) }
                 .onDeleteCommand { if let selection { onDelete([selection]) } }
+                .onCopyCommand { copied }
             case .grouped(let groups):
                 // The window's project first, then each sub project in tree order.
                 List(selection: $selection) {
@@ -99,6 +105,7 @@ struct TicketListView<RowMenu: View>: View {
                 .scrollContentBackground(.hidden)
                 .contextMenu(forSelectionType: Ticket.ID.self) { ids in rowMenu(ids) }
                 .onDeleteCommand { if let selection { onDelete([selection]) } }
+                .onCopyCommand { copied }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

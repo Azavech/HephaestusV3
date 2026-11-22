@@ -130,6 +130,7 @@ struct TicketDetailView: View {
                     .font(.callout)
                     .monospacedDigit()
                     .foregroundStyle(.textSecondary)
+                    .textSelection(.enabled)
                     .accessibilityIdentifier("ticket.number")
                 Spacer()
                 implementButton(identifier: "ticket.implement", shortcut: true)

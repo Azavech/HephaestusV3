@@ -231,7 +231,7 @@ public struct TicketsRootView: View {
     }
 }
 
-/// The context menu of the list's selected tickets: Implement…, Set Status, Add to Bundle, Delete.
+/// The context menu of the list's selected tickets: Copy ID, Implement…, Set Status, Add to Bundle, Delete.
 private struct TicketMenu: View {
     let model: TicketsModel
     let ids: Set<Ticket.ID>
@@ -241,6 +241,11 @@ private struct TicketMenu: View {
     var body: some View {
         let tickets = model.tickets.filter { ids.contains($0.id) }
         if !tickets.isEmpty {
+            Button(tickets.count == 1 ? String(localized: "Copy ID", bundle: #bundle) : String(localized: "Copy IDs", bundle: #bundle),
+                   systemImage: "doc.on.doc") {
+                TicketIDCopy.copy(tickets.map(\.id))
+            }
+            Divider()
             if tickets.count == 1, let ticket = tickets.first, let implement {
                 Button(String(localized: "Implement…", bundle: #bundle, comment: "Starts a chat in which Claude implements the ticket"),
                        systemImage: "hammer") {
@@ -590,4 +595,16 @@ private struct TicketFilterMenu: View {
 
 #Preview("Largest Text, iPhone", traits: .phoneLayout, .largestText, .fixedLayout(width: 420, height: 800)) {
     TicketsRootView(model: TicketsModel(project: Project.sample("ORD")!, focus: "ORD-142", store: SampleTicketStore()))
+}
+
+/// Ticket ids on the pasteboard, one per line: Copy ID and ⌘C in the list (V2's).
+enum TicketIDCopy {
+    static func text(_ ids: [Ticket.ID]) -> String {
+        ids.joined(separator: "\n")
+    }
+
+    @MainActor static func copy(_ ids: [Ticket.ID]) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text(ids), forType: .string)
+    }
 }

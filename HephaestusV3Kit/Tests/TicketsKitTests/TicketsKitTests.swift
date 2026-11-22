@@ -485,3 +485,12 @@ struct TicketChangeTests {
         #expect(failed.listState == .failed(message: "Nope"))
     }
 }
+
+@Suite("Copying ticket ids")
+struct TicketIDCopyTests {
+    @Test("Copy ID writes the ids one per line, in the list's order")
+    func text() {
+        #expect(TicketIDCopy.text(["ORD-142"]) == "ORD-142")
+        #expect(TicketIDCopy.text(["ORD-142", "ORD-140"]) == "ORD-142\nORD-140")
+    }
+}

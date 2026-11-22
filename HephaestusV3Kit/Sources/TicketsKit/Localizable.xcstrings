@@ -238,6 +238,12 @@
     "Contract" : {
       "comment" : "The kind of an item a ticket links to"
     },
+    "Copy ID" : {
+
+    },
+    "Copy IDs" : {
+
+    },
     "Copy Text" : {
 
     },
