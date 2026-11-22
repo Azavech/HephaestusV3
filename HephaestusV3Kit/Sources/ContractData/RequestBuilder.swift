@@ -160,6 +160,8 @@ public final class ContractHTTPClient: Sendable {
         configuration.httpCookieStorage = nil
         configuration.urlCache = nil
         configuration.urlCredentialStorage = nil
+        // A request, api_call's included, gives up after 5 minutes in all, not the system's 7 days.
+        configuration.timeoutIntervalForResource = 300
         return configuration
     }
 

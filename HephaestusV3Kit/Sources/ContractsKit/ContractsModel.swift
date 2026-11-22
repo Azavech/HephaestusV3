@@ -175,13 +175,33 @@ final class ContractsModel {
     func send() async {
         guard let operation = selectedOperation, let environment, !isSending else { return }
         isSending = true
-        defer { isSending = false }
+        // A cancelled request's end leaves isSending to Cancel, which cleared it: a new Send may be out already.
+        defer { if !Task.isCancelled { isSending = false } }
         do throws(ContractSendError) {
-            responses[operation.id] = try await store.send(draft(for: operation), to: environment, of: project)
+            let response = try await store.send(draft(for: operation), to: environment, of: project)
+            // Cancel: Last Response keeps what it showed.
+            guard !Task.isCancelled else { return }
+            responses[operation.id] = response
             failures[operation.id] = nil
         } catch {
+            guard !Task.isCancelled else { return }
             failures[operation.id] = error.message
         }
+    }
+
+    /// The request being sent, which Cancel stops, as V2's did.
+    @ObservationIgnored private var sending: Task<Void, Never>?
+
+    /// Send, from the toolbar: kept, so that Cancel can stop it.
+    func startSend() {
+        sending = Task { [weak self] in await self?.send() }
+    }
+
+    /// Cancel: stops the request being sent; the operation's Last Response stays as it was.
+    func cancelSend() {
+        sending?.cancel()
+        sending = nil
+        isSending = false
     }
 
     /// The answer shown for an operation: this window's last, else the store's, else a sample's.

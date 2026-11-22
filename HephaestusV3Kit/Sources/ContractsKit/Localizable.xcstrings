@@ -71,7 +71,7 @@
 
     },
     "Cancel" : {
-
+      "comment" : "Button: stops the request being sent."
     },
     "Claude wants to call %@ of %@" : {
       "localizations" : {
@@ -185,6 +185,9 @@
     },
     "Status %@" : {
       "comment" : "VoiceOver label of a response's HTTP status, such as: Status 504."
+    },
+    "Stop the request" : {
+
     },
     "The contract isn't read." : {
 

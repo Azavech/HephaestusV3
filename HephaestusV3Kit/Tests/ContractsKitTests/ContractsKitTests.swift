@@ -11,6 +11,8 @@ final class MockContractStore: ContractStore {
     var contracts: [Project.ID: Contract]
     var answer = SampleResponse(status: 201, duration: .milliseconds(12), bytes: 2, body: "{}")
     var failure: String?
+    /// How long a send takes, for Cancel.
+    var delay: Duration?
     private(set) var environments: [String] = []
 
     init(contracts: [Project.ID: Contract] = [:]) {
@@ -20,6 +22,7 @@ final class MockContractStore: ContractStore {
     func contract(of project: Project) -> ContractLoad { contracts[project.id].map(ContractLoad.loaded) ?? .none }
     func refresh(_ project: Project) async {}
     func send(_ draft: RequestDraft, to environment: DeploymentEnvironment, of project: Project) async throws(ContractSendError) -> SampleResponse {
+        if let delay { try? await Task.sleep(for: delay) }
         if let failure { throw ContractSendError(message: failure) }
         return answer
     }
@@ -446,5 +449,22 @@ struct ContractSendTests {
         #expect(model.failures[operation.id] == "Could not connect to the server.")
         model.pickEnvironment("Production")
         #expect(store.environments == ["Production"] && model.environmentName == "Production")
+    }
+
+    @Test("Cancel stops a request being sent: Send comes back and Last Response keeps what it showed")
+    func cancel() async throws {
+        let store = MockContractStore(contracts: ["ORD": try #require(SampleContractStore().contract(of: "ORD"))])
+        store.delay = .milliseconds(300)
+        store.answer = SampleResponse(status: 500, duration: .milliseconds(1), bytes: 2, body: "{}")
+        let model = ContractsModel(project: try #require(Project.sample("ORD")), focus: "listOrders", store: store)
+        let operation = try #require(model.selectedOperation)
+        let before = model.response(for: operation)
+        model.startSend()
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(model.isSending)
+        model.cancelSend()
+        #expect(!model.isSending)
+        try await Task.sleep(for: .milliseconds(400))
+        #expect(model.response(for: operation) == before && model.failures[operation.id] == nil)
     }
 }

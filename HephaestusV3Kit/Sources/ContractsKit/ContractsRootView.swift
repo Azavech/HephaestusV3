@@ -197,14 +197,24 @@ public struct ContractsRootView: View {
             }
         }
         ToolbarItem(placement: .primaryAction) {
-            Button(String(localized: "Send", bundle: #bundle, comment: "Button: sends the request to the environment."), systemImage: "paperplane.fill") {
-                Task { await model.send() }
+            if model.isSending {
+                // As V2's: while a request is out, Send becomes Cancel.
+                Button(String(localized: "Cancel", bundle: #bundle, comment: "Button: stops the request being sent."), systemImage: "xmark") {
+                    model.cancelSend()
+                }
+                .keyboardShortcut(.cancelAction)
+                .help(String(localized: "Stop the request", bundle: #bundle))
+                .accessibilityIdentifier("contracts.cancel")
+            } else {
+                Button(String(localized: "Send", bundle: #bundle, comment: "Button: sends the request to the environment."), systemImage: "paperplane.fill") {
+                    model.startSend()
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.return, modifiers: .command)
+                .disabled(!model.canSend)
+                .help(String(localized: "Send the request", bundle: #bundle))
+                .accessibilityIdentifier("contracts.send")
             }
-            .buttonStyle(.borderedProminent)
-            .keyboardShortcut(.return, modifiers: .command)
-            .disabled(!model.canSend)
-            .help(String(localized: "Send the request", bundle: #bundle))
-            .accessibilityIdentifier("contracts.send")
         }
         ChatPanelToolbarItem()
     }
