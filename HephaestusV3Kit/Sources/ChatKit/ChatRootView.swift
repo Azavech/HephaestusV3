@@ -238,6 +238,8 @@ public struct ChatRootView: View {
                                        store: model.store) { model.select($0) }
                 } else {
                     AgentDetailView(row: agent, store: model.store, padding: layout == .phone ? 16 : 24)
+                        // Each agent's view starts afresh: Resume's state is that agent's.
+                        .id(agent.id)
                 }
             } else if let conversation {
                 let matches = ChatFind.matches(of: model.findQuery, in: conversation)
