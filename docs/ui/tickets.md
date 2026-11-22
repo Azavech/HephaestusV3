@@ -537,8 +537,10 @@ around each form's own Title field:
   `get_attachment`; a description being edited and not saved yet comes before the link. In New Ticket there is
   no ticket yet, and the description is all of it.
   It puts its answer's title in the Title field, replacing what was there: the
-  answer's first line that isn't empty, without a heading's `#`s or one pair of quotes around it, cut to 200
-  characters ([Titles written by Claude](#titles-written-by-claude)). The user can change it before **Create**
+  answer's first line that isn't empty, cleaned as V2 cleaned its generated titles: until nothing changes, a
+  heading's `#`s, a leading `Title:`, `Ticket title:`, `Bundle title:` or `Chat title:` (any case), a quote or
+  backtick at either end and final periods go; past 200 characters it is cut at the last space within them
+  ([Titles written by Claude](#titles-written-by-claude)). The user can change it before **Create**
   or **Save**; the editor's **Cancel** drops it with the rest. An answer that comes after the editor closed is
   dropped.
 - **A failure** leaves the title as it was and shows the reason under the field in `danger`

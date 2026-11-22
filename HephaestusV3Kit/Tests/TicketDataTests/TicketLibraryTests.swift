@@ -161,6 +161,15 @@ struct TicketLibraryTests {
         #expect(TicketRules.title(fromAnswer: String(repeating: "a", count: 250))?.count == 200)
         #expect(TicketRules.title(fromAnswer: " \n#\n\"\"") == nil)
         #expect(TicketRules.title(fromAnswer: "") == nil)
+        // V2's cleanup: prefixes, a quote at one end, backticks, final periods, again until nothing changes.
+        #expect(TicketRules.title(fromAnswer: "Title: Tabs close on click.") == "Tabs close on click")
+        #expect(TicketRules.title(fromAnswer: "TICKET TITLE: \"Tabs close on click\".") == "Tabs close on click")
+        #expect(TicketRules.title(fromAnswer: "`Tabs close on click`") == "Tabs close on click")
+        #expect(TicketRules.title(fromAnswer: "\"Tabs close on click") == "Tabs close on click")
+        #expect(TicketRules.title(fromAnswer: "Line up the New Bundle + with the sidebar rows...") == "Line up the New Bundle + with the sidebar rows")
+        // Past 200 characters, cut at the last space within them.
+        let words = String(repeating: "word ", count: 50)
+        #expect(TicketRules.title(fromAnswer: words) == String(repeating: "word ", count: 40).trimmingCharacters(in: .whitespaces))
     }
 
     @Test("Claude's tickets take any description, start To Do and record the chat")

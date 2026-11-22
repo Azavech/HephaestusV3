@@ -65,25 +65,39 @@ public enum TicketRules {
         return trimmed
     }
 
-    /// A title from Claude's answer to `set-ticket-title`: its first line that isn't empty, trimmed, without a
-    /// heading's `#`s or one pair of quotes around it, cut to 200 characters; nil when nothing is left. The app
-    /// takes the answer as it comes: what Claude writes is the skill's to say.
+    /// A title from Claude's answer to `set-ticket-title`, cleaned as V2 cleaned its generated titles: its first
+    /// line that isn't empty, trimmed; then, until nothing changes, a heading's `#`s, a leading `Title:`,
+    /// `Ticket title:`, `Bundle title:` or `Chat title:` (any case), a quote or backtick at either end and final
+    /// periods are removed; past 200 characters, it is cut at the last space within them. Nil when nothing is left.
     public static func title(fromAnswer answer: String) -> String? {
         for line in lines(answer) {
             var text = line.trimmingCharacters(in: .whitespaces)
-            while text.hasPrefix("#") {
-                text.removeFirst()
+            var previous = ""
+            while text != previous {
+                previous = text
+                while text.hasPrefix("#") { text.removeFirst() }
+                text = text.trimmingCharacters(in: .whitespaces)
+                for prefix in ["ticket title:", "bundle title:", "chat title:", "title:"] where text.lowercased().hasPrefix(prefix) {
+                    text = String(text.dropFirst(prefix.count)).trimmingCharacters(in: .whitespaces)
+                    break
+                }
+                if let first = text.first, quotes.contains(first) { text.removeFirst() }
+                if let last = text.last, quotes.contains(last) { text.removeLast() }
+                while text.hasSuffix(".") { text.removeLast() }
+                text = text.trimmingCharacters(in: .whitespaces)
             }
-            text = text.trimmingCharacters(in: .whitespaces)
-            for (open, close) in [("\"", "\""), ("“", "”"), ("'", "'"), ("‘", "’"), ("«", "»")] where text.count >= 2 && text.hasPrefix(open) && text.hasSuffix(close) {
-                text = String(text.dropFirst().dropLast()).trimmingCharacters(in: .whitespaces)
-                break
+            if text.count > 200 {
+                let head = text.prefix(201)
+                text = head.lastIndex(of: " ").map { String(head[..<$0]) } ?? String(text.prefix(200))
+                text = text.trimmingCharacters(in: .whitespaces)
             }
-            let cut = String(text.prefix(200)).trimmingCharacters(in: .whitespaces)
-            if !cut.isEmpty { return cut }
+            if !text.isEmpty { return text }
         }
         return nil
     }
+
+    /// The quotes a generated title loses at either end, the backtick included.
+    private static let quotes: Set<Character> = ["\"", "'", "`", "“", "”", "‘", "’", "«", "»"]
 
     /// The title of a ticket created without one: the description's first line that is neither empty nor a
     /// heading, trimmed and cut to 60 characters; `Untitled Ticket` without one.
