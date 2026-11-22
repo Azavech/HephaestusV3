@@ -182,11 +182,12 @@ final class AppData {
     // MARK: Updates (docs/ui/updates.md › Restart rules)
 
     /// What a restart for an update would stop or lose: the chats the status bar counts, the machines, setups and
-    /// installs that run and the images that download, the chats' unsent drafts, and the sheets.
+    /// installs that run and the images that download, the chats' unsent drafts and the Tickets windows' unsaved
+    /// edits, and the sheets.
     var runningWork: RunningWork {
         RunningWork(chats: StatusChat.list(chats).count,
                     machines: machineHost.runningCount + machineHost.images.filter { $0.state == .downloading }.count,
-                    drafts: chatStore.hasDrafts,
+                    drafts: chatStore.hasDrafts || TicketsWindows.hasUnsavedEdits,
                     sheet: NSApp.windows.contains { $0.attachedSheet != nil })
     }
 

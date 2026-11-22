@@ -339,7 +339,7 @@
 
     },
     "Unsent drafts will be lost." : {
-      "comment" : "The restart alert: chats hold drafts"
+      "comment" : "The restart alert: chats or tickets hold drafts"
     },
     "Update %@ available — click to install" : {
       "comment" : "The status bar's Update item"

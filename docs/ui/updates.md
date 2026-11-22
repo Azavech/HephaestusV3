@@ -116,7 +116,9 @@ The app is **idle** when the restart would stop or lose nothing (`AppData.runnin
 
 - no chat the status bar counts: starting, running, waiting for permission or for answers, or idle with its
   background work running ([Navigation › Status bar](navigation.md#status-bar));
-- no chat holding an unsent draft, text or files ([Chat › Drafts](chat.md#drafts)): drafts live in memory;
+- no chat holding an unsent draft, text or files ([Chat › Drafts](chat.md#drafts)), and no Tickets window holding a
+  ticket or comment being edited, a comment typed, files waiting to go with one, or the New Ticket sheet, as V2's
+  unsaved editors held it: drafts live in memory;
 - no virtual machine, setup or install running, and no image downloading ([Virtual
   Machines](virtual-machines.md)): a restart stops them as a power cut does;
 - no window showing a sheet.

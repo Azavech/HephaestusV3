@@ -145,7 +145,19 @@ final class TicketsModel {
         self.draft = NewTicketDraft(projectID: project.id)
         self.selection = nil
         selection = focus ?? visibleTickets.first?.id
+        Self.models.add(self)
     }
+
+    /// Whether this window holds what isn't saved yet: a ticket or a comment being edited, a comment typed, or files
+    /// waiting to go with one. The automatic restart for an update waits for it, as V2's did.
+    var hasUnsavedEdits: Bool {
+        edit != nil || commentEdit != nil || isComposing
+            || commentDrafts.values.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            || commentFiles.values.contains { !$0.isEmpty }
+    }
+
+    /// The Tickets windows' models, held weakly: those of closed tabs go.
+    fileprivate static let models = NSHashTable<TicketsModel>.weakObjects()
 
     /// The project and its sub projects, in tree order.
     /// The files of the window's projects that can't be read: their tickets and bundles are left out.
@@ -579,5 +591,19 @@ final class TicketsModel {
         isComposing = false
         if let ticket = ticket(id), !passesFilter(ticket) { filter = .all }
         selection = id
+    }
+}
+
+/// What the app asks of the Tickets windows.
+public enum TicketsWindows {
+    /// Whether a Tickets window holds an edit, a comment or files not saved yet (`TicketsModel.hasUnsavedEdits`).
+    @MainActor public static var hasUnsavedEdits: Bool {
+        TicketsModel.anyUnsavedEdits
+    }
+}
+
+extension TicketsModel {
+    static var anyUnsavedEdits: Bool {
+        models.allObjects.contains { $0.hasUnsavedEdits }
     }
 }

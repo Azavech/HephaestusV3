@@ -503,6 +503,16 @@ struct TicketChangeTests {
         #expect(!TicketPickerFilter.matches(one, "refund"))
     }
 
+    @Test("A comment typed, files waiting or an edit open are unsaved edits, which hold the automatic restart")
+    func unsavedEdits() {
+        let orders = model("ORD")
+        #expect(!orders.hasUnsavedEdits)
+        orders.isComposing = true
+        #expect(orders.hasUnsavedEdits && TicketsWindows.hasUnsavedEdits)
+        orders.isComposing = false
+        #expect(!orders.hasUnsavedEdits)
+    }
+
     @Test("The store's phase shows as loading or failed in the list")
     func phases() {
         let loading = TicketsModel(project: Project.sample("ORD")!, focus: nil, store: SampleTicketStore(phase: .loading))

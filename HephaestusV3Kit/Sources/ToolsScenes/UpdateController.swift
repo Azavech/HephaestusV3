@@ -363,7 +363,7 @@ final class UpdateController {
                                                  comment: "The restart alert: the machines, setups, installs and image downloads").characters))
         }
         if work.drafts {
-            parts.append(String(localized: "Unsent drafts will be lost.", bundle: #bundle, comment: "The restart alert: chats hold drafts"))
+            parts.append(String(localized: "Unsent drafts will be lost.", bundle: #bundle, comment: "The restart alert: chats or tickets hold drafts"))
         }
         return parts.joined(separator: " ")
     }
