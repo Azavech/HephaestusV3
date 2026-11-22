@@ -404,8 +404,11 @@ extension ChatSession {
                 receive(planUsage: usage)
             case .permissionMode(let mode):
                 followCLIPermissionMode(mode, in: chatID)
-            case .ignored, .invalid:
-                break
+            case .ignored(let type):
+                // As V2's log: every line the app doesn't use, but the stream's own events, which come by the hundred.
+                if !type.hasPrefix("stream_event") { run.connection.log("ignored \(type)") }
+            case .invalid:
+                run.connection.log("invalid line: not a JSON object")
             }
         }
         refreshState(chatID)

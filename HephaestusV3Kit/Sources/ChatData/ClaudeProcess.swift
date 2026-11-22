@@ -184,6 +184,12 @@ public protocol ClaudeConnection: AnyObject, Sendable {
     func waitForExit() async -> ProcessTermination
     /// The last lines the process wrote on standard error, oldest first.
     var errorLines: [String] { get }
+    /// Adds a line of the app's own to the chat's log, such as an output line it ignored.
+    func log(_ line: String)
+}
+
+extension ClaudeConnection {
+    public func log(_ line: String) {}
 }
 
 /// Starts the CLI: a chat's process, or the probe that reads the model list.
@@ -197,7 +203,11 @@ public struct SystemClaudeLauncher: ClaudeLaunching {
     public init() {}
 
     public func launch(_ request: ProcessRequest, log: URL?, logLine: String) throws -> any ClaudeConnection {
-        SystemClaudeConnection(try ChildProcess.spawn(request), log: log, launchLine: logLine)
+        // HEPHAESTUS_DEBUG_TOOLS=1 keeps every line of standard output, unchanged, beside the log, as V2 did: the source
+        // of new test captures.
+        let capture = ProcessInfo.processInfo.environment["HEPHAESTUS_DEBUG_TOOLS"] == "1"
+            ? log.map { $0.deletingPathExtension().appendingPathExtension("stdout.jsonl") } : nil
+        return SystemClaudeConnection(try ChildProcess.spawn(request), log: log, launchLine: logLine, capture: capture)
     }
 }
 
@@ -208,19 +218,33 @@ final class SystemClaudeConnection: ClaudeConnection {
     private let writes = DispatchQueue(label: "ClaudeConnection.write")
     private let input: Mutex<FileHandle?>
     private let errors = Mutex<[String]>([])
+    /// The chat's log, written on `logWrites`: standard error as it comes, and the app's own lines.
+    private let logHandle: FileHandle?
+    private let logWrites = DispatchQueue(label: "ClaudeConnection.log")
 
     /// A line longer than this is dropped.
     static let maximumLine = 64 * 1024 * 1024
     /// The log is emptied at launch once larger than this.
     static let maximumLog = 10 * 1024 * 1024
 
-    init(_ process: ChildProcess, log: URL?, launchLine: String) {
+    init(_ process: ChildProcess, log: URL?, launchLine: String, capture: URL? = nil) {
         self.process = process
         input = Mutex(process.standardInput)
         let (stream, continuation) = AsyncStream.makeStream(of: Data.self, bufferingPolicy: .unbounded)
         lines = stream
+        let logHandle = log.flatMap { Self.openLog($0, launchLine: launchLine) }
+        self.logHandle = logHandle
+        let captureHandle = capture.flatMap { url -> FileHandle? in
+            if !FileManager.default.fileExists(atPath: url.path) {
+                FileManager.default.createFile(atPath: url.path, contents: nil, attributes: [.posixPermissions: 0o600])
+            }
+            let handle = try? FileHandle(forWritingTo: url)
+            _ = try? handle?.seekToEnd()
+            return handle
+        }
         if let output = process.standardOutput {
             Self.read(output, name: "ClaudeConnection.stdout") { buffer, chunk in
+                try? captureHandle?.write(contentsOf: chunk)
                 buffer.append(chunk)
                 while let end = buffer.firstIndex(of: UInt8(ascii: "\n")) {
                     let line = buffer[buffer.startIndex..<end]
@@ -230,15 +254,15 @@ final class SystemClaudeConnection: ClaudeConnection {
                 if buffer.count > Self.maximumLine { buffer.removeAll() }
             } finished: { buffer in
                 if !buffer.isEmpty, buffer.count <= Self.maximumLine { continuation.yield(buffer) }
+                try? captureHandle?.close()
                 continuation.finish()
             }
         } else {
             continuation.finish()
         }
-        let logHandle = log.flatMap { Self.openLog($0, launchLine: launchLine) }
         if let errorOutput = process.standardError {
             Self.read(errorOutput, name: "ClaudeConnection.stderr") { [self] buffer, chunk in
-                try? logHandle?.write(contentsOf: chunk)
+                logWrites.async { try? logHandle?.write(contentsOf: chunk) }
                 buffer.append(chunk)
                 while let end = buffer.firstIndex(of: UInt8(ascii: "\n")) {
                     let text = String(decoding: buffer[buffer.startIndex..<end], as: UTF8.self)
@@ -250,9 +274,16 @@ final class SystemClaudeConnection: ClaudeConnection {
                 }
             } finished: { [self] buffer in
                 if !buffer.isEmpty { errors.withLock { $0.append(String(decoding: buffer, as: UTF8.self)) } }
-                try? logHandle?.close()
             }
         }
+    }
+
+    func log(_ line: String) {
+        logWrites.async { [logHandle] in try? logHandle?.write(contentsOf: Data((line + "\n").utf8)) }
+    }
+
+    deinit {
+        logWrites.sync { [logHandle] in try? logHandle?.close() }
     }
 
     func write(_ data: Data) {

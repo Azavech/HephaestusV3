@@ -26,6 +26,11 @@ final class FakeConnection: ClaudeConnection, @unchecked Sendable {
     private let exit = Mutex<[CheckedContinuation<ProcessTermination, Never>]>([])
     let request: ProcessRequest
     var errorLines: [String] = []
+    private let logLines = Mutex<[String]>([])
+    /// The lines the app added to the chat's log.
+    var logged: [String] { logLines.withLock { $0 } }
+
+    func log(_ line: String) { logLines.withLock { $0.append(line) } }
 
     init(_ request: ProcessRequest) {
         self.request = request
@@ -209,6 +214,20 @@ struct ChatSessionTests {
         #expect(ClaudeCommand.syncedPlugins(claudeFolder: claude) == ["cowork"])
         #expect(ClaudeCommand.marking(list, syncedPlugins: ["cowork"]).map(\.isSynced) == [true, true, false])
         #expect(ClaudeCommand.syncedPlugins(claudeFolder: claude.appendingPathComponent("missing")).isEmpty)
+    }
+
+    @Test("The lines the app doesn't use are noted in the chat's log, as V2's were, but the stream's own events")
+    func ignoredLinesLogged() async throws {
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        _ = try await world.session.send("Hi", references: [], to: nil, projectID: "ORD")
+        let cli = try #require(world.launcher.chats.first)
+        cli.feed(#"{"type":"something_new"}"#)
+        cli.feed(#"{"type":"system","subtype":"status"}"#)
+        cli.feed("not json")
+        try await world.until { cli.logged.count == 3 }
+        #expect(cli.logged == ["ignored something_new", "ignored system/status", "invalid line: not a JSON object"])
+        world.launcher.chats.forEach { $0.finish(.exited(0)) }
     }
 
     @Test("A chat whose Claude starts while the app's MCP server isn't listening says why, as V2's did")
