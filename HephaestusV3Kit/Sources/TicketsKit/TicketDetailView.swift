@@ -796,6 +796,8 @@ private struct EventRow: View {
     let ticket: Ticket
     let onOpen: (TicketAttachment) -> Void
 
+    @Environment(\.commentAnswers) private var answers
+
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
             Image(systemName: event.kind.symbol)
@@ -827,6 +829,9 @@ private struct EventRow: View {
                 if !event.attachments.isEmpty {
                     AttachmentStrip(attachments: event.attachments, projectID: projectID, model: model, ticket: ticket,
                                     removable: false, onOpen: onOpen)
+                }
+                if let id = event.commentID, let answers, let state = answers.state(id) {
+                    CommentAnswerRow(state: state) { answers.retry(id) }
                 }
             }
         }

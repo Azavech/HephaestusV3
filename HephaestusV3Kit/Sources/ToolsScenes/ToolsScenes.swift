@@ -253,6 +253,7 @@ private struct RouteHost<Content: View>: View {
             .environment(\.buildStore, appData.buildStore)
             .environment(\.projectDirectory, appData.directory)
             .environment(\.ticketStore, appData.ticketStore)
+            .environment(\.commentAnswers, appData.answerer.reader)
             .environment(\.dashboardStore, appData.dashboardStore)
             .environment(\.chatStore, appData.chatStore)
             .environment(\.availableTools, AppData.availableTools)

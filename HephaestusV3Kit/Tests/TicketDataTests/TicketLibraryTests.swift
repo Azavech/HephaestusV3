@@ -498,3 +498,16 @@ struct TicketLibraryTests {
         }
     }
 }
+
+@Suite("Mentioning Claude")
+struct CommentMentionTests {
+    @Test("@Claude in any case, as a whole word, outside code, as V2's rule")
+    func mentions() {
+        for text in ["@claude, why does it fail?", "(@CLAUDE)", "@Claude's take", "Hi @Claude"] {
+            #expect(CommentMentions.mentionsClaude(text), "\(text)")
+        }
+        for text in ["@Claudette", "name@Claude", "`@Claude`", "```\n@Claude\n```", "Before\n\n    @Claude in code", "Claude"] {
+            #expect(!CommentMentions.mentionsClaude(text), "\(text)")
+        }
+    }
+}

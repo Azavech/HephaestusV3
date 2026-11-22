@@ -406,3 +406,12 @@ popover. These were open.
 | Which colors? | AZDesign's `success`, `warning` and `danger` for V2's green, orange and red, and the composer's context ring's drawing: `divider` track, round ends. | same |
 | What does the file keep? | V2's `plan-usage.yml` without `received`: one Mac's chats need no order between devices. A report equal to the kept value writes nothing. | [Data › Plan usage file](data.md#plan-usage-file) |
 | Does Claude get a tool for it? | No: V2's `claude.planUsage` served its remote devices, which V3 doesn't have. | — |
+
+## Comment answers
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| How does Claude answer a comment that mentions it? | As V2: one run per mention, without a chat, its answer posted as Claude's comment; V3 runs it as the internal skill `comment-answer`, which the user edits in System Prompts (the user's request to bring over every V2 feature, 22 November 2026). | [UI › Tickets › Comment answers](ui/tickets.md#comment-answers) |
+| Which model and effort? | The skill's own, set in System Prompts, as every internal skill's; V2 took the project's chat defaults. | same |
+| What may the run do? | Read the project's files (the CLI's Read, Grep and Glob, in the project's folder) and the app's data, and change its own ticket's title, description, links and status: V2's actor rules. The run's caller names its ticket (`comment-answer <ticket id>`), so the gate checks it. | [MCP › Permissions](mcp.md#permissions) |
+| Where does its state live? | In the running app (`CommentAnswerer`), as V2's engine kept it: not written, so a restart drops it. | [UI › Tickets › Comment answers](ui/tickets.md#comment-answers) |

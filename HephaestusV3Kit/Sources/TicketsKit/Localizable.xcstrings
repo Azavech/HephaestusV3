@@ -147,6 +147,9 @@
     "Claude commented" : {
 
     },
+    "Claude could not reply." : {
+
+    },
     "Claude created this ticket" : {
 
     },
@@ -154,6 +157,9 @@
 
     },
     "Claude edited the description" : {
+
+    },
+    "Claude is replying…" : {
 
     },
     "Claude made it depend on %@" : {
@@ -587,6 +593,9 @@
     },
     "Request" : {
       "comment" : "The kind of an item a ticket links to"
+    },
+    "Retry" : {
+      "comment" : "Runs Claude's answer to a comment again"
     },
     "Save" : {
 

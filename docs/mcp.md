@@ -96,7 +96,8 @@ Each request goes through these steps in order; the first that fails sends its r
   [permissions](#permissions) apply to chats only.
 - Each **skill run token** belongs to one run of an internal skill ([Data › Internal
   skills](data.md#internal-skills)): made the same way when the run starts, in the run's configuration file, and
-  ended with the run. Its caller is `MCPCaller.internalSkill(<skill name>)`.
+  ended with the run. Its caller is `MCPCaller.internalSkill(<skill name>)`, or `<skill name> <scope>` for a run
+  that has one: `comment-answer <ticket id>`.
 
 ## JSON-RPC
 
@@ -230,7 +231,10 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
   about them itself, under Settings ▸ Chat › Edit the project's files ([Data › File tools](data.md#file-tools)).
 - **An internal skill's run** only reads (default chosen at design time: the app runs it for its answer alone,
   in the background, where no card can show): the `read` tools run but `open_in_app`; every other call is
-  refused with `An internal skill's run only reads.` (`forbidden`), whatever Settings ▸ Chat says.
+  refused with `An internal skill's run only reads.` (`forbidden`), whatever Settings ▸ Chat says. One exception,
+  as V2's: a `comment-answer` run also runs `update_ticket` and `set_ticket_status` on the ticket of the comment it
+  answers (its caller's scope), without a card; on any other ticket they are refused the same way ([UI › Tickets ›
+  Comment answers](ui/tickets.md#comment-answers)).
 
 **A chat's own items** (the user's choice, 20 November 2026): under Ask First, a `changeTickets` call of an
 [implement chat](data.md#implement-chats) runs without a card when it names only its own items: a `ticket` chat's

@@ -382,6 +382,43 @@ on the sides and 12 pt above and below. In the two-column arrangement it spans t
   adds the comment as the user; the field and its files empty once it is written, and keep their content when
   it fails.
 
+### Mentioning Claude
+
+V2's mentions, brought over (the user's request, 22 November 2026). A comment mentions Claude when its text holds
+`@Claude`, in any letter case, as a whole word, outside code: the `@` starts the text or follows a character that
+isn't a letter, a digit or `_`, and `Claude` ends the text or is followed by such a character; code spans (between
+backtick strings of the same length), fenced code blocks and indented code blocks don't count (`CommentMentions`, in
+`TicketData`). `@claude, why…`, `(@CLAUDE)` and `@Claude's` mention Claude; `@Claudette`, `name@Claude` and
+`` `@Claude` `` don't.
+
+Only a new comment the user writes in the Tickets window starts an answer. Editing a comment never does, even when
+the edit adds a mention, and neither does a comment Claude adds, from a chat or as an answer, nor a ticket file
+changed by another program.
+
+### Comment answers
+
+Claude answers each comment that mentions it, as V2 did:
+
+- **The run.** The app runs the internal skill `comment-answer` ([System Prompts](system-prompts.md)) once, without a
+  chat, in the project's folder, with the model and effort set for the skill there (V2 took the project's chat
+  defaults; V3's internal skills carry their own). The message names the project, its folder and docs, the ticket,
+  and the comment's text, and links the ticket. Each mention runs its own, and several can run at once.
+- **What Claude may do.** Read the project's docs and code (the CLI's Read, Grep and Glob, no other tool), and the
+  app's data with the `hephaestus` tools that read. When the comment asks for it, change this ticket alone: its
+  title, description and links (`update_ticket`) and its status (`set_ticket_status`), never a done ticket's
+  status. The app refuses any other change ([MCP › Permissions](../mcp.md#permissions)). Its changes show in
+  [Activity](#activity) as Claude's.
+- **The answer** is posted as a new comment by Claude, at the end of the comments. Questions Claude needs answered
+  are in that comment; the user answers with a new comment that mentions Claude.
+- **While it runs**, "Claude is replying…" follows a small spinner under the mentioning comment, in `callout`,
+  `textSecondary` (`ticket.comment.answer`). The row goes once the answer is posted.
+- **Failure.** A run still going after 5 minutes stops. A stopped or failed run posts nothing: the row reads
+  "Claude could not reply." followed by **Retry** (`ticket.comment.answer.retry`), and the reason goes to the
+  app's log (`answers`, [Data › App log](../data.md#app-log)). Retry runs it again on the ticket and the comment as
+  they are then.
+- **Deleting** the comment stops its run, and so does deleting the ticket: a stopped run posts nothing.
+- The row is the running app's state: a restart doesn't bring it back, and a run cut by quitting posts nothing.
+
 ## Status and next step
 
 The status menu and the next-step button act on the selected ticket. Both are in the detail column's toolbar

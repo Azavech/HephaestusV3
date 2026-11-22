@@ -164,6 +164,8 @@ The files that belong to this Mac rather than to a project.
   `forbidden`…) in place of `ok`.
 - `titles` (WARNING): a ticket's title that `set-ticket-title` couldn't give, with the reason.
 - `summaries` (WARNING): a notification summary that failed, with the chat's id and the reason.
+- `answers` (WARNING): a comment answer that failed or ran out of time, with the ticket, the comment's id and the
+  reason ([UI › Tickets › Comment answers](ui/tickets.md#comment-answers)).
 
 ## Project folder
 
@@ -2292,13 +2294,13 @@ content the user writes in [System Prompts](ui/system-prompts.md). A V3 addition
 
 - **Names**: Claude's skill name format, 1 to 64 characters of lowercase ASCII letters, digits and hyphens, not
   starting or ending with a hyphen, without two in a row (`InternalSkill.isValidName`). Today:
-  `set-ticket-title` and `notification-summary`, which the app runs itself ([Running a skill](#internal-skills),
-  below, and [Chat events](#chat-events)), and
+  `set-ticket-title`, `notification-summary` and `comment-answer`, which the app runs itself ([Running a skill](#internal-skills),
+  below, [Chat events](#chat-events) and [UI › Tickets › Comment answers](ui/tickets.md#comment-answers)), and
   `report-feedback`, `resume-chat`, `resume-agent`, `implement-ticket`, `implement-bundle` and `watch-ci`, which chats call (`isCalledFromChats`), through the [chat plugin](#chat-plugin):
   a feedback chat's first message calls `report-feedback` ([Feedback chats](#feedback-chats)), Resume calls
   `resume-chat` ([Closing and deleting chats](#closing-and-deleting-chats)), an agent's Resume `resume-agent` ([Agents](#agents)),
   Implement `implement-ticket` and Implement All `implement-bundle` ([Implement chats](#implement-chats)), a CI chat's first message `watch-ci` ([CI chats](#ci-chats)). The first two are empty by default;
-  `resume-chat`, `resume-agent`, `notification-summary`, `implement-ticket`, `implement-bundle` and `watch-ci` hold V3's own text, which the user's saved file replaces. Every text the app has Claude act on
+  `resume-chat`, `resume-agent`, `notification-summary`, `implement-ticket`, `implement-bundle`, `watch-ci` and `comment-answer` hold V3's own text, which the user's saved file replaces. Every text the app has Claude act on
   is an internal skill, never written in the code (the user's rule, 17 November 2026).
 - **File**: `<data folder>/skills/<name>/SKILL.md`, Claude's skill layout. Written atomically by
   `DataFolder.writeSkill(_:of:)`, its folder made when missing: a front matter with `name` (the code's),
@@ -2327,22 +2329,25 @@ effort: low
   be read as UTF-8, the skill's defaults. The front matter has no `description` of the app's: the app runs these
   skills itself rather than handing them to the CLI as skills (default chosen at design time).
 - **Running a skill** (`ChatSession.run(_:input:attaching:)`, `InternalSkillRun`): the CLI found for the chats,
-  in `Runtime/claude-cwd` (empty), with the login shell's environment, as
+  in `Runtime/claude-cwd` (empty), or the folder the caller gives (`comment-answer`: the project's folder), with
+  the login shell's environment, as
 
 ```text
-claude -p --output-format json --no-session-persistence --model <model> --effort <effort> --tools "" \
+claude -p --output-format json --no-session-persistence --model <model> --effort <effort> --tools "<CLI tools>" \
   --strict-mcp-config --mcp-config <data folder>/Runtime/mcp/skill-<UUID>.json \
-  --allowedTools mcp__hephaestus__<tool>,… [--system-prompt <content>]
+  --allowedTools <CLI tools>,mcp__hephaestus__<tool>,… [--system-prompt <content>]
 ```
 
-  `--system-prompt` only while the content isn't blank; stopped after 2 minutes, or the time the caller gives
-  (30 s for `notification-summary`).
+  `--system-prompt` only while the content isn't blank; the CLI tools are those the caller gives, none by default
+  (`comment-answer`: `Read,Grep,Glob`); stopped after 2 minutes, or the time the caller gives (30 s for
+  `notification-summary`, 5 minutes for `comment-answer`).
 - **MCP access** (the user's request): every run gets the app's MCP server, as a chat does. Its configuration
   file is a chat's ([Chat processes](#chat-processes)), with a token made for the run
   (`MCPTokens.issue(forSkill:)`), written mode 0600 before the run and deleted after it; the token ends with the
-  run. The token's caller is `MCPCaller.internalSkill(<name>)`: the server lets it read and nothing else, and not
-  open windows ([MCP › Permissions](mcp.md#permissions)), whatever Settings ▸ Chat says. The CLI's own tools stay
-  off.
+  run. The token's caller is `MCPCaller.internalSkill(<name>)`, or `<name> <scope>` when the caller gives a scope
+  (`comment-answer HEPH-3`): the server lets it read and nothing else, and not open windows, but a
+  `comment-answer` run's changes to its own ticket ([MCP › Permissions](mcp.md#permissions)), whatever Settings ▸
+  Chat says. The CLI's own tools stay off, but those the caller gives.
 - **The message**, on standard input, is the input, then one `Attached:` line per item the run links, as a
   chat's message carries the item of its chip ([Messages](#messages)); the lines alone when the input is blank.
   `set-ticket-title` (the user's request: Claude reads the whole ticket, not its description alone):
@@ -2350,6 +2355,10 @@ claude -p --output-format json --no-session-persistence --model <model> --effort
   - the editor's **Generate Title**: the same line, after the description being edited while it differs from
     the saved one;
   - New Ticket's, before the ticket exists: the description, without a line.
+
+  `comment-answer`: `Project: <name> (<id>), its folder <folder>, its docs in <docs path>.`, a blank line,
+  `Ticket: <id>, <title>`, a blank line, `Comment to answer:` and the comment's text on the next lines, then the
+  ticket's `Attached:` line. Its answer is posted as Claude's comment on the ticket.
 
   Claude reads the ticket with `get_ticket` (title, status, priority, labels, dates, description, comments,
   links, history, attachments' paths) and its files with `get_attachment` ([MCP ›

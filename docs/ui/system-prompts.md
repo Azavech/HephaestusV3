@@ -55,9 +55,10 @@ split view does.
 
 **Running a skill.** The app runs a skill as the Claude CLI in print mode, once, without a chat: the skill's
 model and effort, its content as the system prompt (left out while it is blank), the input as the message, in an
-empty folder, without a saved session or the CLI's own tools. Every run has the app's MCP server (the user's
-request), as a chat has, with a token that only reads ([MCP › Permissions](../mcp.md#permissions)). The item a
-run is for is linked as a chat's message links the item of its chip, with an `Attached:` line such as
+empty folder, without a saved session or the CLI's own tools (`comment-answer`: in the project's folder, with
+Read, Grep and Glob). Every run has the app's MCP server (the user's request), as a chat has, with a token that
+only reads, but a `comment-answer` run's changes to its own ticket ([MCP › Permissions](../mcp.md#permissions)).
+The item a run is for is linked as a chat's message links the item of its chip, with an `Attached:` line such as
 `Attached: ticket HEPH-3 of project HEPH`: Claude reads the ticket with `get_ticket` and its files with
 `get_attachment`. Claude's answer is taken as it comes ([Data › Internal skills](../data.md#internal-skills)).
 So until the content says how to answer, the answer is what the model makes of the message and of what it
@@ -73,9 +74,10 @@ reads.
 | `implement-ticket`     | V3's own text, [below](#implement-skills)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `default`, High (a chat's defaults; the app never runs it itself)                | **Implement…** and `implement_ticket` ([Tickets › Implement](tickets.md#implement)): the first message of a ticket's chat, `/hephaestus-skills:implement-ticket <ticket id>`, with the bundle's id after it for a chat a bundle's chat started. V2's skill of the same name; V3 writes its own text (no V2 prompt).                                                                                                                                                                  |
 | `implement-bundle`     | V3's own text, [below](#implement-skills)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | `default`, High (a chat's defaults; the app never runs it itself)                | **Implement All…** and `implement_bundle`: the first message of a bundle's chat, `/hephaestus-skills:implement-bundle <bundle id>`. V2's skill of the same name; V3 writes its own text.                                                                                                                                                                                                                                                                                             |
 | `watch-ci`             | V3's own text, [below](#ci-skill)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | `default`, High (a chat's defaults; the app never runs it itself)                | A CI chat's first message, `/hephaestus-skills:watch-ci <commit>` with its project attached, which `watch_ci` starts after a push ([Chat › Implement chats](chat.md#implement-chats)). V2's CI chats had a skill as their system prompt; V3 calls one, as its other chats do, with its own text (no V2 prompt).                                                                                                                                                                      |
+| `comment-answer`       | Adapted from V2's, [below](#comment-answer-skill)                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | `default`, High (default chosen at design time)                                  | A comment of the user that mentions Claude ([Tickets › Comment answers](tickets.md#comment-answers)): the app runs it in the project's folder, with the CLI's Read, Grep and Glob, at most 5 minutes, and posts its answer as Claude's comment. V2's internal skill of the same name; V3 adapts V2's text.                                                                                                                                                                           |
 
-**Called skills.** `report-feedback`, `resume-chat`, `resume-agent`, `implement-ticket`, `implement-bundle` and `watch-ci` are called from chats (V2's called skills); `set-ticket-title` and
-`notification-summary` the app runs itself. Every chat's CLI gets the called skills as the plugin `hephaestus-skills` ([Data › Chat
+**Called skills.** `report-feedback`, `resume-chat`, `resume-agent`, `implement-ticket`, `implement-bundle` and `watch-ci` are called from chats (V2's called skills); `set-ticket-title`,
+`notification-summary` and `comment-answer` the app runs itself. Every chat's CLI gets the called skills as the plugin `hephaestus-skills` ([Data › Chat
 plugin](../data.md#chat-plugin)), so a message starting with `/hephaestus-skills:<name>` calls one: Claude gets
 the skill's content, then the rest of the message. A chat that calls a skill keeps its own model and effort. The
 skills the app runs itself aren't in the plugin: no chat sees them. The page shows a called skill as any other:
@@ -166,6 +168,30 @@ Follow the GitHub Actions runs of the commit the arguments name, then report on 
    - "CI not checked." when you couldn't follow the runs. Under it, why: the commit has no workflow run, gh is missing or not logged in, or the project has no GitHub page.
 
 Change no file, make no commit and ask no questions. Keep this turn going until you can reply: the app reports to the other chat as soon as it ends.
+```
+
+### Comment answer skill
+
+`comment-answer`'s default content, adapted from V2's skill of the same name: Claude answers the comment, may change
+only the ticket the comment is on, and asks its questions in its answer ([Tickets › Comment
+answers](tickets.md#comment-answers)).
+
+```text
+You are Claude, inside Hephaestus V3, a macOS app that coordinates the work on many projects. The user mentioned you in a comment of a ticket. The message gives the project, the ticket and the comment to answer, and links the ticket (its Attached: line): read it with get_ticket. Your working directory is the project's folder.
+Your reply is posted as a new comment by Claude at the end of the ticket's comments: write it for the user who wrote the comment, in Markdown and in the language of the comment. Answer the comment, and do what it asks when these rules allow it.
+
+What you may do:
+- Read the project's docs and code with Read, Grep and Glob, and the attachments of the ticket and of its comments.
+- Read the app's data with the hephaestus tools that read.
+- When the comment asks for it, change this ticket: its title and description with update_ticket, its links with the links of update_ticket (list every link to keep), its status with set_ticket_status.
+- Change nothing else: no docs, no code, no other file, ticket, comment or attachment. When the comment asks for such work, say that it needs a chat of the ticket, which the user starts with Implement or from the ticket's Chats.
+
+Rules:
+- Never invent a requirement, a behavior, a name or a value shown to users, a file format or a product decision: take them from the comment, the ticket with its comments and attachments, the docs or the code. Look there before you ask.
+- Ask only true unknowns, in your reply: the user answers with a new comment that mentions you.
+- Change a status only when the comment asks for it, and never the status of a done ticket: tell the user to do it.
+- When the app answers forbidden or invalid, report its message in your reply and don't work around it.
+- Report only what you did and checked, and name every change you made to the ticket.
 ```
 
 ## Previews

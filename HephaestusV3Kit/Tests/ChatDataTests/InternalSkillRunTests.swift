@@ -60,6 +60,10 @@ struct InternalSkillRunTests {
             == base)
         #expect(InternalSkillRun.arguments(InternalSkillValues(content: "Title it.", model: "haiku", effort: .low), mcpConfig: config, tools: tools)
             == base + ["--system-prompt", "Title it."])
+        // A comment answer reads the project's files too.
+        let reading = InternalSkillRun.arguments(InternalSkillValues(content: "", model: "opus", effort: .high), mcpConfig: config, tools: tools,
+                                                 cliTools: ["Read", "Grep", "Glob"])
+        #expect(reading.contains("Read,Grep,Glob") && reading.last?.hasPrefix("Read,Grep,Glob,mcp__hephaestus__get_ticket") == true)
     }
 
     @Test("The message is the input, then an Attached line per linked item, as a chat's message carries them")

@@ -85,8 +85,16 @@ public final class TicketSession {
     }
 
     public func addComment(to id: String, text: String, files: [URL]) async throws(TicketError) {
-        apply(try await readyLibrary().addComment(to: id, text: text, files: files, by: me))
+        let snapshot = try await readyLibrary().addComment(to: id, text: text, files: files, by: me)
+        apply(snapshot)
+        // A new comment of the user that mentions Claude gets Claude's answer (docs/ui/tickets.md › Comment answers).
+        if let comment = snapshot.ticket(id)?.file.comments.last, comment.author == .user, CommentMentions.mentionsClaude(comment.text) {
+            onMention?(id, comment.id)
+        }
     }
+
+    /// Called with the ticket and the comment, for each new comment of the user that mentions Claude.
+    @ObservationIgnored public var onMention: (@MainActor (String, UUID) -> Void)?
 
     public func updateComment(_ commentID: UUID, of id: String, text: String) async throws(TicketError) {
         apply(try await readyLibrary().updateComment(commentID, of: id, text: text))

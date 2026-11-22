@@ -101,6 +101,13 @@ struct ChatQuestionsCardTests {
         }
         #expect(ask.describe?(valid).action == "Asked a question")
         #expect(await ChatGate.check(.internalSkill("set-ticket-title"), ask, valid, chats: session) == ToolError(.forbidden, ChatGate.skillRefusal))
+        // A comment answer changes its own ticket only, as V2's.
+        let update = ToolOperation(name: "update_ticket", description: "", inputSchema: .object(), permission: .changeTickets) { _ throws(ToolError) in .null }
+        let comment = ToolOperation(name: "add_comment", description: "", inputSchema: .object(), permission: .changeTickets) { _ throws(ToolError) in .null }
+        let answer = MCPCaller.internalSkill("comment-answer ORD-142")
+        #expect(await ChatGate.check(answer, update, ["ticketID": "ord-142"], chats: session) == nil)
+        #expect(await ChatGate.check(answer, update, ["ticketID": "ORD-141"], chats: session) == ToolError(.forbidden, ChatGate.skillRefusal))
+        #expect(await ChatGate.check(answer, comment, ["ticketID": "ORD-142"], chats: session) == ToolError(.forbidden, ChatGate.skillRefusal))
     }
 }
 

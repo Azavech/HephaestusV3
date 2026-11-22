@@ -12,6 +12,12 @@ public enum ChatGate {
     /// The refusal of anything but a read to an internal skill's run.
     static let skillRefusal = "An internal skill's run only reads."
 
+    /// The ticket a comment answer's run may change: its caller is `comment-answer <ticket id>`.
+    public static func commentAnswerTicket(_ caller: String) -> String? {
+        let prefix = InternalSkill.commentAnswer.name + " "
+        return caller.hasPrefix(prefix) ? String(caller.dropFirst(prefix.count)).uppercased() : nil
+    }
+
     /// Nil lets the call run; an error refuses it. A change set to Ask First waits for the user's answer to a
     /// card in the chat, except an implement chat's change of its own items: `bundleTickets` gives a bundle's
     /// tickets for it; without it, only the chat's own ticket or bundle counts.
@@ -20,9 +26,15 @@ public enum ChatGate {
                              defaults: UserDefaults = .standard, mode given: ChatPermissionMode? = nil,
                              bundleTickets: @MainActor (String) -> [String]? = { _ in nil },
                              projectFamily: @MainActor (String) -> Set<String> = { [$0] }) async -> ToolError? {
-        if case .internalSkill = caller {
-            // The app runs the skill in the background, for its answer alone: it reads, and opens no window.
-            return operation.permission == .read && operation.name != "open_in_app" ? nil : ToolError(.forbidden, skillRefusal)
+        if case .internalSkill(let name) = caller {
+            // The app runs the skill in the background, for its answer alone: it reads, and opens no window. A comment
+            // answer also changes its own ticket's title, description, links and status, as V2's did.
+            if operation.permission == .read && operation.name != "open_in_app" { return nil }
+            if let ticket = commentAnswerTicket(name), ["update_ticket", "set_ticket_status"].contains(operation.name),
+               arguments["ticketID"]?.stringValue?.uppercased() == ticket {
+                return nil
+            }
+            return ToolError(.forbidden, skillRefusal)
         }
         guard case .chat(let chatID) = caller else { return nil }
         func rule(_ key: String) -> ChangePermission {

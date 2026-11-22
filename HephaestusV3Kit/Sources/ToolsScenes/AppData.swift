@@ -74,6 +74,8 @@ final class AppData {
     let chats: ChatSession
     /// The chats as the Chat windows and panels show them.
     let chatStore: LiveChatStore
+    /// Claude's answers to the comments that mention it.
+    let answerer: CommentAnswerer
     /// The internal skills' content, in the data folder (System Prompts).
     let skillStore: LiveInternalSkillStore
     /// The Updater, its status and the restart for an update (docs/updater.md).
@@ -249,6 +251,10 @@ final class AppData {
         // A comment Claude added names the model and effort that wrote it, as V2's did.
         let chatSession = chats
         LiveTicketStore.commentCaption = { model, effort in ChatModelNames.caption(model: model, effort: effort, models: chatSession.models) }
+        // A new comment of the user that mentions Claude gets Claude's answer, as V2's did.
+        let answerer = CommentAnswerer(tickets: tickets, projects: session, chats: chats)
+        self.answerer = answerer
+        tickets.onMention = { [weak answerer] ticketID, commentID in answerer?.answer(commentID, of: ticketID) }
         // A ticket's chats count as closed while it is done, as V2 counted them.
         let tickets = tickets
         chatStore.isTicketDone = { id in tickets.snapshot.ticket(id)?.file.status == .done }
@@ -372,6 +378,8 @@ final class AppData {
     private func followTickets() {
         withObservationTracking {
             directory.update(ticketCounts: ticketStore.counts())
+            // A deleted comment or ticket stops its answer's run.
+            answerer.follow(tickets.snapshot)
         } onChange: { [weak self] in
             Task { @MainActor in self?.followTickets() }
         }
@@ -406,6 +414,7 @@ final class AppData {
         let log = AppLog(url: session.dataFolder?.url.appendingPathComponent("Logs/engine.log"))
         appLog = log
         chats.appLog = log
+        answerer.log = log
         let server = MCPServer(protocol: MCPProtocol(registry: registry, version: version, gate: gate, log: { log.write(.info, "mcp", $0) }),
                                tokens: tokens)
         self.server = server

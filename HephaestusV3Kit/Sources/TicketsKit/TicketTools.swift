@@ -35,7 +35,14 @@ public enum TicketTools {
     }
 
     /// Claude: in the chat whose token made the call, or `external` with the external token.
-    static var claude: TicketActor { .claude(chat: MCPCaller.current.chatID ?? "external") }
+    static var claude: TicketActor {
+        switch MCPCaller.current {
+        case .chat(let id): .claude(chat: id)
+        // A comment answer's changes are Claude's in the ticket's history with V2's chat `answer`.
+        case .internalSkill(let name) where name.hasPrefix("comment-answer "): .claude(chat: "answer")
+        default: .claude(chat: "external")
+        }
+    }
     static let projectID = ToolSchema.string("Project identifier, 2 to 8 letters, such as ORD.")
     static let ticketID = ToolSchema.string("Ticket id, such as ORD-12.")
     static let bundleID = ToolSchema.string("Bundle id, such as ORD-B2.")

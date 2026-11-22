@@ -16,14 +16,14 @@ public enum InternalSkillRun {
     /// The CLI's arguments for a skill's values: the app's server from `mcpConfig` alone, its `tools`, which the
     /// CLI runs without asking (the server's gate only lets the run read), and `--system-prompt` only when the
     /// content isn't blank.
-    public static func arguments(_ values: InternalSkillValues, mcpConfig: URL, tools: [String]) -> [String] {
+    public static func arguments(_ values: InternalSkillValues, mcpConfig: URL, tools: [String], cliTools: [String] = []) -> [String] {
         var arguments = [
             "-p", "--output-format", "json", "--no-session-persistence",
             "--model", values.model,
             "--effort", values.effort.rawValue,
-            "--tools", "",
+            "--tools", cliTools.joined(separator: ","),
             "--strict-mcp-config", "--mcp-config", mcpConfig.path,
-            "--allowedTools", tools.map { "mcp__\(MCPProtocol.serverName)__\($0)" }.joined(separator: ","),
+            "--allowedTools", (cliTools + tools.map { "mcp__\(MCPProtocol.serverName)__\($0)" }).joined(separator: ","),
         ]
         if !values.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             arguments += ["--system-prompt", values.content]
@@ -34,8 +34,8 @@ public enum InternalSkillRun {
     /// The process: the CLI at `cliPath`, in `folder` (an empty one, so that no project's `CLAUDE.md` is read),
     /// with the login shell's environment.
     public static func request(cliPath: String, values: InternalSkillValues, environment: [String: String], folder: URL,
-                               mcpConfig: URL, tools: [String]) -> ProcessRequest {
-        ProcessRequest(executable: cliPath, arguments: arguments(values, mcpConfig: mcpConfig, tools: tools),
+                               mcpConfig: URL, tools: [String], cliTools: [String] = []) -> ProcessRequest {
+        ProcessRequest(executable: cliPath, arguments: arguments(values, mcpConfig: mcpConfig, tools: tools, cliTools: cliTools),
                        environment: ShellEnvironment.forChildren(environment), currentDirectory: folder.path)
     }
 
@@ -73,8 +73,11 @@ extension ChatSession {
     /// ends with the run. `references` are the items the run links, such as the ticket a title is for: the
     /// message carries their `Attached:` lines. Throws when the CLI isn't there, can't run, or answers with an
     /// error.
+    /// `scope` narrows what the run may change, as its token's caller name gives it to the gate (`comment-answer ORD-142`);
+    /// `workingDirectory` and `cliTools` give it a project's folder and the CLI's tools that read there.
     public func run(_ skill: InternalSkill, input: String, attaching references: [ChatItemReference] = [],
-                    timeout: Duration = InternalSkillRun.timeout) async throws(ChatError) -> String {
+                    timeout: Duration = InternalSkillRun.timeout, scope: String? = nil, workingDirectory: String? = nil,
+                    cliTools: [String] = []) async throws(ChatError) -> String {
         guard let path = status.path, status.isAvailable else {
             throw .unavailable(status.error ?? "The Claude CLI isn't checked yet. Try again in a moment.")
         }
@@ -83,7 +86,7 @@ extension ChatSession {
         }
         let folder = dataFolder.url.appendingPathComponent("Runtime/claude-cwd", isDirectory: true)
         try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let token = tokens.issue(forSkill: skill.name)
+        let token = tokens.issue(forSkill: scope.map { "\(skill.name) \($0)" } ?? skill.name)
         let mcpConfig = dataFolder.url.appendingPathComponent("Runtime/mcp/skill-\(UUID().uuidString).json")
         defer {
             tokens.revoke(token)
@@ -97,7 +100,8 @@ extension ChatSession {
             throw .unavailable(String(describing: error))
         }
         let request = InternalSkillRun.request(cliPath: path, values: dataFolder.readSkill(skill), environment: projects.tools.environment,
-                                               folder: folder, mcpConfig: mcpConfig, tools: toolNames)
+                                               folder: workingDirectory.map { URL(fileURLWithPath: $0, isDirectory: true) } ?? folder,
+                                               mcpConfig: mcpConfig, tools: toolNames, cliTools: cliTools)
         let message = InternalSkillRun.message(input, attaching: references)
         let result: ProcessResult
         do {
