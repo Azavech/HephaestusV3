@@ -504,8 +504,20 @@ final class TicketsModel {
     }
 
     /// The tickets a bundle can hold: its project's.
-    func bundleCandidates(in projectID: Project.ID) -> [Ticket] {
-        store.tickets(of: [projectID])
+    /// The tickets the bundle sheet lists: a new bundle's leave the done ones out, as V2's did, unless checked
+    /// already; a bundle's tickets list them all.
+    func bundleCandidates(for draft: BundleDraft) -> [Ticket] {
+        let tickets = store.tickets(of: [draft.projectID])
+        guard draft.bundleID == nil else { return tickets }
+        return tickets.filter { $0.status != .done || draft.ticketIDs.contains($0.id) }
+    }
+
+    /// Why New Bundle is disabled: no ticket the project has can go in a new one. Nil when one can.
+    var newBundleUnavailable: String? {
+        let tickets = store.tickets(of: [project.id])
+        if tickets.isEmpty { return String(localized: "This project has no tickets to bundle yet.", bundle: #bundle) }
+        if tickets.allSatisfy({ $0.status == .done }) { return String(localized: "Every ticket of this project is done.", bundle: #bundle) }
+        return nil
     }
 
     func saveBundle() async {

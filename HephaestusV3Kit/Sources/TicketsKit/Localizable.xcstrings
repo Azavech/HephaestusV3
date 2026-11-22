@@ -328,6 +328,9 @@
     "Edit the Ticket (⌘E)" : {
 
     },
+    "Every ticket of this project is done." : {
+
+    },
     "Filter" : {
 
     },
@@ -640,6 +643,9 @@
 
     },
     "Their files and attachments move to the Trash." : {
+
+    },
+    "This project has no tickets to bundle yet." : {
 
     },
     "Ticket Not Found" : {

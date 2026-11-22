@@ -106,7 +106,8 @@ is selected, the list shows all tickets.
   Orders, Payments and Edge Gateway, indented. Selecting the window's own project row lets through the
   same tickets as **All Tickets**.
 - **Bundles section.** It always appears, so that its header's **New Bundle** button (help "New Bundle") is
-  there. The button, a borderless `plus` in `accent`, ends 16 pt from the sidebar's trailing edge, where the
+  there. The button is disabled when no ticket can go in a new bundle, its help then saying why: "This project
+  has no tickets to bundle yet." or "Every ticket of this project is done." The button, a borderless `plus` in `accent`, ends 16 pt from the sidebar's trailing edge, where the
   rows' content ends: in line with the bundle rows' status symbols and the Status rows' badges, with or without
   a bundle. A section header runs to 2 pt from that edge, so the header has 14 pt of trailing padding. Bundles
   stay per project: a parent's window lists only its own bundles, never its sub projects' (the
@@ -577,23 +578,26 @@ titled by `set-ticket-title` ([Titles written by Claude](#titles-written-by-clau
 
 ## Add Link sheet
 
-![The Add Link sheet: Depends On or Related, and the project's other tickets](images/tickets-add-link.png)
+![The Add Link sheet: Depends On or Related, the filter, and the project's other tickets](images/tickets-add-link.png)
 *Add Link for ORD-142: the kind, then the ticket.*
 
 **Add Link…** opens a sheet, 420 to 480 pt wide: the heading "Link *ORD-142* to Another Ticket", a segmented
-**Kind** picker (Depends On, Related), and the project's tickets that the ticket isn't linked to, each with its
-id, title and status badge. **Add Link** (Return) is disabled until a ticket is picked; **Cancel** (Escape)
+**Kind** picker (Depends On, Related), a **Filter** field ("Filter Tickets": a ticket's id or title, case and
+accents ignored), and the project's tickets that the ticket isn't linked to and that match, each with its id,
+title and status badge, as in V2. **Add Link** (Return) is disabled until a listed ticket is picked; **Cancel** (Escape)
 closes. A link that breaks the link rules (a dependency cycle, a ticket that already links to this one) shows its
 message in an alert and the sheet stays open ([Data › Link rules](../data.md#link-rules)).
 
 ## Bundle sheet
 
-![The New Bundle sheet: the title field and the project's tickets with checkboxes](images/tickets-bundle.png)
-*New Bundle in Orders, two tickets checked.*
+![The New Bundle sheet: the title field, the filter, and the project's tickets with checkboxes and statuses](images/tickets-bundle.png)
+*New Bundle in Orders, two tickets checked; the done ones aren't listed.*
 
 **New Bundle** (the sidebar's `plus`, or **Add to Bundle ▸ New Bundle…**) and **Edit Bundle…** open a sheet,
 420 to 480 pt wide: the heading "New Bundle" or "Edit Bundle", the **Title** field ("Named after its tickets":
-an empty title takes the tickets' titles), and the project's tickets with checkboxes. The bundle holds the
+an empty title takes the tickets' titles), a **Filter** field as Add Link's, and the project's tickets that
+match, with checkboxes and their status badges. A new bundle lists no done ticket, as in V2, unless it is checked
+already; Edit Bundle lists them all. The bundle holds the
 checked tickets in the order they were checked, as the line under the list says ("2 tickets, in the order
 checked."). **Create** (Return, disabled without a ticket) or **Save**, and **Cancel** (Escape). A new bundle is
 selected in the sidebar; a bundle of tickets that are all done starts Done.
@@ -803,8 +807,8 @@ See [Chat](chat.md) for the panel itself.
 | A bundle's **Mentioned In ▸**                                   | `tickets.sidebar.bundle.<id>.mentions`                                                                                                                      | A menu.                                                                                                                                       |
 | Comment editor                                                  | `ticket.commentEditor.text`, `ticket.commentEditor.save`                                                                                                    | None.                                                                                                                                         |
 | **New Bundle** (sidebar)                                        | `tickets.sidebar.newBundle`                                                                                                                                 | Help "New Bundle".                                                                                                                            |
-| Add Link sheet                                                  | `addLink.sheet`, `addLink.kind`, `addLink.ticket.<id>`, `addLink.add`                                                                                       | Heading.                                                                                                                                      |
-| Bundle sheet                                                    | `bundle.sheet`, `bundle.title`, `bundle.ticket.<id>`, `bundle.save`                                                                                         | Heading.                                                                                                                                      |
+| Add Link sheet                                                  | `addLink.sheet`, `addLink.kind`, `addLink.filter`, `addLink.ticket.<id>`, `addLink.add`                                                                     | Heading.                                                                                                                                      |
+| Bundle sheet                                                    | `bundle.sheet`, `bundle.title`, `bundle.filter`, `bundle.ticket.<id>`, `bundle.save`                                                                        | Heading.                                                                                                                                      |
 | Markdown                                                        | None                                                                                                                                                        | Headings keep the header trait; a task box reads "Done" or "Not done".                                                                        |
 | New Ticket sheet                                                | `newTicket.sheet`                                                                                                                                           | Contains every field of the sheet.                                                                                                            |
 | New Ticket heading                                              | None                                                                                                                                                        | Heading.                                                                                                                                      |

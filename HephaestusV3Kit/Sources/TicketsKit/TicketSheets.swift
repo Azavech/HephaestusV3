@@ -2,6 +2,28 @@ import AZDesign
 import SwiftUI
 import ToolsFoundation
 
+/// The Filter field of the ticket pickers: a ticket matches by its id or its title, case and accents ignored.
+enum TicketPickerFilter {
+    static func matches(_ ticket: Ticket, _ filter: String) -> Bool {
+        let text = filter.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty || ticket.id.localizedStandardContains(text) || ticket.title.localizedStandardContains(text)
+    }
+}
+
+/// The field over a ticket picker's list.
+private struct TicketPickerFilterField: View {
+    @Binding var text: String
+    let identifier: String
+
+    var body: some View {
+        TextField(String(localized: "Filter", bundle: #bundle), text: $text, prompt: Text("Filter Tickets", bundle: #bundle))
+            .textFieldStyle(.roundedBorder)
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+            .accessibilityIdentifier(identifier)
+    }
+}
+
 /// Add Link: the kind of link, and the ticket of the project it points to.
 struct AddLinkSheet: View {
     let ticket: Ticket
@@ -11,6 +33,7 @@ struct AddLinkSheet: View {
 
     @State private var kind = TicketLinkDraft.Kind.dependsOn
     @State private var target: Ticket.ID?
+    @State private var filter = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,7 +50,8 @@ struct AddLinkSheet: View {
             .pickerStyle(.segmented)
             .padding()
             .accessibilityIdentifier("addLink.kind")
-            List(candidates, selection: $target) { candidate in
+            TicketPickerFilterField(text: $filter, identifier: "addLink.filter")
+            List(candidates.filter { TicketPickerFilter.matches($0, filter) }, selection: $target) { candidate in
                 HStack {
                     Text(verbatim: candidate.id)
                         .monospacedDigit()
@@ -52,7 +76,8 @@ struct AddLinkSheet: View {
                     if let target { onAdd(TicketLinkDraft(kind: kind, ticketID: target)) }
                 }
                 .keyboardShortcut(.defaultAction)
-                .disabled(target == nil)
+                // A ticket picked, then filtered out, isn't what the user sees: it isn't added.
+                .disabled(target.map { id in !candidates.contains { $0.id == id && TicketPickerFilter.matches($0, filter) } } ?? true)
                 .accessibilityIdentifier("addLink.add")
             }
             .padding()
@@ -70,6 +95,8 @@ struct BundleSheet: View {
     let candidates: [Ticket]
     let onCancel: () -> Void
     let onSave: () -> Void
+
+    @State private var filter = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -89,7 +116,8 @@ struct BundleSheet: View {
                 .textFieldStyle(.roundedBorder)
                 .padding()
                 .accessibilityIdentifier("bundle.title")
-            List(candidates) { candidate in
+            TicketPickerFilterField(text: $filter, identifier: "bundle.filter")
+            List(candidates.filter { TicketPickerFilter.matches($0, filter) }) { candidate in
                 Toggle(isOn: Binding {
                     draft.ticketIDs.contains(candidate.id)
                 } set: { isOn in
@@ -101,6 +129,9 @@ struct BundleSheet: View {
                             .foregroundStyle(.textSecondary)
                         Text(verbatim: candidate.title)
                             .lineLimit(1)
+                        Spacer()
+                        Label(candidate.status.title, systemImage: candidate.status.symbol)
+                            .labelStyle(.badge(candidate.status.color))
                     }
                 }
                 .accessibilityIdentifier("bundle.ticket.\(candidate.id)")

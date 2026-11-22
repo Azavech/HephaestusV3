@@ -67,7 +67,7 @@ public struct TicketsRootView: View {
         }
         .sheet(item: $model.bundleDraft) { draft in
             BundleSheet(draft: Binding { model.bundleDraft ?? draft } set: { model.bundleDraft = $0 },
-                        candidates: model.bundleCandidates(in: draft.projectID),
+                        candidates: model.bundleCandidates(for: draft),
                         onCancel: { model.bundleDraft = nil }, onSave: { Task { await model.saveBundle() } })
         }
         .alert(String(localized: "The Change Failed", bundle: #bundle), isPresented: Binding { model.failure != nil } set: { if !$0 { model.failure = nil } }) {
@@ -420,7 +420,8 @@ private struct TicketSidebar: View {
                 Button(String(localized: "New Bundle", bundle: #bundle), systemImage: "plus") { model.startNewBundle() }
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
-                    .help(String(localized: "New Bundle", bundle: #bundle))
+                    .disabled(model.newBundleUnavailable != nil)
+                    .help(model.newBundleUnavailable ?? String(localized: "New Bundle", bundle: #bundle))
                     .accessibilityIdentifier("tickets.sidebar.newBundle")
             }
             .padding(.trailing, Self.headerTrailingInset)

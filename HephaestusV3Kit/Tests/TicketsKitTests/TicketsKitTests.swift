@@ -476,6 +476,33 @@ struct TicketChangeTests {
         #expect(model.filter == .all)
     }
 
+    @Test("A new bundle lists no done ticket unless checked; a bundle's edit lists them all; New Bundle says why it can't")
+    func bundlePicker() {
+        let orders = model("ORD")
+        let new = BundleDraft(bundleID: nil, projectID: "ORD", title: "", ticketIDs: [])
+        #expect(orders.bundleCandidates(for: new).map(\.id) == ["ORD-2"])
+        var checked = new
+        checked.ticketIDs = ["ORD-1"]
+        #expect(orders.bundleCandidates(for: checked).map(\.id) == ["ORD-2", "ORD-1"])
+        let editing = BundleDraft(bundleID: "ORD-B1", projectID: "ORD", title: "Checkout", ticketIDs: ["ORD-2"])
+        #expect(orders.bundleCandidates(for: editing).map(\.id) == ["ORD-2", "ORD-1"])
+        #expect(orders.newBundleUnavailable == nil)
+        let allDone = MockTicketStore(allTickets: [ticket("ORD-1", in: "ORD", .done)], allBundles: [])
+        #expect(model("ORD", store: allDone).newBundleUnavailable == "Every ticket of this project is done.")
+        #expect(model("ORD", store: MockTicketStore(allTickets: [], allBundles: [])).newBundleUnavailable
+                == "This project has no tickets to bundle yet.")
+    }
+
+    @Test("The pickers' filter matches an id or a title, case and accents ignored")
+    func pickerFilter() {
+        let one = ticket("ORD-142", in: "ORD", title: "Retry storm between checkout and paymENTS")
+        #expect(TicketPickerFilter.matches(one, ""))
+        #expect(TicketPickerFilter.matches(one, " 142 "))
+        #expect(TicketPickerFilter.matches(one, "Payments"))
+        #expect(TicketPickerFilter.matches(ticket("ORD-1", in: "ORD", title: "Café"), "cafe"))
+        #expect(!TicketPickerFilter.matches(one, "refund"))
+    }
+
     @Test("The store's phase shows as loading or failed in the list")
     func phases() {
         let loading = TicketsModel(project: Project.sample("ORD")!, focus: nil, store: SampleTicketStore(phase: .loading))
