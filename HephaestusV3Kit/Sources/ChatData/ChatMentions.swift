@@ -48,8 +48,9 @@ extension ChatSession {
         guard !pending.isEmpty else { return }
         mentionScan = Task { [weak self] in
             for (id, url) in pending {
-                let ids = await Task.detached(priority: .utility) {
-                    ChatMentions.ids(in: Transcript.replay((try? Data(contentsOf: url)) ?? Data()))
+                let (ids, waits) = await Task.detached(priority: .utility) {
+                    let items = Transcript.replay((try? Data(contentsOf: url)) ?? Data())
+                    return (ChatMentions.ids(in: items), ChatSession.waitsForAnswers(items))
                 }.value
                 guard let self else { return }
                 // The chat's agents come with its ids, for the lists that show them under it.
@@ -57,6 +58,12 @@ extension ChatSession {
                 self.mentionsScanned.insert(id)
                 if self.chats[id] != nil, !ids.isSubset(of: self.mentions[id] ?? []) {
                     self.mentions[id, default: []].formUnion(ids)
+                }
+                // A chat that waited for answers when the app quit waits again: the lists, the status bar and the
+                // badge count it before it is opened.
+                if waits, self.chats[id] != nil, self.transcripts[id] == nil {
+                    self.waitingAtLoad.insert(id)
+                    self.refreshState(id)
                 }
             }
             guard let self else { return }

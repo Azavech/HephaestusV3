@@ -45,4 +45,27 @@ struct ChatMentionsTests {
         #expect(again.chats(mentioning: "ORD-139").map(\.id) == [second])
         #expect(again.chats(mentioning: "ORD-1").isEmpty)
     }
+
+    @Test("A chat that waited for answers when the app quit waits at the next launch, before it is opened")
+    func waitingAfterRelaunch() async throws {
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        let id = try await world.session.send("Ask me", references: [], to: nil, projectID: "ORD")
+        let questions = QuestionsItem(id: "Q", created: Date(), questionSetID: "Q", questions: [
+            ChatQuestion(label: "A", question: "a", options: [.init(label: "x"), .init(label: "y")], recommended: ["x"]),
+        ])
+        world.session.record(.questions(questions), in: id)
+        let other = try await world.session.send("Nothing to ask", references: [], to: nil, projectID: "ORD")
+        world.launcher.chats.forEach { $0.finish(.exited(0)) }
+
+        let again = ChatSession(projects: world.projects, tokens: world.tokens, launcher: world.launcher, runner: ChatRunner(), device: "Studio",
+                                processEnvironment: [:], trash: .folder(world.root.appendingPathComponent("Trash")))
+        var events: [ChatEvent] = []
+        again.onEvent = { events.append($0) }
+        await again.start(tools: [], port: 47997)
+        try await world.until { again.state(of: id) == .waitingAnswers }
+        #expect(again.transcripts[id] == nil, "Its transcript isn't kept for it")
+        #expect(again.state(of: other) != .waitingAnswers)
+        #expect(events.isEmpty, "A first state is no notification")
+    }
 }

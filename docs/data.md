@@ -1341,14 +1341,14 @@ other than `queued` and `started` finishes it; a `result` closes the CLI turn an
 `started`, or the oldest without a state. A message sent during a turn is written at once: the CLI runs it
 after its current CLI turn. The turn's end writes `updated`.
 
-| State               | When                                                                                                                                                      |
-|---------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `starting`          | A process was started; its first `system/init` hasn't come.                                                                                               |
-| `running`           | A turn runs.                                                                                                                                              |
-| `waitingPermission` | A card waits: the CLI's request, or the app's.                                                                                                            |
-| `waitingAnswers`    | No turn runs, and the chat's transcript, read, has questions ([Questions](#questions)) or a picker request ([Picker requests](#picker-requests)) waiting. |
-| `error`             | The CLI couldn't start, didn't start in 60 s, or exited during a turn on its own. Until the next message.                                                 |
-| `idle`              | Otherwise.                                                                                                                                                |
+| State               | When                                                                                                                                                                                                                                                                                    |
+|---------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `starting`          | A process was started; its first `system/init` hasn't come.                                                                                                                                                                                                                             |
+| `running`           | A turn runs.                                                                                                                                                                                                                                                                            |
+| `waitingPermission` | A card waits: the CLI's request, or the app's.                                                                                                                                                                                                                                          |
+| `waitingAnswers`    | No turn runs, and the chat's transcript, read, has questions ([Questions](#questions)) or a picker request ([Picker requests](#picker-requests)) waiting; before it is read, the scan at load found one waiting (V2 replayed the transcripts at start), without keeping the transcript. |
+| `error`             | The CLI couldn't start, didn't start in 60 s, or exited during a turn on its own. Until the next message.                                                                                                                                                                               |
+| `idle`              | Otherwise.                                                                                                                                                                                                                                                                              |
 
 #### Permissions
 

@@ -104,6 +104,9 @@ public final class ChatSession {
     public internal(set) var mentions: [String: Set<String>] = [:]
     /// The chats whose transcript was read for their ids, and the scan that reads them.
     @ObservationIgnored var mentionsScanned: Set<String> = []
+    /// The chats whose transcript, read at load, ends with questions or a picker request still waiting: they wait
+    /// for answers before their transcript is read again (V2 replayed them at start).
+    @ObservationIgnored var waitingAtLoad: Set<String> = []
     @ObservationIgnored var mentionScan: Task<Void, Never>?
     @ObservationIgnored var mentionRescan = false
     /// When the turn began, by chat id, for the status line's time.
@@ -468,6 +471,8 @@ public final class ChatSession {
     // MARK: State
 
     func refreshState(_ chatID: String) {
+        // Once read, the transcript itself says whether it waits.
+        if transcripts[chatID] != nil { waitingAtLoad.remove(chatID) }
         let state: ChatState
         if failed.contains(chatID) {
             state = .error
@@ -475,7 +480,7 @@ public final class ChatSession {
             state = .waitingPermission
         } else if let run = runs[chatID], run.inTurn {
             state = run.initialized ? .running : .starting
-        } else if waitingQuestions(in: chatID) != nil || waitingPicker(in: chatID) != nil {
+        } else if waitingQuestions(in: chatID) != nil || waitingPicker(in: chatID) != nil || waitingAtLoad.contains(chatID) {
             state = .waitingAnswers
         } else {
             state = .idle

@@ -211,6 +211,18 @@ extension ChatQuestion {
 
 extension ChatSession {
     /// The chat's questions waiting for the user's answers; nil when none, or when its transcript isn't read.
+    /// Whether items read from a transcript end with questions not all answered, or a picker request without its
+    /// answer, as `waitingQuestions(in:)` and `waitingPicker(in:)` see them.
+    nonisolated static func waitsForAnswers(_ items: [ChatItem]) -> Bool {
+        items.contains { item in
+            switch item {
+            case .questions(let questions): !questions.completed
+            case .picker(let picker): picker.answer == nil
+            default: false
+            }
+        }
+    }
+
     public func waitingQuestions(in chatID: String) -> QuestionsItem? {
         for case .questions(let item) in (transcripts[chatID] ?? []).reversed() where !item.completed {
             return item
