@@ -24,14 +24,21 @@ struct ChatTranscript: View {
     /// Leaves out the cards still waiting, which show over the composer: each shows once, then here with its answer.
     var hidesWaitingApprovals = false
 
+    /// The turn the pointer was last over: its Copy shows.
+    @State private var hoveredTurn: ChatTurn.ID?
+
     var body: some View {
         let matches = findMatches
-        LazyVStack(alignment: .leading, spacing: compact ? 16 : 22) {
-            ForEach(conversation.turns) { turn in
-                // A turn that didn't change isn't drawn again: the one at work changes at each word Claude writes.
-                ChatTurnView(turn: turn, projectID: conversation.projectID, compact: compact, decide: decide, matches: matches,
-                             currentMatch: currentMatch, hidesWaitingApprovals: hidesWaitingApprovals)
-                    .equatable()
+        let rows = Self.rows(of: conversation, compact: compact, hidesWaitingApprovals: hidesWaitingApprovals)
+        // The lazy stack's unit is a row of a turn, not the turn: a turn of an autonomous chat holds hundreds of blocks,
+        // laid out as they scroll into view, and a word Claude writes draws its own block again, not the turn.
+        LazyVStack(alignment: .leading, spacing: 0) {
+            ForEach(rows) { row in
+                ChatTranscriptRowView(row: row, projectID: conversation.projectID, compact: compact, isMatch: matches.contains(row.id),
+                                      isCurrent: currentMatch == row.id, isHovered: hoveredTurn == row.turnID, decide: decide) { turn in
+                    hoveredTurn = turn
+                }
+                .equatable()
             }
             if let activity {
                 ChatAuthorRow(author: .claude, isSample: false) {
@@ -49,11 +56,60 @@ struct ChatTranscript: View {
                         }
                     }
                 }
+                .padding(.top, rows.isEmpty ? 0 : Self.turnSpacing(compact: compact))
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("chat.responding")
             }
         }
+        .onHover { inside in
+            if !inside { hoveredTurn = nil }
+        }
     }
+
+    /// The space between two turns.
+    static func turnSpacing(compact: Bool) -> CGFloat { compact ? 16 : 22 }
+    /// The space between the parts of a turn: its author row, attachments, blocks and files.
+    static let partSpacing: CGFloat = 8
+
+    /// The rows of the conversation, in order: each turn's author row, its attachments, each block (the cards still
+    /// waiting left out when they show over the composer), then its files.
+    static func rows(of conversation: ChatConversation, compact: Bool, hidesWaitingApprovals: Bool) -> [ChatTranscriptRow] {
+        var rows: [ChatTranscriptRow] = []
+        for (index, turn) in conversation.turns.enumerated() {
+            rows.append(ChatTranscriptRow(id: turn.id + "#author", turnID: turn.id, author: turn.author, kind: .author(turn),
+                                          top: index == 0 ? 0 : turnSpacing(compact: compact)))
+            if !turn.attachments.isEmpty {
+                rows.append(ChatTranscriptRow(id: turn.id + "#attachments", turnID: turn.id, author: turn.author,
+                                              kind: .attachments(turn.attachments), top: partSpacing))
+            }
+            for block in turn.blocks where !(hidesWaitingApprovals && block.isWaitingApproval) {
+                rows.append(ChatTranscriptRow(id: block.id, turnID: turn.id, author: turn.author, kind: .block(block), top: partSpacing))
+            }
+            if !turn.files.isEmpty {
+                rows.append(ChatTranscriptRow(id: turn.id + "#files", turnID: turn.id, author: turn.author, kind: .files(turn.files),
+                                              top: partSpacing))
+            }
+        }
+        return rows
+    }
+}
+
+/// A row of the transcript: a block's id for a block, so that Find scrolls to it whether drawn yet or not.
+struct ChatTranscriptRow: Identifiable, Equatable {
+    enum Kind: Equatable {
+        /// The turn's author row: its badge, name, caption, time and Copy.
+        case author(ChatTurn)
+        case attachments([ChatReference])
+        case block(ChatBlock)
+        case files([ChatMessageFile])
+    }
+
+    let id: String
+    let turnID: ChatTurn.ID
+    let author: ChatTurn.Author
+    let kind: Kind
+    /// The space above it, inside the row so that the pointer over it is over its turn.
+    let top: CGFloat
 }
 
 /// What Claude is doing in a conversation, for the line at its end.
@@ -113,64 +169,15 @@ struct ChatAuthorRow<Content: View>: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: author == .user ? "person.fill" : "sparkle")
-                .font(.callout)
-                .foregroundStyle(color)
-                .frame(width: badge, height: badge)
-                .background(color.opacity(0.14), in: Circle())
-                .accessibilityHidden(true)
+            ChatAuthorBadge(author: author, size: badge)
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Group {
-                        if author == .user {
-                            Text("You", bundle: #bundle, comment: "The author of the user's messages")
-                        } else {
-                            Text("Claude", bundle: #bundle)
-                        }
-                    }
-                    .font(.headline)
-                    .foregroundStyle(.textPrimary)
-                    .accessibilityAddTraits(.isHeader)
-                    if let caption, let shown = Self.caption(caption) {
-                        Text(verbatim: shown)
-                            .font(.callout)
-                            .foregroundStyle(.textSecondary)
-                    }
-                    if let date {
-                        Text(date, format: .dateTime.hour().minute())
-                            .font(.caption)
-                            .foregroundStyle(.textSecondary)
-                            .help(date.formatted(date: .complete, time: .standard))
-                    }
-                    if isSample {
-                        Text("Sample reply", bundle: #bundle)
-                            .font(.caption)
-                            .foregroundStyle(.textSecondary)
-                            .help(String(localized: "No model is connected yet: the reply comes from the example's sample engine.", bundle: #bundle))
-                    }
-                    Spacer(minLength: 0)
-                    if let copyText {
-                        Button(String(localized: "Copy", bundle: #bundle, comment: "Copies a message's text"), systemImage: "doc.on.doc") {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(copyText, forType: .string)
-                        }
-                        .labelStyle(.iconOnly)
-                        .buttonStyle(.borderless)
-                        .font(.caption)
-                        .opacity(isHovered ? 1 : 0)
-                        .help(String(localized: "Copy", bundle: #bundle, comment: "Copies a message's text"))
-                        .accessibilityIdentifier("chat.turn.copy")
-                    }
-                }
+                ChatAuthorHeader(author: author, isSample: isSample, date: date, caption: caption, isHovered: isHovered,
+                                 copyText: copyText.map { text in { text } })
                 content
             }
             Spacer(minLength: 0)
         }
         .onHover { isHovered = $0 }
-    }
-
-    private var color: Color {
-        author == .user ? .info : .accentSecondary
     }
 
     /// "(Opus 5.5 · Extra High)", "(Opus 5.5)"; nil without either.
@@ -180,48 +187,142 @@ struct ChatAuthorRow<Content: View>: View {
     }
 }
 
-/// One turn: what the user attached, then each block in order.
-struct ChatTurnView: View {
-    let turn: ChatTurn
+/// The badge of a turn's author: a circle of the author's color with its symbol.
+struct ChatAuthorBadge: View {
+    let author: ChatTurn.Author
+    let size: CGFloat
+
+    var body: some View {
+        let color: Color = author == .user ? .info : .accentSecondary
+        Image(systemName: author == .user ? "person.fill" : "sparkle")
+            .font(.callout)
+            .foregroundStyle(color)
+            .frame(width: size, height: size)
+            .background(color.opacity(0.14), in: Circle())
+            .accessibilityHidden(true)
+    }
+}
+
+/// A turn's author line: the name, Claude's model and effort, the time, and Copy while the pointer is over the turn.
+struct ChatAuthorHeader: View {
+    let author: ChatTurn.Author
+    let isSample: Bool
+    var date: Date?
+    var caption: ChatTurnCaption?
+    let isHovered: Bool
+    /// The text Copy puts on the pasteboard, made when it is clicked; nil for no Copy button.
+    let copyText: (() -> String)?
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Group {
+                if author == .user {
+                    Text("You", bundle: #bundle, comment: "The author of the user's messages")
+                } else {
+                    Text("Claude", bundle: #bundle)
+                }
+            }
+            .font(.headline)
+            .foregroundStyle(.textPrimary)
+            .accessibilityAddTraits(.isHeader)
+            if let caption, let shown = ChatAuthorRow<EmptyView>.caption(caption) {
+                Text(verbatim: shown)
+                    .font(.callout)
+                    .foregroundStyle(.textSecondary)
+            }
+            if let date {
+                Text(date, format: .dateTime.hour().minute())
+                    .font(.caption)
+                    .foregroundStyle(.textSecondary)
+                    .help(date.formatted(date: .complete, time: .standard))
+            }
+            if isSample {
+                Text("Sample reply", bundle: #bundle)
+                    .font(.caption)
+                    .foregroundStyle(.textSecondary)
+                    .help(String(localized: "No model is connected yet: the reply comes from the example's sample engine.", bundle: #bundle))
+            }
+            Spacer(minLength: 0)
+            if let copyText {
+                Button(String(localized: "Copy", bundle: #bundle, comment: "Copies a message's text"), systemImage: "doc.on.doc") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(copyText(), forType: .string)
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .font(.caption)
+                .opacity(isHovered ? 1 : 0)
+                .help(String(localized: "Copy", bundle: #bundle, comment: "Copies a message's text"))
+                .accessibilityIdentifier("chat.turn.copy")
+            }
+        }
+    }
+}
+
+/// One row of the transcript, laid out as the turn's column would: the author row with its badge at the leading edge,
+/// and each part under it, after the badge's column.
+struct ChatTranscriptRowView: View {
+    let row: ChatTranscriptRow
     /// The conversation's project, whose folder relative links open from.
     var projectID: Project.ID?
     let compact: Bool
+    /// Find's match, highlighted; the current one, outlined.
+    var isMatch = false
+    var isCurrent = false
+    /// The pointer is over the row's turn: its Copy shows.
+    var isHovered = false
     let decide: (ChatApproval.ID, Bool) -> Void
-    /// Find's matches, by block id: highlighted.
-    var matches: Set<ChatBlock.ID> = []
-    var currentMatch: ChatBlock.ID?
-    /// Leaves out the cards still waiting, which show over the composer.
-    var hidesWaitingApprovals = false
+    /// The pointer came over the row's turn.
+    var hover: (ChatTurn.ID) -> Void = { _ in }
 
+    @ScaledMetric private var badge = 24.0
     @Environment(\.projectDirectory) private var directory
 
     var body: some View {
-        ChatAuthorRow(author: turn.author, isSample: turn.isSample, date: turn.isSample ? nil : turn.date, caption: turn.caption,
-                      copyText: copyText) {
-            if !turn.attachments.isEmpty {
-                HStack(spacing: 6) {
-                    ForEach(turn.attachments) { reference in
-                        ContextChip(reference: reference, identifier: "chat.attachment.\(turn.id).\(reference.id)")
-                    }
+        content
+            // The author row's stack put its 10-point spacing before its trailing spacer too.
+            .padding(.trailing, 10)
+            .padding(.top, row.top)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(.rect)
+            .onHover { inside in
+                if inside { hover(row.turnID) }
+            }
+    }
+
+    @ViewBuilder private var content: some View {
+        switch row.kind {
+        case .author(let turn):
+            ChatAuthorHeader(author: turn.author, isSample: turn.isSample, date: turn.isSample ? nil : turn.date, caption: turn.caption,
+                             isHovered: isHovered, copyText: Self.hasText(turn) ? { Self.copyText(turn) } : nil)
+                .padding(.leading, badge + 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .overlay(alignment: .topLeading) {
+                    ChatAuthorBadge(author: turn.author, size: badge)
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("chat.turn.\(turn.id)")
+        case .attachments(let references):
+            HStack(spacing: 6) {
+                ForEach(references) { reference in
+                    ContextChip(reference: reference, identifier: "chat.attachment.\(row.turnID).\(reference.id)")
                 }
             }
-            ForEach(hidesWaitingApprovals ? turn.blocks.filter { !$0.isWaitingApproval } : turn.blocks) { block in
-                blockView(block)
-                    .padding(matches.contains(block.id) ? 4 : 0)
-                    .background(matches.contains(block.id) ? Color.highlight : .clear, in: CardShape(minimum: 6))
-                    .overlay {
-                        if currentMatch == block.id {
-                            CardShape(minimum: 6).stroke(Color.accent, lineWidth: 2)
-                        }
+            .padding(.leading, badge + 10)
+        case .block(let block):
+            blockView(block)
+                .padding(isMatch ? 4 : 0)
+                .background(isMatch ? Color.highlight : .clear, in: CardShape(minimum: 6))
+                .overlay {
+                    if isCurrent {
+                        CardShape(minimum: 6).stroke(Color.accent, lineWidth: 2)
                     }
-                    .id(block.id)
-            }
-            if !turn.files.isEmpty {
-                MessageFiles(turnID: turn.id, files: turn.files, compact: compact)
-            }
+                }
+                .padding(.leading, badge + 10)
+        case .files(let files):
+            MessageFiles(turnID: row.turnID, files: files, compact: compact)
+                .padding(.leading, badge + 10)
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("chat.turn.\(turn.id)")
     }
 
     @ViewBuilder private func blockView(_ block: ChatBlock) -> some View {
@@ -229,11 +330,11 @@ struct ChatTurnView: View {
         case .text(let text):
             // Markdown, as V2's bubbles: ids of the loaded projects are links; the user's line breaks stay.
             ChatMarkdown(text: text, projects: Set(directory.projects.map(\.id)), root: directory.project(projectID)?.path,
-                         keepsLineBreaks: turn.author == .user)
+                         keepsLineBreaks: row.author == .user)
                 .equatable()
                 .foregroundStyle(.textPrimary)
         case .call(let call):
-            ToolCallRow(turnID: turn.id, blockID: block.id, call: call, compact: compact)
+            ToolCallRow(turnID: row.turnID, blockID: block.id, call: call, compact: compact)
         case .approval(let approval):
             ApprovalCard(approval: approval) { allow in
                 decide(approval.id, allow)
@@ -252,20 +353,24 @@ struct ChatTurnView: View {
                     MarkdownView(caption, projects: Set(directory.projects.map(\.id)), root: directory.project(projectID)?.path, keepsLineBreaks: false)
                         .foregroundStyle(.textPrimary)
                 }
-                MessageFiles(turnID: turn.id, files: files, compact: compact)
+                MessageFiles(turnID: row.turnID, files: files, compact: compact)
             }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("chat.images.\(block.id)")
         }
     }
 
-    /// The turn's text, its blocks' Markdown one after the other; nil without text.
-    private var copyText: String? {
-        let texts = turn.blocks.compactMap { block -> String? in
+    /// Whether the turn has text: then its author row offers Copy.
+    static func hasText(_ turn: ChatTurn) -> Bool {
+        turn.blocks.contains { if case .text = $0.content { true } else { false } }
+    }
+
+    /// The turn's text, its blocks' Markdown one after the other.
+    static func copyText(_ turn: ChatTurn) -> String {
+        turn.blocks.compactMap { block -> String? in
             if case .text(let text) = block.content { return text }
             return nil
-        }
-        return texts.isEmpty ? nil : texts.joined(separator: "\n\n")
+        }.joined(separator: "\n\n")
     }
 
     /// Claude's Markdown: emphasis, code and links inline, line breaks kept.
@@ -274,11 +379,11 @@ struct ChatTurnView: View {
     }
 }
 
-extension ChatTurnView: Equatable {
-    /// `decide` is left out: a view gives every turn the same action, made again at each of its own draws.
-    static func == (lhs: ChatTurnView, rhs: ChatTurnView) -> Bool {
-        lhs.turn == rhs.turn && lhs.projectID == rhs.projectID && lhs.compact == rhs.compact && lhs.matches == rhs.matches
-            && lhs.currentMatch == rhs.currentMatch && lhs.hidesWaitingApprovals == rhs.hidesWaitingApprovals
+extension ChatTranscriptRowView: Equatable {
+    /// The actions are left out: a view gives every row the same ones, made again at each of its own draws.
+    static func == (lhs: ChatTranscriptRowView, rhs: ChatTranscriptRowView) -> Bool {
+        lhs.row == rhs.row && lhs.projectID == rhs.projectID && lhs.compact == rhs.compact && lhs.isMatch == rhs.isMatch
+            && lhs.isCurrent == rhs.isCurrent && lhs.isHovered == rhs.isHovered
     }
 }
 

@@ -64,14 +64,8 @@ struct TranscriptScrollView: View {
             }
             .onChange(of: currentMatch, initial: true) {
                 if let currentMatch {
-                    // The lazy stack knows a turn's id before it draws the turn: go to the turn first, then, once
-                    // it is drawn, to the block.
-                    if let turn = conversation.turns.first(where: { $0.blocks.contains { $0.id == currentMatch } })?.id {
-                        proxy.scrollTo(turn, anchor: .center)
-                    }
-                    Task { @MainActor in
-                        withMotion(.layout) { proxy.scrollTo(currentMatch, anchor: .center) }
-                    }
+                    // Each block is a row of the lazy stack, known by its id before it is drawn.
+                    withMotion(.layout) { proxy.scrollTo(currentMatch, anchor: .center) }
                 }
             }
         }

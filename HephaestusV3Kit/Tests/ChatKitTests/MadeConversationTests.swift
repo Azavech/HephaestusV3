@@ -66,15 +66,19 @@ struct MadeConversationTests {
         #expect(told.withLock { $0 })
     }
 
-    @Test("A turn view is the same whatever its action: only a turn that changed is drawn again")
-    func turnViews() {
-        let turn = ChatTurn(id: "T1", author: .claude, date: date, blocks: [ChatBlock(id: "b1", .text("Because"))])
-        var changed = turn
-        changed.blocks.append(ChatBlock(id: "b2", .text("And")))
-        let view = ChatTurnView(turn: turn, projectID: "ORD", compact: false, decide: { _, _ in })
-        #expect(view == ChatTurnView(turn: turn, projectID: "ORD", compact: false, decide: { _, _ in }))
-        #expect(view != ChatTurnView(turn: changed, projectID: "ORD", compact: false, decide: { _, _ in }))
-        #expect(view != ChatTurnView(turn: turn, projectID: "ORD", compact: false, decide: { _, _ in }, matches: ["b1"]))
+    @Test("Each block is a row of its own, the same whatever its action: a word Claude writes draws its block again, not the turn")
+    func transcriptRows() {
+        let turn = ChatTurn(id: "T1", author: .claude, date: date, blocks: [ChatBlock(id: "b1", .text("Because")), ChatBlock(id: "b2", .text("And"))])
+        var conversation = ChatConversation(id: "C", projectID: "ORD", title: "T", origin: nil, createdAt: date, turns: [turn])
+        let rows = ChatTranscript.rows(of: conversation, compact: false, hidesWaitingApprovals: false)
+        #expect(rows.map { $0.id } == ["T1#author", "b1", "b2"])
+        #expect(rows.map { $0.top } == [0, 8, 8])
+        conversation.turns[0].blocks[1] = ChatBlock(id: "b2", .text("And then"))
+        let streamed = ChatTranscript.rows(of: conversation, compact: false, hidesWaitingApprovals: false)
+        #expect(streamed[1] == rows[1] && streamed[2] != rows[2], "Only the block that changed differs")
+        let view = ChatTranscriptRowView(row: rows[1], projectID: "ORD", compact: false, decide: { _, _ in })
+        #expect(view == ChatTranscriptRowView(row: rows[1], projectID: "ORD", compact: false, decide: { _, _ in }, hover: { _ in }))
+        #expect(view != ChatTranscriptRowView(row: rows[1], projectID: "ORD", compact: false, isMatch: true, decide: { _, _ in }))
     }
 }
 
