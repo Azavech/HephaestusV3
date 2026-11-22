@@ -128,7 +128,8 @@ GitHub section is in `+`.*
 - **`+` and `−`** are one `ControlGroup` after the pop-up, icons only, at its natural size: one control of
   one height, as macOS draws an add and remove pair.
 - **`+`** (help "Add Environment") adds an environment of the project's own named "New Environment", or the
-  first free "New Environment 2", "New Environment 3"…, and selects it.
+  first free "New Environment 2", "New Environment 3"…, and selects it; its **Name** field takes the keyboard
+  focus, ready to be renamed, as in V2.
 - **`−`** (help "Remove Environment") removes the selected environment at once; disabled for an inherited one.
   The first environment is selected after.
 - **Name**: one line, 1–100 characters: "Enter a name of 1 to 100 characters."; no other environment, inherited

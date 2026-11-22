@@ -320,7 +320,11 @@ private struct ProjectSettingsForm: View {
                 // One control for the pair, as macOS draws + and −: both the same height, whatever their symbols.
                 ControlGroup {
                     Button {
-                        Task { await model.addEnvironment() }
+                        Task {
+                            await model.addEnvironment()
+                            // The new environment's Name takes the keyboard focus, ready to be renamed, as in V2.
+                            focus = .environmentName
+                        }
                     } label: {
                         Label(String(localized: "Add Environment", bundle: #bundle), systemImage: "plus")
                     }
