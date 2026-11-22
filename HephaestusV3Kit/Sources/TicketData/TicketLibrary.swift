@@ -829,14 +829,25 @@ public actor TicketLibrary {
     private func storedTicket(_ value: String) throws(TicketError) -> (file: TicketFile, projectID: String) {
         let id = value.uppercased()
         guard let projectID = TicketIDs.parseTicket(id)?.project else { throw .invalid("\"\(value)\" is not a valid ticket id.") }
-        guard let file = tickets[projectID]?[id] else { throw .notFound("Ticket \(id) not found.") }
+        guard let file = tickets[projectID]?[id] else {
+            if let reason = unreadable("ticket/\(id).yml", in: projectID) { throw .invalid("Ticket file \(id).yml cannot be read: \(reason).") }
+            throw .notFound("Ticket \(id) not found.")
+        }
         return (file, projectID)
+    }
+
+    /// Why a file of the project's `.hephaestus/` folder that never loaded can't be read, as V2 told it.
+    private func unreadable(_ path: String, in projectID: String) -> String? {
+        invalidFiles[projectFolder(projectID).dataFolder.appendingPathComponent(path).path]
     }
 
     private func storedBundle(_ value: String) throws(TicketError) -> (file: BundleFile, projectID: String) {
         let id = value.uppercased()
         guard let projectID = TicketIDs.parseBundle(id)?.project else { throw .invalid("\"\(value)\" is not a valid bundle id.") }
-        guard let file = bundles[projectID]?[id] else { throw .notFound("Bundle \(id) not found.") }
+        guard let file = bundles[projectID]?[id] else {
+            if let reason = unreadable("bundle/\(id).yml", in: projectID) { throw .invalid("Bundle file \(id).yml cannot be read: \(reason).") }
+            throw .notFound("Bundle \(id) not found.")
+        }
         return (file, projectID)
     }
 

@@ -647,7 +647,8 @@ ORD-139, which depends on ORD-142.", and **OK**.
 | Empty comment | The comment field is empty, or holds only spaces and line breaks | **Comment** is disabled. |
 | Untitled new ticket | The sheet's title is empty, or holds only spaces and line breaks | **Create** is disabled. |
 | Loading | The app is reading the tickets | "Loading Tickets" with a progress indicator, in the list column. |
-| Error | The store can't read the tickets (previews) | **Couldn't Load Tickets** with `exclamationmark.triangle`, the error's message as given, and **Try Again**, which reads them again. The app's store has no such state: a file that can't be read is left out and logged in the snapshot. |
+| Error | The store can't read the tickets (previews) | **Couldn't Load Tickets** with `exclamationmark.triangle`, the error's message as given, and **Try Again**, which reads them again. The app's store has no such state: a file that can't be read is left out, and the next row says so. |
+| Unreadable files | Ticket or bundle files of the window's projects can't be read | Above the list, on `surfaceSunken`: `exclamationmark.triangle.fill` in `warning` and "1 ticket file can't be read" ("2 ticket files…"), then up to three `<name>: <reason>` lines in `caption`; the help lists them all (`tickets.unreadable`). The files are left out of the list. |
 | Editing | **Edit** was clicked | The [editor](#editor) in place of the header and the description. |
 | Blocked | The ticket depends on a ticket that isn't done | **Blocked** in its row and header. |
 | Missing link | A declared link's ticket is gone | **Not found** on its row. |

@@ -20,6 +20,10 @@ public final class LiveTicketStore: TicketStore {
         session.isLoaded ? .ready : .loading
     }
 
+    var unreadableFiles: [String] {
+        session.snapshot.invalidFiles.map { "\(URL(fileURLWithPath: $0.key).lastPathComponent): \($0.value)" }.sorted()
+    }
+
     func tickets(of projects: Set<Project.ID>) -> [Ticket] {
         let mapped = current()
         return projects.sorted().flatMap { mapped.tickets[$0] ?? [] }

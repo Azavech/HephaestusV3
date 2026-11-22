@@ -758,7 +758,9 @@ the Trash fails with `<path> cannot be moved to the Trash: <reason>.`; the write
   deletes the temporary files a crash left in `ticket/` and `bundle/`, then applies the Complete rule.
 - A file that can't be read, or whose `id` differs from its name, is listed in the snapshot's `invalidFiles`
   with its reason; a ticket or bundle loaded before keeps its last valid version, which the next change V3
-  makes writes over it.
+  makes writes over it. A change or a call naming one that never loaded fails with `Ticket file <ID>.yml cannot
+  be read: <reason>.` (`Bundle file …` for a bundle, `invalid`), as V2's did, and the Tickets window names it
+  ([UI › Tickets › States](ui/tickets.md#states)).
 - After each batch of file events ([Outside changes](#outside-changes)), each ticket and bundle file the batch
   names is read again (the whole project when events were dropped): a missing file is a deletion, a file
   equal to the one in memory changes nothing. Then the automatic rules apply to each bundle that lists a ticket

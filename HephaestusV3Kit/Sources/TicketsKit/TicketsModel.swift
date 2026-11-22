@@ -148,6 +148,12 @@ final class TicketsModel {
     }
 
     /// The project and its sub projects, in tree order.
+    /// The files of the window's projects that can't be read: their tickets and bundles are left out.
+    var unreadableFiles: [String] {
+        let ids = family.map(\.id)
+        return store.unreadableFiles.filter { name in ids.contains { name.hasPrefix($0 + "-") } }
+    }
+
     var family: [Project] {
         let family = directory.tree.family(of: project.id)
         return family.isEmpty ? [project] : family

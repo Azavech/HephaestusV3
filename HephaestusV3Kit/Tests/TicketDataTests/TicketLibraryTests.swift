@@ -452,4 +452,22 @@ struct TicketLibraryTests {
         #expect(removed.bundle(bundle)?.status == .inProgress)
         #expect(await world.library.handle([FileEvent(path: world.root.path + "/elsewhere.txt", kind: .modified)]) == nil)
     }
+
+    @Test("A ticket whose file never loaded is named as unreadable, with the reason, not as missing")
+    func unreadableTicket() async throws {
+        let world = try await World()
+        try world.write("ticket/HEPH-99.yml", "id: [")
+        let path = world.url("ticket/HEPH-99.yml").path
+        let snapshot = try #require(await world.library.handle([FileEvent(path: path, kind: .created)]))
+        #expect(snapshot.invalidFiles[path] != nil && snapshot.ticket("HEPH-99") == nil)
+        do {
+            _ = try await world.library.setStatus("HEPH-99", to: .done, by: World.claude)
+            Issue.record("The change went through")
+        } catch {
+            #expect(error.description.hasPrefix("Ticket file HEPH-99.yml cannot be read: "))
+        }
+        await #expect(throws: TicketError.notFound("Ticket HEPH-98 not found.")) {
+            _ = try await world.library.setStatus("HEPH-98", to: .done, by: World.claude)
+        }
+    }
 }

@@ -58,10 +58,13 @@ protocol TicketStore {
     func url(of attachment: TicketAttachment, in projectID: Project.ID) async -> URL?
     /// Reads everything again, after a failure.
     func retry() async
+    /// The ticket and bundle files that can't be read, as `<name>: <reason>`, by name.
+    var unreadableFiles: [String] { get }
 }
 
 extension TicketStore {
     var phase: TicketStorePhase { .ready }
+    var unreadableFiles: [String] { [] }
 
     func perform(_ change: TicketChangeRequest) async throws(TicketStoreError) -> String? {
         throw TicketStoreError(message: "This store doesn't change tickets.")

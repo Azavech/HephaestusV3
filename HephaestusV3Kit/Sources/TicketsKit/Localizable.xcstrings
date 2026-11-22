@@ -719,6 +719,9 @@
         }
       }
     },
+    "^[%lld ticket file](inflect: true) can't be read" : {
+      "comment" : "Above the ticket list: files left out because they can't be read"
+    },
     "^[%lld ticket](inflect: true), in the order checked." : {
 
     },

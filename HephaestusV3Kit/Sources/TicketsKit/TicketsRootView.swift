@@ -173,6 +173,13 @@ public struct TicketsRootView: View {
     }
 
     private var list: some View {
+        listView
+            .safeAreaInset(edge: .top, spacing: 0) {
+                UnreadableFilesBar(files: model.unreadableFiles)
+            }
+    }
+
+    private var listView: some View {
         TicketListView(
             state: model.listState,
             selection: $model.selection,
@@ -606,5 +613,40 @@ enum TicketIDCopy {
     @MainActor static func copy(_ ids: [Ticket.ID]) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text(ids), forType: .string)
+    }
+}
+
+/// Above the list, while ticket or bundle files of the window's projects can't be read: they are left out, and the
+/// line names them, as V2 logged them.
+private struct UnreadableFilesBar: View {
+    let files: [String]
+
+    var body: some View {
+        if !files.isEmpty {
+            VStack(alignment: .leading, spacing: 2) {
+                Label {
+                    Text(AttributedString(localized: "^[\(files.count) ticket file](inflect: true) can't be read", bundle: #bundle,
+                                          comment: "Above the ticket list: files left out because they can't be read"))
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.warning)
+                }
+                .font(.callout)
+                ForEach(files.prefix(3), id: \.self) { file in
+                    Text(verbatim: file)
+                        .font(.caption)
+                        .foregroundStyle(.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(.surfaceSunken)
+            .help(files.joined(separator: "\n"))
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("tickets.unreadable")
+        }
     }
 }
