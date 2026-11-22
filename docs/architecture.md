@@ -413,8 +413,10 @@ Running the command-line tools, with the rules of child processes below. Source 
 
 The rules of child processes:
 
-1. **Environment.** Every child gets the login shell's environment, captured once with `/bin/zsh -lic 'env
-   -0'` (timeout 10 s), so tools installed with Homebrew or in `~/.local/bin` are found as in Terminal. A
+1. **Environment.** Every child gets the login shell's environment, captured once with `/bin/zsh -lic "printf
+   '\0HEPHAESTUS-ENV\0'; env -0"` (timeout 10 s), so tools installed with Homebrew or in `~/.local/bin` are found
+   as in Terminal. Only what follows the marker is read, so what the startup files print (a greeting, nvm's line)
+   can't swallow the first variable, and a part whose name isn't a variable name is skipped. A
    capture that fails, times out, prints no `NAME=VALUE` part or can't start falls back to the app's own
    environment and says so (`Outcome`: `captured(count:)`, `failed(_:)`, `timedOut`, `empty`,
    `couldNotStart(reason:)`). Variables starting with `HEPHAESTUS_` never reach a child

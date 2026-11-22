@@ -8,9 +8,17 @@ struct ShellEnvironmentTests {
     func parsing() {
         let data = Data("PATH=/opt/bin:/usr/bin\0EMPTY=\0=nameless\0garbage\0MULTI=a=b\nc\0".utf8)
         #expect(ShellEnvironment.parseNULSeparated(data) == ["PATH": "/opt/bin:/usr/bin", "EMPTY": "", "MULTI": "a=b\nc"])
+        #expect(ShellEnvironment.parseNULSeparated(Data("Welcome\nPATH=/x\0HOME=/y\0".utf8)) == ["HOME": "/y"], "A name that isn't one is skipped")
     }
 
-    @Test("A capture runs zsh -lic 'env -0' without the app's own variables")
+    @Test("What the startup files print before the marker is left out, so the first variable isn't lost")
+    func startupOutput() async {
+        let runner = FakeRunner(output: "Welcome\nNow using node v22\0HEPHAESTUS-ENV\0PATH=/opt/homebrew/bin:/usr/bin\0HOME=/Users/someone\0")
+        let capture = await ShellEnvironment.capture(processEnvironment: ["PATH": "/usr/bin"], runner: runner)
+        #expect(capture.environment == ["PATH": "/opt/homebrew/bin:/usr/bin", "HOME": "/Users/someone"])
+    }
+
+    @Test("A capture runs zsh -lic with the marker then env -0, without the app's own variables")
     func capture() async throws {
         let runner = FakeRunner(output: "PATH=/opt/homebrew/bin:/usr/bin\0HOME=/Users/someone\0HEPHAESTUS_DATA_DIR=/x\0")
         let capture = await ShellEnvironment.capture(processEnvironment: ["PATH": "/usr/bin", "HEPHAESTUS_DATA_DIR": "/tmp/x"],
@@ -19,7 +27,7 @@ struct ShellEnvironmentTests {
         #expect(capture.environment == ["PATH": "/opt/homebrew/bin:/usr/bin", "HOME": "/Users/someone"])
         let request = try #require(runner.requests.first)
         #expect(request.executable == "/bin/zsh")
-        #expect(request.arguments == ["-lic", "env -0"])
+        #expect(request.arguments == ["-lic", "printf '\\0HEPHAESTUS-ENV\\0'; env -0"])
         #expect(request.environment == ["PATH": "/usr/bin"])
     }
 
