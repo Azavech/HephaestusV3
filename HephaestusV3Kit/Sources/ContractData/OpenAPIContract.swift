@@ -15,7 +15,13 @@ public struct OpenAPIContract: Sendable, Hashable {
 
     /// The operation of a key `<METHOD> <path>`, or of an `operationId`.
     public func operation(_ name: String) -> OpenAPIOperation? {
-        operations.first { $0.key == name } ?? operations.first { $0.operationID == name }
+        operation(key: name) ?? operations.first { $0.operationID == name }
+    }
+
+    /// The operation of a key `<METHOD> <path>` only: what `api_call` takes, whose method the chats' permission
+    /// reads from the key, so an `operationId` such as `GET refunds` can't name a POST.
+    public func operation(key: String) -> OpenAPIOperation? {
+        operations.first { $0.key == key }
     }
 
     /// Reads a contract from its text; `file` is its place, for the `$ref` pointers to other files of `root`.

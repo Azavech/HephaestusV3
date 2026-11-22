@@ -89,7 +89,7 @@ public enum ContractTools {
         ) { @MainActor arguments throws(ToolError) in
             let document = try await document(contracts, projects, arguments)
             let key = try arguments.string("operation")
-            guard let operation = document.operation(key) else { throw ToolError(.notFound, "Operation \(key) not found in the contract.") }
+            guard let operation = document.operation(key: key) else { throw ToolError(.notFound, "Operation \(key) not found in the contract.") }
             let id = try arguments.string("projectID").uppercased()
             guard let project = projects.snapshot.project(id) else { throw ToolError(.notFound, "Project \(id) not found.") }
             let name = arguments["environment"]?.stringValue ?? project.resolved.currentEnvironment

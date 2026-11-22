@@ -2194,7 +2194,9 @@ Input schema:
   `allowInvalidCertificates`.
 - **Result:** `status`, `headers` (`<name>: <value>`, sorted), `body` (pretty JSON for JSON, else the text, at
   most 100,000 characters, or `Binary body (<n> bytes)`), `durationMs`.
-- **Errors:** those of `api_operations`; an unknown operation or environment (`notFound`); no URL or no answer
+- **Errors:** those of `api_operations`; an unknown operation or environment (`notFound`): `operation` is found
+  by its key alone, never by an `operationId`, since the chats' permission reads the method from it (an
+  `operationId` such as `GET refunds` can't name a POST); no URL or no answer
   (`unavailable`, `The request failed: <reason>`). A chat's call follows [Permissions](#permissions).
 
 Description:

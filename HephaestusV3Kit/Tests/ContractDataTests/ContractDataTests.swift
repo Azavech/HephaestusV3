@@ -120,6 +120,16 @@ struct ContractTests {
         #expect(throws: ContractError.unreadable("The root is not a mapping.")) { try list.read() }
     }
 
+    @Test("api_call's lookup takes a key only: an operationId that reads like a GET doesn't name a POST")
+    func lookupByKey() throws {
+        let folder = try ContractFolder("openapi: 3.0.3\ninfo: {title: Pay, version: '1'}\npaths:\n  /refunds:\n    post: {operationId: GET refunds, responses: {'200': {description: ok}}}\n")
+        defer { folder.remove() }
+        let contract = try folder.read()
+        #expect(contract.operation(key: "GET refunds") == nil)
+        #expect(contract.operation(key: "POST /refunds")?.method == "post")
+        #expect(contract.operation("GET refunds")?.key == "POST /refunds", "The windows still find an operation by its operationId")
+    }
+
     @Test("Requests: path parameters encoded, query and API keys, headers in order, added headers replace")
     func request() throws {
         let folder = try ContractFolder(petStore, files: ["openapi/schemas.yaml": schemas])
