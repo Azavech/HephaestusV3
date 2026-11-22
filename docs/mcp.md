@@ -3237,7 +3237,7 @@ Input schema:
 
 - **Calls:** `MachineHost.copyIn`: a file through `writeFile`, 8 MiB at a time, with its permission bits; a folder's contents through a tar archive extracted in the guest.
 - **Result:** `Copied.`
-- **Errors:** a relative path (`invalid`; on this Mac, an absolute path or one starting with `~/`, the home folder, as V2 took it); a missing source (`notFound`); an id that is no machine (`notFound`, `Virtual machine <id> not found.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); tar failing (`internal`).
+- **Errors:** a relative path (`invalid`; on this Mac, an absolute path or one starting with `~/`, the home folder, as V2 took it); a missing source (`notFound`); an id that is no machine (`notFound`, `Virtual machine <id> not found.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); tar failing or running past 30 minutes (`internal`; `tar` on this Mac runs through the app's process runner, which reads its errors as it runs).
 
 Description:
 
@@ -3277,7 +3277,7 @@ Input schema:
 
 - **Calls:** `MachineHost.copyOut`: a file through `readFile` into a partial file beside the destination, which then takes its place; a folder's contents through a tar archive.
 - **Result:** `Copied.`
-- **Errors:** a relative path (`invalid`; on this Mac, an absolute path or one starting with `~/`, the home folder, as V2 took it); a missing source (`notFound`, `<path> does not exist in the guest.`); an id that is no machine (`notFound`, `Virtual machine <id> not found.`); a file whose destination is a folder of this Mac (`invalid`, `to: <path> is a folder on this Mac: give the path of the file to write.`), checked before the copy and again before the partial file takes the destination's place, so a folder is never replaced; no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); a destination that can't be written or tar failing (`internal`).
+- **Errors:** a relative path (`invalid`; on this Mac, an absolute path or one starting with `~/`, the home folder, as V2 took it); a missing source (`notFound`, `<path> does not exist in the guest.`); an id that is no machine (`notFound`, `Virtual machine <id> not found.`); a file whose destination is a folder of this Mac (`invalid`, `to: <path> is a folder on this Mac: give the path of the file to write.`), checked before the copy and again before the partial file takes the destination's place, so a folder is never replaced; no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); a destination that can't be written or tar failing or running past 30 minutes (`internal`; `tar` on this Mac runs through the app's process runner, which reads its errors as it runs).
 
 Description:
 

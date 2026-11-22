@@ -1,3 +1,4 @@
+import ExternalTools
 import Foundation
 import MCPKit
 
@@ -167,32 +168,25 @@ extension MachineHost {
     }
 
     /// `/usr/bin/tar` on this Mac, at most 30 minutes.
+    /// `/usr/bin/tar` on this Mac through the app's process runner, which reads its output while it runs (a full
+    /// error pipe can't stall it), ends it after 30 minutes, and ends it with the app.
     private static func tar(_ arguments: [String]) async throws(MachineError) {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/tar")
-        process.arguments = arguments
-        let errors = Pipe()
-        process.standardError = errors
-        process.standardOutput = FileHandle.nullDevice
-        let status: Int32
+        let request = ProcessRequest(executable: "/usr/bin/tar", arguments: arguments, environment: ProcessInfo.processInfo.environment,
+                                     standardOutput: .null)
+        let result: ProcessResult
         do {
-            status = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Int32, any Error>) in
-                process.terminationHandler = { continuation.resume(returning: $0.terminationStatus) }
-                do {
-                    try process.run()
-                } catch {
-                    process.terminationHandler = nil
-                    continuation.resume(throwing: error)
-                }
-            }
+            result = try await SystemProcessRunner.shared.run(request, timeout: tarTimeout)
         } catch {
             throw MachineError(.internal, "tar could not run: \(MachineFailure.message(of: error))")
         }
-        guard status == 0 else {
-            let message = String(decoding: errors.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+        guard !result.timedOut else { throw MachineError(.internal, "tar didn't finish within 30 minutes.") }
+        guard result.termination.isSuccess else {
+            let message = String(decoding: result.standardError, as: UTF8.self)
             throw MachineError(.internal, "tar failed: \(message.trimmingCharacters(in: .whitespacesAndNewlines))")
         }
     }
+
+    static let tarTimeout: Duration = .seconds(1800)
 
     private static func requireSuccess(_ result: ShellResult) throws(MachineError) {
         guard result.exitStatus != 0 else { return }

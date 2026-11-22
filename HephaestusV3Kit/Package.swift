@@ -66,7 +66,7 @@ let package = Package(
         .target(name: "ChatData", dependencies: ["FileStorage", "ExternalTools", "ProjectData", "MCPKit", "TextFormats"]),
         // Virtual machines: the image and machine files, ipsw.me, the download and install of macOS, disk
         // clones, the Virtualization framework's machines and the guest agent's protocol.
-        .target(name: "MachineData", dependencies: ["FileStorage", "MCPKit", "ProjectData"]),
+        .target(name: "MachineData", dependencies: ["FileStorage", "MCPKit", "ProjectData", "ExternalTools"]),
 
         // Shared vocabulary: projects, tools, routes and the few components every tool uses.
         .target(name: "ToolsFoundation", dependencies: [design], resources: strings, swiftSettings: isolation),
