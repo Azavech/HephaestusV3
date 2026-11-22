@@ -28,7 +28,9 @@ function the window calls ([Architecture › MCPKit](architecture.md#mcpkit)). E
 - When the port can't be bound, the server tries again once a second, 5 attempts in all, then stays failed
   until the port changes or the app restarts. A listener that fails after it was listening becomes failed too.
 - Its state is `stopped`, `listening(port)` or `failed(message)`, the message being the system's. Settings ▸
-  MCP shows it ([Settings ▸ MCP](#settings--mcp)).
+  MCP shows it ([Settings ▸ MCP](#settings--mcp)). Chats still start while it has failed: a chat's Claude
+  started then gets a warning line, `Hephaestus MCP server unavailable: <message>`, as V2's did, before the
+  CLI's own check adds its own ([Data › Chat items](data.md#chat-items)).
 - A new port in Settings ▸ MCP is written to `settings.yml` and moves the server at once, unless
   `HEPHAESTUS_MCP_PORT` is set: then it applies when the app runs without the variable. Terminal sessions must
   add the server again ([External use](#external-use)). A chat's Claude launched with the old port ends at once

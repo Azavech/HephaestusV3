@@ -368,6 +368,11 @@ final class AppData {
         Task { [weak self] in
             for await state in server.states {
                 self?.mcpState = state
+                if case .failed(let message) = state {
+                    self?.chats.mcpUnavailable = message
+                } else {
+                    self?.chats.mcpUnavailable = nil
+                }
             }
         }
         await server.start(port: mcpPort)

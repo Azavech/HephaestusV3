@@ -896,6 +896,7 @@ The `system` lines V3 writes:
 | The CLI can't be started                                    | error   | `Claude failed to start: <reason>`                                                                                                             |
 | No `system/init` within 60 s                                | error   | `Claude did not start within 60 seconds.`                                                                                                      |
 | The CLI exits during a turn, not ended by the app           | error   | `Claude exited with code <n>: <last line of its standard error>`, or `Claude exited with code <n>.`, or `Claude was terminated by signal <n>.` |
+| The CLI starts while the app's MCP server isn't listening   | warning | `Hephaestus MCP server unavailable: <the server's message>`                                                                                    |
 | The first `system/init` lists no usable `hephaestus` server | warning | `The Hephaestus tools aren't available in this session: the app's MCP server is <failed, needs-auth, disabled or missing>.`                    |
 | A resumed session the CLI doesn't find                      | warning | `Claude's session for this chat was not found. A new session started: Claude doesn't remember this chat's earlier messages.`                   |
 | The CLI refuses a model or effort change                    | warning | `Claude did not accept the new <model or effort> now: <reason>. It applies the next time Claude starts.`                                       |

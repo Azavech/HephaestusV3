@@ -248,6 +248,9 @@ extension ChatSession {
                           effort: chat.file.settings.effort, now: now)
         run.contextWindow = launch.contextWindow
         run.port = port
+        if let mcpUnavailable {
+            record(.system(SystemItem(created: now(), text: "Hephaestus MCP server unavailable: \(mcpUnavailable)", level: .warning)), in: chatID)
+        }
         runs[chatID] = run
         touch(chatID)
         run.initializeID = run.controlID()

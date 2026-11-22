@@ -211,6 +211,20 @@ struct ChatSessionTests {
         #expect(ClaudeCommand.syncedPlugins(claudeFolder: claude.appendingPathComponent("missing")).isEmpty)
     }
 
+    @Test("A chat whose Claude starts while the app's MCP server isn't listening says why, as V2's did")
+    func mcpUnavailable() async throws {
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        world.session.mcpUnavailable = "Port 7457 is in use."
+        let id = try await world.session.send("Hi", references: [], to: nil, projectID: "ORD")
+        let warnings = world.items(id).compactMap { if case .system(let line) = $0, line.level == .warning { line.text } else { nil } }
+        #expect(warnings == ["Hephaestus MCP server unavailable: Port 7457 is in use."])
+        world.session.mcpUnavailable = nil
+        let other = try await world.session.send("Hi", references: [], to: nil, projectID: "ORD")
+        #expect(!world.items(other).contains { if case .system = $0 { true } else { false } })
+        world.launcher.chats.forEach { $0.finish(.exited(0)) }
+    }
+
     @Test("A first message makes the chat and starts the CLI: no prompt, every CLI tool but its question tool, the app's tools allowed, the skills chats call")
     func firstMessage() async throws {
         let world = try await ChatWorld()
