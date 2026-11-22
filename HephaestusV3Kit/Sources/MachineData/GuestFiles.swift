@@ -99,15 +99,21 @@ extension MachineHost {
             } catch {
                 throw MachineError(.internal, "\(source.path) cannot be read: \(MachineFailure.message(of: error))")
             }
-            if chunk.isEmpty, offset > 0 { break }
-            var params: [String: JSONValue] = ["path": .string(destination), "offset": .int(offset)]
-            if offset == 0 {
-                params["truncate"] = true
-                if let mode { params["mode"] = .int(mode & 0o7777) }
+            // The mode comes with the last write: a read-only mode set with the first would refuse the next chunks.
+            if chunk.isEmpty, offset > 0 {
+                if let mode {
+                    _ = try await agentRequest(id, method: "writeFile",
+                                               params: ["path": .string(destination), "offset": .int(offset), "mode": .int(mode & 0o7777)], data: Data())
+                }
+                break
             }
+            let last = chunk.count < Self.chunkSize
+            var params: [String: JSONValue] = ["path": .string(destination), "offset": .int(offset)]
+            if offset == 0 { params["truncate"] = true }
+            if last, let mode { params["mode"] = .int(mode & 0o7777) }
             _ = try await agentRequest(id, method: "writeFile", params: params, data: chunk)
             offset += chunk.count
-            if chunk.count < Self.chunkSize { break }
+            if last { break }
         }
     }
 

@@ -111,6 +111,19 @@ struct GuestAgentKitTests {
             _ = try host.result("writeFile", ["path": file, "offset": 120], data: bytes.suffix(80))
             #expect(try Data(contentsOf: URL(fileURLWithPath: file)) == bytes)
 
+            // A read-only file: the host sends the mode with the last write, an empty one when the size is a
+            // multiple of its chunks.
+            let readOnly = folder.appendingPathComponent("nested/read-only.bin").path
+            _ = try host.result("writeFile", ["path": readOnly, "truncate": true], data: bytes.prefix(120))
+            _ = try host.result("writeFile", ["path": readOnly, "offset": 120, "mode": 0o444], data: bytes.suffix(80))
+            #expect(try Data(contentsOf: URL(fileURLWithPath: readOnly)) == bytes)
+            #expect(try host.result("stat", ["path": readOnly])["mode"] as? Int == 0o444)
+            let multiple = folder.appendingPathComponent("nested/multiple.bin").path
+            _ = try host.result("writeFile", ["path": multiple, "truncate": true], data: bytes)
+            _ = try host.result("writeFile", ["path": multiple, "offset": 200, "mode": 0o444], data: Data())
+            #expect(try Data(contentsOf: URL(fileURLWithPath: multiple)) == bytes)
+            #expect(try host.result("stat", ["path": multiple])["mode"] as? Int == 0o444)
+
             let status = try host.result("stat", ["path": file])
             #expect(status["exists"] as? Bool == true && status["size"] as? Int == 200 && status["mode"] as? Int == 0o755)
             #expect(try host.result("stat", ["path": file + ".none"])["exists"] as? Bool == false)

@@ -3240,7 +3240,7 @@ Input schema:
 
 ### vm_copy_in
 
-- **Calls:** `MachineHost.copyIn`: a file through `writeFile`, 8 MiB at a time, with its permission bits; a folder's contents through a tar archive extracted in the guest.
+- **Calls:** `MachineHost.copyIn`: a file through `writeFile`, 8 MiB at a time, its permission bits with the last write (an empty one when the size is a multiple of 8 MiB), so that a read-only file isn't refused its next chunks; a folder's contents through a tar archive extracted in the guest.
 - **Result:** `Copied.`
 - **Errors:** a relative path (`invalid`; on this Mac, an absolute path or one starting with `~/`, the home folder, as V2 took it); a missing source (`notFound`); an id that is no machine (`notFound`, `Virtual machine <id> not found.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); tar failing or running past 30 minutes (`internal`; `tar` on this Mac runs through the app's process runner, which reads its errors as it runs).
 
