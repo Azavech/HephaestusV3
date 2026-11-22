@@ -380,6 +380,8 @@ final class FakeGuest: GuestMachine {
     var startFailure: String?
     /// Whether a shutdown through the agent stops the guest.
     var shutsDown = true
+    /// What the agent's answer to the shutdown throws, the guest going down all the same when `shutsDown`.
+    var shutDownError: (any Error)?
     var requests: [String] = []
 
     func start(recovery: Bool) async throws {
@@ -394,6 +396,7 @@ final class FakeGuest: GuestMachine {
     func shutDownGuest() async throws {
         shutDowns += 1
         if shutsDown { events?(.stopped(error: nil)) }
+        if let shutDownError { throw shutDownError }
     }
 
     func agentRequest(_ method: String, params: [String: JSONValue], data: Data, timeout: Duration) async throws -> GuestAgentResponse {
@@ -589,6 +592,14 @@ struct MachineHostTests {
             #expect(second.requests.contains("exec"))
             try await host.stop(machine.id)
             #expect(second.shutDowns == 1)
+
+            // The agent's connection ends before it answers, as the guest goes down: the stop waits, no power cut.
+            try await host.start(machine.id)
+            let third = try #require(host.runs[machine.id]?.guest as? FakeGuest)
+            third.connectAgent(sip: .disabled)
+            third.shutDownError = GuestAgentError.disconnected
+            try await host.stop(machine.id)
+            #expect(third.shutDowns == 1 && third.stopped == 0)
         }
     }
 

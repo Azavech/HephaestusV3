@@ -644,12 +644,16 @@ public final class MachineHost {
     /// Asks the agent to shut the guest down; whether the machine stopped within `seconds`.
     private func shutDownThroughAgent(_ run: MachineRun, seconds: Int) async -> Bool {
         guard run.agent != nil else { return false }
+        let start = ContinuousClock.now
         do {
             try await run.guest.shutDownGuest()
         } catch {
-            return false
+            // Only the agent's refusal means it didn't ask. A connection that ends before the answer, or no answer in
+            // time, may be the guest going down: the wait applies then too, as V2's did.
+            if case GuestAgentError.failed = error { return false }
         }
-        return await waitForStop(run, seconds: seconds)
+        let elapsed = Int((ContinuousClock.now - start).components.seconds)
+        return await waitForStop(run, seconds: max(1, seconds - elapsed))
     }
 
     /// Whether the machine stopped within `seconds`.
