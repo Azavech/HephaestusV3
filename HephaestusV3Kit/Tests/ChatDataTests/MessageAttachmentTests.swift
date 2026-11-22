@@ -138,7 +138,7 @@ struct ResultImagesTests {
         defer { Task { await world.close() } }
         let chat = try await world.session.send("Look", references: [], to: nil, projectID: "ORD")
         world.session.record(.toolResult(ToolResultItem(id: "t1#result", created: Date(), toolUseID: "t1", text: "shot", isError: false)), in: chat)
-        world.session.storeResultImages(images, of: "t1", in: chat)
+        await world.session.storeResultImages(images, of: "t1", in: chat)
         guard case .toolResult(let result)? = world.items(chat).last else { Issue.record("No result"); return }
         let file = try #require(result.imageFiles.first)
         #expect(file.name == "image-1.png" && file.contentType == "image/png" && file.path == "chats/\(chat)/\(file.id)-image-1.png")

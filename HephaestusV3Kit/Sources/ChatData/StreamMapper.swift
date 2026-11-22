@@ -79,7 +79,22 @@ public struct StreamMapper: Sendable {
 
     /// The outputs of one line.
     public mutating func map(_ line: Data) -> [StreamOutput] {
-        guard let value = try? JSONValue.parse(line), let object = value.objectValue else { return [.invalid] }
+        map(parsed: Self.parse(line))
+    }
+
+    /// A line of output read as JSON, nil when it isn't, without the copy of a tool's result that a `user` line repeats
+    /// in `tool_use_result`, which the mapper never reads: a screenshot's is megabytes. Run it off the main actor.
+    public static func parse(_ line: Data) -> JSONValue? {
+        guard var object = (try? JSONSerialization.jsonObject(with: line, options: [.fragmentsAllowed])) as? [String: Any] else {
+            return nil
+        }
+        object["tool_use_result"] = nil
+        return JSONValue(foundation: object)
+    }
+
+    /// The outputs of a line `parse` read.
+    public mutating func map(parsed value: JSONValue?) -> [StreamOutput] {
+        guard let object = value?.objectValue else { return [.invalid] }
         let type = object["type"]?.stringValue ?? ""
         switch type {
         case "system": return mapSystem(object)

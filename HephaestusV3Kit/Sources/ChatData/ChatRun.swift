@@ -275,9 +275,18 @@ extension ChatSession {
             run.end(closingInput: false, grace: Self.signalGrace)
             self.refreshState(chatID)
         }
-        Task { [weak self] in
+        // Each line is read as JSON off the main actor, in order: a tool result can be megabytes, a screenshot's.
+        let (parsed, input) = AsyncStream.makeStream(of: JSONValue?.self, bufferingPolicy: .unbounded)
+        let reader = Task.detached(priority: .userInitiated) {
             for await line in connection.lines {
-                self?.handle(line, of: run)
+                input.yield(StreamMapper.parse(line))
+            }
+            input.finish()
+        }
+        input.onTermination = { _ in reader.cancel() }
+        Task { [weak self] in
+            for await value in parsed {
+                self?.handle(parsed: value, of: run)
             }
             let termination = await connection.waitForExit()
             self?.exited(run, termination)
@@ -288,9 +297,13 @@ extension ChatSession {
     // MARK: Output
 
     func handle(_ line: Data, of run: ChatRun) {
+        handle(parsed: StreamMapper.parse(line), of: run)
+    }
+
+    func handle(parsed value: JSONValue?, of run: ChatRun) {
         let chatID = run.chatID
         guard runs[chatID] === run else { return }
-        for output in run.mapper.map(line) {
+        for output in run.mapper.map(parsed: value) {
             switch output {
             case .item(let item):
                 if streaming[chatID]?.itemID == item.id { streaming[chatID] = nil }
@@ -301,7 +314,7 @@ extension ChatSession {
                     askContextUsage(run)
                 }
             case .toolResultImages(let toolUseID, let images):
-                storeResultImages(images, of: toolUseID, in: chatID)
+                Task { await storeResultImages(images, of: toolUseID, in: chatID) }
             case .delta(let itemID, let text):
                 if streaming[chatID]?.itemID == itemID {
                     streaming[chatID]?.text += text
@@ -809,20 +822,26 @@ extension ChatSession {
 
     /// Writes a tool result's images into the chat's folder, `<UUID>-image-<n>.<extension>` from 1, and lists
     /// them on its item, as V2 did: the transcript shows them. An image that can't be written is left out.
-    func storeResultImages(_ images: [ResultImage], of toolUseID: String, in chatID: String) {
+    /// Writes a result's images beside the chat, off the main actor (a screenshot is megabytes), then records them on
+    /// the result.
+    func storeResultImages(_ images: [ResultImage], of toolUseID: String, in chatID: String) async {
         guard let folder = folder(of: chatID)?.chatsFolder.appendingPathComponent(chatID, isDirectory: true),
-              case .toolResult(var result)? = item("\(toolUseID)#result", in: chatID) else { return }
-        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        var files: [MessageAttachment] = []
-        for (index, image) in images.enumerated() {
-            let fileID = UUID().uuidString
-            let name = "image-\(index + 1).\(image.fileExtension)"
-            guard (try? image.data.write(to: folder.appendingPathComponent("\(fileID)-\(name)"), options: .atomic)) != nil else { continue }
-            var file = MessageAttachment.stored(id: fileID, name: name, chatID: chatID, size: image.data.count)
-            file.contentType = image.mediaType
-            files.append(file)
-        }
-        guard !files.isEmpty else { return }
+              case .toolResult? = item("\(toolUseID)#result", in: chatID) else { return }
+        let files = await Task.detached(priority: .userInitiated) { () -> [MessageAttachment] in
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            var files: [MessageAttachment] = []
+            for (index, image) in images.enumerated() {
+                let fileID = UUID().uuidString
+                let name = "image-\(index + 1).\(image.fileExtension)"
+                guard (try? image.data.write(to: folder.appendingPathComponent("\(fileID)-\(name)"), options: .atomic)) != nil else { continue }
+                var file = MessageAttachment.stored(id: fileID, name: name, chatID: chatID, size: image.data.count)
+                file.contentType = image.mediaType
+                files.append(file)
+            }
+            return files
+        }.value
+        // The result as it is now: it may have been updated meanwhile.
+        guard !files.isEmpty, case .toolResult(var result)? = item("\(toolUseID)#result", in: chatID) else { return }
         result.images = .array(files.map(\.json))
         record(.toolResult(result), in: chatID, op: .update)
     }

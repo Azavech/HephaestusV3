@@ -1167,7 +1167,10 @@ gives `StreamOutput.toolResultImages` after its item, as V2 kept them: `storeRes
 chat's folder as `<UUID>-image-<n>.<extension>` (`n` from 1 in each result; the extension `png`, `jpg`, `gif`,
 `webp`, or the type's subtype), and rewrites the `toolResult` item with them as `images`, V2's `Attachment`s
 (`contentType` the image's type) ([Message files](#message-files)). An image that can't be written is left out.
-The images aren't sent back to Claude, which had them.
+The images aren't sent back to Claude, which had them. The files are written off the main actor, then the item
+rewritten as it is then. Each line of the CLI's output is read as JSON off the main actor too, in order
+(`StreamMapper.parse`), without the copy of the result a `user` line repeats in `tool_use_result`, which V3
+doesn't read: a screenshot's line is megabytes.
 
 #### Images item
 
