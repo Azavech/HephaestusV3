@@ -425,3 +425,11 @@ popover. These were open.
 | One tab or two? | One Memories tab, its scopes on the left (Global Memories, then the projects), like System Prompts, rather than V2's per-project section and separate Global Memories view: V3 has no main window with sections. ⌘9 and ⇧⌘M, V2's shortcuts, open it on the key window's project and on the global memories. | [UI › Memories](ui/memories.md) |
 | How is a change saved? | By itself, as System Prompts saves (V3's way): the description and body a second after the last keystroke, the type at once, the name on Return or when its field loses the focus. V2's Save, Revert and banners have nothing to guard then; a change made elsewhere shows unless one waits to be saved. | [UI › Memories › Editor](ui/memories.md#editor) |
 | Where does the code go? | Two new targets: `MemoryData` (folders, files, `MEMORY.md`, the chats' context), which ChatData uses at launch, and `MemoriesKit` (the tab). | [Architecture › MemoryData](architecture.md#memorydata) |
+
+## Debug tools
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| How are they reached? | As V2's: `debug_screenshot`, `debug_navigate`, `debug_ui_state` and `debug_click`, listed only when the app is launched with `HEPHAESTUS_DEBUG_TOOLS=1` (the user's request to bring over every V2 feature, 22 November 2026). Every token runs them; an internal skill's run doesn't. | [MCP › Debug tools](mcp.md#debug-tools) |
+| What does a window's state hold? | V3's own values: a window's tabs and selected tab (`WorkspaceValue`), a chat window's chat; V2's `WindowState` doesn't exist in V3. `debug_navigate` takes `open_in_app`'s targets, V3's kinds. | same |
+| How is a window captured and clicked? | The feedback screenshot's in-process capture, and mouse events built inside the app, as V2: no permission, offscreen windows work, the user's pointer stays. | same |

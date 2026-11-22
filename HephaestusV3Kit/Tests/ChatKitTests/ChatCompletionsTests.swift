@@ -101,6 +101,12 @@ struct ChatQuestionsCardTests {
         }
         #expect(ask.describe?(valid).action == "Asked a question")
         #expect(await ChatGate.check(.internalSkill("set-ticket-title"), ask, valid, chats: session) == ToolError(.forbidden, ChatGate.skillRefusal))
+        // Reads, but not the debug tools, as open_in_app.
+        let state = ToolOperation(name: "debug_ui_state", description: "", inputSchema: .object(), permission: .read) { _ throws(ToolError) in .null }
+        let list = ToolOperation(name: "list_tickets", description: "", inputSchema: .object(), permission: .read) { _ throws(ToolError) in .null }
+        #expect(await ChatGate.check(.internalSkill("set-ticket-title"), state, [:], chats: session) == ToolError(.forbidden, ChatGate.skillRefusal))
+        #expect(await ChatGate.check(.internalSkill("set-ticket-title"), list, [:], chats: session) == nil)
+        #expect(await ChatGate.check(.chat("C"), state, [:], chats: session) == nil)
         // A comment answer changes its own ticket only, as V2's.
         let update = ToolOperation(name: "update_ticket", description: "", inputSchema: .object(), permission: .changeTickets) { _ throws(ToolError) in .null }
         let comment = ToolOperation(name: "add_comment", description: "", inputSchema: .object(), permission: .changeTickets) { _ throws(ToolError) in .null }

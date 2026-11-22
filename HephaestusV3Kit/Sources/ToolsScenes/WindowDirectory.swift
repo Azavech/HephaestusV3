@@ -38,6 +38,11 @@ final class WindowDirectory {
         }
     }
 
+    /// The chat a chat window shows.
+    func chatID(of window: NSWindow) -> String? {
+        chatEntries[ObjectIdentifier(window)].flatMap { $0.window === window ? $0.chatID : nil }
+    }
+
     /// The chat window showing the chat, minimised or not.
     func chatWindow(showing chatID: String) -> NSWindow? {
         chatEntries = chatEntries.filter { $0.value.window != nil }

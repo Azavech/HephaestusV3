@@ -400,7 +400,7 @@ final class AppData {
         externalToken = try? folder.externalToken(make: MCPTokens.generate)
         tokens.replace(with: Set([externalToken].compactMap { $0 }))
         let registry = AppTools.registry(session: session, tickets: tickets, chats: chats, contracts: contractStore, maps: serviceMapStore,
-                                          machines: machineHost, implementer: implementer) { [weak self] route in
+                                          machines: machineHost, implementer: implementer, debugTools: DebugTools.isEnabled) { [weak self] route in
             guard let open = self?.openRoute else { return false }
             open(route)
             return true

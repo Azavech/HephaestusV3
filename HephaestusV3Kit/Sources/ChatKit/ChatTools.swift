@@ -29,7 +29,8 @@ public enum ChatGate {
         if case .internalSkill(let name) = caller {
             // The app runs the skill in the background, for its answer alone: it reads, and opens no window. A comment
             // answer also changes its own ticket's title, description, links and status, as V2's did.
-            if operation.permission == .read && operation.name != "open_in_app" { return nil }
+            // Reads, but not the tools that show windows, nor the debug tools.
+            if operation.permission == .read && operation.name != "open_in_app" && !operation.name.hasPrefix("debug_") { return nil }
             if let ticket = commentAnswerTicket(name), ["update_ticket", "set_ticket_status"].contains(operation.name),
                arguments["ticketID"]?.stringValue?.uppercased() == ticket {
                 return nil

@@ -59,6 +59,9 @@
     "Cancel" : {
 
     },
+    "Captured a window of Hephaestus" : {
+
+    },
     "Chat" : {
       "comment" : "A chat window's name, in the feedback's context"
     },
@@ -84,6 +87,9 @@
       "comment" : "An approval card; the value is a ticket or bundle id"
     },
     "Claude's answer has no title." : {
+
+    },
+    "Clicked in a window of Hephaestus" : {
 
     },
     "Close %@" : {
@@ -253,6 +259,9 @@
     },
     "Quit Hephaestus V3?" : {
       "comment" : "The alert when quitting while chats or virtual machines work"
+    },
+    "Read the windows of Hephaestus" : {
+
     },
     "Regenerate" : {
 

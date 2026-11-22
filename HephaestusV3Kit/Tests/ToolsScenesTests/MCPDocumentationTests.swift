@@ -13,12 +13,12 @@ import Testing
 /// input schemas.
 @Suite("MCP documentation")
 struct MCPDocumentationTests {
-    /// Each `### <tool>` of the Tools section: the first `text` block and the first `json` block after it.
-    private func documentedTools() throws -> [(name: String, description: String, schema: JSONValue)] {
+    /// Each `### <tool>` of a section, Tools by default: the first `text` block and the first `json` block after it.
+    private func documentedTools(section heading: String = "Tools") throws -> [(name: String, description: String, schema: JSONValue)] {
         let docs = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("docs/mcp.md")
         let text = try String(contentsOf: docs, encoding: .utf8)
-        let tools = try #require(text.components(separatedBy: "\n## Tools\n").last).components(separatedBy: "\n## ").first ?? ""
+        let tools = try #require(text.components(separatedBy: "\n## \(heading)\n").last).components(separatedBy: "\n## ").first ?? ""
         return try tools.components(separatedBy: "\n### ").dropFirst().map { section in
             let name = String(section.prefix { $0 != "\n" })
             func block(_ language: String) throws -> String {
@@ -44,6 +44,18 @@ struct MCPDocumentationTests {
         #expect(documented.map(\.name) == registry.names)
         for (name, description, schema) in documented {
             let operation = try #require(registry[name])
+            #expect(description == operation.description, "\(name)'s description")
+            #expect(schema == operation.inputSchema.json, "\(name)'s input schema")
+        }
+        // The debug tools: listed only with the switch, after the others, as their own section says.
+        let debug = AppTools.registry(session: session, tickets: tickets, chats: chats,
+                                      contracts: LiveContractStore(projects: session), maps: LiveServiceMapStore(projects: session),
+                                      machines: MachineHost(dataFolder: nil), implementer: Implementer(tickets: tickets, chats: chats),
+                                      debugTools: true) { _ in true }
+        let documentedDebug = try documentedTools(section: "Debug tools")
+        #expect(debug.names == registry.names + documentedDebug.map(\.name))
+        for (name, description, schema) in documentedDebug {
+            let operation = try #require(debug[name])
             #expect(description == operation.description, "\(name)'s description")
             #expect(schema == operation.inputSchema.json, "\(name)'s input schema")
         }

@@ -230,7 +230,7 @@ inspector ([UI › Chat](ui/chat.md#inspector)). After a call's arguments are va
 - The CLI's own file tools, which a chat's Claude also has, aren't the server's: the app answers the CLI's requests
   about them itself, under Settings ▸ Chat › Edit the project's files ([Data › File tools](data.md#file-tools)).
 - **An internal skill's run** only reads (default chosen at design time: the app runs it for its answer alone,
-  in the background, where no card can show): the `read` tools run but `open_in_app`; every other call is
+  in the background, where no card can show): the `read` tools run but `open_in_app` and the [debug tools](#debug-tools); every other call is
   refused with `An internal skill's run only reads.` (`forbidden`), whatever Settings ▸ Chat says. One exception,
   as V2's: a `comment-answer` run also runs `update_ticket` and `set_ticket_status` on the ticket of the comment it
   answers (its caller's scope), without a card; on any other ticket they are refused the same way ([UI › Tickets ›
@@ -3394,6 +3394,194 @@ Input schema:
 }
 ```
 
+## Debug tools
+
+V2's debug tools, brought over (the user's request, 22 November 2026): an MCP client sees, navigates and clicks the
+app's windows, for automated checks, without Screen Recording or Accessibility permission (`DebugTools`, in
+ToolsScenes).
+
+- **Availability.** Listed after `open_in_app`, and callable, only when the app was launched with
+  `HEPHAESTUS_DEBUG_TOOLS=1` in its environment (which also keeps the chats' standard output, [Data › Data
+  folder](data.md#data-folder)); otherwise `tools/call` answers -32602 `Unknown tool: <name>`. They act on this app's own
+  windows.
+- **Permissions.** Every token runs them, a chat's Claude too, as V2's; an internal skill's run is refused them, as
+  `open_in_app` ([Permissions](#permissions)).
+- **WindowInfo**, which `debug_navigate`, `debug_ui_state` and `debug_click` return: `id` (the window's number,
+  stable while it is open), `kind` (`workspace` for a window with tabs, `chat`, `settings`, `sheet` or `other`),
+  `title`, `isKey`, `frame` (`{x, y, width, height}` in points, AppKit screen coordinates), and `state`: a
+  workspace window's tabs and selected tab (`WorkspaceValue`), a chat window's `{chatID}`, else `null`.
+
+| Tool               | Required inputs    | Optional inputs | Result                    |
+|--------------------|--------------------|-----------------|---------------------------|
+| `debug_screenshot` | —                  | `window`        | `{path, width, height}`   |
+| `debug_navigate`   | `target`           | —               | WindowInfo                |
+| `debug_ui_state`   | —                  | —               | `{windows: [WindowInfo]}` |
+| `debug_click`      | `window`, `x`, `y` | —               | `{windows: [WindowInfo]}` |
+
+### debug_screenshot
+
+- **Calls:** the window `window`, else the key window, else the frontmost, rendered in the app's process as the
+  feedback screenshot is ([UI › Tickets › Feedback](ui/tickets.md#feedback)): a sheet as the window it is on, with the
+  sheet over it; offscreen windows work.
+- **File:** `<data folder>/Runtime/screenshots/<window id>-<time>.png`, `<time>` the UTC capture time as
+  `yyyyMMdd'T'HHmmss.SSS'Z'`; the folder made when missing, the files kept.
+- **Result:** `{"height": <pixels>, "path": <absolute path>, "width": <pixels>}`.
+- **Errors:** `No window with id <id>.` (`notFound`); `No window is open.` (`unavailable`); the window couldn't be
+  rendered or the PNG written (`internal`).
+
+Description:
+
+```text
+Debug: capture a Hephaestus V3 window of this Mac to a PNG file, without screen-recording permission, and return its path and size in pixels. window is an id from debug_ui_state; the key window when omitted.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "window" : {
+      "description" : "Window id from debug_ui_state; the key window when omitted.",
+      "type" : "integer"
+    }
+  },
+  "type" : "object"
+}
+```
+
+### debug_navigate
+
+- **Calls:** the target is checked and opened as `open_in_app`'s, with its messages; then, after 300 ms, the
+  frontmost window with tabs once visible (10 s at most).
+- **Result:** that window's WindowInfo.
+- **Errors:** `open_in_app`'s; `No window showed the target within 10 seconds.` (`unavailable`).
+
+Description:
+
+```text
+Debug: show a target in Hephaestus V3, as open_in_app does, and return the information of the window that shows it once it is updated.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "target" : {
+      "additionalProperties" : false,
+      "description" : "The item to open. project and projectSettings take projectID, ticket takes ticketID, bundle takes bundleID, skill takes name.",
+      "properties" : {
+        "bundleID" : {
+          "description" : "Bundle id, such as ORD-B2.",
+          "type" : "string"
+        },
+        "kind" : {
+          "description" : "The item's kind.",
+          "enum" : [
+            "project",
+            "projectSettings",
+            "ticket",
+            "bundle",
+            "skill"
+          ],
+          "type" : "string"
+        },
+        "name" : {
+          "description" : "An internal skill's name, such as set-ticket-title.",
+          "type" : "string"
+        },
+        "projectID" : {
+          "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+          "type" : "string"
+        },
+        "ticketID" : {
+          "description" : "Ticket id, such as ORD-12.",
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "kind"
+      ],
+      "type" : "object"
+    }
+  },
+  "required" : [
+    "target"
+  ],
+  "type" : "object"
+}
+```
+
+### debug_ui_state
+
+- **Calls:** the app's visible windows, front to back, each followed by its sheets.
+- **Result:** `{"windows": [WindowInfo]}`.
+
+Description:
+
+```text
+Debug: list the Hephaestus V3 windows of this Mac from front to back with their id, kind, title, key state, frame and state (tabs and selected tab, or chat).
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {},
+  "type" : "object"
+}
+```
+
+### debug_click
+
+- **Calls:** one left click at (`x`, `y`), points from the top-left corner of the window's `debug_screenshot` image,
+  title bar included; a sheet's point is on the window it is attached to, and the click goes to the frontmost of the
+  window and its sheets that holds the point. The mouse down and up are built inside the app: posted to its event
+  queue when the window is key or the view under the point takes a first click, else sent to that view as the key
+  window would. Nothing goes through the system: the user's pointer and focus stay. Then 500 ms of wait.
+- **Result:** `{"windows": [WindowInfo]}`, read after the wait.
+- **Errors:** `No window with id <id>.` (`notFound`); `The point (<x>, <y>) is outside the window <id>, which is
+  <width> × <height> points.` (`invalid`).
+
+Description:
+
+```text
+Debug: click once with the left mouse button at a point of a Hephaestus V3 window of this Mac, inside the app, without Accessibility permission, and return the windows as debug_ui_state does, 500 ms after the click. window is an id from debug_ui_state; x and y are points from the top-left corner of that window's debug_screenshot image (image pixels divided by the image width over the window's frame width).
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "window" : {
+      "description" : "Window id from debug_ui_state.",
+      "type" : "integer"
+    },
+    "x" : {
+      "description" : "Points from the left edge of the window's debug_screenshot image.",
+      "minimum" : 0,
+      "type" : "integer"
+    },
+    "y" : {
+      "description" : "Points from the top edge of the window's debug_screenshot image.",
+      "minimum" : 0,
+      "type" : "integer"
+    }
+  },
+  "required" : [
+    "window",
+    "x",
+    "y"
+  ],
+  "type" : "object"
+}
+```
+
 ## Checking it
 
 With the app running, from Terminal (the token from Settings ▸ MCP):
@@ -3404,4 +3592,4 @@ curl -s -X POST http://127.0.0.1:47830/mcp -H "Authorization: Bearer <token>" \
 ```
 
 `ToolsScenesTests` check that this page lists exactly the registered tools, in their order, with their exact
-descriptions and input schemas.
+descriptions and input schemas, and the debug tools likewise in their own section.
