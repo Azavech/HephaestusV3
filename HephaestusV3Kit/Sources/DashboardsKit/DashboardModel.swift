@@ -230,10 +230,29 @@ final class DashboardModel {
                                      smallest: smallestSize(of: slot, metrics: metrics)) != nil
     }
 
-    /// The steps that change anything for the widget, in the order of `DashboardStep`.
+    /// The steps that change anything for the widget, in the order of `DashboardStep`. Kept until what they depend on
+    /// changes: the edit mode's cards ask at each redraw, and each step tries a whole layout of the list.
     func steps(of slot: DashboardSlot) -> [DashboardStep] {
-        DashboardStep.allCases.filter { canStep(slot, $0) }
+        guard editing, drag == nil else { return [] }
+        let key = StepsKey(widgets: widgets, shown: shownKinds, areaWidth: areaWidth, neededHeights: neededHeights,
+                           smallestSizes: smallestSizes)
+        if stepsCache?.key != key { stepsCache = (key, [:]) }
+        if let steps = stepsCache?.steps[slot] { return steps }
+        let steps = DashboardStep.allCases.filter { canStep(slot, $0) }
+        stepsCache?.steps[slot] = steps
+        return steps
     }
+
+    /// What the steps of the widgets depend on.
+    private struct StepsKey: Equatable {
+        let widgets: [DashboardWidget]
+        let shown: Set<DashboardWidgetKind>
+        let areaWidth: CGFloat
+        let neededHeights: [DashboardSlot: CGFloat]
+        let smallestSizes: [DashboardSlot: CGSize]
+    }
+
+    @ObservationIgnored private var stepsCache: (key: StepsKey, steps: [DashboardSlot: [DashboardStep]])?
 
     /// Moves the widget one cell, or makes it one cell larger or smaller, as a drag would.
     func step(_ slot: DashboardSlot, _ step: DashboardStep) {
