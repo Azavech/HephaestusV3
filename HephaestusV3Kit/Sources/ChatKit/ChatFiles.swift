@@ -22,13 +22,13 @@ enum ChatFiles {
     }
 
     /// The files the pasteboard holds, or its image as a PNG written to a temporary folder, named `Pasted Image
-    /// <yyyy-MM-dd> at <HH.mm.ss>.png` in local time, as Tickets names one; nil when it holds neither (text pastes
-    /// as text).
+    /// <yyyy-MM-dd> at <HH.mm.ss>.png` in local time, as Tickets names one, when it holds no text; nil otherwise
+    /// (text pastes as text, even beside the picture Numbers, Keynote or Word put with it, as in V2).
     static func pasted(from pasteboard: NSPasteboard = .general, now: Date = Date()) -> [URL]? {
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty {
             return urls
         }
-        guard let image = NSImage(pasteboard: pasteboard), let tiff = image.tiffRepresentation,
+        guard pasteboard.availableType(from: [.string]) == nil, let image = NSImage(pasteboard: pasteboard), let tiff = image.tiffRepresentation,
               let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return nil }
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")

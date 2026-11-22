@@ -336,7 +336,7 @@ As V2's composer did, a message can carry files, in the Chat window and in the p
 - **Add Files…** (`paperclip`, icon only, tooltip "Add Files…") opens the system's file panel, several files at
   once, no folders.
 - **Dropping** files anywhere on the conversation (the transcript, the cards, the composer) adds them.
-- **⌘V** in the field, while the pasteboard holds files, adds them; while it holds an image without a file, the
+- **⌘V** in the field, while the pasteboard holds files, adds them; while it holds an image without a file and without text (as V2: text beside a picture of it, as Numbers or Word copy, pastes as text), the
   image is written as a PNG named `Pasted Image <yyyy-MM-dd> at <HH.mm.ss>.png` (local time) in a temporary
   folder and added; text pastes as text (AZDesign's `pastesFiles`).
 - Each file shows as a chip after the others (`PendingFileChip`): the Finder's icon for it, its name cut in the

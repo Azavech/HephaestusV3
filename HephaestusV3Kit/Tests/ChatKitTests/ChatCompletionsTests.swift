@@ -152,6 +152,11 @@ struct ChatFilesTests {
         board.clearContents()
         board.setString("plain text", forType: .string)
         #expect(ChatFiles.pasted(from: board) == nil)
+
+        // Text beside a picture of it, as Numbers or Word copy cells: the text pastes.
+        board.clearContents()
+        board.writeObjects(["cells as text" as NSString, image])
+        #expect(ChatFiles.pasted(from: board) == nil)
     }
 }
 
