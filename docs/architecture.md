@@ -1051,7 +1051,10 @@ the window's `openRoute` in a `@State` holder, and `AppData`'s `toolReader`, `so
 (`\.serviceMapStore`, `\.contractStore`, `\.buildStore`, `\.ticketStore`, `\.dashboardStore`, `\.chatStore`),
 `\.projectDirectory`, `\.availableTools`, `\.dashboardWidgetRenderer`, `\.feedbackTarget`, and `.tint(.accent)`;
 its `.task` stores the first `OpenRouteAction` in `appData.openRoute` (for `open_in_app`) and runs
-`appData.start()`. Its `OpenRouteAction` is the one place where routes are opened, through `WindowDirectory`:
+`appData.start()`, which does its work once. The app delegate (`HephaestusAppDelegate.applicationDidFinishLaunching`)
+starts `AppData.shared`, the scenes' one instance, at launch too: an update's restart reopens the app in the
+background, maybe with no window restored, and its MCP server, Updater and chats then ran only once a window
+appeared. Its `OpenRouteAction` is the one place where routes are opened, through `WindowDirectory`:
 
 | Route | Handling |
 | --- | --- |

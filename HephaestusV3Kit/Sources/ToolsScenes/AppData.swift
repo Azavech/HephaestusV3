@@ -29,6 +29,9 @@ final class AppData {
     /// Whether the Virtual Machines window is available.
     static let machinesAvailable = true
 
+    /// The app's one instance: the scenes show it, and the app delegate starts it at launch.
+    static let shared = AppData()
+
     let session: ProjectSession
     let directory = ProjectDirectory(projects: [], state: .loading)
     /// The project selected in Projects, which is one tab in the whole app; kept for the next launch, as V2 did. Held

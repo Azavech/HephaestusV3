@@ -39,7 +39,7 @@ enum SceneID {
 /// This is the only target that knows every tool. Tools ask for a `Route`; `RouteHost` opens it.
 public struct ToolsScenes: Scene {
     /// The project data and the directory every window reads.
-    @State private var appData = AppData()
+    @State private var appData = AppData.shared
     /// The machine the Virtual Machines tab opens on.
     @State private var machineFocus: String?
     /// A route's ask to select a machine in the open Virtual Machines tab.

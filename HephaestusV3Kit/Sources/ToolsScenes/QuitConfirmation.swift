@@ -3,6 +3,12 @@ import AppKit
 /// The app's delegate, for what the scenes can't say: whether a quit goes on (docs/ui/navigation.md › Quitting).
 @MainActor
 public final class HephaestusAppDelegate: NSObject, NSApplicationDelegate {
+    /// The app's data starts with the app, not with its first window: relaunched in the background by an update's
+    /// restart with no window restored, it ran without its MCP server, its Updater or its chats until a window opened.
+    public func applicationDidFinishLaunching(_ notification: Notification) {
+        Task { @MainActor in await AppData.shared.start() }
+    }
+
     public func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         QuitConfirmation.confirm() ? .terminateNow : .terminateCancel
     }

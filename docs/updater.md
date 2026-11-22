@@ -36,7 +36,7 @@ checks go on at their interval and need nothing else once it is public.
 
 ## Starting the Updater
 
-At launch, once the projects and `settings.yml` are read (`AppData.start()`), `UpdateController.start(dataFolder:)`
+At launch, with or without a window (the app delegate starts `AppData` itself), once the projects and `settings.yml` are read (`AppData.start()`), `UpdateController.start(dataFolder:)`
 starts the Updater unless one of these holds. They are looked at once per launch, in order; the first that holds
 is the reason the About window and Settings ▸ Updates show.
 
