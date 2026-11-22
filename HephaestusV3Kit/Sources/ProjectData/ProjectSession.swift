@@ -49,6 +49,8 @@ public final class ProjectSession {
     }
     @ObservationIgnored private var lock: FolderLock?
     @ObservationIgnored private var watching: Task<Void, Never>?
+    /// The read of the origins of folders just added; tests wait for it.
+    @ObservationIgnored private(set) var originReads: Task<Void, Never>?
 
     /// - Parameters:
     ///   - dataFolder: the app's data folder (`DataFolder.resolve()`); tests pass a temporary one.
@@ -151,7 +153,7 @@ public final class ProjectSession {
         let result = try await library.create(request)
         apply(result.snapshot)
         await updateWatchedFolders()
-        apply(await library.refreshOrigins())
+        readNewOrigins(library)
         return result.id
     }
 
@@ -162,8 +164,16 @@ public final class ProjectSession {
         let result = try await library.open(folder: folder)
         apply(result.snapshot)
         await updateWatchedFolders()
-        apply(await library.refreshOrigins())
+        readNewOrigins(library)
         return result.id
+    }
+
+    /// The origins of the folders just added, read after the caller has its project: the sheet doesn't wait for git.
+    private func readNewOrigins(_ library: ProjectLibrary) {
+        originReads = Task { [weak self] in
+            let snapshot = await library.refreshNewOrigins()
+            self?.apply(snapshot)
+        }
     }
 
     public func update(_ id: String, _ change: ProjectChange) async throws(ProjectError) {

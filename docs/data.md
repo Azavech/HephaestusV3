@@ -581,7 +581,9 @@ the parent's. V2's `useParentSettings` switch has no effect. The type only decid
   its greyed placeholder: the typed page of the nearest ancestor that has one; otherwise the page of the
   `origin` remote ([GitHub page](#github-page)) of the project, else of its nearest ancestor that has one.
   The origin is read with `git config --get remote.origin.url` in the project's folder, and for an SSH host
-  alias with `ssh -G <alias>`. Until the origins are read, and without git, there is no origin page; without
+  alias with `ssh -G <alias>`: every loaded folder's at launch and Look Again, four at a time; after a project
+  is created or added, only the folders whose origin isn't read yet, once the call has returned, so New
+  Project and Add Existing don't wait for git. Until the origins are read, and without git, there is no origin page; without
   ssh, an alias stays unresolved. The project's own origin and its page are kept too (`originURL`,
   `originGithubPage`), for `get_project`.
 - **Graph.** The project's `graphEnabled`; otherwise its parent's, as the parent resolves it

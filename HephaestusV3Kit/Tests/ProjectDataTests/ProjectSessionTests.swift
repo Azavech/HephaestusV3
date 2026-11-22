@@ -109,6 +109,27 @@ struct ProjectSessionTests {
         }
     }
 
+    @Test("A project created returns before its origin is read, and only the new folder's origin is read")
+    func createReadsNewOrigin() async throws {
+        try await withTemporaryFolderAsync { world in
+            let orders = try world.project("orders", id: "ORD")
+            try world.register(orders)
+            let bin = try toolsFolder(in: world)
+            let runner = FakeRunner(origins: [orders: "git@github.com:example/orders.git"], environment: "PATH=\(bin)\0HOME=/x\0")
+            let session = ProjectSession(dataFolder: world.data, runner: runner, processEnvironment: ["PATH": "/usr/bin"])
+            await session.start()
+            func originReads() -> [String?] { runner.requests.filter { $0.arguments.first == "config" }.map(\.currentDirectory) }
+            #expect(originReads() == [orders])
+            let folder = world.path("pay")
+            runner.setOrigin("git@github.com:example/pay.git", for: folder)
+            _ = try await session.create(NewProject(name: "Payments", identifier: "PAY", kind: .goService, folder: folder, createsFolder: true))
+            await session.originReads?.value
+            #expect(session.snapshot.project("PAY")?.resolved.githubPage == "https://github.com/example/pay")
+            #expect(originReads() == [orders, folder], "Orders' origin isn't read again")
+            await session.stop()
+        }
+    }
+
     @Test("A project file changed outside the app shows in the session")
     func outsideChange() async throws {
         try await withTemporaryFolderAsync { world in

@@ -124,15 +124,39 @@ public actor ProjectLibrary {
         return publishIfChanged()
     }
 
-    private func readOrigins() async {
+    /// Reads the `origin` of the loaded folders whose origin isn't read yet, as after a project is created or added,
+    /// and returns the new snapshot when a GitHub page changed.
+    public func refreshNewOrigins() async -> ProjectSnapshot? {
+        await readOrigins(only: Set(loaded.values.map(\.root)).subtracting(origins.keys))
+        return publishIfChanged()
+    }
+
+    /// The most git processes reading origins at once.
+    static let concurrentOriginReads = 4
+
+    /// Reads the origins of `roots`, merged into those read, or of every loaded folder, which replace them; a few at a
+    /// time rather than one after the other.
+    private func readOrigins(only roots: Set<String>? = nil) async {
         guard let git = Git(tools, runner: runner) else { return }
-        var read: [String: String] = [:]
-        for root in Set(loaded.values.map(\.root)) {
-            if let url = await git.originURL(in: root) {
-                read[root] = url
+        let read = await withTaskGroup(of: (String, String?).self) { group in
+            var read: [String: String] = [:]
+            var pending = Array(roots ?? Set(loaded.values.map(\.root)))
+            func next() {
+                guard let root = pending.popLast() else { return }
+                group.addTask { (root, await git.originURL(in: root)) }
             }
+            for _ in 0..<Self.concurrentOriginReads { next() }
+            while let (root, url) = await group.next() {
+                if let url { read[root] = url }
+                next()
+            }
+            return read
         }
-        origins = read
+        if roots == nil {
+            origins = read
+        } else {
+            origins.merge(read) { _, new in new }
+        }
         guard let ssh = SSH(tools, runner: runner) else { return }
         for (root, url) in read {
             guard let remote = GitRemote(remoteURL: url), remote.isSSH, !remote.isGitHubHost, hostNames[remote.host] == nil else { continue }
