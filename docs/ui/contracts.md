@@ -158,7 +158,9 @@ A box labeled **Request** (`arrow.up.circle`).
   contract's example body, is at least 96 pt tall, and takes the box's free height in the wide arrangement.
 
 The values hold what the user types while the operation stays selected, a route to it included. Picking
-another operation and coming back restores the examples.
+another operation and coming back restores the examples. When the contract file changes while the operation is
+selected, the pane shows the operation as it reads now, and the request keeps what was typed for each parameter
+still there and for the body; the rest takes the new examples, and **Send** sends the new definition.
 
 ### Last Response
 

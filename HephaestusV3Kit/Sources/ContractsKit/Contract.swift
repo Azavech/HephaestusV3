@@ -126,6 +126,22 @@ nonisolated struct RequestDraft: Hashable, Sendable {
         body = operation.requestBody ?? ""
     }
 
+    /// The same request on a newer reading of its operation, after the contract changed: what was typed stays,
+    /// for each parameter still there and for the body; the rest takes the new examples.
+    func rebased(on new: Operation) -> RequestDraft {
+        var rebased = RequestDraft(operation: new)
+        let examples = Dictionary(operation.parameters.map { ($0.id, $0.example) }) { first, _ in first }
+        for parameter in new.parameters {
+            if let typed = values[parameter.id], typed != examples[parameter.id] {
+                rebased.values[parameter.id] = typed
+            }
+        }
+        if body != (operation.requestBody ?? "") {
+            rebased.body = body
+        }
+        return rebased
+    }
+
     /// The value typed for `parameter`.
     subscript(parameter: Parameter) -> String {
         get { values[parameter.id] ?? "" }

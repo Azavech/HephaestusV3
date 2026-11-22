@@ -304,6 +304,27 @@ struct RequestTests {
         #expect(model.draft(for: operation).body == "{}")
     }
 
+    @Test("A request typed for the selected operation follows the contract when it changes, what was typed kept")
+    func draftFollowsContract() throws {
+        let store = MockContractStore(contracts: ["BIL": billing])
+        let model = ContractsModel(project: project(environments: ["Local"]), focus: "payInvoice", store: store)
+        var draft = model.draft(for: try #require(model.operation("payInvoice")))
+        draft.body = "{\"amount\": 3}"
+        model.update(draft)
+        let pay = try #require(billing.operations.first { $0.id == "payInvoice" })
+        let changed = ContractOperation(
+            id: "payInvoice", method: .post, path: pay.path, summary: "Pay an invoice now", tag: pay.tag,
+            parameters: pay.parameters + [Parameter(name: "expand", location: .query, type: "string", isRequired: true, example: "items")],
+            requestBody: pay.requestBody, responses: pay.responses, lastResponse: pay.lastResponse
+        )
+        store.contracts["BIL"] = Contract(title: billing.title, version: billing.version,
+                                          operations: billing.operations.map { $0.id == "payInvoice" ? changed : $0 })
+        let rebased = model.draft(for: try #require(model.operation("payInvoice")))
+        #expect(rebased.operation.summary == "Pay an invoice now")
+        #expect(rebased.body == "{\"amount\": 3}")
+        #expect(rebased.url(on: environment("Local")) == "https://local.example.com/invoices/88/pay?expand=items")
+    }
+
     @Test("A request for an operation that isn't selected is not kept")
     func updateOfAnother() throws {
         let model = makeModel(focus: "payInvoice")

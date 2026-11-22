@@ -145,11 +145,11 @@ final class ContractsModel {
         project.deploymentEnvironments.first { $0.name == environmentName }
     }
 
-    /// The request for `operation`: what the user typed while it stays selected, otherwise the
-    /// contract's examples.
+    /// The request for `operation`: what the user typed while it stays selected, on the operation as the
+    /// contract reads now, otherwise the contract's examples.
     func draft(for operation: Operation) -> RequestDraft {
         if let draft, draft.operation.id == operation.id {
-            return draft
+            return draft.operation == operation ? draft : draft.rebased(on: operation)
         }
         return RequestDraft(operation: operation)
     }
