@@ -269,7 +269,7 @@ private struct TabContentView: View {
                 .environment(\.focusRequest, machineFocusRequest)
                 .toolbar { ChatPanelToolbarItem() }
         case .systemPrompts:
-            SystemPromptsView(store: appData.skillStore)
+            SystemPromptsView(state: workspace.state(for: tab) { SystemPromptsTabState(store: appData.skillStore) })
                 .toolbar { ChatPanelToolbarItem() }
         }
     }

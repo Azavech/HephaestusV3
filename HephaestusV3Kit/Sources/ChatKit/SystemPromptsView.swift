@@ -180,6 +180,17 @@ final class SystemPromptsModel {
     }
 }
 
+/// What a tab keeps of System Prompts while another tab is in front: its model, so that the selected skill and
+/// what is typed are still there when the tab comes back, as V2's window kept them. The app's window makes one per tab.
+@MainActor
+public final class SystemPromptsTabState {
+    let model: SystemPromptsModel
+
+    public init(store: LiveInternalSkillStore) {
+        model = SystemPromptsModel(store: store)
+    }
+}
+
 /// System Prompts: the internal skills on the left, the selected one's name and content on the right. The app's
 /// code defines the skills; the user edits their content (docs/ui/system-prompts.md).
 public struct SystemPromptsView: View {
@@ -188,6 +199,11 @@ public struct SystemPromptsView: View {
     /// The skills of the app's data folder.
     public init(store: LiveInternalSkillStore) {
         _model = State(initialValue: SystemPromptsModel(store: store))
+    }
+
+    /// The model a tab keeps.
+    public init(state: SystemPromptsTabState) {
+        _model = State(initialValue: state.model)
     }
 
     init(model: SystemPromptsModel) {
