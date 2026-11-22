@@ -323,6 +323,22 @@ struct SampleTests {
         #expect(passed.defaultStep == StepReference(job: "Image", step: "Push image"))
     }
 
+    @Test("Two steps of one name in a job are two rows: the second failed one is shown first, with its own reference")
+    func stepsOfOneName() throws {
+        let job = Job(name: "Build", status: .failure, duration: 3, steps: [
+            Step(name: "Run actions/cache@v4", status: .success, duration: 1),
+            Step(name: "Compile", status: .success, duration: 1),
+            Step(name: "Run actions/cache@v4", status: .failure, duration: 1),
+        ])
+        #expect(Set(job.steps.map(\.id)).count == 3)
+        #expect(job.steps.map(\.occurrence) == [0, 0, 1])
+        let run = WorkflowRun(id: 1, title: "t", workflow: "CI", branch: "main", commit: "abc", status: .failure,
+                              startedAt: Date(), duration: 3, jobs: [job])
+        let reference = try #require(run.defaultStep)
+        #expect(reference == StepReference(job: "Build", step: "Run actions/cache@v4", occurrence: 1))
+        #expect(run.step(reference)?.step.status == .failure)
+    }
+
     @Test("A job starts open when it failed, runs, or holds the step shown")
     func jobOpensInitially() {
         let failed = Job(name: "Test", status: .failure, duration: 1, steps: [])

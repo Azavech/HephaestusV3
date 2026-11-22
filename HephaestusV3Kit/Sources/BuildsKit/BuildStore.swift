@@ -106,7 +106,7 @@ public final class LiveBuildStore: BuildStore {
         /// Runs with their jobs, by id.
         var details: [WorkflowRun.ID: WorkflowRun] = [:]
         /// Jobs' logs by job id: each step's lines by step name.
-        var logs: [Int: BuildLoad<[String: [String]]>] = [:]
+        var logs: [Int: BuildLoad<[String: [[String]]]>] = [:]
     }
 
     private(set) var repositories: [String: Repository] = [:]
@@ -167,7 +167,7 @@ public final class LiveBuildStore: BuildStore {
         switch repositories[key(project)]?.logs[job.jobID] ?? .loading {
         case .loading: return .loading
         case .failed(let message): return .failed(message)
-        case .loaded(let steps): return .loaded(StepLogs.lines(of: step.step, in: steps))
+        case .loaded(let steps): return .loaded(StepLogs.lines(of: step.step, occurrence: step.occurrence, in: steps))
         }
     }
 

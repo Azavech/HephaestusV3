@@ -128,8 +128,12 @@ private struct BuildToolSet {
             let step = arguments["step"]?.stringValue
             let steps = job.steps.filter { step == nil || $0.name == step }
             guard !steps.isEmpty else { throw ToolError(.notFound, "Step \(step ?? "") not found in job \(jobName).") }
+            // Two steps of one name each get their own lines, in order.
+            var seen: [String: Int] = [:]
             return .array(steps.map { step in
-                let lines = StepLogs.lines(of: step.name, in: logs)
+                let occurrence = seen[step.name, default: 0]
+                seen[step.name] = occurrence + 1
+                let lines = StepLogs.lines(of: step.name, occurrence: occurrence, in: logs)
                 return ["step": .string(step.name), "lines": .array(lines.suffix(2000).map(JSONValue.string)),
                         "truncated": .bool(lines.count > 2000)]
             })

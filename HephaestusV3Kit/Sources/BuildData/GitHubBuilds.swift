@@ -152,17 +152,24 @@ public struct GitHubAsset: Sendable, Hashable, Decodable {
 }
 
 /// The lines of a job's log, by step name, from `gh run view --log`: each line is `<job>\t<step>\t<time> <text>`.
+/// gh prints the steps in order, each one's lines together, so a name has one segment of lines per step of that
+/// name: two steps both called `Run actions/cache@v4` keep their own lines.
 public enum StepLogs {
     /// The step name gh prints for every line of a job whose log archive has no file per step: the job's whole log.
     public static let unknownStep = "UNKNOWN STEP"
 
-    /// A step's lines: its own, else the job's whole log when gh printed it as `unknownStep`.
-    public static func lines(of step: String, in steps: [String: [String]]) -> [String] {
-        steps[step] ?? steps[unknownStep] ?? []
+    /// The lines of the step called `step`, the `occurrence`-th of its name in its job (from 0): its own, else the
+    /// job's whole log when gh printed it as `unknownStep`.
+    public static func lines(of step: String, occurrence: Int = 0, in steps: [String: [[String]]]) -> [String] {
+        if let segments = steps[step] {
+            return segments.indices.contains(occurrence) ? segments[occurrence] : []
+        }
+        return steps[unknownStep]?.flatMap { $0 } ?? []
     }
 
-    public static func parse(_ output: Data) -> [String: [String]] {
-        var steps: [String: [String]] = [:]
+    public static func parse(_ output: Data) -> [String: [[String]]] {
+        var steps: [String: [[String]]] = [:]
+        var previous: Substring?
         // CR LF is one character in Swift: lines split on any line break.
         for raw in String(decoding: output, as: UTF8.self).split(omittingEmptySubsequences: true, whereSeparator: \.isNewline) {
             let fields = raw.split(separator: "\t", maxSplits: 2, omittingEmptySubsequences: false)
@@ -172,7 +179,12 @@ public enum StepLogs {
             if let space = text.firstIndex(of: " "), text[..<space].hasSuffix("Z"), text.first?.isNumber == true {
                 text = text[text.index(after: space)...]
             }
-            steps[String(fields[1]), default: []].append(String(text))
+            let name = fields[1]
+            if name != previous {
+                steps[String(name), default: []].append([])
+                previous = name
+            }
+            steps[String(name)]![steps[String(name)]!.count - 1].append(String(text))
         }
         return steps
     }
@@ -219,7 +231,7 @@ public struct GitHubBuilds: Sendable {
     }
 
     /// A job's log, by step name. gh gives it once the job has completed.
-    public func log(job: Int) async throws(BuildError) -> [String: [String]] {
+    public func log(job: Int) async throws(BuildError) -> [String: [[String]]] {
         StepLogs.parse(try await cli.run("run view", ["run", "view", "--repo=\(repository.repoArgument)", "--log", "--job=\(job)"],
                                          timeout: .seconds(60)))
     }

@@ -624,7 +624,7 @@ private struct JobRow: View {
         DisclosureGroup(isExpanded: $isExpanded) {
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(job.steps) { step in
-                    let reference = StepReference(job: job.name, step: step.name)
+                    let reference = StepReference(job: job.name, step: step.name, occurrence: step.occurrence)
                     let isSelected = selectedStep == reference
                     Button {
                         selectedStep = reference

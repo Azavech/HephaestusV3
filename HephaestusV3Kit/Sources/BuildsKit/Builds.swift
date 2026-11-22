@@ -60,13 +60,38 @@ struct Job: Identifiable, Hashable, Sendable {
     let steps: [Step]
     /// GitHub's id of the job, which reads its log; 0 for a sample.
     var jobID = 0
+
+    /// Numbers the steps of each name in order (`Step.occurrence`): GitHub names a step without a name after its
+    /// action, so one job can have two of one name.
+    init(name: String, status: RunStatus, duration: Int, steps: [Step], jobID: Int = 0) {
+        self.name = name
+        self.status = status
+        self.duration = duration
+        var seen: [String: Int] = [:]
+        self.steps = steps.map { step in
+            var step = step
+            step.occurrence = seen[step.name, default: 0]
+            seen[step.name] = step.occurrence + 1
+            return step
+        }
+        self.jobID = jobID
+    }
 }
 
 struct Step: Identifiable, Hashable, Sendable {
-    var id: String { name }
+    /// Unique in its job: the name, and after the first of a name its occurrence too.
+    var id: String { occurrence == 0 ? name : "\(name)#\(occurrence)" }
     let name: String
     let status: RunStatus
     let duration: Int
+    /// The steps of its job with the same name before it; set by `Job`.
+    var occurrence = 0
+
+    init(name: String, status: RunStatus, duration: Int) {
+        self.name = name
+        self.status = status
+        self.duration = duration
+    }
 }
 
 struct Release: Identifiable, Hashable, Sendable {
@@ -80,10 +105,12 @@ struct Release: Identifiable, Hashable, Sendable {
     var notes: String = ""
 }
 
-/// A step of a run, named by its job and its own name.
+/// A step of a run, named by its job, its own name and, after the first step of that name in its job, its
+/// occurrence.
 struct StepReference: Hashable, Sendable {
     let job: String
     let step: String
+    var occurrence = 0
 }
 
 extension RunStatus {
@@ -237,12 +264,12 @@ extension WorkflowRun {
         let pick = steps.first { $0.1.status == .failure }
             ?? steps.first { $0.1.status == .running }
             ?? steps.last { $0.1.status == .success }
-        return pick.map { StepReference(job: $0.0.name, step: $0.1.name) }
+        return pick.map { StepReference(job: $0.0.name, step: $0.1.name, occurrence: $0.1.occurrence) }
     }
 
     func step(_ reference: StepReference) -> (job: Job, step: Step)? {
         guard let job = jobs.first(where: { $0.name == reference.job }),
-              let step = job.steps.first(where: { $0.name == reference.step }) else { return nil }
+              let step = job.steps.first(where: { $0.name == reference.step && $0.occurrence == reference.occurrence }) else { return nil }
         return (job, step)
     }
 

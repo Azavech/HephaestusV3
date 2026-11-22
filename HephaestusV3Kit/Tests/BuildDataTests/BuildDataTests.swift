@@ -104,7 +104,7 @@ struct GitHubBuildsTests {
         #expect(job.id == 33 && job.steps.map(\.name) == ["Set up job", "Run tests"])
         #expect(gitHubDuration(start: job.steps[1].startedAt, end: job.steps[1].completedAt) == 191, "Fractional seconds are read")
         let log = try await builds.log(job: 33)
-        #expect(log["Run tests"] == ["go test ./...", "--- FAIL: TestSign"] && log["Set up job"] == ["Runner"])
+        #expect(log["Run tests"] == [["go test ./...", "--- FAIL: TestSign"]] && log["Set up job"] == [["Runner"]])
         try await builds.rerun(5, failedOnly: true)
         try await builds.cancel(6)
         #expect(runner.requests.suffix(2).map(\.arguments) == [
@@ -158,7 +158,11 @@ struct StepLogTests {
     func unknownStep() {
         let steps = StepLogs.parse(Data("Test\tUNKNOWN STEP\t2026-11-07T21:27:01.1234567Z go test ./...\nTest\tUNKNOWN STEP\tok\n".utf8))
         #expect(StepLogs.lines(of: "Run tests", in: steps) == ["go test ./...", "ok"])
-        #expect(StepLogs.lines(of: "Run tests", in: ["Run tests": ["own"], StepLogs.unknownStep: ["all"]]) == ["own"])
+        #expect(StepLogs.lines(of: "Run tests", in: ["Run tests": [["own"]], StepLogs.unknownStep: [["all"]]]) == ["own"])
+        let twice = StepLogs.parse(Data("J\tRun actions/cache@v4\ta\nJ\tRun actions/cache@v4\tb\nJ\tBuild\tc\nJ\tRun actions/cache@v4\td\n".utf8))
+        #expect(StepLogs.lines(of: "Run actions/cache@v4", in: twice) == ["a", "b"], "Two steps of one name keep their own lines")
+        #expect(StepLogs.lines(of: "Run actions/cache@v4", occurrence: 1, in: twice) == ["d"])
+        #expect(StepLogs.lines(of: "Run actions/cache@v4", occurrence: 2, in: twice).isEmpty)
         #expect(StepLogs.lines(of: "Run tests", in: [:]).isEmpty)
     }
 }

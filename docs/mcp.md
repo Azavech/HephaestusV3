@@ -1981,7 +1981,7 @@ Input schema:
 ### get_run_log
 
 - **Calls:** `gh run view` for the run's jobs, then `gh run view --log --job=<job id>`.
-- **Result:** an array, one element per step (or the one named): `step`, `lines` (at most the last 2000, without GitHub's times; the job's whole log when gh gives it as `UNKNOWN STEP`), `truncated`.
+- **Result:** an array, one element per step (or per step of the name given; two steps of one name are two elements, each with its own lines): `step`, `lines` (at most the last 2000, without GitHub's times; the job's whole log when gh gives it as `UNKNOWN STEP`), `truncated`.
 - **Errors:** an unknown project (`notFound`); the project without a GitHub page, no gh, no login, or gh failing (`unavailable`, with the messages of [Data › Builds](data.md#builds)); gh's output not as expected (`internal`). An unknown job or step (`notFound`); a job still running fails with gh's reason.
 
 Description:
