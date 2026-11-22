@@ -120,6 +120,18 @@ struct MachineFileTests {
         }
     }
 
+    @Test("A guest file's destination that is a folder of this Mac is refused, never replaced; a file or a new path is fine")
+    func fileDestination() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("heph-dest-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder.appendingPathComponent("out"), withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try Data("old".utf8).write(to: folder.appendingPathComponent("file.json"))
+        #expect(throws: MachineError.self) { try MachineHost.requireFileDestination(folder.appendingPathComponent("out")) }
+        #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("out").path))
+        try MachineHost.requireFileDestination(folder.appendingPathComponent("file.json"))
+        try MachineHost.requireFileDestination(folder.appendingPathComponent("new.json"))
+    }
+
     @Test("A new machine copies the image's platform files and clones its disk, grown to its size")
     func createMachine() async throws {
         try await withTemporaryFolder { folder in

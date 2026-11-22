@@ -3271,7 +3271,7 @@ Input schema:
 
 - **Calls:** `MachineHost.copyOut`: a file through `readFile` into a partial file beside the destination, which then takes its place; a folder's contents through a tar archive.
 - **Result:** `Copied.`
-- **Errors:** a relative path (`invalid`); a missing source (`notFound`, `<path> does not exist in the guest.`); no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); a destination that can't be written or tar failing (`internal`).
+- **Errors:** a relative path (`invalid`); a missing source (`notFound`, `<path> does not exist in the guest.`); a file whose destination is a folder of this Mac (`invalid`, `to: <path> is a folder on this Mac: give the path of the file to write.`), checked before the copy and again before the partial file takes the destination's place, so a folder is never replaced; no running machine (`conflict`, `The virtual machine is not running.`), no agent connected (`unavailable`, `The guest agent is not connected.`), the agent's own message (`unavailable`); a destination that can't be written or tar failing (`internal`).
 
 Description:
 

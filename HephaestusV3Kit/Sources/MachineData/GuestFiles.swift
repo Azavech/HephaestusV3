@@ -55,6 +55,7 @@ extension MachineHost {
         let stat = try await agentRequest(id, method: "stat", params: ["path": .string(source)]).result
         guard stat["exists"]?.boolValue == true else { throw MachineError(.notFound, "\(source) does not exist in the guest.") }
         guard stat["isDirectory"]?.boolValue == true else {
+            try Self.requireFileDestination(destination)
             try await copyFileOut(id, source, to: destination, mode: stat["mode"]?.intValue)
             return
         }
@@ -139,6 +140,8 @@ extension MachineHost {
             offset += response.data.count
             if response.result["eof"]?.boolValue != false || response.data.isEmpty { break }
         }
+        // Again just before the swap: a folder made there while the file came is refused too.
+        try Self.requireFileDestination(destination)
         do {
             try handle.close()
             if let mode { try manager.setAttributes([.posixPermissions: mode & 0o7777], ofItemAtPath: partial.path) }
@@ -195,6 +198,14 @@ extension MachineHost {
         guard result.exitStatus != 0 else { return }
         let message = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
         throw MachineError(.internal, result.timedOut ? "tar in the guest timed out." : "tar in the guest failed: \(message)")
+    }
+
+    /// A guest file goes to a file of this Mac: a folder at its destination is refused, never replaced by it.
+    nonisolated static func requireFileDestination(_ destination: URL) throws(MachineError) {
+        var isFolder: ObjCBool = false
+        if FileManager.default.fileExists(atPath: destination.path, isDirectory: &isFolder), isFolder.boolValue {
+            throw MachineError(.invalid, "to: \(destination.path) is a folder on this Mac: give the path of the file to write.")
+        }
     }
 
     private static func cannotWrite(_ url: URL, _ error: any Error) -> MachineError {
