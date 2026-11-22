@@ -147,7 +147,13 @@ extension ChatSession {
             summaryRuns -= 1
             if !summaryWaiters.isEmpty { summaryWaiters.removeFirst().resume() }
         }
-        let answer = try? await run(.notificationSummary, input: input, timeout: .seconds(30))
+        let answer: String?
+        do {
+            answer = try await run(.notificationSummary, input: input, timeout: .seconds(30))
+        } catch {
+            appLog.write(.warning, "summaries", "\(event.chatID): \(error)")
+            answer = nil
+        }
         return answer.flatMap(ChatEvent.cleanSummary) ?? event.detail
     }
 

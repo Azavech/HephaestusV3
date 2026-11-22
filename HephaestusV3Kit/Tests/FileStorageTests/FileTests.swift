@@ -122,6 +122,20 @@ struct OwnWritesLockTrashTests {
         }
     }
 
+    @Test("The app log appends one line per entry: UTC time with milliseconds, level, part and message")
+    func appLog() throws {
+        try withTemporaryFolder { folder in
+            let url = folder.appendingPathComponent("Logs/engine.log")
+            AppLog(url: url).write(.info, "mcp", "listening on 127.0.0.1:47830")
+            AppLog(url: url).write(.warning, "titles", "ORD-1: no answer")
+            let lines = try String(contentsOf: url, encoding: .utf8).split(separator: "\n")
+            #expect(lines.count == 2)
+            #expect(lines[0].hasSuffix("Z INFO mcp: listening on 127.0.0.1:47830") && lines[0].contains("."))
+            #expect(lines[1].hasSuffix(" WARNING titles: ORD-1: no answer"))
+            AppLog(url: nil).write(.error, "mcp", "nowhere")
+        }
+    }
+
     @Test("The lock is exclusive until it is released")
     func lock() throws {
         try withTemporaryFolder { folder in

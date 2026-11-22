@@ -152,6 +152,18 @@ The files that belong to this Mac rather than to a project.
 | `Runtime/guest/`                      | The guest agent and its install script, shared with a setup machine ([Virtual machines › Setup](#setup)).                                                                                                                                    |
 | `Logs/claude-<CHAT-ID>.log`           | A chat's CLI log: a line per launch, then the CLI's standard error, with `ignored <type>` for each output line the app doesn't use (but `stream_event`) and `invalid line: not a JSON object`, as V2's; emptied at a launch once over 10 MB. |
 | `Logs/claude-<CHAT-ID>.stdout.jsonl`  | With `HEPHAESTUS_DEBUG_TOOLS=1` in the app's environment, every line of the CLI's standard output, unchanged, as V2 kept them: the source of new test captures.                                                                              |
+| `Logs/engine.log`                     | The app's log, V2's name ([App log](#app-log)).                                                                                                                                                                                              |
+
+### App log
+
+`Logs/engine.log`, as V2 kept it: one line per entry, `<UTC time with milliseconds> <LEVEL> <part>: <message>`
+(`AppLog` in FileStorage), emptied at launch once over 10 MB. Never a token, a call's arguments or its result.
+
+- `mcp`: `listening on 127.0.0.1:<port>`, `not listening: <the system's message>` (ERROR), `stopped`; and per tool
+  call `tools/call <tool> by <chat id, external or skill <name>>: ok in <n> ms`, or the error's code (`invalid`,
+  `forbidden`…) in place of `ok`.
+- `titles` (WARNING): a ticket's title that `set-ticket-title` couldn't give, with the reason.
+- `summaries` (WARNING): a notification summary that failed, with the chat's id and the reason.
 
 ## Project folder
 

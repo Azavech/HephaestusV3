@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import Testing
 @testable import MCPKit
 
@@ -91,6 +92,20 @@ struct ProtocolTests {
         #expect(await reply(#"{"jsonrpc":"2.0","id":4,"method":"ping"}"#, versions: ["2026-07-28"]) == .unsupportedVersion("2026-07-28"))
         #expect(await error(#"{"jsonrpc":"2.0","id":5,"method":"ping","params":[]}"#) == (-32602, "Invalid params: params must be an object"))
         #expect(await error(#"{"jsonrpc":"2.0","id":6,"method":"initialize","params":{}}"#) == (-32602, "Invalid params: protocolVersion must be a string"))
+    }
+
+    @Test("Each tool call writes one log line: the tool, the caller and the outcome, never the arguments or the result")
+    func callLog() async {
+        let lines = LoggedLines()
+        let logged = MCPProtocol(registry: registry, version: "1.0", log: { line in lines.add(line) })
+        _ = await logged.handle(body: Data(#"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"echo","arguments":{"text":"secret"}}}"#.utf8),
+                                protocolVersions: [])
+        _ = await logged.handle(body: Data(#"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"fail"}}"#.utf8), protocolVersions: [])
+        let written = lines.all
+        #expect(written.count == 2)
+        #expect(written[0].hasPrefix("tools/call echo by external: ok in ") && written[0].hasSuffix(" ms"))
+        #expect(written[1].hasPrefix("tools/call fail by external: ") && !written[1].contains("ok in"))
+        #expect(!written.joined().contains("secret"))
     }
 
     @Test("tools/list and tools/call: results, tool errors, validation, unknown tools")
@@ -194,4 +209,11 @@ struct ServerTests {
         await server.stop()
         #expect(await server.state == .stopped)
     }
+}
+
+/// The lines a log closure got, from any thread.
+private final class LoggedLines: Sendable {
+    private let lines = Mutex<[String]>([])
+    var all: [String] { lines.withLock { $0 } }
+    func add(_ line: String) { lines.withLock { $0.append(line) } }
 }

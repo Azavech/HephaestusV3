@@ -34,6 +34,8 @@ final class AppData {
 
     let session: ProjectSession
     let directory = ProjectDirectory(projects: [], state: .loading)
+    /// The app's log (docs/data.md › App log), made once the data folder is known.
+    @ObservationIgnored private(set) var appLog = AppLog(url: nil)
     /// The project selected in Projects, which is one tab in the whole app; kept for the next launch, as V2 did. Held
     /// here rather than by the scene, so that a selection redraws the views that read it, not every window's root.
     var projectSelection: Project.ID? {
@@ -347,9 +349,18 @@ final class AppData {
     /// whole. Gives the title to the ticket while it still has its provisional title; a failure leaves the
     /// provisional title.
     private func titleUntitled(_ ticket: TicketLibrary.UntitledTicket) async {
-        guard let answer = try? await chats.run(.setTicketTitle, input: "",
-                                                attaching: [Self.link(ticket: ticket.id, in: ticket.projectID)]),
-              let title = TicketRules.title(fromAnswer: answer), let library = tickets.library else { return }
+        let answer: String
+        do {
+            answer = try await chats.run(.setTicketTitle, input: "", attaching: [Self.link(ticket: ticket.id, in: ticket.projectID)])
+        } catch {
+            appLog.write(.warning, "titles", "\(ticket.id): \(error)")
+            return
+        }
+        guard let title = TicketRules.title(fromAnswer: answer) else {
+            appLog.write(.warning, "titles", "\(ticket.id): the answer gives no title")
+            return
+        }
+        guard let library = tickets.library else { return }
         if (try? await library.setGeneratedTitle(title, of: ticket.id, replacing: ticket.provisionalTitle)) != nil {
             await tickets.refresh()
         }
@@ -390,10 +401,19 @@ final class AppData {
                 Set(session.snapshot.family(of: id).map(\.id))
             })
         }
-        let server = MCPServer(protocol: MCPProtocol(registry: registry, version: version, gate: gate), tokens: tokens)
+        let log = AppLog(url: session.dataFolder?.url.appendingPathComponent("Logs/engine.log"))
+        appLog = log
+        chats.appLog = log
+        let server = MCPServer(protocol: MCPProtocol(registry: registry, version: version, gate: gate, log: { log.write(.info, "mcp", $0) }),
+                               tokens: tokens)
         self.server = server
         Task { [weak self] in
             for await state in server.states {
+                switch state {
+                case .listening(let port): log.write(.info, "mcp", "listening on 127.0.0.1:\(port)")
+                case .failed(let message): log.write(.error, "mcp", "not listening: \(message)")
+                case .stopped: log.write(.info, "mcp", "stopped")
+                }
                 self?.mcpState = state
                 if case .failed(let message) = state {
                     self?.chats.mcpUnavailable = message

@@ -151,6 +151,8 @@ public final class ChatSession {
     /// The app's MCP tools, which a chat's Claude may call, and the server's port.
     @ObservationIgnored var toolNames: [String] = []
     @ObservationIgnored var port = SettingsFile.defaultMCPPort
+    /// The app's log, for the background Claude calls that fail (docs/data.md › App log).
+    @ObservationIgnored public var appLog = AppLog(url: nil)
     /// Why the app's MCP server isn't listening, its bind error; nil while it listens. A chat whose Claude starts
     /// meanwhile says so in its transcript, as V2's did.
     @ObservationIgnored public var mcpUnavailable: String?

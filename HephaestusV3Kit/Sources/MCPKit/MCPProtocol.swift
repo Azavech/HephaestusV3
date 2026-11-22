@@ -24,11 +24,15 @@ public struct MCPProtocol: Sendable {
     /// The app's version, in `serverInfo`.
     public let version: String
     public let gate: Gate?
+    /// Writes a line of the app's log for each tool call: its tool, its caller, its outcome and how long it took;
+    /// never its arguments or its result.
+    public let log: (@Sendable (String) -> Void)?
 
-    public init(registry: ToolRegistry, version: String, gate: Gate? = nil) {
+    public init(registry: ToolRegistry, version: String, gate: Gate? = nil, log: (@Sendable (String) -> Void)? = nil) {
         self.registry = registry
         self.version = version
         self.gate = gate
+        self.log = log
     }
 
     /// Handles a body; `protocolVersions` are the values of its `MCP-Protocol-Version` header fields, `caller` who
@@ -93,15 +97,24 @@ public struct MCPProtocol: Sendable {
 
     /// A tool call's result: one text item, the result's JSON, or the error's message with `isError`.
     func call(_ operation: ToolOperation, arguments: JSONValue) async -> JSONValue {
+        let clock = ContinuousClock()
+        let start = clock.now
+        func logged(_ outcome: String) {
+            let milliseconds = Int(((clock.now - start) / .milliseconds(1)).rounded())
+            log?("tools/call \(operation.name) by \(Self.describe(MCPCaller.current)): \(outcome) in \(milliseconds) ms")
+        }
         if let violation = operation.inputSchema.violation(of: arguments) {
+            logged(ToolError.Code.invalid.rawValue)
             return Self.toolResult(violation, isError: true)
         }
         let arguments = arguments.removingNullMembers
         if let refusal = await gate?(MCPCaller.current, operation, arguments) {
+            logged(refusal.code.rawValue)
             return Self.toolResult(refusal.message, isError: true)
         }
         do throws(ToolError) {
             let value = try await operation.run(arguments)
+            logged("ok")
             // An image result (`type` image, `data` in base 64, `mimeType`) is an image content item.
             if let object = value.objectValue, object["type"]?.stringValue == "image", let data = object["data"]?.stringValue,
                let mimeType = object["mimeType"]?.stringValue {
@@ -109,7 +122,17 @@ public struct MCPProtocol: Sendable {
             }
             return Self.toolResult(value.text, isError: false)
         } catch {
+            logged(error.code.rawValue)
             return Self.toolResult(error.message, isError: true)
+        }
+    }
+
+    /// Who made a call, as the log names it: the chat's id, `external`, or `skill <name>`.
+    static func describe(_ caller: MCPCaller) -> String {
+        switch caller {
+        case .external: "external"
+        case .chat(let id): id
+        case .internalSkill(let name): "skill \(name)"
         }
     }
 
