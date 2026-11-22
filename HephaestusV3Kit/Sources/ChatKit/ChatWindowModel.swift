@@ -89,6 +89,21 @@ final class ChatWindowModel {
         let focused = conversations.first { $0.id == focus }
         opensSelection = focused != nil
         selection = focused?.id ?? conversations.first?.id
+        // A tab restored at launch is made before the chats are read: it selects once they come.
+        if conversations.isEmpty { pendingFocus = focus ?? "" }
+    }
+
+    /// The focus a model made before the chats were read waits with: "" for the latest chat; nil once used.
+    private var pendingFocus: String?
+
+    /// The chats came after the model was made: the focus, else the latest chat, is selected, unless the user
+    /// picked a chat or started one meanwhile.
+    func chatsArrived() {
+        guard let focus = pendingFocus, !hasNoConversations else { return }
+        pendingFocus = nil
+        guard selection == nil, draft.isEmpty, files.isEmpty else { return }
+        let conversations = store.conversations(of: Set(family.map(\.id)))
+        selection = (conversations.first { $0.id == focus } ?? conversations.first)?.id
     }
 
     /// The project and its sub projects, in tree order.

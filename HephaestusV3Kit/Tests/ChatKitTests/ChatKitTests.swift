@@ -329,6 +329,17 @@ struct ChatWindowModelTests {
         #expect(model.sections.flatMap(\.conversations).contains { $0.id == "ord-old" })
     }
 
+    @Test("A Chat tab made before the chats are read selects its focus, else the latest chat, once they come")
+    func chatsArriveLater() throws {
+        let empty = SampleChatStore(conversations: [], engine: MockChatEngine())
+        let model = ChatWindowModel(project: orders, focus: "late", store: empty)
+        #expect(model.selection == nil)
+        _ = try empty.send("First", to: nil, project: orders, origin: nil, attachments: [], files: [], reader: reader())
+        model.selection = nil
+        model.chatsArrived()
+        #expect(model.selection == empty.conversations(of: ["ORD"]).first?.id)
+    }
+
     @Test("A message to a chat deleted elsewhere while shown starts a new chat instead of failing")
     func sendAfterDeletion() async throws {
         let model = ChatWindowModel(project: orders, focus: "ord-old", store: store)

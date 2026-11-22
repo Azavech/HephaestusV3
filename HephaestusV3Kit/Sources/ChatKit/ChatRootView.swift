@@ -307,6 +307,7 @@ public struct ChatRootView: View {
                     prompt: Text("Find in Conversation", bundle: #bundle))
         .onSubmit(of: .search) { model.findIndex += 1 }
         .onChange(of: model.findQuery) { model.findIndex = 0 }
+        .onChange(of: model.hasNoConversations) { model.chatsArrived() }
         .fileImporter(isPresented: $choosesFiles, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             if case .success(let urls) = result { model.addFiles(urls) }
         }
