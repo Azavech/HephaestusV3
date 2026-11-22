@@ -179,13 +179,9 @@ public final class LiveBuildStore: BuildStore {
                 update(project) { $0.releases = .loaded(list) }
             } else {
                 let list = try await builds.runs().map { Self.run($0) }
-                update(project) { repository in
-                    repository.runs = .loaded(list)
-                    // A run whose status changed is read again with its details.
-                    for run in list where repository.details[run.id].map({ $0.status != run.status || $0.duration != run.duration && run.status == .running }) == true {
-                        repository.details[run.id] = nil
-                    }
-                }
+                // The details stay until a new read replaces them (`BuildsModel.loadSelectedRun`): dropping them
+                // emptied a running run's jobs and log pane at every read.
+                update(project) { $0.runs = .loaded(list) }
             }
         } catch {
             update(project) { releases ? ($0.releases = .failed(error.description)) : ($0.runs = .failed(error.description)) }
@@ -218,7 +214,6 @@ public final class LiveBuildStore: BuildStore {
         } catch {
             throw BuildActionError(message: error.description)
         }
-        update(project) { $0.details[run.id] = nil }
         await refresh(project, releases: false)
     }
 
@@ -228,7 +223,6 @@ public final class LiveBuildStore: BuildStore {
         } catch {
             throw BuildActionError(message: error.description)
         }
-        update(project) { $0.details[run.id] = nil }
         await refresh(project, releases: false)
     }
 

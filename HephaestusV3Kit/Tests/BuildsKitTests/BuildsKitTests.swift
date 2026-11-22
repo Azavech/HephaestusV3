@@ -8,6 +8,8 @@ final class MockBuildStore: BuildStore {
     var runs: [WorkflowRun]
     var releases: [Release]
     var listedRuns: BuildLoad<[WorkflowRun]>?
+    /// Runs read with their jobs, which `run(_:of:)` gives before the list's.
+    var details: [WorkflowRun.ID: WorkflowRun] = [:]
     private(set) var actions: [String] = []
 
     init(runs: [WorkflowRun] = [], releases: [Release] = [], listedRuns: BuildLoad<[WorkflowRun]>? = nil) {
@@ -18,7 +20,7 @@ final class MockBuildStore: BuildStore {
 
     func runs(of project: Project) -> BuildLoad<[WorkflowRun]> { listedRuns ?? .loaded(runs) }
     func releases(of project: Project) -> BuildLoad<[Release]> { .loaded(releases) }
-    func run(_ id: WorkflowRun.ID, of project: Project) -> WorkflowRun? { runs.first { $0.id == id } }
+    func run(_ id: WorkflowRun.ID, of project: Project) -> WorkflowRun? { details[id] ?? runs.first { $0.id == id } }
     func log(of step: StepReference, in run: WorkflowRun, of project: Project) -> BuildLoad<[String]> { .loaded(["\(step.job) \(step.step)"]) }
     func refresh(_ project: Project, releases: Bool) async { actions.append(releases ? "refresh releases" : "refresh runs") }
     func load(run id: WorkflowRun.ID, of project: Project) async { actions.append("load \(id)") }
@@ -165,6 +167,22 @@ struct ModelTests {
         #expect(model.selectedStep == StepReference(job: "Image", step: "Push image"))
         let jobs = try #require(model.currentRun?.jobs)
         #expect(jobs.filter { $0.opensInitially(showing: model.selectedStep) }.map(\.name) == ["Image"])
+    }
+
+    @Test("A run whose status in the list differs from its details is read again, the old jobs kept meanwhile; so is one after Cancel Run")
+    func staleDetails() async {
+        let store = MockBuildStore(runs: [run(2, .failure), run(1)])
+        store.details[2] = run(2, .running)
+        let model = BuildsModel(project: project, focus: "2", store: store)
+        await model.loadSelectedRun()
+        #expect(store.actions.contains("load 2"))
+        store.details[2] = run(2, .failure)
+        let before = store.actions.count
+        await model.loadSelectedRun()
+        #expect(!store.actions[before...].contains("load 2"), "A finished run that agrees with the list isn't read again")
+        await model.cancel()
+        #expect(store.actions.suffix(2).first == "cancel 2" && store.actions.contains { $0 == "load 2" })
+        #expect(model.currentRun?.jobs.isEmpty == false)
     }
 
     @Test("Picking the same run again keeps the step the user picked")

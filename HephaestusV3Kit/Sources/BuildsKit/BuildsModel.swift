@@ -175,10 +175,14 @@ final class BuildsModel {
         if mode == .runs { await loadSelectedRun() }
     }
 
-    /// Reads the selected run's jobs when they aren't, then shows its first step to read, and that step's log.
+    /// Reads the selected run's jobs when they aren't, when it runs or waits, or when the list's status differs
+    /// from theirs; the jobs read before stay on screen until the new ones come. Then shows its first step to
+    /// read, and that step's log.
     func loadSelectedRun() async {
         guard let id = runID else { return }
-        if currentRun?.hasJobs != true || currentRun?.status == .running || currentRun?.status == .queued {
+        let listed = runs.first { $0.id == id }
+        if currentRun?.hasJobs != true || currentRun?.status == .running || currentRun?.status == .queued
+            || listed.map({ $0.status != currentRun?.status }) == true {
             await store.load(run: id, of: project)
         }
         if selectedStep == nil || currentStep == nil { selectedStep = currentRun?.defaultStep }
@@ -200,6 +204,7 @@ final class BuildsModel {
         defer { isActing = false }
         do throws(BuildActionError) {
             try await store.rerun(run, failedOnly: failedOnly, of: project)
+            await loadSelectedRun()
         } catch {
             failure = (failedOnly ? String(localized: "Re-run Failed Jobs failed", bundle: #bundle)
                                   : String(localized: "Re-run All Jobs failed", bundle: #bundle), error.message)
@@ -213,6 +218,7 @@ final class BuildsModel {
         defer { isActing = false }
         do throws(BuildActionError) {
             try await store.cancel(run, of: project)
+            await loadSelectedRun()
         } catch {
             failure = (String(localized: "Cancel Run failed", bundle: #bundle), error.message)
         }

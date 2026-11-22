@@ -58,8 +58,10 @@ settings shows its parent's. In the samples, ToolsKit, inside the Tools app's re
 releases of Tools. A focus that names a run not read yet is applied once the list is read.
 
 **Refresh.** The shown mode's list is read when the window shows it, then every 30 s while it does, counted from
-the end of the last read; then the selected run's jobs (again while it runs) and its step's log. **Refresh**
-reads at once; a re-run or a cancel reads again once done. The lists keep what they show while a read runs.
+the end of the last read; then the selected run's jobs (again while it runs or waits, and when the list's status
+differs from theirs) and its step's log. **Refresh** reads at once; a re-run or a cancel reads the list and the
+run's jobs again once done. The lists, the jobs and the log keep what they show while a read runs: they change
+only when the new read replaces them.
 
 The window opens at 1180 × 720 pt.
 
