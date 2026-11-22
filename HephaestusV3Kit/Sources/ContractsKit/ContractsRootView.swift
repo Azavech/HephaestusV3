@@ -119,8 +119,8 @@ public struct ContractsRootView: View {
                 .navigationSplitViewColumnWidth(min: 260, ideal: 300, max: 380)
         } detail: {
             if let operation = model.selectedOperation {
-                OperationView(draft: draft(for: operation), environment: model.environment, response: model.response(for: operation),
-                              failure: model.failures[operation.id])
+                OperationView(draft: draft(for: operation), environment: model.environment, missingSetting: model.missingSetting,
+                              projectID: model.project.id, response: model.response(for: operation), failure: model.failures[operation.id])
                     .id(operation.id)
             } else {
                 ContentUnavailableView {
@@ -154,8 +154,8 @@ public struct ContractsRootView: View {
                 }
         } page: { id in
             if let operation = model.operation(id) {
-                OperationView(draft: draft(for: operation), environment: model.environment, response: model.response(for: operation),
-                              failure: model.failures[operation.id])
+                OperationView(draft: draft(for: operation), environment: model.environment, missingSetting: model.missingSetting,
+                              projectID: model.project.id, response: model.response(for: operation), failure: model.failures[operation.id])
                     .toolbar {
                         operationToolbar
                     }

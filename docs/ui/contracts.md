@@ -76,7 +76,7 @@ sits at the right edge.
 | **Filter Operations** | Search field | — | — | Filters the operations. See [Operations list](#operations-list). | iPhone, on the list, in the toolbar's middle. On a Mac and an iPad it sits at the top of the operations column. |
 | **Environment** | Pull-down menu, labeled with the environment's name | — | — | Picks the environment the request goes to: one of the project's environments, or of the project it takes its settings from (see [Projects](projects.md)). Help: "Environment the requests go to". Absent when the project has no environments. | Mac, iPad; iPhone on an operation's page |
 | **Credentials and Headers** | Button | `key` | — | Opens the sheet of the contract's credentials and the headers added to every request (see [Credentials and headers](#credentials-and-headers)). Help: "Credentials and headers of the requests". Absent for the samples. | Mac, iPad; iPhone on an operation's page |
-| **Send** | Prominent button | `paperplane.fill` | ⌘Return | Sends the request. Disabled when no operation is selected or the project has no environments. While a request is on its way it becomes **Cancel** (`xmark`, Escape, help "Stop the request", `contracts.cancel`), as V2's did: the request stops and Last Response keeps what it showed. A request gives up after 5 minutes in all. Help: "Send the request". | Mac, iPad; iPhone on an operation's page |
+| **Send** | Prominent button | `paperplane.fill` | ⌘Return | Sends the request. Disabled when no operation is selected, the project has no environments, or the environment has no URL. While a request is on its way it becomes **Cancel** (`xmark`, Escape, help "Stop the request", `contracts.cancel`), as V2's did: the request stops and Last Response keeps what it showed. A request gives up after 5 minutes in all. Help: "Send the request". | Mac, iPad; iPhone on an operation's page |
 | **Chat** | `ChatPanelToolbarItem` | `sidebar.right` | ⌃⌘C | Shows or hides the chat panel. Always the last item (the user's choice). See [Chat panel button](components.md#chat-panel-button). | Mac, iPad, iPhone |
 
 In the **No Contract** state the toolbar holds only the project switcher and the chat panel's button.
@@ -238,7 +238,8 @@ The values typed in the request stay while the operation is selected, as before;
 | **No Contract** | The window shows a project without a contract, as the **No Contract** preview does. | The empty state "No Contract" (`curlybraces.square`): "This project has no OpenAPI contract yet." It fills the window on the `canvas` color. The toolbar keeps the project switcher and the chat panel's button. |
 | **No Operation Selected** | No operation is selected, on a Mac or an iPad. | In the operation pane: "No Operation Selected" (`curlybraces.square`): "Pick an operation to read it and call it." **Send** is disabled. |
 | **No Results** | The filter matches no operation, as the **No Results** preview does. | Under the contract's header, the empty state "No Matching Operations" (`magnifyingglass`): "No path, summary or operation id contains “invoice”." The operation pane keeps the selected operation. |
-| **No Environments** | The project has no environments. | No **Environment** menu and no URL. **Send** is disabled. Every sample service has environments; the **No Environments** preview shows Orders without them. |
+| **No Environments** | The project has no environments. | No **Environment** menu. In place of the URL, "Add an environment in Project Settings." (`exclamationmark.triangle.fill`) with **Project Settings…**, which opens the project's settings, as V2's request form had. **Send** is disabled. Every sample service has environments; the **No Environments** preview shows Orders without them. |
+| **No URL** | The environment picked has no URL. | In place of the URL, "Set the URL of *Staging* in Project Settings." with **Project Settings…**. **Send** is disabled, as in V2. |
 | **Error Response** | The last call answered 400 or above, as `checkoutOrder`'s 504 in the **Error Response** preview. | The status badge with `xmark.circle.fill`, in `warning` or `danger`. |
 | **Empty Response** | The last call returned no body, as `cancelOrder`'s 204 in the **Empty Response** preview. | "No body.", and the size "Zero kB". |
 
@@ -294,6 +295,7 @@ See [Chat](chat.md).
 | Operation header | `contracts.operation.header` | A group: the method, the path with the header trait, the summary, the `operationId`. |
 | Request box | `contracts.request` | A group. Its title, "Request", has the header trait. |
 | URL | `contracts.request.url` | "URL", with the URL as its value. Selectable text. |
+| What the settings lack | `contracts.missingSetting`, its button `contracts.projectSettings` | The sentence, then **Project Settings…**. |
 | Parameter name | — | The name and, for a required parameter, "Required", read as one element. |
 | Parameter field | `contracts.parameter.<in>.<name>`, such as `contracts.parameter.path.id` | Labeled with the parameter's name. Hint: where it goes and its type, such as "path parameter, string". |
 | Body editor | `contracts.request.body` | "Body". The visible heading is hidden from VoiceOver, which reads it as the editor's label. |

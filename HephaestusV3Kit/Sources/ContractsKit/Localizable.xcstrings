@@ -48,6 +48,9 @@
     "Add Header" : {
 
     },
+    "Add an environment in Project Settings." : {
+
+    },
     "Added to every request of this contract. Kept on this Mac, with the credentials." : {
 
     },
@@ -145,6 +148,9 @@
 
     },
     "Pick an operation to read it and call it." : {
+
+    },
+    "Project Settings…" : {
 
     },
     "Read operation %@" : {

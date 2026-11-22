@@ -338,13 +338,24 @@ struct RequestTests {
         #expect(model.draft(for: other).body == "{ \"name\": \"pen\" }")
     }
 
-    @Test("Send needs an operation and an environment")
+    @Test("Send needs an operation and an environment with a URL; what the settings lack says so, as V2's did")
     func canSend() {
         #expect(makeModel().canSend)
-        #expect(makeModel(environments: []).canSend == false)
+        #expect(makeModel().missingSetting == nil)
+        let none = makeModel(environments: [])
+        #expect(none.canSend == false)
+        #expect(none.missingSetting == "Add an environment in Project Settings.")
         let model = makeModel()
         model.selection = nil
         #expect(model.canSend == false)
+        var withoutURL = project(environments: [])
+        withoutURL = Project(id: withoutURL.id, name: withoutURL.name, kind: withoutURL.kind, tint: withoutURL.tint, symbol: withoutURL.symbol,
+                             path: withoutURL.path, repository: withoutURL.repository,
+                             environments: [DeploymentEnvironment(name: "Staging", cluster: "c", namespace: "n", url: " ", health: .healthy)],
+                             activity: withoutURL.activity)
+        let noURL = ContractsModel(project: withoutURL, focus: nil, store: store)
+        #expect(noURL.canSend == false)
+        #expect(noURL.missingSetting == "Set the URL of Staging in Project Settings.")
     }
 }
 

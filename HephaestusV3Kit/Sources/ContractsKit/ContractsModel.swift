@@ -170,9 +170,19 @@ final class ContractsModel {
         self.draft = draft
     }
 
-    /// An operation is selected, there is an environment to send it to, and no request is on its way.
+    /// An operation is selected, there is an environment with a URL to send it to, and no request is on its way.
     var canSend: Bool {
-        selectedOperation != nil && environment != nil && !isSending
+        selectedOperation != nil && missingSetting == nil && !isSending
+    }
+
+    /// What the project's settings lack for a request to be sent, as V2 said it: no environment, or the
+    /// environment's URL. Nil when nothing is missing.
+    var missingSetting: String? {
+        guard let environment else { return String(localized: "Add an environment in Project Settings.", bundle: #bundle) }
+        guard let url = environment.url, !url.trimmingCharacters(in: .whitespaces).isEmpty else {
+            return String(localized: "Set the URL of \(environment.name) in Project Settings.", bundle: #bundle)
+        }
+        return nil
     }
 
     /// Picks the environment requests go to; in the app it becomes the project's current one.

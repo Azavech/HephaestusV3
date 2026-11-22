@@ -13,12 +13,17 @@ struct OperationView: View {
     /// The request being written, which names its operation.
     @Binding var draft: RequestDraft
     let environment: DeploymentEnvironment?
+    /// What the project's settings lack to send the request, with **Project Settings…** beside it; nil when none.
+    var missingSetting: String? = nil
+    /// The project whose settings **Project Settings…** opens.
+    var projectID: Project.ID? = nil
     /// The answer of the operation's last call: the window's, else a sample's.
     var response: SampleResponse? = nil
     /// Why the last call got no answer.
     var failure: String? = nil
 
     @State private var fitsWide = false
+    @Environment(\.openRoute) private var openRoute
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var operation: Operation { draft.operation }
@@ -68,7 +73,21 @@ struct OperationView: View {
     private func request(fillsHeight: Bool) -> some View {
         GroupBox {
             VStack(alignment: .leading, spacing: 14) {
-                if let environment {
+                if let missingSetting {
+                    HStack(spacing: 8) {
+                        Label(missingSetting, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.textSecondary)
+                        Spacer(minLength: 8)
+                        if let projectID {
+                            Button(String(localized: "Project Settings…", bundle: #bundle)) {
+                                openRoute(.projectSettings(projectID))
+                            }
+                            .accessibilityIdentifier("contracts.projectSettings")
+                        }
+                    }
+                    .accessibilityIdentifier("contracts.missingSetting")
+                }
+                if let environment, missingSetting == nil {
                     // The request line as it will be sent: code, in the code font.
                     Text(verbatim: draft.url(on: environment))
                         .codeFont(.callout)
