@@ -401,6 +401,9 @@
     "Duration" : {
       "comment" : "An animation's duration, in seconds"
     },
+    "Edit" : {
+
+    },
     "Edit the project's files" : {
 
     },
@@ -564,6 +567,9 @@
     "Minimize" : {
       "comment" : "Folds the questions card into one line"
     },
+    "Mode" : {
+
+    },
     "Model" : {
 
     },
@@ -692,6 +698,9 @@
     "Operate virtual machines" : {
 
     },
+    "Other Front Matter" : {
+
+    },
     "Path" : {
       "comment" : "The Claude CLI's path"
     },
@@ -712,6 +721,9 @@
     },
     "Preset" : {
       "comment" : "The menu of SwiftUI's animation presets"
+    },
+    "Preview" : {
+
     },
     "Previous Match" : {
 
@@ -801,6 +813,9 @@
     },
     "Resume" : {
       "comment" : "Has Claude go on after an error"
+    },
+    "Reveal in Finder" : {
+
     },
     "Run %@" : {
       "comment" : "A run of Builds, as a chip names it"
@@ -894,6 +909,9 @@
     "Showed an image" : {
       "comment" : "Claude showed the user one image"
     },
+    "Shows the skill's SKILL.md in the Finder; its folder until it is saved." : {
+
+    },
     "Size" : {
       "comment" : "The label of the font card's size field"
     },
@@ -902,6 +920,9 @@
     },
     "Sound" : {
       "comment" : "The title of Claude's request to choose a sound"
+    },
+    "Split" : {
+
     },
     "Standing dynamic-workflow orchestration for this chat, at any effort level." : {
 

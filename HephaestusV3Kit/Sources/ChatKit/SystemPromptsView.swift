@@ -1,9 +1,11 @@
+import AppKit
 import AZDesign
 import ChatData
 import FileStorage
 import Observation
 import ProjectData
 import SwiftUI
+import TextViews
 import ToolsFoundation
 
 /// Where System Prompts reads and writes the internal skills' values: the data folder in the app, memory in
@@ -12,6 +14,8 @@ import ToolsFoundation
 protocol InternalSkillStore: AnyObject {
     func values(of skill: InternalSkill) -> InternalSkillValues
     func save(_ values: InternalSkillValues, of skill: InternalSkill) throws(StorageError)
+    /// The skill's `SKILL.md`; nil without a data folder.
+    func file(of skill: InternalSkill) -> URL?
 }
 
 /// The internal skills of the app's data folder (docs/data.md › Internal skills).
@@ -26,6 +30,10 @@ public final class LiveInternalSkillStore: InternalSkillStore {
 
     func values(of skill: InternalSkill) -> InternalSkillValues {
         folder?.readSkill(skill) ?? skill.defaults
+    }
+
+    func file(of skill: InternalSkill) -> URL? {
+        folder?.skillFile(of: skill)
     }
 
     func save(_ values: InternalSkillValues, of skill: InternalSkill) throws(StorageError) {
@@ -65,6 +73,11 @@ final class SampleInternalSkillStore: InternalSkillStore {
         saved[skill.name] ?? skill.defaults
     }
 
+    /// Where the app's data folder keeps it by default.
+    func file(of skill: InternalSkill) -> URL? {
+        URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support/HephaestusV3/skills/\(skill.name)/SKILL.md")
+    }
+
     func save(_ values: InternalSkillValues, of skill: InternalSkill) throws(StorageError) {
         if let failure { throw failure }
         saved[skill.name] = values
@@ -90,6 +103,13 @@ final class SystemPromptsModel {
     @ObservationIgnored private var pending: [String: Task<Void, Never>] = [:]
     /// How long after the last keystroke a skill's content is saved.
     @ObservationIgnored let saveDelay: Duration
+    /// How the content shows, as V2's skill editor: Edit, Preview or Split; kept while the tab lives.
+    var bodyMode: SkillBodyMode = .edit
+
+    /// The skill's `SKILL.md`, for the footer.
+    func file(of skill: InternalSkill) -> URL? {
+        store.file(of: skill)
+    }
 
     init(skills: [InternalSkill] = InternalSkill.all, store: any InternalSkillStore, saveDelay: Duration = .seconds(1)) {
         self.skills = skills
@@ -180,6 +200,11 @@ final class SystemPromptsModel {
     }
 }
 
+/// How a skill's content shows.
+enum SkillBodyMode: Hashable, CaseIterable {
+    case edit, preview, split
+}
+
 /// What a tab keeps of System Prompts while another tab is in front: its model, so that the selected skill and
 /// what is typed are still there when the tab comes back, as V2's window kept them. The app's window makes one per tab.
 @MainActor
@@ -248,7 +273,10 @@ public struct SystemPromptsView: View {
                     isSaved: model.isSaved(skill),
                     failure: model.failures[skill.name],
                     isDefault: model.isDefault(skill),
-                    restoreDefaults: { model.restoreDefaults(of: skill) }
+                    restoreDefaults: { model.restoreDefaults(of: skill) },
+                    mode: $model.bodyMode,
+                    otherLines: model.values(of: skill).otherLines,
+                    file: model.file(of: skill)
                 )
                 .id(skill.id)
             } else {
@@ -289,6 +317,10 @@ private struct SkillEditor: View {
     let failure: String?
     let isDefault: Bool
     let restoreDefaults: () -> Void
+    @Binding var mode: SkillBodyMode
+    /// The file's other front matter lines, kept as written.
+    let otherLines: [String]
+    let file: URL?
     @State private var confirmsRestore = false
 
     var body: some View {
@@ -311,28 +343,66 @@ private struct SkillEditor: View {
                     .foregroundStyle(.textSecondary)
             }
 
-            TextEditor(text: $content)
-                .font(.body.monospaced())
-                .scrollContentBackground(.hidden)
-                .padding(6)
-                .background(.surfaceSunken, in: .rect(corners: .concentric(minimum: .fixed(8)), isUniform: true))
-                .overlay(alignment: .topLeading) {
-                    if content.isEmpty {
-                        Text("Empty: Claude gets nothing from this skill.", bundle: #bundle)
-                            .font(.body.monospaced())
-                            .foregroundStyle(.textSecondary)
-                            .padding(.horizontal, 11)
-                            .padding(.vertical, 6)
-                            .allowsHitTesting(false)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityLabel(Text("Content", bundle: #bundle))
-                .accessibilityIdentifier("systemPrompts.content")
+            Picker(String(localized: "Mode", bundle: #bundle), selection: $mode) {
+                Text("Edit", bundle: #bundle).tag(SkillBodyMode.edit)
+                Text("Preview", bundle: #bundle).tag(SkillBodyMode.preview)
+                Text("Split", bundle: #bundle).tag(SkillBodyMode.split)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .accessibilityIdentifier("systemPrompts.mode")
 
-            HStack(alignment: .firstTextBaseline) {
-                status
+            HStack(spacing: 12) {
+                if mode != .preview { editor }
+                if mode != .edit {
+                    ScrollView {
+                        MarkdownView(content)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(8)
+                    }
+                    .background(.surface, in: .rect(corners: .concentric(minimum: .fixed(8)), isUniform: true))
+                    .accessibilityIdentifier("systemPrompts.preview")
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if !otherLines.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Other Front Matter", bundle: #bundle)
+                        .font(.callout)
+                        .foregroundStyle(.textSecondary)
+                    Text(verbatim: otherLines.joined(separator: "\n"))
+                        .font(.callout.monospaced())
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(8)
+                        .background(.surfaceSunken, in: .rect(cornerRadius: 6))
+                }
+                .accessibilityIdentifier("systemPrompts.otherFrontMatter")
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if let file {
+                    Text(verbatim: (file.path as NSString).abbreviatingWithTildeInPath)
+                        .font(.callout)
+                        .foregroundStyle(.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .textSelection(.enabled)
+                        .accessibilityIdentifier("systemPrompts.path")
+                    Button(String(localized: "Reveal in Finder", bundle: #bundle)) {
+                        let exists = FileManager.default.fileExists(atPath: file.path)
+                        let shown = exists ? file : file.deletingLastPathComponent().deletingLastPathComponent()
+                        NSWorkspace.shared.activateFileViewerSelecting([shown])
+                    }
+                    .buttonStyle(.link)
+                    .help(String(localized: "Shows the skill's SKILL.md in the Finder; its folder until it is saved.", bundle: #bundle))
+                    .accessibilityIdentifier("systemPrompts.reveal")
+                }
                 Spacer()
+                status
+                    .layoutPriority(1)
                 Button(String(localized: "Restore Default", bundle: #bundle)) {
                     confirmsRestore = true
                 }
@@ -352,6 +422,28 @@ private struct SkillEditor: View {
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(.canvas)
+    }
+
+    /// The content as text, which the user edits.
+    private var editor: some View {
+            TextEditor(text: $content)
+                .font(.body.monospaced())
+                .scrollContentBackground(.hidden)
+                .padding(6)
+                .background(.surfaceSunken, in: .rect(corners: .concentric(minimum: .fixed(8)), isUniform: true))
+                .overlay(alignment: .topLeading) {
+                    if content.isEmpty {
+                        Text("Empty: Claude gets nothing from this skill.", bundle: #bundle)
+                            .font(.body.monospaced())
+                            .foregroundStyle(.textSecondary)
+                            .padding(.horizontal, 11)
+                            .padding(.vertical, 6)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityLabel(Text("Content", bundle: #bundle))
+                .accessibilityIdentifier("systemPrompts.content")
     }
 
     @ViewBuilder private var status: some View {

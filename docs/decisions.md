@@ -319,6 +319,7 @@ skills only, each with a name in Claude's skill format and a content, starting w
 | Does `set-ticket-title` have text of its own? | Yes, V3's own, as `notification-summary` and the implement skills: empty, untitled tickets got a title describing their state instead of their subject (HEPH-9). The user's text replaces it. | [UI › System Prompts › Internal skills](ui/system-prompts.md#internal-skills) |
 | How does a skill get its defaults back? | **Restore Default**, after a confirmation: a saved file replaces the defaults even when empty, so the page needs a way back (HEPH-9). | [UI › System Prompts › Saving](ui/system-prompts.md#saving) |
 | Which shortcut? | ⌥⌘,, beside Settings' ⌘, and Project Settings' ⇧⌘,. | [UI › System Prompts](ui/system-prompts.md) |
+| Does the editor have V2's modes, path and other front matter? | Yes (the user's request to bring over every V2 feature, 22 November 2026): Edit, Preview and Split, starting in Edit since the content is what the page is for; the `SKILL.md` path with Reveal in Finder; the other front matter lines, read-only. V2's Save, Revert and extra files stay out: V3 saves by itself and its internal skills have no files. | [UI › System Prompts › Anatomy](ui/system-prompts.md#anatomy) |
 | Which code owns it? | ChatData (the skills and their files) and ChatKit (the view), since the skills are what Claude is told. | [Architecture › ChatKit](architecture.md#chatkit) |
 
 ## Implement
