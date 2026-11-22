@@ -1,7 +1,9 @@
+import AppKit
 import AZDesign
 import CoreGraphics
 import Foundation
 import Observation
+import SwiftUI
 import Testing
 import ToolsFoundation
 @testable import DashboardsKit
@@ -99,6 +101,20 @@ private func noOverlap(_ widgets: [DashboardWidget]) -> Bool {
 
 @Suite("What the Dashboard shows")
 struct DashboardContentTests {
+    @Test("A tab's Dashboard takes the project as loaded now, not the one its kept model started with")
+    @MainActor func projectAsLoaded() async throws {
+        let model = DashboardModel(project: orders, store: SampleDashboardStore())
+        let payments = try #require(Project.sample("PAY"))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 400, height: 300), styleMask: [.borderless], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: DashboardRootView(model: model, project: payments) { _, _ in EmptyView() })
+        window.contentView?.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(model.project.id == "PAY")
+        window.contentView = nil
+        window.close()
+    }
+
     @Test("In the previews, a sample project with nothing saved shows its sample layout")
     func sampleLayout() {
         let model = DashboardModel(project: orders, store: SampleDashboardStore())

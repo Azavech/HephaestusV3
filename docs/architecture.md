@@ -1096,7 +1096,8 @@ Each tool kit has a public tab state that owns its model (`DashboardTabState(pro
 `TicketsTabState(project:focus:store:directory:)`, `ServiceMapTabState(project:focus:store:)`,
 `ContractsTabState(project:focus:store:)`, `BuildsTabState(project:focus:store:)`,
 `ChatTabState(project:focus:store:directory:)`, `MachinesTabState(focus:store:)`), and a root view
-`init(state:)` (`DashboardRootView(state:widgetContent:)`) that starts from that model. Only the selected tab
+`init(state:)` (`DashboardRootView(state:project:widgetContent:)`) that starts from that model; the Dashboard's
+also gets the project as loaded now, which its model takes (an environment chosen, Project Settings' changes). Only the selected tab
 is drawn: a tab that comes back gets its kept model, with its selection, filters and drafts; its views' own
 `@State` (scroll positions, open popovers) starts afresh. Projects and Project Settings start from the
 project data each time.

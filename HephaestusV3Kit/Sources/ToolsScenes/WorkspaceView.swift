@@ -310,7 +310,8 @@ private struct ToolTab: View {
         let directory = appData.directory
         switch tool {
         case .dashboard:
-            DashboardRootView(state: workspace.state(for: tab) { DashboardTabState(project: project, store: appData.dashboardStore) }) {
+            DashboardRootView(state: workspace.state(for: tab) { DashboardTabState(project: project, store: appData.dashboardStore) },
+                              project: project) {
                 DashboardWidgetView(widget: $0, context: $1)
             }
         case .tickets:

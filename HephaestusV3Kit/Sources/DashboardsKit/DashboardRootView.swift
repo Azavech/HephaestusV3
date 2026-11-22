@@ -71,15 +71,18 @@ public struct DashboardRootView<WidgetContent: View>: View {
         self.init(model: DashboardModel(project: project, store: store), widgetContent: widgetContent)
     }
 
-    /// The Dashboard a tab keeps, with `widgetContent` drawing each widget's content.
-    public init(state: DashboardTabState, @ViewBuilder widgetContent: @escaping (DashboardWidget, DashboardContext) -> WidgetContent) {
-        self.init(model: state.model, widgetContent: widgetContent)
+    /// The Dashboard a tab keeps, given `project` as it is loaded now, which its kept model takes: an
+    /// environment chosen, Project Settings' changes. `widgetContent` draws each widget's content.
+    public init(state: DashboardTabState, project: Project,
+                @ViewBuilder widgetContent: @escaping (DashboardWidget, DashboardContext) -> WidgetContent) {
+        self.init(model: state.model, project: project, widgetContent: widgetContent)
     }
 
-    /// The Dashboard of a model: for previews and tests.
-    init(model: DashboardModel, @ViewBuilder widgetContent: @escaping (DashboardWidget, DashboardContext) -> WidgetContent) {
+    /// The Dashboard of a model, on `project` or the model's own: for previews and tests.
+    init(model: DashboardModel, project: Project? = nil,
+         @ViewBuilder widgetContent: @escaping (DashboardWidget, DashboardContext) -> WidgetContent) {
         _model = State(initialValue: model)
-        project = model.project
+        self.project = project ?? model.project
         self.widgetContent = widgetContent
     }
 
