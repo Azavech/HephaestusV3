@@ -37,6 +37,22 @@ struct DebugToolsTests {
         }
     }
 
+    @Test("open_in_app's targets: a project's tool with its focus, the memories, and the refusals")
+    func targets() throws {
+        let session = ProjectSession(dataFolder: nil)
+        let tickets = TicketSession(projects: session, device: "Test")
+        #expect(try AppTools.route(of: ["kind": "memories"], session: session, tickets: tickets) == .memories(scope: nil))
+        #expect(throws: ToolError(.notFound, "No project ORD.")) {
+            _ = try AppTools.route(of: ["kind": "tool", "projectID": "ORD", "tool": "tickets"], session: session, tickets: tickets)
+        }
+        #expect(throws: ToolError(.notFound, "Chat C not found.")) {
+            _ = try AppTools.route(of: ["kind": "chat", "chatID": "C"], session: session, tickets: tickets)
+        }
+        #expect(throws: ToolError(.notFound, "No virtual machine V.")) {
+            _ = try AppTools.route(of: ["kind": "virtualMachine", "vmID": "V"], session: session, tickets: tickets)
+        }
+    }
+
     @Test("Listed only with the switch, after open_in_app")
     func registry() {
         let session = ProjectSession(dataFolder: nil)

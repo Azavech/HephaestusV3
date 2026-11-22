@@ -3332,15 +3332,19 @@ Input schema:
 - **Calls:** a route: `project` opens the Projects window with the project selected (`.project(id)`),
   `projectSettings` its Project Settings window (`.projectSettings(id)`), `ticket` and `bundle` the Tickets
   window of its project with it selected (`.tool(.tickets, project:, focus: <id>)`), `skill` the System Prompts tab
-  with the internal skill selected (`.systemPrompts(skill:)`, V2's `skill` target); an open window comes forward.
+  with the internal skill selected (`.systemPrompts(skill:)`, V2's `skill` target); and, as V2's other targets,
+  `chat` the chat in its own window (`.chatWindow(chat:)`), `tool` the project's tool with `focus` selected
+  (`.tool(<tool>, project:, focus:)`, V2's `section`), `virtualMachine` Virtual Machines with the machine selected
+  (`.machine(id)`), `memories` the Memories tab on the project, or on the global memories without `projectID`
+  (`.memories(scope:)`); an open window comes forward.
 - **Result:** `{}`.
-- **Errors:** an unknown project, ticket, bundle or internal skill (`notFound`, `No internal skill <name>.` for a skill); no window has appeared yet to open routes
+- **Errors:** an unknown project, ticket, bundle, internal skill, chat or virtual machine (`notFound`, `No internal skill <name>.` for a skill, `Chat <id> not found.`, `No virtual machine <id>.`); an unknown tool (`invalid`, `target.tool: unknown tool.`); no window has appeared yet to open routes
   (`unavailable`, `The app has no window to show it in.`).
 
 Description:
 
 ```text
-Opens an item in Hephaestus V3 for the user: a project in the Projects window, a project's settings window, a ticket or bundle in its project's Tickets window, or an internal skill in System Prompts.
+Opens an item in Hephaestus V3 for the user: a project in the Projects window, a project's settings window, a ticket or bundle in its project's Tickets window, an internal skill in System Prompts, a chat in its own window, a project's tool on an item, a virtual machine, or the memories of a project or the global ones.
 ```
 
 Input schema:
@@ -3351,10 +3355,18 @@ Input schema:
   "properties" : {
     "target" : {
       "additionalProperties" : false,
-      "description" : "The item to open. project and projectSettings take projectID, ticket takes ticketID, bundle takes bundleID, skill takes name.",
+      "description" : "The item to open. project and projectSettings take projectID, ticket takes ticketID, bundle takes bundleID, skill takes name, chat takes chatID, tool takes projectID, tool and optionally focus, virtualMachine takes vmID, memories takes projectID or none for the global memories.",
       "properties" : {
         "bundleID" : {
           "description" : "Bundle id, such as ORD-B2.",
+          "type" : "string"
+        },
+        "chatID" : {
+          "description" : "Chat id, as list_chats gives it.",
+          "type" : "string"
+        },
+        "focus" : {
+          "description" : "The item the tool selects, as a route's focus, such as ORD-12 in tickets.",
           "type" : "string"
         },
         "kind" : {
@@ -3364,7 +3376,11 @@ Input schema:
             "projectSettings",
             "ticket",
             "bundle",
-            "skill"
+            "skill",
+            "chat",
+            "tool",
+            "virtualMachine",
+            "memories"
           ],
           "type" : "string"
         },
@@ -3378,6 +3394,22 @@ Input schema:
         },
         "ticketID" : {
           "description" : "Ticket id, such as ORD-12.",
+          "type" : "string"
+        },
+        "tool" : {
+          "description" : "The tool to open for the project.",
+          "enum" : [
+            "dashboard",
+            "tickets",
+            "serviceMap",
+            "contracts",
+            "builds",
+            "chat"
+          ],
+          "type" : "string"
+        },
+        "vmID" : {
+          "description" : "Virtual machine id, as vm_list gives it.",
           "type" : "string"
         }
       },
@@ -3471,10 +3503,18 @@ Input schema:
   "properties" : {
     "target" : {
       "additionalProperties" : false,
-      "description" : "The item to open. project and projectSettings take projectID, ticket takes ticketID, bundle takes bundleID, skill takes name.",
+      "description" : "The item to open. project and projectSettings take projectID, ticket takes ticketID, bundle takes bundleID, skill takes name, chat takes chatID, tool takes projectID, tool and optionally focus, virtualMachine takes vmID, memories takes projectID or none for the global memories.",
       "properties" : {
         "bundleID" : {
           "description" : "Bundle id, such as ORD-B2.",
+          "type" : "string"
+        },
+        "chatID" : {
+          "description" : "Chat id, as list_chats gives it.",
+          "type" : "string"
+        },
+        "focus" : {
+          "description" : "The item the tool selects, as a route's focus, such as ORD-12 in tickets.",
           "type" : "string"
         },
         "kind" : {
@@ -3484,7 +3524,11 @@ Input schema:
             "projectSettings",
             "ticket",
             "bundle",
-            "skill"
+            "skill",
+            "chat",
+            "tool",
+            "virtualMachine",
+            "memories"
           ],
           "type" : "string"
         },
@@ -3498,6 +3542,22 @@ Input schema:
         },
         "ticketID" : {
           "description" : "Ticket id, such as ORD-12.",
+          "type" : "string"
+        },
+        "tool" : {
+          "description" : "The tool to open for the project.",
+          "enum" : [
+            "dashboard",
+            "tickets",
+            "serviceMap",
+            "contracts",
+            "builds",
+            "chat"
+          ],
+          "type" : "string"
+        },
+        "vmID" : {
+          "description" : "Virtual machine id, as vm_list gives it.",
           "type" : "string"
         }
       },

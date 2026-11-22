@@ -385,6 +385,7 @@ The app's tab items follow Bring All to Front, under macOS's names and shortcuts
 
 | Item                              | Shortcut | Enabled                                                                                     |
 |-----------------------------------|----------|---------------------------------------------------------------------------------------------|
+| Show Sidebar / Hide Sidebar       | ⌃⌘S      | While the key window's tab has a sidebar, as V2's (SwiftUI's `SidebarCommands`)             |
 | Show Chat Panel / Hide Chat Panel | ⌃⌘C      | While the window offers the panel: not in Chat's tab, nor with Settings ▸ Chat's switch off |
 
 **App menu:** **About Hephaestus V3** opens the [About window](updates.md#about-window), with the version and its

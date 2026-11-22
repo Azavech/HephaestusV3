@@ -62,6 +62,8 @@ public struct ToolsScenes: Scene {
         }
         .defaultSize(width: 1320, height: 840)
         .commands {
+            // View ▸ Show Sidebar / Hide Sidebar (⌃⌘S), as V2's, for the key window's split view.
+            SidebarCommands()
             SystemPromptsCommands()
             NewItemCommands()
             ToolCommands()

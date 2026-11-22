@@ -1,5 +1,7 @@
 import AppKit
+import ChatData
 import Foundation
+import MachineData
 import MCPKit
 import ProjectData
 import TicketData
@@ -18,8 +20,9 @@ enum DebugTools {
     /// How long `debug_click` waits after the mouse up, so the effects it starts are in its answer.
     static let clickSettle: Duration = .milliseconds(500)
 
-    static func operations(session: ProjectSession, tickets: TicketSession, open: @escaping @MainActor (Route) -> Bool) -> [ToolOperation] {
-        [screenshot(session: session), navigate(session: session, tickets: tickets, open: open), uiState(), click()]
+    static func operations(session: ProjectSession, tickets: TicketSession, chats: ChatSession? = nil, machines: MachineHost? = nil,
+                           open: @escaping @MainActor (Route) -> Bool) -> [ToolOperation] {
+        [screenshot(session: session), navigate(session: session, tickets: tickets, chats: chats, machines: machines, open: open), uiState(), click()]
     }
 
     // MARK: Tools
@@ -49,7 +52,8 @@ enum DebugTools {
         }
     }
 
-    static func navigate(session: ProjectSession, tickets: TicketSession, open: @escaping @MainActor (Route) -> Bool) -> ToolOperation {
+    static func navigate(session: ProjectSession, tickets: TicketSession, chats: ChatSession?, machines: MachineHost?,
+                         open: @escaping @MainActor (Route) -> Bool) -> ToolOperation {
         ToolOperation(
             name: "debug_navigate",
             description: "Debug: show a target in Hephaestus V3, as open_in_app does, and return the information of the window that shows it once it is updated.",
@@ -58,7 +62,7 @@ enum DebugTools {
             describe: { _ in ToolCallText(action: String(localized: "Opened a window of Hephaestus", bundle: #bundle)) }
         ) { @MainActor arguments throws(ToolError) in
             guard let target = arguments["target"] else { throw ToolError(.invalid, "target: required.") }
-            let route = try AppTools.route(of: target, session: session, tickets: tickets)
+            let route = try AppTools.route(of: target, session: session, tickets: tickets, chats: chats, machines: machines)
             guard open(route) else { throw ToolError(.unavailable, "The app has no window to show it in.") }
             // The window opens or comes forward, then draws its new state: at most 10 s.
             try? await Task.sleep(for: .milliseconds(300))
