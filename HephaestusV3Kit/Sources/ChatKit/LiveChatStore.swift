@@ -39,7 +39,19 @@ public final class LiveChatStore: ChatStore {
         return rows
     }
 
+    /// An agent's conversation, made again only when the chat's transcript, the agent's own items, the folder,
+    /// the running or the models changed: its view reads it at each redraw.
     func agentConversation(_ row: ChatAgentRow) -> ChatConversation {
+        let key = MadeAgentKey(revision: session.transcripts.revision(of: row.chatID), count: session.agentTranscripts[row.id]?.count ?? 0,
+                               root: session.root(ofChat: row.chatID), isRunning: row.state == .running, models: session.models)
+        if let found = madeAgents[row.id], found.key == key { return found.conversation }
+        let conversation = makeAgentConversation(row)
+        if madeAgents[row.id] == nil, madeAgents.count >= Self.keptMade { madeAgents.removeAll() }
+        madeAgents[row.id] = (key, conversation)
+        return conversation
+    }
+
+    private func makeAgentConversation(_ row: ChatAgentRow) -> ChatConversation {
         var conversation = ChatConversation(id: row.tag, projectID: session.chats[row.chatID]?.projectID ?? "", title: row.title, origin: nil,
                                             createdAt: Date(), turns: [])
         // A sub-agent's own items are its view's top level; those of agents it started stay steps of their calls.
@@ -131,6 +143,16 @@ public final class LiveChatStore: ChatStore {
     private var madeTurns: [String: MadeTurns] = [:]
     /// The chats kept made at most: past them, those kept are dropped, and made again when they show.
     private static let keptMade = 16
+    /// The agents' conversations made, by agent id, with what they were made from.
+    private var madeAgents: [String: (key: MadeAgentKey, conversation: ChatConversation)] = [:]
+
+    private struct MadeAgentKey: Equatable {
+        var revision: Int
+        var count: Int
+        var root: String?
+        var isRunning: Bool
+        var models: [ClaudeModel]
+    }
 
     /// The chat's turns and what else its transcript gives, made again only when the transcript, the folder, the
     /// running or the models changed. Observes the transcript, as reading it does.

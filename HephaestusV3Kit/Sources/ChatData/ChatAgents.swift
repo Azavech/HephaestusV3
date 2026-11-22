@@ -542,9 +542,10 @@ extension ChatSession {
             }
         }
         let uses = Set(result.compactMap { if case .toolUse(let use) = $0 { use.toolUseID } else { nil } })
+        let kept = Set(result.map(\.id))
         var withResults: [ChatItem] = []
         for item in items {
-            if result.contains(where: { $0.id == item.id }) {
+            if kept.contains(item.id) {
                 withResults.append(item)
             } else if case .toolResult(let end) = item, uses.contains(end.toolUseID) {
                 withResults.append(item)
