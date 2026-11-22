@@ -1959,7 +1959,8 @@ under `openapi/`.
 - **Parsing.** Yams reads the text, JSON included, keeping each mapping's order. The text can't be read when it
   isn't YAML or JSON (the parser's message), when its root isn't a mapping (`The root is not a mapping.`), or
   when it has no `openapi` value starting with `3` (`The root has no openapi value starting with 3.`; Swagger
-  2.0 included).
+  2.0 included). A merge key (`<<: *errors`) adds the members of the mappings it names that the mapping doesn't
+  set itself.
 - **Operations** follow `paths`, and in a path `get`, `put`, `post`, `delete`, `options`, `head`, `patch`,
   `trace`; a path item reached through `$ref` is resolved first. An operation's parameter replaces the path
   item's with the same `name` and `in`. Its key is `<METHOD> <path>`; the window names it by `operationId`, or

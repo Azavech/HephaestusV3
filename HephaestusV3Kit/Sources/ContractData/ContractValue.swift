@@ -39,7 +39,29 @@ public enum ContractValue: Sendable, Hashable {
         case .sequence(let sequence):
             self = .array(sequence.map(ContractValue.init))
         case .mapping(let mapping):
-            self = .object(mapping.map { Member($0.key.string ?? "", ContractValue($0.value)) })
+            var members: [Member] = []
+            var merged: [Member] = []
+            for (key, value) in mapping {
+                guard key.string == "<<" else {
+                    members.append(Member(key.string ?? "", ContractValue(value)))
+                    continue
+                }
+                // A YAML merge key (`<<: *errors`) adds the members of the merged mappings that aren't set, as V2 did.
+                let sources: [Node] = switch value {
+                case .mapping: [value]
+                case .sequence(let sequence): Array(sequence)
+                default: []
+                }
+                for source in sources {
+                    if case .object(let sourceMembers) = ContractValue(source) {
+                        merged.append(contentsOf: sourceMembers)
+                    }
+                }
+            }
+            for member in merged where !members.contains(where: { $0.key == member.key }) {
+                members.append(member)
+            }
+            self = .object(members)
         case .alias:
             self = .null
         }

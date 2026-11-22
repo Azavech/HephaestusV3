@@ -127,7 +127,9 @@ public struct OpenAPIOperation: Sendable, Hashable, Identifiable {
         // An operation's parameter replaces the path item's with the same name and place.
         var merged: [OpenAPIParameter] = []
         for raw in sharedParameters + (value["parameters"]?.array ?? []) {
-            guard let parameter = OpenAPIParameter(resolver.resolve(raw, in: file).0, resolver: resolver, file: file) else { continue }
+            // The parameter's own refs, such as its schema's, are read in the file it was found in.
+            let (value, parameterFile) = resolver.resolve(raw, in: file)
+            guard let parameter = OpenAPIParameter(value, resolver: resolver, file: parameterFile) else { continue }
             merged.removeAll { $0.name == parameter.name && $0.location == parameter.location }
             merged.append(parameter)
         }

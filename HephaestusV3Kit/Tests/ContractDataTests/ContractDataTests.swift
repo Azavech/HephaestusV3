@@ -110,6 +110,38 @@ struct ContractTests {
             """, "readOnly and refs outside the folder are left out; allOf objects merge")
     }
 
+    @Test("A parameter from another file reads its schema's refs in that file; YAML merge keys add their members")
+    func parameterFileAndMergeKeys() throws {
+        let contract = """
+            openapi: 3.0.3
+            info: {title: Lists, version: '1'}
+            x-errors: &errors
+              '400': {description: Bad request}
+              '500': {description: Failed}
+            paths:
+              /items:
+                get:
+                  operationId: listItems
+                  parameters: [{$ref: 'parameters.yaml#/Limit'}]
+                  responses:
+                    <<: *errors
+                    '200': {description: The items}
+                    '500': {description: Overloaded}
+            """
+        let parameters = """
+            Limit: {name: limit, in: query, schema: {$ref: '#/schemas/Limit'}}
+            schemas:
+              Limit: {type: integer, example: 20}
+            """
+        let folder = try ContractFolder(contract, files: ["openapi/parameters.yaml": parameters])
+        defer { folder.remove() }
+        let list = try #require(try folder.read().operation("listItems"))
+        let limit = try #require(list.parameters.first)
+        #expect(limit.name == "limit" && limit.type.contains("integer") && limit.example == "20")
+        #expect(list.responses.map(\.code).sorted() == ["200", "400", "500"])
+        #expect(list.responses.first { $0.code == "500" }?.description == "Overloaded", "A key that is set wins over the merged one")
+    }
+
     @Test("A file that isn't an OpenAPI 3 contract can't be read")
     func unreadable() throws {
         let swagger = try ContractFolder("swagger: '2.0'\ninfo: {title: Old}\n")
