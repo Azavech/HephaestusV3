@@ -26,6 +26,9 @@ public enum StreamOutput: Sendable, Hashable {
     case result(ResultItem)
     case compactionStarted
     case compactionEnded
+    /// `system/status`'s `permissionMode`: the mode the CLI is in after changing it itself (leaving Plan Only
+    /// after its card), in the CLI's words (`default` for Ask Every Time).
+    case permissionMode(String)
     /// `background_tasks_changed`: the ids of the background tasks still running (docs/data.md › Background work).
     case backgroundTasks([String])
     /// `task_notification`: a task ended, its result going to Claude.
@@ -143,15 +146,22 @@ public struct StreamMapper: Sendable {
             initialized = true
             return [.cliTurnOpened(first: first, mcpProblem: first ? Self.mcpProblem(line["mcp_servers"]) : nil)]
         case "status":
-            let status = line["status"]?.stringValue
-            if status == "compacting" {
-                guard !compacting else { return [] }
-                compacting = true
-                return [.compactionStarted]
+            var outputs: [StreamOutput] = []
+            if let mode = line["permissionMode"]?.stringValue {
+                outputs.append(.permissionMode(mode))
             }
-            guard compacting else { return [.ignored("system/status")] }
-            compacting = false
-            return [.compactionEnded]
+            if line["status"]?.stringValue == "compacting" {
+                if !compacting {
+                    compacting = true
+                    outputs.append(.compactionStarted)
+                }
+                return outputs
+            }
+            if compacting {
+                compacting = false
+                outputs.append(.compactionEnded)
+            }
+            return outputs.isEmpty ? [.ignored("system/status")] : outputs
         case "compact_boundary":
             guard let metadata = line["compact_metadata"], let trigger = metadata["trigger"]?.stringValue,
                   let tokens = metadata["pre_tokens"]?.intValue, tokens >= 0 else { return [.ignored("system/compact_boundary")] }

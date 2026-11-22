@@ -172,6 +172,16 @@ struct StreamMapperTests {
         #expect(StreamMapper.tokens(967_000) == "967K" && StreamMapper.tokens(999) == "999" && StreamMapper.tokens(1_200_000) == "1.2M")
     }
 
+    @Test("A status line's permissionMode is the CLI's mode, with or without a compaction")
+    func permissionModeStatus() {
+        var mapper = StreamMapper()
+        #expect(mapper.map(Data(#"{"type":"system","subtype":"status","permissionMode":"acceptEdits"}"#.utf8)) == [.permissionMode("acceptEdits")])
+        #expect(mapper.map(Data(#"{"type":"system","subtype":"status","status":"compacting","permissionMode":"default"}"#.utf8))
+            == [.permissionMode("default"), .compactionStarted])
+        #expect(mapper.map(Data(#"{"type":"system","subtype":"status","status":null}"#.utf8)) == [.compactionEnded])
+        #expect(mapper.map(Data(#"{"type":"system","subtype":"status","status":null}"#.utf8)) == [.ignored("system/status")])
+    }
+
     @Test("A result after Stop says so; another error says the CLI's reason")
     func results() {
         var mapper = StreamMapper()

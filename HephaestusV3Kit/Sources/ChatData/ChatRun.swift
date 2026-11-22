@@ -388,6 +388,8 @@ extension ChatSession {
                 askContextUsage(run)
             case .planUsage(let usage):
                 receive(planUsage: usage)
+            case .permissionMode(let mode):
+                followCLIPermissionMode(mode, in: chatID)
             case .ignored, .invalid:
                 break
             }
@@ -567,6 +569,12 @@ extension ChatSession {
             let suggestions = run.cliSuggestions.removeValue(forKey: requestID)
             run.connection.write(allow ? ClaudeInput.allow(requestID, input: input, permissions: decision == .allowAlways ? suggestions : nil)
                                        : ClaudeInput.deny(requestID, message: note))
+            if decision == .allowAlways {
+                // A suggestion that sets a mode changes the CLI's: the chat follows it, as V2's did.
+                for entry in suggestions?.arrayValue ?? [] where entry["type"]?.stringValue == "setMode" {
+                    if let mode = entry["mode"]?.stringValue { followCLIPermissionMode(mode, in: chatID) }
+                }
+            }
         } else if let continuation = approvals[chatID]?.removeValue(forKey: requestID) {
             continuation.resume(returning: allow ? .allowed : .refused)
         } else {
@@ -657,6 +665,15 @@ extension ChatSession {
     private func pendingItem(_ id: String, in chatID: String) -> ChatItem? {
         guard transcripts[chatID] == nil, let url = transcriptURL(chatID) else { return nil }
         return Transcript.replay((try? Data(contentsOf: url)) ?? Data()).first { $0.id == id }
+    }
+
+    /// The CLI changed its permission mode itself: the chat's setting follows, without telling the CLI back, so
+    /// the menus show it, the app's tools obey it and the next process starts in it (docs/data.md › Chat
+    /// settings). An unknown mode is ignored.
+    func followCLIPermissionMode(_ value: String, in chatID: String) {
+        guard let mode = value == "default" ? .manual : ChatPermissionMode(rawValue: value),
+              let chat = chats[chatID], chat.file.settings.permissionMode != mode.rawValue else { return }
+        change(chatID) { $0.settings.permissionMode = mode.rawValue }
     }
 
     // MARK: Settings

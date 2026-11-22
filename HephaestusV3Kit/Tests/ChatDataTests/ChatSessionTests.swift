@@ -311,6 +311,23 @@ struct ChatSessionTests {
         world.launcher.chats.first?.finish(.exited(0))
     }
 
+    @Test("The chat follows a mode the CLI takes itself, Ask Every Time for default, and tells the CLI nothing back")
+    func followsCLIMode() async throws {
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        let id = try await world.session.send("Plan it", references: [], to: nil, projectID: "ORD")
+        let cli = try #require(world.launcher.chats.first)
+        let written = cli.written.count
+        cli.feed(#"{"type":"system","subtype":"status","permissionMode":"acceptEdits"}"#)
+        try await world.until { world.session.chats[id]?.file.settings.permissionMode == "acceptEdits" }
+        cli.feed(#"{"type":"system","subtype":"status","permissionMode":"default"}"#)
+        try await world.until { world.session.chats[id]?.file.settings.permissionMode == "manual" }
+        cli.feed(#"{"type":"system","subtype":"status","permissionMode":"someday"}"#)
+        #expect(world.session.chats[id]?.file.settings.permissionMode == "manual")
+        #expect(cli.written.count == written, "Nothing is written back to the CLI")
+        cli.finish(.exited(0))
+    }
+
     @Test("The CLI's own request is answered on its stdin; Stop refuses what waits and interrupts")
     func cliRequestAndStop() async throws {
         let world = try await ChatWorld()
