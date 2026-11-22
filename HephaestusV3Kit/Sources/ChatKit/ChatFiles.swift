@@ -1,6 +1,7 @@
 import AppKit
 import ChatData
 import Foundation
+import ToolsFoundation
 import UniformTypeIdentifiers
 
 /// The files waiting to go with the next message, as V2's composer took them (docs/ui/chat.md › Attachments):
@@ -29,55 +30,21 @@ enum ChatFiles {
         }
     }
 
-    /// What a paste takes: the pasteboard's files, or its image's data as it holds it.
-    enum Paste: Equatable {
-        case files([URL])
-        case image(Data)
-    }
+    typealias Paste = PastedFiles.Paste
 
-    /// What the pasteboard gives, read at once, so that the key press is answered without waiting: its files, or its
-    /// image's data when it holds no text; nil otherwise (text pastes as text, even beside the picture Numbers,
-    /// Keynote or Word put with it, as in V2). The image is written by `write(image:now:)`, off the main actor.
+    /// What the pasteboard gives (`PastedFiles.take`).
     static func take(from pasteboard: NSPasteboard = .general) -> Paste? {
-        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty {
-            return .files(urls)
-        }
-        guard pasteboard.availableType(from: [.string]) == nil else { return nil }
-        if let data = pasteboard.data(forType: .png) ?? pasteboard.data(forType: .tiff) { return .image(data) }
-        return NSImage(pasteboard: pasteboard)?.tiffRepresentation.map(Paste.image)
+        PastedFiles.take(from: pasteboard)
     }
 
-    /// A pasted image as a PNG written to a temporary folder, named `Pasted Image <yyyy-MM-dd> at <HH.mm.ss>.png` in
-    /// local time, as Tickets names one; nil when it can't be read or written.
+    /// A pasted image as a PNG in a temporary folder (`PastedFiles.write`).
     nonisolated static func write(image data: Data, now: Date) -> URL? {
-        let png: Data
-        if data.starts(with: [0x89, 0x50, 0x4E, 0x47]) {
-            png = data
-        } else if let converted = NSBitmapImageRep(data: data)?.representation(using: .png, properties: [:]) {
-            png = converted
-        } else {
-            return nil
-        }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("HephaestusV3-Paste-\(UUID().uuidString)", isDirectory: true)
-        let file = folder.appendingPathComponent("Pasted Image \(formatter.string(from: now)).png")
-        do {
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try png.write(to: file)
-        } catch {
-            return nil
-        }
-        return file
+        PastedFiles.write(image: data, now: now)
     }
 
     /// Removes the temporary copies of pasted images once they are sent: the chat keeps its own.
     static func clean(_ files: [URL]) {
-        for file in files where file.lastPathComponent.hasPrefix("Pasted Image ")
-            && file.deletingLastPathComponent().lastPathComponent.hasPrefix("HephaestusV3-Paste-") {
-            try? FileManager.default.removeItem(at: file.deletingLastPathComponent())
-        }
+        PastedFiles.clean(files)
     }
 }
 

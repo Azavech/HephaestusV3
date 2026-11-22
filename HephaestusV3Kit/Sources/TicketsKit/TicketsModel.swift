@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 import TicketData
@@ -473,10 +474,29 @@ final class TicketsModel {
     /// Sends the comment; the field and its files empty once it is added, and keep it when it fails.
     func sendComment(on ticket: Ticket.ID) async {
         guard canComment(on: ticket) else { return }
-        if await perform(.addComment(ticket, text: commentDraft(for: ticket), files: files(for: ticket))) != nil {
+        let files = files(for: ticket)
+        if await perform(.addComment(ticket, text: commentDraft(for: ticket), files: files)) != nil {
             commentDrafts[ticket] = nil
             commentFiles[ticket] = nil
+            // The ticket keeps its own copies of pasted images.
+            PastedFiles.clean(files)
         }
+    }
+
+    /// ⌘V in a ticket's comment field, as V2's composer took it: the pasteboard's files, or its image as a PNG, go with
+    /// the next comment; false lets text paste as text.
+    func paste(into ticket: Ticket.ID, from pasteboard: NSPasteboard = .general) -> Bool {
+        guard let paste = PastedFiles.take(from: pasteboard) else { return false }
+        switch paste {
+        case .files(let urls):
+            attach(urls, to: ticket)
+        case .image(let data):
+            let now = Date()
+            Task {
+                if let file = await Task.detached(operation: { PastedFiles.write(image: data, now: now) }).value { attach([file], to: ticket) }
+            }
+        }
+        return true
     }
 
     func startEditingComment(_ event: TicketEvent, of ticket: Ticket.ID) {

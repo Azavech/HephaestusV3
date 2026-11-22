@@ -21,6 +21,7 @@ struct TicketDetailView: View {
 
     @State private var isWide = false
     @State private var isImporting = false
+    @FocusState private var commentFocused: Bool
     /// Where the files picked go: the ticket's own, or the next comment's.
     @State private var importsForComment = false
     @State private var preview: URL?
@@ -315,9 +316,16 @@ struct TicketDetailView: View {
                     }, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...6)
+                    .focused($commentFocused)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 7)
                     .background(.surfaceSunken, in: .capsule)
+                    .background {
+                        // ⌘V of files or an image attaches them, as V2's comment composer did; text pastes as text.
+                        if commentFocused {
+                            PasteWatcher { model.paste(into: ticket.id) }
+                        }
+                    }
                     .accessibilityIdentifier("ticket.comment")
                     Button(String(localized: "Comment", bundle: #bundle, comment: "The button that adds a comment")) {
                         Task { await model.sendComment(on: ticket.id) }

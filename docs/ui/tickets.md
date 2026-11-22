@@ -369,7 +369,9 @@ A bar pinned to the bottom of the ticket, under a divider, on the `canvas` backg
 on the sides and 12 pt above and below. In the two-column arrangement it spans the left column only.
 
 - **Attach Files** (`paperclip`, help "Attach Files to the Comment") opens a file panel; files dropped on the
-  composer join the comment too. They show as capsules above the field, each with a remove button.
+  composer join the comment too. They show as capsules above the field, each with a remove button. **⌘V** in the field, while the pasteboard holds
+  files, attaches them; while it holds an image without text, attaches it as a PNG named `Pasted Image <date> at
+  <time>.png`, as the chat's composer does and V2's did; text pastes as text.
 - **Comment field.** "Add a comment" as placeholder. A plain text field in a `surfaceSunken` capsule, with
   10 pt of padding on the sides and 7 pt above and below. It grows from one to six lines.
 - **One draft per ticket.** What is typed belongs to the ticket. Selecting another ticket shows that

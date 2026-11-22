@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftUI
 import Testing
@@ -474,6 +475,23 @@ struct TicketChangeTests {
         #expect(store.allBundles.first { $0.id == id }?.status == .done)
         await model.confirm(.deleteBundle(id))
         #expect(model.filter == .all)
+    }
+
+    @Test("⌘V in a comment attaches the pasteboard's files; text pastes as text")
+    func pasteIntoComment() throws {
+        let board = NSPasteboard(name: NSPasteboard.Name("HephaestusV3Tests-\(UUID().uuidString)"))
+        defer { board.releaseGlobally() }
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("TicketsPaste-\(UUID().uuidString).txt")
+        defer { try? FileManager.default.removeItem(at: file) }
+        try Data("x".utf8).write(to: file)
+        let orders = model("ORD")
+        board.clearContents()
+        board.writeObjects([file as NSURL])
+        #expect(orders.paste(into: "ORD-2", from: board))
+        #expect(orders.files(for: "ORD-2") == [file])
+        board.clearContents()
+        board.setString("text", forType: .string)
+        #expect(!orders.paste(into: "ORD-2", from: board))
     }
 
     @Test("New Bundle… from a sub project's ticket makes the bundle in that ticket's project")
