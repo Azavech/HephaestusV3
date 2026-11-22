@@ -439,6 +439,9 @@
     "Medium" : {
       "comment" : "A ticket's priority"
     },
+    "Mention Claude" : {
+      "comment" : "The completion of @Claude in a comment"
+    },
     "Mentioned In" : {
       "comment" : "The chats that mention a ticket"
     },

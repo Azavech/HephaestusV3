@@ -2,6 +2,7 @@ import AppKit
 import AZDesign
 import QuickLook
 import SwiftUI
+import TicketData
 import TextViews
 import ToolsFoundation
 import UniformTypeIdentifiers
@@ -22,6 +23,10 @@ struct TicketDetailView: View {
     @State private var isWide = false
     @State private var isImporting = false
     @FocusState private var commentFocused: Bool
+    /// The comment field's insertion point, for the completion of `@Claude`.
+    @State private var commentSelection: TextSelection?
+    /// The `@` (its UTF-16 offset) whose completion Escape closed.
+    @State private var dismissedMention: Int?
     /// Where the files picked go: the ticket's own, or the next comment's.
     @State private var importsForComment = false
     @State private var preview: URL?
@@ -284,6 +289,34 @@ struct TicketDetailView: View {
         }
     }
 
+    /// The comment field's insertion point (UTF-16 offset in the draft), while nothing is selected.
+    private var insertionPoint: Int? {
+        guard let commentSelection, case .selection(let range) = commentSelection.indices, range.isEmpty else { return nil }
+        let text = model.commentDraft(for: ticket.id)
+        // The selection may still be the last draft's, after another ticket was selected.
+        guard range.lowerBound >= text.startIndex, range.lowerBound <= text.endIndex else { return nil }
+        return range.lowerBound.utf16Offset(in: text)
+    }
+
+    /// The `@Claude` being typed in the focused comment field.
+    private var typedMention: Range<Int>? {
+        guard commentFocused, let insertionPoint else { return nil }
+        return CommentMentions.completion(in: model.commentDraft(for: ticket.id), at: insertionPoint)
+    }
+
+    /// The `@Claude` being typed, while its list shows: Escape closes it for that `@`.
+    private var mentionBeingTyped: Range<Int>? {
+        guard let typedMention, typedMention.lowerBound != dismissedMention else { return nil }
+        return typedMention
+    }
+
+    /// Replaces the `@` and its letters with `@Claude `, the insertion point after it.
+    private func complete(_ mention: Range<Int>) {
+        let completed = CommentMentions.complete(model.commentDraft(for: ticket.id), range: mention)
+        model.setCommentDraft(completed.text, for: ticket.id)
+        commentSelection = TextSelection(insertionPoint: String.Index(utf16Offset: completed.insertionPoint, in: completed.text))
+    }
+
     /// The field to add a comment, kept under the history, with the files waiting to go with it.
     private var composer: some View {
         VStack(spacing: 0) {
@@ -309,11 +342,12 @@ struct TicketDetailView: View {
                     .buttonStyle(.borderless)
                     .help(String(localized: "Attach Files to the Comment", bundle: #bundle))
                     .accessibilityIdentifier("ticket.comment.attach")
+                    let mention = mentionBeingTyped
                     TextField(String(localized: "Add a comment", bundle: #bundle), text: Binding {
                         model.commentDraft(for: ticket.id)
                     } set: {
                         model.setCommentDraft($0, for: ticket.id)
-                    }, axis: .vertical)
+                    }, selection: $commentSelection, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...6)
                     .focused($commentFocused)
@@ -325,6 +359,30 @@ struct TicketDetailView: View {
                         if commentFocused {
                             PasteWatcher { model.paste(into: ticket.id) }
                         }
+                        // Return and Tab complete the mention, Escape closes the list (docs/ui/tickets.md › Mentioning Claude).
+                        if let mention {
+                            KeyWatcher { key in
+                                switch key {
+                                case .return, .tab: complete(mention)
+                                case .escape: dismissedMention = mention.lowerBound
+                                }
+                                return true
+                            }
+                        }
+                    }
+                    .overlay(alignment: .topLeading) {
+                        if let mention {
+                            MentionSuggestion { complete(mention) }
+                                .alignmentGuide(.top) { $0[.bottom] + 4 }
+                        }
+                    }
+                    .onChange(of: ticket.id) {
+                        commentSelection = nil
+                        dismissedMention = nil
+                    }
+                    .onChange(of: typedMention?.lowerBound) { _, start in
+                        // Another `@`, or none, ends what Escape closed: a new `@` shows the list again.
+                        if start != dismissedMention { dismissedMention = nil }
                     }
                     .accessibilityIdentifier("ticket.comment")
                     Button(String(localized: "Comment", bundle: #bundle, comment: "The button that adds a comment")) {
@@ -405,15 +463,19 @@ private struct TicketSection<Accessory: View, Content: View>: View {
 struct TicketText: View {
     let text: String
     var projectID: Project.ID?
+    /// A comment's: its mentions of Claude in the accent color (docs/ui/tickets.md › Mentioning Claude).
+    var isComment = false
     @Environment(\.projectDirectory) private var directory
 
-    init(_ text: String, projectID: Project.ID? = nil) {
+    init(_ text: String, projectID: Project.ID? = nil, isComment: Bool = false) {
         self.text = text
         self.projectID = projectID
+        self.isComment = isComment
     }
 
     var body: some View {
-        MarkdownView(text, projects: Set(directory.projects.map(\.id)), root: directory.project(projectID)?.path)
+        MarkdownView(text, projects: Set(directory.projects.map(\.id)), root: directory.project(projectID)?.path,
+                     highlightsMentions: isComment)
     }
 }
 
@@ -819,7 +881,7 @@ private struct EventRow: View {
                         .foregroundStyle(.textSecondary)
                 }
                 if let comment = event.comment, !comment.isEmpty {
-                    TicketText(comment, projectID: projectID)
+                    TicketText(comment, projectID: projectID, isComment: true)
                         .lineSpacing(2)
                         .foregroundStyle(.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .leading)

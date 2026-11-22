@@ -391,6 +391,17 @@ backtick strings of the same length), fenced code blocks and indented code block
 `TicketData`). `@claude, why…`, `(@CLAUDE)` and `@Claude's` mention Claude; `@Claudette`, `name@Claude` and
 `` `@Claude` `` don't.
 
+- **Highlight.** In every comment, whoever wrote it, each mention outside a link shows in the `accent` color, in the
+  font of the text around it ([Text › Mentions of Claude](../text.md#mentions-of-claude)). It isn't a link. The
+  comment field and the comment editor show it as plain text.
+- **Completion.** In the comment field, typing `@` at the start of a word shows a list just above the field, at its
+  leading edge, holding one row, **Claude**, shown selected (`ticket.comment.mention`). It stays while the letters
+  typed after the `@` begin `Claude` in any letter case and the word ends at the insertion point; it closes when they
+  don't, when the insertion point leaves the word, or when the field loses the focus. Return, Tab or a click on the
+  row replaces the `@` and its letters with `@Claude ` and closes the list. Escape closes the list for that `@`;
+  another `@` shows it again. While the list is closed, the keys do what they do in the field. The comment editor
+  has no completion. As V2's.
+
 Only a new comment the user writes in the Tickets window starts an answer. Editing a comment never does, even when
 the edit adds a mention, and neither does a comment Claude adds, from a chat or as an answer, nor a ticket file
 changed by another program.

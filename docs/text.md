@@ -206,6 +206,14 @@ public enum MarkdownItemIDs {
 
 The class `md-id`, the scheme `hephaestus-id` and the word rule are Default chosen at design time. A click on an id link is handled by the view that shows it .
 
+### Mentions of Claude
+
+When the options have `highlightsMentions`, which a ticket's comments set ([UI › Tickets › Mentioning
+Claude](ui/tickets.md#mentioning-claude)), `@Claude` in any letter case, as a whole word (the `@` begins the text or
+follows a character that isn't a letter, a digit or `_`; `Claude` ends it or is followed by such a character), becomes
+`.mention`, found where ids are: in the text outside links, code spans and code blocks. The view draws it in the
+accent color, in the font around it; it is not a link (`MarkdownMentions`, as V2 drew mentions).
+
 ### Path resolution
 
 Images and links to project files resolve a reference R (without scheme, or a `file` URL) to a project path. Default chosen at design time.
@@ -274,6 +282,7 @@ public indirect enum MarkdownInline: Sendable, Equatable {
     case link(destination: String, title: String?, content: [MarkdownInline]) // accepted destinations only
     case image(source: MarkdownImageSource, alt: String, title: String?)
     case itemID(String, code: Bool)      // a ticket or bundle id of a project of the device; code: written as a code span
+    case mention(String)                 // `@Claude` in a comment, as written (Mentions of Claude)
     case softBreak
     case lineBreak
     // Markers (Markers), read when the options have `markers`:

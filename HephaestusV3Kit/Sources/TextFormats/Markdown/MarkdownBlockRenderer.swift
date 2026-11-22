@@ -168,7 +168,8 @@ struct MarkdownConverter {
             for piece in ExtendedAutolinks.pieces(in: text) {
                 switch piece {
                 case .text(let text):
-                    result.append(contentsOf: MarkdownItemIDs.inlines(in: text, projectIdentifiers: options.projectIdentifiers))
+                    let pieces = MarkdownItemIDs.inlines(in: text, projectIdentifiers: options.projectIdentifiers)
+                    result.append(contentsOf: options.highlightsMentions ? MarkdownMentions.inlines(pieces) : pieces)
                 case .link(let destination, let text):
                     result.append(contentsOf: link(destination: destination, title: nil, content: [.text(text)]))
                 }

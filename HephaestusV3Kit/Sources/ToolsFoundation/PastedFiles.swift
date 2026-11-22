@@ -116,4 +116,74 @@ public struct PasteWatcher: NSViewRepresentable {
         }
     }
 }
+
+/// Return, Tab and Escape pressed without modifiers in the window of the view, while it is in the window: `handle`
+/// answers whether it took the key, which then goes no further. A completion list over a text field uses it, as the
+/// field's editor would otherwise take these keys first.
+public struct KeyWatcher: NSViewRepresentable {
+    public enum Key: Sendable {
+        case `return`, tab, escape
+    }
+
+    let handle: (Key) -> Bool
+
+    public init(handle: @escaping (Key) -> Bool) {
+        self.handle = handle
+    }
+
+    public func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        context.coordinator.attach(to: view)
+        return view
+    }
+
+    public func updateNSView(_ view: NSView, context: Context) {
+        context.coordinator.handle = handle
+    }
+
+    public static func dismantleNSView(_ view: NSView, coordinator: Coordinator) {
+        coordinator.detach()
+    }
+
+    public func makeCoordinator() -> Coordinator {
+        Coordinator(handle: handle)
+    }
+
+    @MainActor public final class Coordinator {
+        var handle: (Key) -> Bool
+        private var monitor: Any?
+        private weak var view: NSView?
+
+        init(handle: @escaping (Key) -> Bool) {
+            self.handle = handle
+        }
+
+        func attach(to view: NSView) {
+            self.view = view
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty else { return event }
+                let key: Key? = switch event.keyCode {
+                case 36, 76: .return
+                case 48: .tab
+                case 53: .escape
+                default: nil
+                }
+                guard let key else { return event }
+                let windowNumber = event.windowNumber
+                let taken = MainActor.assumeIsolated { self?.takes(key, inWindow: windowNumber) ?? false }
+                return taken ? nil : event
+            }
+        }
+
+        func takes(_ key: Key, inWindow number: Int) -> Bool {
+            guard let window = view?.window, window.windowNumber == number else { return false }
+            return handle(key)
+        }
+
+        func detach() {
+            if let monitor { NSEvent.removeMonitor(monitor) }
+            monitor = nil
+        }
+    }
+}
 #endif

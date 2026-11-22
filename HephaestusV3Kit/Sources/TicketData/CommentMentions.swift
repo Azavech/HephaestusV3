@@ -24,6 +24,40 @@ public enum CommentMentions {
         return found
     }
 
+    /// The mention being typed at the insertion point `offset` (UTF-16), for the composer's completion: the range of
+    /// an `@` at the start of a word and the letters after it, up to the insertion point, while they begin `Claude` in
+    /// any letter case and the word ends there. Nil otherwise.
+    public static func completion(in text: String, at offset: Int) -> Range<Int>? {
+        guard offset >= 0, offset <= text.utf16.count else { return nil }
+        let cursor = String.Index(utf16Offset: offset, in: text)
+        if cursor < text.endIndex, isWordCharacter(text[cursor]) { return nil }
+        var start = cursor
+        var letters = 0
+        while start > text.startIndex, letters <= 6 {
+            let previous = text.index(before: start)
+            let character = text[previous]
+            if character == "@" {
+                let before = previous == text.startIndex ? nil : text[text.index(before: previous)]
+                guard !isWordCharacter(before), "claude".hasPrefix(text[start..<cursor].lowercased()) else { return nil }
+                return previous.utf16Offset(in: text)..<offset
+            }
+            guard character.isLetter else { return nil }
+            letters += 1
+            start = previous
+        }
+        return nil
+    }
+
+    /// `text` with the mention being typed in `range` (UTF-16) completed as `@Claude `, and the insertion point after it.
+    public static func complete(_ text: String, range: Range<Int>) -> (text: String, insertionPoint: Int) {
+        let utf16 = text.utf16
+        guard range.lowerBound >= 0, range.upperBound <= utf16.count else { return (text, range.upperBound) }
+        let lower = String.Index(utf16Offset: range.lowerBound, in: text)
+        let upper = String.Index(utf16Offset: range.upperBound, in: text)
+        let completed = text.replacingCharacters(in: lower..<upper, with: "@Claude ")
+        return (completed, range.lowerBound + 8)
+    }
+
     private static func isWordCharacter(_ character: Character?) -> Bool {
         guard let character else { return false }
         return character.isLetter || character.isNumber || character == "_"

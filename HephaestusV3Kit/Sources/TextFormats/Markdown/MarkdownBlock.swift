@@ -58,6 +58,7 @@ public indirect enum MarkdownInline: Sendable, Equatable {
     case link(destination: String, title: String?, content: [MarkdownInline]) // accepted destinations only
     case image(source: MarkdownImageSource, alt: String, title: String?)
     case itemID(String, code: Bool)      // a ticket or bundle id of a loaded project; code: written as a code span
+    case mention(String)                 // `@Claude` in a comment, as written (MarkdownMentions)
     case softBreak
     case lineBreak
     // Markers (docs/text.md › Markers), read when the options have `markers`:

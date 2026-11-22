@@ -510,4 +510,19 @@ struct CommentMentionTests {
             #expect(!CommentMentions.mentionsClaude(text), "\(text)")
         }
     }
+
+    @Test("The composer completes @, then the start of Claude, at the end of a word")
+    func completion() {
+        #expect(CommentMentions.completion(in: "Hi @", at: 4) == 3..<4)
+        #expect(CommentMentions.completion(in: "Hi @cl", at: 6) == 3..<6)
+        #expect(CommentMentions.completion(in: "@CLAUDE", at: 7) == 0..<7)
+        #expect(CommentMentions.completion(in: "Hi @cx", at: 6) == nil)
+        #expect(CommentMentions.completion(in: "name@cl", at: 7) == nil)
+        #expect(CommentMentions.completion(in: "Hi @cl there", at: 5) == nil)
+        #expect(CommentMentions.completion(in: "@claudes", at: 8) == nil)
+        #expect(CommentMentions.completion(in: "Hi @", at: 9) == nil)
+        let done = CommentMentions.complete("Hi @cl, why", range: 3..<6)
+        #expect(done.text == "Hi @Claude , why")
+        #expect(done.insertionPoint == 11)
+    }
 }

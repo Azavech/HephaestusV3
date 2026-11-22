@@ -16,10 +16,12 @@ public struct MarkdownView: View {
 
     /// `markdown` rendered with the identifiers of `projects` linked. With `keepsLineBreaks`, each line break is
     /// kept, as people type them in tickets; without, Markdown's own rules join a paragraph's lines. Relative
-    /// links open the files of the project at `root`.
-    public init(_ markdown: String, projects: Set<Project.ID> = [], root: String? = nil, keepsLineBreaks: Bool = true) {
+    /// links open the files of the project at `root`. With `highlightsMentions`, as a comment, `@Claude` shows in
+    /// the accent color.
+    public init(_ markdown: String, projects: Set<Project.ID> = [], root: String? = nil, keepsLineBreaks: Bool = true,
+                highlightsMentions: Bool = false) {
         options = MarkdownRenderOptions(projectRootPath: root, projectIdentifiers: projects, softBreaksAsLineBreaks: keepsLineBreaks,
-                                        markers: Self.markerOptions)
+                                        markers: Self.markerOptions, highlightsMentions: highlightsMentions)
         blocks = MarkdownBlockRenderer.render(markdown, options: options)
     }
 
@@ -288,6 +290,11 @@ enum MarkdownInlines {
             var piece = AttributedString(id)
             piece.link = URL(string: MarkdownItemIDs.href(for: id))
             if code { piece.font = .code(.body) }
+            return piece
+        case .mention(let text):
+            // In the accent color, in the font around it; not a link (docs/ui/tickets.md › Mentioning Claude).
+            var piece = AttributedString(text)
+            piece.foregroundColor = .accent
             return piece
         case .softBreak:
             return AttributedString(" ")

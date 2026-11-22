@@ -1,3 +1,4 @@
+import AZDesign
 import SwiftUI
 import ToolsFoundation
 
@@ -58,5 +59,29 @@ struct CommentAnswerRow: View {
         .font(.callout)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("ticket.comment.answer")
+    }
+}
+
+/// The completion list over the comment field while `@` and the start of `Claude` are typed (docs/ui/tickets.md ›
+/// Mentioning Claude): one row, `Claude`, shown selected. A click on it completes the mention.
+struct MentionSuggestion: View {
+    let complete: () -> Void
+
+    var body: some View {
+        Button(action: complete) {
+            Text(verbatim: "Claude")
+                .foregroundStyle(.white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .frame(minWidth: 120, alignment: .leading)
+                .background(.accent, in: .rect(cornerRadius: 5))
+                .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .padding(4)
+        .background(.surface, in: .rect(cornerRadius: 8))
+        .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
+        .accessibilityLabel(String(localized: "Mention Claude", bundle: #bundle, comment: "The completion of @Claude in a comment"))
+        .accessibilityIdentifier("ticket.comment.mention")
     }
 }

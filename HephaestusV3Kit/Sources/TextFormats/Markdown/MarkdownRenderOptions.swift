@@ -16,15 +16,20 @@ public struct MarkdownRenderOptions: Sendable {
     /// Reads the markers `![](sf:…)`, `![](color:…)`, `![](sound:…)`, `![](shortcut:…)`, `![](font:…)` and
     /// `![](animation:…)` (docs/text.md › Markers); nil leaves them images, refused as any other.
     public var markers: MarkdownMarkerOptions?
+    /// Finds the mentions of Claude in the text outside code and links (docs/ui/tickets.md › Mentioning Claude), as
+    /// a comment shows them.
+    public var highlightsMentions: Bool
 
     public init(baseDirectory: String = "", projectRootPath: String? = nil, stripFrontMatter: Bool = false,
-                projectIdentifiers: Set<String> = [], softBreaksAsLineBreaks: Bool = false, markers: MarkdownMarkerOptions? = nil) {
+                projectIdentifiers: Set<String> = [], softBreaksAsLineBreaks: Bool = false, markers: MarkdownMarkerOptions? = nil,
+                highlightsMentions: Bool = false) {
         self.baseDirectory = baseDirectory
         self.projectRootPath = projectRootPath
         self.stripFrontMatter = stripFrontMatter
         self.projectIdentifiers = projectIdentifiers
         self.softBreaksAsLineBreaks = softBreaksAsLineBreaks
         self.markers = markers
+        self.highlightsMentions = highlightsMentions
     }
 }
 
