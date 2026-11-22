@@ -267,14 +267,14 @@ public final class ChatSession {
     /// Waits for the CLI check, at most 20 s.
     func availableCLI() async throws(ChatError) -> String {
         if status.checking, let statusTask {
+            // The first of the check's end and 20 s: a task group would wait for both, the check's probe included.
             let deadline = Task { try? await Task.sleep(for: .seconds(20)) }
-            await withTaskGroup(of: Void.self) { group in
-                group.addTask { await statusTask.value }
-                group.addTask { await deadline.value }
-                await group.next()
-                group.cancelAll()
+            let check = Task {
+                await statusTask.value
+                deadline.cancel()
             }
-            deadline.cancel()
+            _ = await deadline.value
+            check.cancel()
         }
         if status.checking { throw .unavailable("The Claude CLI isn't checked yet. Try again in a moment.") }
         guard let path = status.path, status.isAvailable else {
