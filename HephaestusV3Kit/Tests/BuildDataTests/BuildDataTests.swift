@@ -151,3 +151,14 @@ struct GitHubBuildsTests {
         #expect(GitHubBuilds.pattern(forAsset: #"a\b*?[c].zip"#) == #"a\\b\*\?\[c].zip"#)
     }
 }
+
+@Suite("Step logs")
+struct StepLogTests {
+    @Test("A job whose log gh prints under UNKNOWN STEP gives its whole log for each of its steps")
+    func unknownStep() {
+        let steps = StepLogs.parse(Data("Test\tUNKNOWN STEP\t2026-11-07T21:27:01.1234567Z go test ./...\nTest\tUNKNOWN STEP\tok\n".utf8))
+        #expect(StepLogs.lines(of: "Run tests", in: steps) == ["go test ./...", "ok"])
+        #expect(StepLogs.lines(of: "Run tests", in: ["Run tests": ["own"], StepLogs.unknownStep: ["all"]]) == ["own"])
+        #expect(StepLogs.lines(of: "Run tests", in: [:]).isEmpty)
+    }
+}

@@ -153,6 +153,14 @@ public struct GitHubAsset: Sendable, Hashable, Decodable {
 
 /// The lines of a job's log, by step name, from `gh run view --log`: each line is `<job>\t<step>\t<time> <text>`.
 public enum StepLogs {
+    /// The step name gh prints for every line of a job whose log archive has no file per step: the job's whole log.
+    public static let unknownStep = "UNKNOWN STEP"
+
+    /// A step's lines: its own, else the job's whole log when gh printed it as `unknownStep`.
+    public static func lines(of step: String, in steps: [String: [String]]) -> [String] {
+        steps[step] ?? steps[unknownStep] ?? []
+    }
+
     public static func parse(_ output: Data) -> [String: [String]] {
         var steps: [String: [String]] = [:]
         // CR LF is one character in Swift: lines split on any line break.

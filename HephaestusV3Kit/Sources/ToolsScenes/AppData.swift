@@ -205,7 +205,8 @@ final class AppData {
         let downloads = (DataFolder.resolve()?.url ?? FileManager.default.temporaryDirectory).appendingPathComponent("Runtime/downloads", isDirectory: true)
         buildStore = LiveBuildStore(cli: {
             GitHubCLI(gh: session.tools.gh, environment: session.tools.environment, runner: SystemProcessRunner.shared)
-        }, temporary: downloads, toolsReady: { await session.waitForTools() })
+        }, temporary: downloads, toolsReady: { await session.waitForTools() },
+           page: { session.snapshot.project($0)?.resolved.githubPage })
         let host = MachineHost(dataFolder: DataFolder.resolve())
         machineHost = host
         machineStore = LiveMachineStore(host: host)

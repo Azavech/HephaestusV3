@@ -1845,7 +1845,10 @@ option and its value are one argument; a run's id and a tag come after `--`.
 - **Statuses**: `success` passed; `failure`, `timed_out`, `startup_failure` failed; `in_progress` running;
   `queued`, `requested`, `waiting`, `pending` queued; any other completed run cancelled.
 - **Logs**: each line of gh's output is `<job>\t<step>\t<time> <text>`; the time is dropped and the lines are kept
-  by step name. gh gives a job's log once the job has completed.
+  by step name. gh gives a job's log once the job has completed. A job whose log archive has no file per step comes as `UNKNOWN STEP`
+  (`StepLogs.unknownStep`): every step of that job then shows the job's whole log, in the window and in
+  `get_run_log`. The project's GitHub page is read from its settings at each read (`LiveBuildStore`'s `page`), so a
+  page added or changed in Project Settings applies to an open Builds tab.
 - **Releases**: GitHub's REST answer gives each release's `tag_name`, `name`, `body` (the notes), `draft`,
   `prerelease`, `created_at`, `published_at` and `assets` (`name`, `size`); drafts are left out; the release
   `gh release list` marks `isLatest` is the latest.

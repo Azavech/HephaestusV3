@@ -129,7 +129,7 @@ private struct BuildToolSet {
             let steps = job.steps.filter { step == nil || $0.name == step }
             guard !steps.isEmpty else { throw ToolError(.notFound, "Step \(step ?? "") not found in job \(jobName).") }
             return .array(steps.map { step in
-                let lines = logs[step.name] ?? []
+                let lines = StepLogs.lines(of: step.name, in: logs)
                 return ["step": .string(step.name), "lines": .array(lines.suffix(2000).map(JSONValue.string)),
                         "truncated": .bool(lines.count > 2000)]
             })

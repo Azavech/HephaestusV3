@@ -1,3 +1,4 @@
+import ExternalTools
 import Foundation
 import Testing
 import ToolsFoundation
@@ -428,4 +429,19 @@ import BuildData
 private struct GitHubRunForTests: Decodable {
     let run: GitHubRun
     init(from decoder: any Decoder) throws { run = try GitHubRun(from: decoder) }
+}
+
+@Suite("The store's repository")
+@MainActor
+struct BuildRepositoryTests {
+    @Test("The GitHub page is read from the project's settings as they are now, not from the project a tab kept")
+    func pageNow() throws {
+        var page: String?
+        let store = LiveBuildStore(cli: { GitHubCLI(gh: nil, environment: [:], runner: SystemProcessRunner.shared) },
+                                   temporary: FileManager.default.temporaryDirectory, page: { _ in page })
+        let project = try #require(Project.samples.first { $0.githubPage == nil })
+        #expect(store.repository(of: project) == nil)
+        page = "https://github.com/example/orders"
+        #expect(store.repository(of: project)?.description == "example/orders")
+    }
 }

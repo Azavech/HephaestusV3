@@ -118,11 +118,15 @@ public final class LiveBuildStore: BuildStore {
     @ObservationIgnored private var refreshing: Set<String> = []
     /// Returns once gh can be looked for: the projects' session's first lookup of the tools.
     @ObservationIgnored private let toolsReady: @MainActor () async -> Void
+    /// A project's GitHub page as its settings say now, by id: a tab keeps the project it opened with.
+    @ObservationIgnored private let page: @MainActor (Project.ID) -> String?
 
     public init(cli: @escaping @MainActor () -> GitHubCLI, temporary: URL,
                 downloads: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0],
-                toolsReady: @escaping @MainActor () async -> Void = {}) {
+                toolsReady: @escaping @MainActor () async -> Void = {},
+                page: @escaping @MainActor (Project.ID) -> String? = { _ in nil }) {
         self.cli = cli
+        self.page = page
         self.toolsReady = toolsReady
         self.temporary = temporary
         self.downloads = downloads
@@ -130,7 +134,7 @@ public final class LiveBuildStore: BuildStore {
 
     /// The project's repository, from its GitHub page.
     func repository(of project: Project) -> GitHubRepository? {
-        project.githubPage.flatMap(GitHubRepository.init(page:))
+        (page(project.id) ?? project.githubPage).flatMap(GitHubRepository.init(page:))
     }
 
     private func builds(_ project: Project) throws(BuildError) -> GitHubBuilds {
@@ -162,7 +166,7 @@ public final class LiveBuildStore: BuildStore {
         switch repositories[key(project)]?.logs[job.jobID] ?? .loading {
         case .loading: return .loading
         case .failed(let message): return .failed(message)
-        case .loaded(let steps): return .loaded(steps[step.step] ?? [])
+        case .loaded(let steps): return .loaded(StepLogs.lines(of: step.step, in: steps))
         }
     }
 
