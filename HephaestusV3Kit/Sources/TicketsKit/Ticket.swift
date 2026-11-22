@@ -126,6 +126,8 @@ struct Ticket: Identifiable, Hashable, Sendable {
 
     /// The tickets it depends on that aren't done: it is blocked while there are any.
     var isBlocked = false
+    /// The tickets it depends on that aren't done, in ascending number: what the Blocked mark names.
+    var blockedBy: [Ticket.ID] = []
 }
 
 /// The status of a bundle, separate from its tickets'.

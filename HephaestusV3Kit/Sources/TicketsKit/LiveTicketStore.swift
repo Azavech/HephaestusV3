@@ -135,13 +135,15 @@ public final class LiveTicketStore: TicketStore {
             TicketLink(id: "\(link.kind.rawValue)-\(link.ticketID)", kind: link.kind == .blocks ? .blocks : .related,
                        title: title(of: link.ticketID), target: link.ticketID)
         }
-        let blocked = file.links.contains { $0.kind == .dependsOn && others[$0.ticketID].map { $0.status != .done } == true }
+        let blockers = file.links.filter { $0.kind == .dependsOn && others[$0.ticketID].map { $0.status != .done } == true }
+            .map(\.ticketID).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        let blocked = !blockers.isEmpty
         return Ticket(
             id: file.id, projectID: loaded.projectID, title: file.title, details: file.description, status: status(file.status),
             priority: file.priority.map(priority), labels: file.labels,
             reporter: file.createdBy == .claude ? TicketWords.claude : TicketWords.you,
             createdAt: file.created, updatedAt: file.updated, links: links, events: events(of: file),
-            attachments: file.attachments.map(attachment), isBlocked: blocked
+            attachments: file.attachments.map(attachment), isBlocked: blocked, blockedBy: blockers
         )
     }
 

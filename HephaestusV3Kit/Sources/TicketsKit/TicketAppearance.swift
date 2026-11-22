@@ -260,3 +260,12 @@ extension TicketEvent.Kind {
         }
     }
 }
+
+extension TicketWords {
+    /// The Blocked mark's help: the tickets it waits for, as V2 named them (`Blocked by HEPH-15, HEPH-16`).
+    static func blockedHelp(_ ticket: Ticket) -> String {
+        guard !ticket.blockedBy.isEmpty else { return String(localized: "It depends on a ticket that isn't done.", bundle: #bundle) }
+        return String(localized: "Blocked by \(ticket.blockedBy.joined(separator: ", "))", bundle: #bundle,
+                      comment: "The Blocked mark's help: the ids of the tickets it depends on that aren't done")
+    }
+}

@@ -99,6 +99,9 @@
     "Blocked" : {
       "comment" : "A ticket that depends on a ticket that isn't done"
     },
+    "Blocked by %@" : {
+      "comment" : "The Blocked mark's help: the ids of the tickets it depends on that aren't done"
+    },
     "Blocks" : {
       "comment" : "The kind of a link between tickets: the other ticket depends on this one"
     },

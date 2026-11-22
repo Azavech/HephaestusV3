@@ -315,6 +315,13 @@ private struct TicketSidebar: View {
                 }
             }
         }
+        // ⌘⌫ (Edit ▸ Delete) on a selected bundle asks as Delete Bundle… does, as V2's bundle list did; on the
+        // other rows, which are filters, it does nothing.
+        .onDeleteCommand {
+            if case .bundle(let id)? = model.filter {
+                model.confirmation = .deleteBundle(id)
+            }
+        }
     }
 
     private var statusSection: some View {

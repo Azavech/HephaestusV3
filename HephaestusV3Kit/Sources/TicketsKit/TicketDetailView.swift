@@ -159,7 +159,7 @@ struct TicketDetailView: View {
                 if ticket.isBlocked {
                     Label(TicketWords.blocked, systemImage: "hand.raised")
                         .labelStyle(.badge(.danger))
-                        .help(String(localized: "It depends on a ticket that isn't done.", bundle: #bundle))
+                        .help(TicketWords.blockedHelp(ticket))
                         .accessibilityIdentifier("ticket.blocked")
                 }
             }

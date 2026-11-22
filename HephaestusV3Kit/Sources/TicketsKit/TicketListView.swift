@@ -192,6 +192,7 @@ struct TicketRow: View {
                 if ticket.isBlocked {
                     Label(TicketWords.blocked, systemImage: "hand.raised")
                         .labelStyle(.badge(.danger))
+                        .help(TicketWords.blockedHelp(ticket))
                 }
             }
         }
