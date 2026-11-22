@@ -2014,8 +2014,10 @@ another as text.
    redirects followed. An environment with `allowInvalidCertificates` uses a session of its own that accepts
    any server certificate. The duration runs from the start to the last byte.
 
-The answer: its status, its headers (`<name>: <value>`, sorted), its body (pretty JSON when it is JSON, else the
-text; `Binary body (<size>)` otherwise). A request without answer gives the error's description.
+The answer: its status, its headers (`<name>: <value>`, sorted), its body (pretty JSON, in its keys' order, when it
+is a JSON object or array of at most 1 MB, else the text as received; `Binary body (<size>)` otherwise). The text is
+made off the main actor, for the window and for `api_call`, as V2's was. A request without answer gives the error's
+description.
 
 ### Stored values
 

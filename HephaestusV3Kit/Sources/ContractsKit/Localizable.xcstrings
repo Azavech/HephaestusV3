@@ -96,6 +96,9 @@
         }
       }
     },
+    "Copy Body" : {
+      "comment" : "Copies a response's whole body"
+    },
     "Credentials and Headers" : {
 
     },
@@ -188,6 +191,17 @@
     },
     "Show an example request for %@" : {
 
+    },
+    "Shows the first %@ of %@." : {
+      "comment" : "Under a response's body that is too large to show whole",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Shows the first %1$@ of %2$@."
+          }
+        }
+      }
     },
     "Status %@" : {
       "comment" : "VoiceOver label of a response's HTTP status, such as: Status 504."

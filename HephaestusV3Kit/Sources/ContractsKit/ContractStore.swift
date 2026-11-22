@@ -155,7 +155,8 @@ public final class LiveContractStore: ContractStore {
         }
         let response = try await call(document, operation, values: values(for: draft, project: project), name: environment.name,
                                       base: environment.url, allowsInvalidCertificates: environment.allowsInvalidCertificates)
-        let sample = Self.sample(response)
+        // The body's text is made off the main actor: a large answer takes time to read.
+        let sample = await Task.detached { Self.sample(response) }.value
         responses[Self.responseKey(project.id, draft.operation.key)] = sample
         return sample
     }
@@ -234,7 +235,7 @@ public final class LiveContractStore: ContractStore {
 
     private static func responseKey(_ projectID: String, _ key: String) -> String { "\(projectID) \(key)" }
 
-    static func sample(_ response: ContractResponse) -> SampleResponse {
+    nonisolated static func sample(_ response: ContractResponse) -> SampleResponse {
         let body = response.text ?? String(localized: "Binary body (\(response.body.count.formatted(.byteCount(style: .file))))", bundle: #bundle)
         return SampleResponse(status: response.status, duration: .milliseconds(response.durationMs), bytes: response.body.count, body: body)
     }

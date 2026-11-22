@@ -1,3 +1,4 @@
+import AppKit
 import AZDesign
 import AZDesignCode
 import SwiftUI
@@ -313,8 +314,9 @@ private struct ResponseView: View {
                     .foregroundStyle(.textSecondary)
                     .accessibilityIdentifier("contracts.response.body")
             } else {
+                let shown = response.shownBody
                 ScrollView([.vertical, .horizontal]) {
-                    Text(verbatim: response.body)
+                    Text(verbatim: shown.text)
                         .codeFont(.callout)
                         .foregroundStyle(.textPrimary)
                         .textSelection(.enabled)
@@ -327,6 +329,21 @@ private struct ResponseView: View {
                 .fixedSize(horizontal: false, vertical: !fillsHeight)
                 .background(.surfaceSunken, in: .rect(corners: .concentric(minimum: .fixed(6)), isUniform: true))
                 .accessibilityIdentifier("contracts.response.body")
+                if shown.isCut {
+                    HStack(spacing: 8) {
+                        Text("Shows the first \(SampleResponse.shownLimit.formatted(.byteCount(style: .file))) of \(response.body.utf8.count.formatted(.byteCount(style: .file))).",
+                             bundle: #bundle, comment: "Under a response's body that is too large to show whole")
+                            .font(.callout)
+                            .foregroundStyle(.textSecondary)
+                        Spacer(minLength: 8)
+                        Button(String(localized: "Copy Body", bundle: #bundle, comment: "Copies a response's whole body")) {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(response.body, forType: .string)
+                        }
+                        .accessibilityIdentifier("contracts.response.copy")
+                    }
+                    .accessibilityIdentifier("contracts.response.cut")
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: fillsHeight ? .infinity : nil, alignment: .topLeading)

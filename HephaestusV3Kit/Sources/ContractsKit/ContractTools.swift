@@ -118,8 +118,12 @@ public enum ContractTools {
             } catch {
                 throw ToolError(.unavailable, "The request failed: \(error.message)")
             }
-            var body = response.text ?? "Binary body (\(response.body.count) bytes)"
-            if body.count > 100_000 { body = String(body.prefix(100_000)) + "… [truncated \(body.count - 100_000) characters]" }
+            // Off the main actor, as the window's Send: a large answer takes time to read.
+            let body = await Task.detached { () -> String in
+                let text = response.text ?? "Binary body (\(response.body.count) bytes)"
+                let count = text.count
+                return count > 100_000 ? String(text.prefix(100_000)) + "… [truncated \(count - 100_000) characters]" : text
+            }.value
             return ["status": .int(response.status), "headers": .array(response.headers.map(JSONValue.string)), "body": .string(body),
                     "durationMs": .int(response.durationMs)]
         }

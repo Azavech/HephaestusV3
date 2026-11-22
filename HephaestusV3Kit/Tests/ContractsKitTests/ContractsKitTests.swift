@@ -361,6 +361,17 @@ struct RequestTests {
 
 @Suite("Responses")
 struct ResponseTests {
+    @Test("Last Response lays out at most the first 100 KB of a body, cut at a line's end")
+    func shownBody() {
+        let small = SampleResponse(status: 200, duration: .zero, bytes: 2, body: "{}")
+        #expect(small.shownBody == ("{}", false))
+        let line = String(repeating: "x", count: 99) + "\n"
+        let large = SampleResponse(status: 200, duration: .zero, bytes: 0, body: String(repeating: line, count: 5_000))
+        let shown = large.shownBody
+        #expect(shown.isCut && shown.text.utf8.count <= SampleResponse.shownLimit && shown.text.utf8.count > SampleResponse.shownLimit - 2_000)
+        #expect(!shown.text.hasSuffix("\n") && shown.text.hasSuffix("x"), "Cut at a line's end")
+    }
+
     @Test("Durations read in milliseconds below a second, in seconds with one decimal from a second", arguments: [
         (2, "2 ms"), (84, "84 ms"), (999, "999 ms"), (1_000, "1.0 sec"), (4_210, "4.2 sec"),
     ])

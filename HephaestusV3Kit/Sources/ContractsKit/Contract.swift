@@ -104,6 +104,20 @@ nonisolated struct SampleResponse: Hashable, Sendable {
     /// 400 and above.
     var isError: Bool { status >= 400 }
 
+    /// The most of the body Last Response lays out, in UTF-8 bytes: one text view of megabytes would hold the window
+    /// for seconds.
+    static let shownLimit = 100_000
+
+    /// What Last Response shows: the body, or its first `shownLimit` bytes, cut at a line's end when one is near.
+    var shownBody: (text: String, isCut: Bool) {
+        guard body.utf8.count > Self.shownLimit else { return (body, false) }
+        var prefix = body.utf8.prefix(Self.shownLimit)
+        if let newline = prefix.lastIndex(of: UInt8(ascii: "\n")), prefix.distance(from: newline, to: prefix.endIndex) < 2_000 {
+            prefix = prefix[..<newline]
+        }
+        return (String(decoding: prefix, as: UTF8.self), true)
+    }
+
     /// How the duration reads: in milliseconds below a second ("84 ms"), in seconds with one decimal
     /// from a second ("4.2 sec"), in the locale's words.
     var durationStyle: Duration.UnitsFormatStyle {

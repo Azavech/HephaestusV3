@@ -133,14 +133,19 @@ public struct ContractResponse: Sendable, Hashable {
         self.durationMs = durationMs
     }
 
-    /// The body as text: pretty JSON when it is JSON, else UTF-8 as received; nil for a binary body.
+    /// A JSON body larger than this is shown as received: pretty-printing it would cost more than it helps.
+    public static let prettyPrintLimit = 1_000_000
+
+    /// The body as text: pretty JSON, in its keys' order, when it is a JSON object or array of at most
+    /// `prettyPrintLimit` bytes, else UTF-8 as received; nil for a binary body. JSON is checked first, with Foundation's
+    /// parser, so a text that isn't JSON never goes through the YAML reader. Read it off the main actor: a large
+    /// body takes time.
     public var text: String? {
         guard let text = String(data: body, encoding: .utf8) else { return nil }
-        if let value = try? ContractValue.parse(text), value.members != nil || value.array != nil,
-           (try? JSONSerialization.jsonObject(with: body, options: [.fragmentsAllowed])) != nil {
-            return value.json()
-        }
-        return text
+        guard body.count <= Self.prettyPrintLimit,
+              (try? JSONSerialization.jsonObject(with: body, options: [.fragmentsAllowed])) != nil,
+              let value = try? ContractValue.parse(text), value.members != nil || value.array != nil else { return text }
+        return value.json()
     }
 }
 

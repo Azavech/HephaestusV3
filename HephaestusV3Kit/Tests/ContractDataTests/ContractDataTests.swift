@@ -142,6 +142,16 @@ struct ContractTests {
         #expect(list.responses.first { $0.code == "500" }?.description == "Overloaded", "A key that is set wins over the merged one")
     }
 
+    @Test("A response's text: JSON pretty-printed up to 1 MB, larger JSON and other text as received, binary none")
+    func responseText() {
+        func response(_ data: Data) -> ContractResponse { ContractResponse(status: 200, headers: [], body: data, durationMs: 1) }
+        #expect(response(Data(#"{"b":1,"a":[true,null]}"#.utf8)).text?.contains("\n") == true, "Pretty-printed")
+        #expect(response(Data("name,count\npen,2".utf8)).text == "name,count\npen,2")
+        let large = "[" + Array(repeating: "1", count: 600_000).joined(separator: ",") + "]"
+        #expect(response(Data(large.utf8)).text == large, "Over the limit: as received")
+        #expect(response(Data([0xFF, 0xFE, 0x00])).text == nil)
+    }
+
     @Test("A file that isn't an OpenAPI 3 contract can't be read")
     func unreadable() throws {
         let swagger = try ContractFolder("swagger: '2.0'\ninfo: {title: Old}\n")

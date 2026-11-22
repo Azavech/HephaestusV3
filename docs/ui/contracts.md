@@ -176,7 +176,9 @@ A box labeled **Last Response** (`arrow.down.circle`).
   At an accessibility text size the three stand one under the other.
 - **Body** in the code font (Fira Code) at `callout` size, selectable, on the `surfaceSunken` color. It
   scrolls both ways and starts at its top-left corner. In the wide arrangement it fills the box. In the
-  stacked one it is as tall as the body.
+  stacked one it is as tall as the body. At most the first 100 KB are laid out, cut at a line's end: a larger
+  body shows "Shows the first 100 KB of *5.2 MB*." under it, with **Copy Body**, which copies the whole body
+  (`contracts.response.cut`, `contracts.response.copy`).
 - "No body." in place of the body when the response has none, such as the 204 of `cancelOrder`.
 
 | Status | Color |
