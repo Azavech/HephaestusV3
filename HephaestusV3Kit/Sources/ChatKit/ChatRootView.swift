@@ -203,7 +203,7 @@ public struct ChatRootView: View {
 
     private var inspector: some View {
         ChatInspector(references: model.references, models: model.store.models, settings: model.replySettings,
-                      isChat: model.conversation != nil) { settings in
+                      isChat: true) { settings in
             model.setReplySettings(settings)
         }
     }
@@ -557,8 +557,8 @@ private struct ChatInspector: View {
     let models: [ClaudeModel]
     /// The conversation's model and effort, or those of new chats; nil for the samples.
     let settings: ChatSettings?
-    /// A chat is shown: its own settings, the mode, Ultracode and context included. Without one, the rows set the
-    /// new chats' defaults, which hold only the model and effort.
+    /// The mode, Ultracode and context rows too: a chat's own, or without one, the new chats' defaults, which hold all
+    /// five as V2's did.
     var isChat = true
     let setSettings: (ChatSettings) -> Void
 

@@ -250,7 +250,7 @@ public final class LiveChatStore: ChatStore {
             if let id {
                 try session.setSettings(id, settings)
             } else {
-                try session.setDefaults(model: settings.model, effort: settings.effort)
+                try session.setDefaults(settings)
             }
         } catch {
             throw ChatSendError(message: error.description)

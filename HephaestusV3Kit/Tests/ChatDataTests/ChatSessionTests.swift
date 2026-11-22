@@ -230,6 +230,26 @@ struct ChatSessionTests {
         world.launcher.chats.forEach { $0.finish(.exited(0)) }
     }
 
+    @Test("New chats' defaults hold the mode, Ultracode and context window too, as V2's did; settings.yml keeps them")
+    func defaultsOfNewChats() async throws {
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        var settings = world.session.defaults
+        settings.permissionMode = ChatPermissionMode.plan.rawValue
+        settings.ultracode = true
+        settings.contextWindow = ChatContextWindow.window1M.rawValue
+        try world.session.setDefaults(settings)
+        let file = try #require(world.projects.dataFolder).readSettings()
+        #expect(file.chatPermissionMode == "plan" && file.chatUltracode == true && file.chatContextWindow == "1m")
+        #expect(ChatSession.defaults(of: file) == world.session.defaults)
+        let id = try await world.session.send("Hi", references: [], to: nil, projectID: "ORD")
+        let chat = try #require(world.session.chats[id]?.file.settings)
+        #expect(chat.permissionMode == "plan" && chat.ultracode && chat.contextWindow == "1m")
+        settings.permissionMode = "nonsense"
+        #expect(throws: ChatError.self) { try world.session.setDefaults(settings) }
+        world.launcher.chats.forEach { $0.finish(.exited(0)) }
+    }
+
     @Test("A chat whose Claude starts while the app's MCP server isn't listening says why, as V2's did")
     func mcpUnavailable() async throws {
         let world = try await ChatWorld()

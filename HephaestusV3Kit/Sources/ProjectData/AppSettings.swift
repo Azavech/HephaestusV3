@@ -15,6 +15,11 @@ public struct SettingsFile: Codable, Sendable, Hashable {
     public var chatModel: String?
     /// The effort of new chats; nil for `high`.
     public var chatEffort: String?
+    /// New chats' permission mode, Ultracode and context window, as V2's defaults held them: nil for Ask Every Time,
+    /// off and Auto.
+    public var chatPermissionMode: String?
+    public var chatUltracode: Bool?
+    public var chatContextWindow: String?
     /// The cores, memory and disk new virtual machines start with; nil for 2 cores, 4 GB, 64 GB.
     public var defaultVMCores: Int?
     public var defaultVMMemoryGB: Int?
@@ -46,7 +51,8 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         self.unknownKeys = unknownKeys
     }
 
-    static let knownKeys: Set<String> = ["schema", "mcpPort", "claudePath", "chatModel", "chatEffort", "defaultVMCores", "defaultVMMemoryGB",
+    static let knownKeys: Set<String> = ["schema", "mcpPort", "claudePath", "chatModel", "chatEffort", "chatPermissionMode", "chatUltracode",
+                                         "chatContextWindow", "defaultVMCores", "defaultVMMemoryGB",
                                          "defaultVMDiskGB", "newWindows", "feedbackProjectID", "notifyNeedsYou", "notifyFinished", "notifyAISummary",
                                          "autoUpdate", "updateCheckIntervalMinutes"]
 
@@ -71,6 +77,9 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         claudePath = try c.optional("claudePath")
         chatModel = try c.optional("chatModel")
         chatEffort = try c.optional("chatEffort")
+        chatPermissionMode = try c.optional("chatPermissionMode")
+        chatUltracode = try c.optional("chatUltracode")
+        chatContextWindow = try c.optional("chatContextWindow")
         defaultVMCores = try c.optional("defaultVMCores")
         defaultVMMemoryGB = try c.optional("defaultVMMemoryGB")
         defaultVMDiskGB = try c.optional("defaultVMDiskGB")
@@ -91,6 +100,9 @@ public struct SettingsFile: Codable, Sendable, Hashable {
         try c.encodeIfPresent(claudePath, "claudePath")
         try c.encodeIfPresent(chatModel, "chatModel")
         try c.encodeIfPresent(chatEffort, "chatEffort")
+        try c.encodeIfPresent(chatPermissionMode, "chatPermissionMode")
+        try c.encodeIfPresent(chatUltracode, "chatUltracode")
+        try c.encodeIfPresent(chatContextWindow, "chatContextWindow")
         try c.encodeIfPresent(defaultVMCores, "defaultVMCores")
         try c.encodeIfPresent(defaultVMMemoryGB, "defaultVMMemoryGB")
         try c.encodeIfPresent(defaultVMDiskGB, "defaultVMDiskGB")

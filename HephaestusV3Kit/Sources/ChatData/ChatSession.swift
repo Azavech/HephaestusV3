@@ -217,8 +217,7 @@ public final class ChatSession {
         let settings = projects.dataFolder?.readSettings() ?? SettingsFile()
         claudePath = settings.claudePath
         planUsage = projects.dataFolder?.readPlanUsage()
-        defaults = ChatSettings(model: settings.chatModel.flatMap { ChatSettings.isModel($0) ? $0 : nil } ?? ChatSettings.defaultModel,
-                                effort: settings.chatEffort.flatMap(Effort.init(rawValue:)) ?? .high)
+        defaults = Self.defaults(of: settings)
         reload()
         isLoaded = true
         projects.observeFileEvents { [weak self] batch in
@@ -297,12 +296,39 @@ public final class ChatSession {
 
     /// Sets the model and effort of new chats.
     public func setDefaults(model: String, effort: Effort) throws(ChatError) {
-        guard ChatSettings.isModel(model) else { throw .invalid("model: use a model of the list.") }
+        var settings = defaults
+        settings.model = model
+        settings.effort = effort
+        try setDefaults(settings)
+    }
+
+    /// New chats' settings, as V2's defaults held all five: written to `settings.yml`, each left out at its own default.
+    public func setDefaults(_ settings: ChatSettings) throws(ChatError) {
+        guard ChatSettings.isModel(settings.model) else { throw .invalid("model: use a model of the list.") }
+        guard ChatPermissionMode(rawValue: settings.permissionMode) != nil else { throw .invalid("permissionMode: use a mode of the list.") }
+        guard ChatContextWindow(rawValue: settings.contextWindow) != nil else { throw .invalid("contextWindow: use auto, 200k or 1m.") }
         try writeSettings {
-            $0.chatModel = model == ChatSettings.defaultModel ? nil : model
-            $0.chatEffort = effort == .high ? nil : effort.rawValue
+            $0.chatModel = settings.model == ChatSettings.defaultModel ? nil : settings.model
+            $0.chatEffort = settings.effort == .high ? nil : settings.effort.rawValue
+            $0.chatPermissionMode = settings.permissionMode == ChatPermissionMode.manual.rawValue ? nil : settings.permissionMode
+            $0.chatUltracode = settings.ultracode ? true : nil
+            $0.chatContextWindow = settings.contextWindow == ChatContextWindow.auto.rawValue ? nil : settings.contextWindow
         }
-        defaults = ChatSettings(model: model, effort: effort)
+        var kept = ChatSettings(model: settings.model, effort: settings.effort)
+        kept.permissionMode = settings.permissionMode
+        kept.ultracode = settings.ultracode
+        kept.contextWindow = settings.contextWindow
+        defaults = kept
+    }
+
+    /// New chats' settings as `settings.yml` holds them; a value it doesn't know is the default's.
+    static func defaults(of file: SettingsFile) -> ChatSettings {
+        var settings = ChatSettings(model: file.chatModel.flatMap { ChatSettings.isModel($0) ? $0 : nil } ?? ChatSettings.defaultModel,
+                                    effort: file.chatEffort.flatMap(Effort.init(rawValue:)) ?? .high)
+        if let mode = file.chatPermissionMode, ChatPermissionMode(rawValue: mode) != nil { settings.permissionMode = mode }
+        settings.ultracode = file.chatUltracode ?? false
+        if let window = file.chatContextWindow, ChatContextWindow(rawValue: window) != nil { settings.contextWindow = window }
+        return settings
     }
 
     private func writeSettings(_ change: (inout SettingsFile) -> Void) throws(ChatError) {

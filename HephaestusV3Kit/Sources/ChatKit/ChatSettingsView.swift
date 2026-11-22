@@ -39,15 +39,16 @@ public struct ChatSettingsView: View {
                                    identifier: "settings.chat.permissions")
             Section {
                 if let store {
-                    ReplySettingsRows(models: store.session.models, settings: store.session.defaults, identifier: "settings.chat") { settings in
+                    ReplySettingsRows(models: store.session.models, settings: store.session.defaults, identifier: "settings.chat",
+                                      isChat: true) { settings in
                         do throws(ChatError) {
-                            try store.session.setDefaults(model: settings.model, effort: settings.effort)
+                            try store.session.setDefaults(settings)
                         } catch {
                             failure = error.description
                         }
                     }
                 } else if previewStatus != nil {
-                    ReplySettingsRows(models: ClaudeModel.fallback, settings: ChatSettings(), identifier: "settings.chat") { _ in }
+                    ReplySettingsRows(models: ClaudeModel.fallback, settings: ChatSettings(), identifier: "settings.chat", isChat: true) { _ in }
                 } else {
                     ModelRow(identifier: "settings.chat.model")
                 }

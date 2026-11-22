@@ -272,7 +272,7 @@ private struct PanelComposer: View {
                     // The chat's settings, as V2's composer folded them into one menu.
                     Menu {
                         ReplySettingsRows(models: model.store.models, settings: settings, identifier: "chat.panel.settings",
-                                          isChat: model.conversationID != nil) { model.setReplySettings($0) }
+                                          isChat: true) { model.setReplySettings($0) }
                     } label: {
                         Label(String(localized: "Chat Settings", bundle: #bundle), systemImage: "slider.horizontal.3")
                     }
