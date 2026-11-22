@@ -136,8 +136,9 @@ extension Project {
     /// The environments the project's tools read: its own, or those of the project it takes its settings
     /// from. See `ProjectTree.environments(of:)`.
     public var deploymentEnvironments: [DeploymentEnvironment] {
-        let inherited = Project.tree.environments(of: id)
-        return Project.tree.project(id) == nil ? environments : inherited
+        // A project of the app's data has its environments resolved already: never the sample's of the same id.
+        guard !environmentsAreResolved, Project.tree.project(id) != nil else { return environments }
+        return Project.tree.environments(of: id)
     }
 
     /// The sample project with this identifier.

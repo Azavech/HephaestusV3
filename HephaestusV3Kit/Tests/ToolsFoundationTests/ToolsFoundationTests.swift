@@ -98,3 +98,16 @@ struct InheritedSettingsTests {
         #expect(shop.deploymentEnvironments.map(\.url) == shop.environments.map(\.url))
     }
 }
+
+@Suite("Projects' environments")
+struct ProjectEnvironmentTests {
+    @Test("A project of the app's data named as a sample keeps its own environments, never the sample's")
+    func resolvedSampleID() throws {
+        let own = DeploymentEnvironment(name: "Mine", cluster: nil, namespace: nil, url: nil, health: nil)
+        let project = Project(id: "SHOP", name: "My Shop", kind: .app, tint: .accent, symbol: "cart", path: "/tmp/shop", repository: "",
+                              environments: [own], activity: nil, environmentsAreResolved: true)
+        #expect(project.deploymentEnvironments.map(\.name) == ["Mine"])
+        let sample = try #require(Project.sample("ORD"))
+        #expect(!sample.deploymentEnvironments.isEmpty, "A sample still reads the sample tree")
+    }
+}
