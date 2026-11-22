@@ -40,8 +40,6 @@ enum SceneID {
 public struct ToolsScenes: Scene {
     /// The project data and the directory every window reads.
     @State private var appData = AppData()
-    /// The project selected in Projects, which is one tab in the whole app; kept for the next launch, as V2 did.
-    @AppStorage("projects.selection") private var selectedProjectID: Project.ID?
     /// The machine the Virtual Machines tab opens on.
     @State private var machineFocus: String?
     /// A route's ask to select a machine in the open Virtual Machines tab.
@@ -57,7 +55,7 @@ public struct ToolsScenes: Scene {
     public var body: some Scene {
         WindowGroup(Text(verbatim: "Hephaestus V3"), id: SceneID.workspace, for: WorkspaceValue.self) { $value in
             routeHost {
-                WorkspaceRoot(value: $value, appData: appData, selectedProjectID: $selectedProjectID, machineFocus: machineFocus,
+                WorkspaceRoot(value: $value, appData: appData, selectedProjectID: $appData.projectSelection, machineFocus: machineFocus,
                               machineFocusRequest: machineFocusRequest)
             }
         }
@@ -149,7 +147,7 @@ public struct ToolsScenes: Scene {
 
     private func routeHost(@ViewBuilder content: () -> some View) -> some View {
         RouteHost(
-            appData: appData, selectedProjectID: $selectedProjectID, machineFocus: $machineFocus,
+            appData: appData, selectedProjectID: $appData.projectSelection, machineFocus: $machineFocus,
             machineFocusRequest: $machineFocusRequest, content: content
         )
     }
@@ -182,6 +180,8 @@ private struct RouteHost<Content: View>: View {
 
     @Environment(\.openWindow) private var openWindow
     @Environment(\.openSettings) private var openSettings
+    /// The window's route action, made once: it only holds the window's actions and the bindings, which don't change.
+    @State private var routeAction = RouteActionHolder()
 
     init(
         appData: AppData, selectedProjectID: Binding<Project.ID?>, machineFocus: Binding<String?>,
@@ -238,12 +238,13 @@ private struct RouteHost<Content: View>: View {
     }
 
     var body: some View {
-        content
-            .environment(\.openRoute, openRouteAction)
-            .environment(\.toolReader, appToolReader(directory: appData.directory, tickets: appData.ticketStore, builds: appData.buildStore,
-                                                     contracts: appData.contractStore, maps: appData.serviceMapStore))
+        let openRoute = routeAction.action ?? openRouteAction
+        if routeAction.action == nil { routeAction.action = openRoute }
+        return content
+            .environment(\.openRoute, openRoute)
+            .environment(\.toolReader, appData.toolReader)
             .environment(\.serviceMapStore, appData.serviceMapStore)
-            .environment(\.dashboardWidgetRenderer, DashboardWidgetRenderer { DashboardWidgetView(widget: $0, context: $1) })
+            .environment(\.dashboardWidgetRenderer, appData.dashboardWidgetRenderer)
             .environment(\.contractStore, appData.contractStore)
             .environment(\.buildStore, appData.buildStore)
             .environment(\.projectDirectory, appData.directory)
@@ -254,17 +255,22 @@ private struct RouteHost<Content: View>: View {
             .environment(\.feedbackTarget, appData.feedbackTarget)
             .environment(\.chatSession, appData.chats)
             .environment(\.updateController, appData.updates)
-            .environment(\.playSound, ChatSounds.player(appData.chats))
+            .environment(\.playSound, appData.soundPlayer)
             .environment(\.chatMentions, appData.chatMentions)
             .environment(\.itemChats, appData.itemChats)
             .environment(\.implementer, appData.implementer)
             .environment(\.generateTitle, appData.generateTitle)
             .task {
-                if appData.openRoute == nil { appData.openRoute = openRouteAction }
+                if appData.openRoute == nil { appData.openRoute = openRoute }
                 await appData.start()
             }
             .tint(.accent)
     }
+}
+
+/// Holds a window's route action once made.
+@MainActor private final class RouteActionHolder {
+    var action: OpenRouteAction?
 }
 
 /// File ▸ New, as in a Mac app (the user's choice): ⌘N opens a window, ⌘T a tab, both on the key window's

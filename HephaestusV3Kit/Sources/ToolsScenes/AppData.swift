@@ -31,6 +31,23 @@ final class AppData {
 
     let session: ProjectSession
     let directory = ProjectDirectory(projects: [], state: .loading)
+    /// The project selected in Projects, which is one tab in the whole app; kept for the next launch, as V2 did. Held
+    /// here rather than by the scene, so that a selection redraws the views that read it, not every window's root.
+    var projectSelection: Project.ID? {
+        get { storedProjectSelection }
+        set {
+            storedProjectSelection = newValue
+            UserDefaults.standard.set(newValue, forKey: Self.projectSelectionKey)
+        }
+    }
+    private var storedProjectSelection = UserDefaults.standard.string(forKey: AppData.projectSelectionKey)
+    static let projectSelectionKey = "projects.selection"
+    /// What every window's views get in their environment, made once: made at each pass of a window's root, they were
+    /// new values each time, which redrew every view that reads them.
+    @ObservationIgnored private(set) lazy var toolReader = appToolReader(directory: directory, tickets: ticketStore, builds: buildStore,
+                                                                          contracts: contractStore, maps: serviceMapStore)
+    @ObservationIgnored private(set) lazy var soundPlayer = ChatSounds.player(chats)
+    @ObservationIgnored let dashboardWidgetRenderer = DashboardWidgetRenderer { DashboardWidgetView(widget: $0, context: $1) }
     /// The tickets and bundles of the loaded projects, and the store the Tickets windows read.
     let tickets: TicketSession
     let ticketStore: LiveTicketStore

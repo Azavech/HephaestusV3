@@ -1032,12 +1032,15 @@ gives the host to the MCP registry's `vm_` tools. `AppData.availableTools` (ever
 `RouteHost` gives every view `\.availableTools`, `\.projectDirectory` and `\.dashboardWidgetRenderer` (each tool's
 widgets, as the Dashboard draws them).
 
-`ToolsScenes` keeps three `@State` values that every `RouteHost` gets as bindings, and every window's
-`WorkspaceRoot`:
+`ToolsScenes` gives every `RouteHost` and every window's `WorkspaceRoot` these as bindings. Projects' selection
+is `AppData.projectSelection`, not the scene's state: a change of it would otherwise run every window's root
+again, and with it every view that reads the environment `RouteHost` sets. That environment is made once too:
+the window's `openRoute` in a `@State` holder, and `AppData`'s `toolReader`, `soundPlayer` and
+`dashboardWidgetRenderer`.
 
 | State | Initial | Role |
 | --- | --- | --- |
-| `selectedProjectID: Project.ID?` | nil | Projects' selection; routes set it. Projects is one tab in the whole app. |
+| `selectedProjectID: Project.ID?` (`AppData.projectSelection`) | the saved one | Projects' selection; routes set it. Projects is one tab in the whole app. |
 | `machineFocus: String?` | nil | The machine the Virtual Machines tab opens on. |
 | `machineFocusRequest: FocusRequest?` | nil | A route's request for the open Virtual Machines tab. |
 
@@ -2221,7 +2224,7 @@ identifiers from it (`chat.composer.field`, `chat.composer.send`).
 | --- | --- | --- | --- |
 | Chat panel offered | `UserDefaults.standard` (`@AppStorage`) | `chat.showsPanel` | `Bool`, default true |
 | Settings' tab | same | `settings.pane` | `SettingsPane` raw value, default `general` |
-| Projects' selected project | same | `projects.selection` | `Project.ID`, none at first; a project no longer loaded gives way to the first |
+| Projects' selected project | same (`AppData.projectSelection`) | `projects.selection` | `Project.ID`, none at first; a project no longer loaded gives way to the first |
 | A chat window's chat | Window restoration | — | `ChatWindowValue` (`Codable`) |
 | Claude's permissions | same | `chat.ticketChanges`, `chat.projectChanges`, `chat.apiCalls`, `chat.clusterChanges`, `chat.machineChanges` | `ChangePermission` raw value, default `askFirst` |
 | Build starts permission | same | `chat.buildStarts` | `ChangePermission` raw value, default `never` |
