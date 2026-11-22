@@ -24,6 +24,8 @@ struct TicketDetailView: View {
     /// Where the files picked go: the ticket's own, or the next comment's.
     @State private var importsForComment = false
     @State private var preview: URL?
+    /// What Quick Look steps through: an image's fellow images, or the one file opened.
+    @State private var previewItems: [URL] = []
 
     @Environment(\.openRoute) private var openRoute
     @Environment(\.chatMentions) private var chatMentions
@@ -77,7 +79,7 @@ struct TicketDetailView: View {
                 Task { await model.addAttachments(urls, to: ticket.id) }
             }
         }
-        .quickLookPreview($preview)
+        .quickLookPreview($preview, in: previewItems)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("ticket.detail")
     }
@@ -338,9 +340,27 @@ struct TicketDetailView: View {
         .background(.canvas)
     }
 
-    /// Opens an attachment with Quick Look.
+    /// Opens an attachment with Quick Look. On an image, Quick Look steps through the ticket's images, then each
+    /// comment's, as V2's image viewer did; another file shows alone.
     private func open(_ attachment: TicketAttachment) {
-        Task { preview = await model.url(of: attachment, in: ticket) }
+        let ticket = ticket
+        Task {
+            guard let url = await model.url(of: attachment, in: ticket) else { return }
+            var items = [url]
+            if Self.isImage(attachment) {
+                var images: [URL] = []
+                for image in (ticket.attachments + ticket.events.flatMap(\.attachments)) where Self.isImage(image) {
+                    if let imageURL = await model.url(of: image, in: ticket) { images.append(imageURL) }
+                }
+                if images.contains(url) { items = images }
+            }
+            previewItems = items
+            preview = url
+        }
+    }
+
+    private static func isImage(_ attachment: TicketAttachment) -> Bool {
+        FileTile.isImage(UTType(mimeType: attachment.contentType))
     }
 }
 
