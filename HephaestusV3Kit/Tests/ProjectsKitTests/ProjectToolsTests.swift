@@ -46,6 +46,8 @@ struct ProjectToolsTests {
             #expect(detail["id"] == "ORD")
             #expect(detail["type"] == "goService")
             #expect(detail["folder"] == .string(folder))
+            #expect(detail["project"]?["environments"] == [] && detail["project"]?["environmentOverrides"] == [:],
+                    "The file's own values, as V2's get_project gave them")
             #expect(session.snapshot.project("ORD") != nil)
             let listed = try JSONValue.parse(Data(await call(mcp, "list_projects", [:]).text.utf8))
             #expect(listed.arrayValue?.compactMap { $0["id"]?.stringValue } == ["ORD"])

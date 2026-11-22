@@ -336,8 +336,10 @@ a project: Claude may read and change every project of this Mac, as the user can
 
 A project's JSON (`get_project`, `create_project`, `update_project`): `id`, `name`, `type` (`none`,
 `goService`, `swiftApplication`, `library`), `color`, `icon`, `folder`, `parentID`, `subprojects` (the loaded
-sub projects' identifiers), `docsPath`, `githubPage` (as it resolves), `graphEnabled` (as it resolves), `environments` (as they apply), `inheritedEnvironments`, `currentEnvironment`, `fileIssue`. Each
-environment: `name`, `url`, `port`, `baseURL`, `allowInvalidCertificates`, `namespace`, `deployment`, `jaeger`,
+sub projects' identifiers), `docsPath`, `githubPage` (as it resolves), `graphEnabled` (as it resolves), `environments` (as they apply), `inheritedEnvironments`, `currentEnvironment`, `fileIssue`, `gitRemoteURL` (the
+folder's `origin` as last read) and `originGithubPage` (its GitHub page), and `project`, the project file's own
+values, as V2's tool gave them: `githubPage` as typed, `graphEnabled`, `environments` (its own) and
+`environmentOverrides` (by environment name, the values it changes). Each environment: `name`, `url`, `port`, `baseURL`, `allowInvalidCertificates`, `namespace`, `deployment`, `jaeger`,
 `argoCDApplication`, `kubeconfig`. Absent values are left out. Errors map to codes this way: an identifier in
 use or a folder that holds a project, `conflict`; a broken rule or a folder outside the parent, `invalid`; an
 unknown project or folder, `notFound`; no data folder, `unavailable`; a file that can't be written,
@@ -395,7 +397,7 @@ Input schema:
 Description:
 
 ```text
-Returns one project: its settings (name, type, color, icon, docs folder, GitHub page, graph enabled), folder, parent and sub projects, and its environments. A sub project takes each setting it leaves empty from its parent: githubPage and graphEnabled are the values that apply. environments holds those that apply: the parent's with this project's changes, then its own. inheritedEnvironments holds the parent's as they are, and currentEnvironment the one selected in the app.
+Returns one project: its settings (name, type, color, icon, docs folder, GitHub page, graph enabled), folder, parent and sub projects, and its environments. A sub project takes each setting it leaves empty from its parent: githubPage and graphEnabled are the values that apply. environments holds those that apply: the parent's with this project's changes, then its own. inheritedEnvironments holds the parent's as they are, and currentEnvironment the one selected in the app. gitRemoteURL is the folder's origin remote and originGithubPage its GitHub page; project holds the project file's own values before inheritance: githubPage as typed, graphEnabled, its own environments and its environmentOverrides.
 ```
 
 Input schema:

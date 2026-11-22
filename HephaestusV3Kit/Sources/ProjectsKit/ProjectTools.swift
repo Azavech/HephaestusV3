@@ -43,7 +43,7 @@ public enum ProjectTools {
     static func get(_ session: ProjectSession) -> ToolOperation {
         ToolOperation(
             name: "get_project",
-            description: "Returns one project: its settings (name, type, color, icon, docs folder, GitHub page, graph enabled), folder, parent and sub projects, and its environments. A sub project takes each setting it leaves empty from its parent: githubPage and graphEnabled are the values that apply. environments holds those that apply: the parent's with this project's changes, then its own. inheritedEnvironments holds the parent's as they are, and currentEnvironment the one selected in the app.",
+            description: "Returns one project: its settings (name, type, color, icon, docs folder, GitHub page, graph enabled), folder, parent and sub projects, and its environments. A sub project takes each setting it leaves empty from its parent: githubPage and graphEnabled are the values that apply. environments holds those that apply: the parent's with this project's changes, then its own. inheritedEnvironments holds the parent's as they are, and currentEnvironment the one selected in the app. gitRemoteURL is the folder's origin remote and originGithubPage its GitHub page; project holds the project file's own values before inheritance: githubPage as typed, graphEnabled, its own environments and its environmentOverrides.",
             inputSchema: .object(properties: [("projectID", projectID)], required: ["projectID"]), permission: .read,
             describe: ProjectTools.describe("get_project")
         ) { @MainActor arguments throws(ToolError) in
@@ -256,6 +256,29 @@ struct ProjectDetailJSON: Encodable {
     let inheritedEnvironments: [Environment]
     let currentEnvironment: String?
     let fileIssue: String?
+    /// The folder's `origin` as last read, and its GitHub page, as V2's `gitRemoteURL` and `originGithubPage`.
+    let gitRemoteURL: String?
+    let originGithubPage: String?
+    /// The project file's own values, before inheritance: what a sub project changes or leaves empty.
+    let project: Own
+
+    struct Own: Encodable {
+        struct Override: Encodable {
+            let url: String?
+            let port: Int?
+            let allowInvalidCertificates: Bool?
+            let namespace: String?
+            let deployment: String?
+            let jaeger: String?
+            let argoCDApplication: String?
+            let kubeconfig: String?
+        }
+
+        let githubPage: String?
+        let graphEnabled: Bool?
+        let environments: [Environment]
+        let environmentOverrides: [String: Override]
+    }
 
     init(_ project: LoadedProject) {
         let file = project.file
@@ -274,6 +297,16 @@ struct ProjectDetailJSON: Encodable {
         inheritedEnvironments = project.resolved.inheritedEnvironments.map(Environment.init)
         currentEnvironment = project.resolved.currentEnvironment
         fileIssue = project.fileIssue
+        gitRemoteURL = project.resolved.originURL
+        originGithubPage = project.resolved.originGithubPage
+        self.project = Own(
+            githubPage: file.githubPage, graphEnabled: file.graphEnabled, environments: file.environments.map(Environment.init),
+            environmentOverrides: file.environmentOverrides.mapValues { override in
+                Own.Override(url: override.url, port: override.port, allowInvalidCertificates: override.allowInvalidCertificates,
+                             namespace: override.namespace, deployment: override.deployment, jaeger: override.jaeger,
+                             argoCDApplication: override.argoCDApplication, kubeconfig: override.kubeconfig)
+            }
+        )
     }
 }
 

@@ -45,6 +45,10 @@ public struct ResolvedSettings: Sendable, Hashable {
     /// The page an empty GitHub page field gives, shown greyed in the field: the nearest ancestor's typed
     /// page, else the origin's page of the project or of its nearest ancestor that has one.
     public var defaultGithubPage: String?
+    /// The URL of the folder's `origin` remote as last read; nil without one, or before git is found.
+    public var originURL: String?
+    /// The GitHub page of that remote; nil when it isn't one of GitHub's.
+    public var originGithubPage: String?
     /// Whether the graph is enabled: the project's value, else `inheritedGraphEnabled`.
     public var graphEnabled = false
     /// The parent's graph as it applies; false for a top-level project.

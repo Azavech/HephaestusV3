@@ -581,7 +581,8 @@ the parent's. V2's `useParentSettings` switch has no effect. The type only decid
   `origin` remote ([GitHub page](#github-page)) of the project, else of its nearest ancestor that has one.
   The origin is read with `git config --get remote.origin.url` in the project's folder, and for an SSH host
   alias with `ssh -G <alias>`. Until the origins are read, and without git, there is no origin page; without
-  ssh, an alias stays unresolved.
+  ssh, an alias stays unresolved. The project's own origin and its page are kept too (`originURL`,
+  `originGithubPage`), for `get_project`.
 - **Graph.** The project's `graphEnabled`; otherwise its parent's, as the parent resolves it
   (`inheritedGraphEnabled`, false for a top-level project).
 

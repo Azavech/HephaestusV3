@@ -422,6 +422,8 @@ public actor ProjectLibrary {
             settings.currentEnvironment = environments.first?.name
         }
         settings.defaultGithubPage = defaultGithubPage(of: id)
+        settings.originURL = origins[node.root]
+        settings.originGithubPage = originPage(of: node.root)
         settings.githubPage = node.file.githubPage ?? settings.defaultGithubPage
         settings.inheritedGraphEnabled = node.parentID.map { graphEnabled(of: $0) } ?? false
         settings.graphEnabled = node.file.graphEnabled ?? settings.inheritedGraphEnabled
