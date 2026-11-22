@@ -50,6 +50,24 @@ struct ProjectSessionTests {
         }
     }
 
+    @Test("Load shows the projects without the shell, the tools or the origins; the lookup comes after")
+    func loadBeforeTools() async throws {
+        try await withTemporaryFolderAsync { world in
+            let orders = try world.project("orders", id: "ORD")
+            try world.register(orders)
+            let bin = try toolsFolder(in: world)
+            let runner = FakeRunner(origins: [orders: "git@github.com:example/orders.git"], environment: "PATH=\(bin)\0HOME=/x\0")
+            let session = ProjectSession(dataFolder: world.data, runner: runner, processEnvironment: ["PATH": "/usr/bin"])
+            await session.load()
+            #expect(session.phase == .ready && session.snapshot.projects.map(\.id) == ["ORD"])
+            #expect(!session.hasLookedUpTools && session.shell == nil)
+            await session.lookUpTools()
+            #expect(session.hasLookedUpTools && session.tools.git == bin + "/git")
+            #expect(session.snapshot.project("ORD")?.resolved.githubPage == "https://github.com/example/orders")
+            await session.stop()
+        }
+    }
+
     @Test("A wait for the tools ends with the first lookup; after it, or for a session that can't start, at once")
     func waitForTools() async throws {
         try await withTemporaryFolderAsync { world in

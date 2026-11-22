@@ -63,10 +63,16 @@ public final class ProjectSession {
         self.hub = hub
     }
 
-    /// Starts in this order (docs/architecture.md › ProjectData): create the data folder and take its
-    /// lock, load, watch the files; then, without holding the windows, capture the
-    /// login shell's environment, look the tools up, and read the projects' origins.
+    /// Starts in this order (docs/architecture.md › ProjectData): `load()`, then `lookUpTools()`.
     public func start() async {
+        await load()
+        await lookUpTools()
+    }
+
+    /// Creates the data folder and takes its lock, loads, and watches the files: the windows can show the
+    /// projects. The app then looks the tools up (`lookUpTools()`) without waiting for it, as the login shell
+    /// and one git per project can take seconds.
+    public func load() async {
         guard phase == .starting, library == nil else { return }
         guard let dataFolder else {
             phase = .failed(.noDataFolder)
@@ -90,7 +96,6 @@ public final class ProjectSession {
         apply(await library.load())
         phase = .ready
         await watch()
-        await lookUpTools()
     }
 
     /// Captures the login shell's environment again, looks the tools up, and reads the origins: Settings ▸

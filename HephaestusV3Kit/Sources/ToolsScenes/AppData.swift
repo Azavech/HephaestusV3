@@ -247,7 +247,11 @@ final class AppData {
             let forwards = maps.forwards
             Task { await forwards.stopAll() }
         }
-        await session.start()
+        // The tickets, the machines and the MCP server start without waiting for the login shell and the
+        // projects' origins; what runs a tool waits for them (`waitForTools()`).
+        await session.load()
+        let session = session
+        Task { await session.lookUpTools() }
         if let folder = session.dataFolder {
             let settings = folder.readSettings()
             opensWindowsAsTabs = settings.opensWindowsAsTabs

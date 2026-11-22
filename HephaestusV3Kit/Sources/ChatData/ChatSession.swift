@@ -221,7 +221,15 @@ public final class ChatSession {
                 self.reload()
             }
         }
-        checkCLI()
+        // The CLI is found through the login shell's environment, which the tools' lookup captures.
+        if projects.hasLookedUpTools {
+            checkCLI()
+        } else {
+            Task { [weak self] in
+                await projects.waitForTools()
+                self?.checkCLI()
+            }
+        }
     }
 
     /// The MCP port changed: later launches use it.

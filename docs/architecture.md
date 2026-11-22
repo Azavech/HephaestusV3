@@ -494,7 +494,8 @@ The files of [Data](data.md). Source files in `Sources/ProjectData/`:
 - **`ProjectSession`** is `@MainActor @Observable`: the windows observe `phase` (`starting`, `ready`,
   `failed(ProjectError)`), `snapshot`, `shell` and `tools`, and call its async throwing
   changes, which forward to the library and keep the snapshot they return (a snapshot is kept only when its
-  revision is higher). `start()` runs the order of [Data › Loading](data.md#loading); it consumes the
+  revision is higher). `start()` runs the order of [Data › Loading](data.md#loading): `load()` (the lock, the
+  projects, the watch), then `lookUpTools()`; it consumes the
   `FileEventHub`'s batches in a task, hands each to `handle(_:)`, and updates the watched folders after each
   change. `lookUpTools()` captures the shell, looks the tools up, gives them to the library and reads the
   origins. The tools are looked up after the projects load, so a window that opens with the app (one macOS
@@ -1014,7 +1015,9 @@ ProjectDirectory(projects: [], state: .loading)`. `start()` runs once, from the 
 it starts following the session (`withObservationTracking { directory.update(from: session) }`, registered
 again after each change), adds an observer of `NSApplication.willTerminateNotification` that calls
 `SystemProcessRunner.shared.terminateAll()`, the chats' `stopAll()` and the machine host's `stopAll()`, awaits
-`session.start()`, reads `settings.yml`, then loads the machine host (`machineHost.load()`). `AppData` also holds
+`session.load()`, starts `session.lookUpTools()` in a task without waiting for it (the login shell and one git
+per project can take seconds), reads `settings.yml`, then loads the machine host (`machineHost.load()`); the
+tickets and the MCP server follow at once, and the chats check their CLI once the tools are looked up. `AppData` also holds
 `machineHost = MachineHost(dataFolder: DataFolder.resolve())` and `machineStore = LiveMachineStore(host:)`, and
 gives the host to the MCP registry's `vm_` tools. `AppData.availableTools` (every tool) and
 `AppData.machinesAvailable` (true) say which tools the app shows, all of them
