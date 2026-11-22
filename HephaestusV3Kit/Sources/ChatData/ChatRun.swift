@@ -35,6 +35,8 @@ final class ChatRun {
     var modeRequests: [String: ChatPermissionMode] = [:]
     /// The window the process started with: a new one needs a new process.
     var contextWindow: ChatContextWindow = .auto
+    /// The MCP port the process was launched with: after a change, it ends once no turn runs.
+    var port = 0
     var nextControl = 1
     var initializeID = ""
     /// The app's settings requests, by request id: `model` or `effort`.
@@ -245,6 +247,7 @@ extension ChatSession {
         let run = ChatRun(chatID: chatID, connection: connection, token: token, mcpConfig: config, resumed: launch.resume,
                           effort: chat.file.settings.effort, now: now)
         run.contextWindow = launch.contextWindow
+        run.port = port
         runs[chatID] = run
         touch(chatID)
         run.initializeID = run.controlID()
@@ -427,11 +430,11 @@ extension ChatSession {
     }
 
     /// Ends the process after `idleTimeout` without a turn or background work; at once when its context window
-    /// changed.
-    private func startIdleTimer(_ run: ChatRun) {
+    /// or the MCP port changed.
+    func startIdleTimer(_ run: ChatRun) {
         guard !run.inTurn, !run.hasBackgroundWork else { return }
-        // A new context window needs a new process: the next message resumes with it.
-        if ChatContextWindow(stored: chats[run.chatID]?.file.settings.contextWindow ?? "") != run.contextWindow {
+        // A new context window or port needs a new process: the next message resumes with it.
+        if ChatContextWindow(stored: chats[run.chatID]?.file.settings.contextWindow ?? "") != run.contextWindow || run.port != port {
             run.end(closingInput: true, grace: Self.signalGrace)
             return
         }

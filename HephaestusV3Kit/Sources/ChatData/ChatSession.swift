@@ -235,6 +235,11 @@ public final class ChatSession {
     /// The MCP port changed: later launches use it.
     public func setPort(_ port: Int) {
         self.port = port
+        // A process launched with the old port calls a server that is gone: it ends at once when idle, else once
+        // its turn and background work end, and the next message resumes with the new port.
+        for run in runs.values where run.port != port {
+            startIdleTimer(run)
+        }
     }
 
     /// Locates the CLI again and reads its version and models.
@@ -418,6 +423,13 @@ public final class ChatSession {
             for chat in Self.readChats(in: folder.chatsFolder) {
                 found[chat.id] = LoadedChat(file: chat, projectID: project.id)
             }
+        }
+        // A chat that left the list (its project removed, its file gone) has its process ended, as V2 did.
+        for (id, run) in runs where found[id] == nil {
+            run.endedByApp = true
+            run.end(closingInput: false, grace: Self.signalGrace)
+            runs[id] = nil
+            cancelApprovals(of: id, by: nil)
         }
         if found != chats { chats = found }
         dropMentions(keeping: found.keys)

@@ -18,7 +18,8 @@ public enum ChatGate {
     @MainActor
     public static func check(_ caller: MCPCaller, _ operation: ToolOperation, _ arguments: JSONValue, chats: ChatSession,
                              defaults: UserDefaults = .standard, mode given: ChatPermissionMode? = nil,
-                             bundleTickets: @MainActor (String) -> [String]? = { _ in nil }) async -> ToolError? {
+                             bundleTickets: @MainActor (String) -> [String]? = { _ in nil },
+                             projectFamily: @MainActor (String) -> Set<String> = { [$0] }) async -> ToolError? {
         if case .internalSkill = caller {
             // The app runs the skill in the background, for its answer alone: it reads, and opens no window.
             return operation.permission == .read && operation.name != "open_in_app" ? nil : ToolError(.forbidden, skillRefusal)
@@ -76,6 +77,11 @@ public enum ChatGate {
             permission = rule(ChatPreferences.projectChangesKey)
             refusal = "The user doesn't let Claude change projects from chats (Settings ▸ Chat)."
         case .removeProjects:
+            // Its own project would end the chat's Claude in the middle of the call, as V2 refused.
+            let removed = (arguments["projectID"]?.stringValue ?? "").uppercased()
+            if let own = chats.chats[chatID]?.projectID, projectFamily(removed).contains(own) {
+                return ToolError(.forbidden, "A chat can't remove its own project or a project above it.")
+            }
             permission = rule(ChatPreferences.projectChangesKey) == .never ? .never : .askFirst
             refusal = "The user doesn't let Claude change projects from chats (Settings ▸ Chat)."
         case .callAPIs:

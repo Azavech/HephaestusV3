@@ -31,7 +31,9 @@ function the window calls ([Architecture › MCPKit](architecture.md#mcpkit)). E
   MCP shows it ([Settings ▸ MCP](#settings--mcp)).
 - A new port in Settings ▸ MCP is written to `settings.yml` and moves the server at once, unless
   `HEPHAESTUS_MCP_PORT` is set: then it applies when the app runs without the variable. Terminal sessions must
-  add the server again ([External use](#external-use)).
+  add the server again ([External use](#external-use)). A chat's Claude launched with the old port ends at once
+  when idle, else once its turn and its background work end, as V2's did: the next message resumes it with the
+  new port.
 
 ## HTTP transport
 
@@ -483,7 +485,9 @@ Input schema:
 
 - **Calls:** `ProjectSession.remove`: the project and its sub projects leave the list; no file changes.
 - **Result:** `{}`.
-- **Errors:** an unknown project (`notFound`, `No project <ID> is loaded.`).
+- **Errors:** an unknown project (`notFound`, `No project <ID> is loaded.`); from a chat, its own project or a
+  project above it (`forbidden`, `A chat can't remove its own project or a project above it.`), as V2 refused:
+  the removal ends the chats of the projects removed.
 
 Description:
 

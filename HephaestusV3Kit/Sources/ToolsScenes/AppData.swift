@@ -352,11 +352,14 @@ final class AppData {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
         let chats = chats
         let tickets = tickets
+        let session = session
         // A chat's Claude makes a change only as Settings ▸ Chat allows, asking first where it says so; an implement
         // chat's changes to its own items don't ask (docs/mcp.md › Permissions).
         let gate: MCPProtocol.Gate = { caller, operation, arguments in
             await ChatGate.check(caller, operation, arguments, chats: chats, bundleTickets: { @MainActor id in
                 tickets.snapshot.bundle(id)?.ticketIDs
+            }, projectFamily: { @MainActor id in
+                Set(session.snapshot.family(of: id).map(\.id))
             })
         }
         let server = MCPServer(protocol: MCPProtocol(registry: registry, version: version, gate: gate), tokens: tokens)

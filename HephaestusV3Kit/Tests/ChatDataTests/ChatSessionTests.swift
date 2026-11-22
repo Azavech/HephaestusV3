@@ -328,6 +328,28 @@ struct ChatSessionTests {
         cli.finish(.exited(0))
     }
 
+    @Test("Removing a chat's project ends its Claude; a new MCP port ends an idle one, so the next message uses the port")
+    func projectRemovedAndPortMoved() async throws {
+        let world = try await ChatWorld()
+        defer { Task { await world.close() } }
+        let id = try await world.session.send("First", references: [], to: nil, projectID: "ORD")
+        let cli = try #require(world.launcher.chats.first)
+        cli.feed(try Fixture.lines("stream-bash-allowed.jsonl"))
+        try await world.until { world.session.state(of: id) == .idle }
+        #expect(!cli.inputClosed)
+        world.session.setPort(world.session.port + 1)
+        #expect(cli.inputClosed, "An idle process launched with the old port ends at once")
+        cli.finish(.exited(0))
+        try await world.until { world.session.runs[id] == nil }
+
+        let other = try await world.session.send("Second", references: [], to: nil, projectID: "ORD")
+        let second = try #require(world.launcher.chats.last)
+        #expect(world.session.runs[other] != nil)
+        try await world.session.projects.remove("ORD")
+        try await world.until { world.session.runs[other] == nil && second.signals.contains(SIGTERM) }
+        second.finish(.exited(0))
+    }
+
     @Test("The CLI's own request is answered on its stdin; Stop refuses what waits and interrupts")
     func cliRequestAndStop() async throws {
         let world = try await ChatWorld()

@@ -293,7 +293,7 @@ selects its project.
 **More ▸ Remove Project…** asks "Remove “<name>” from Hephaestus V3?" with "The folder and its files stay on
 disk: <path>.", then "Its sub project is removed with it." or "Its <n> sub projects are removed with it."
 when it has some. **Remove** (destructive) takes the project and its sub projects out of the list; no file
-changes. **Cancel** closes the alert. The selection moves to the nearest ancestor still listed, else to the
+changes. The Claude processes of their chats end, as V2's did. **Cancel** closes the alert. The selection moves to the nearest ancestor still listed, else to the
 first project. A failure shows "Can’t Remove “<name>”" with the reason.
 
 ## Settings ▸ Projects
