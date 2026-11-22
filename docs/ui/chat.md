@@ -1104,7 +1104,9 @@ notifications, as [Settings ▸ Notifications](navigation.md#settings--notificat
   or a panel's conversation).
 - **Summary.** With **AI-generated summary** on, the app runs the internal skill `notification-summary`
   ([System Prompts](system-prompts.md)) on what happened, then posts its answer: at most 30 s, two runs at a
-  time, the others waiting in order. Its message is "Claude's reply:" and the reply (finished), "Permission
+  time, the others waiting in order. Nothing runs for an event that could no longer be posted, checked before
+  the run as after it: the key window shows the chat, a newer event of the chat came, the chat went, or it no
+  longer waits. Its message is "Claude's reply:" and the reply (finished), "Permission
   request:", "Tool: <name>", "Input: <the input as JSON, keys sorted>" (a card), "Questions:" and one
   "<label>: <question>" line each (questions), or V2's "Symbol request:", "Color request:", "Sound request:",
   "Shortcut request:", "Font request:" or "Animation request:" and the question (a picker request), each part cut

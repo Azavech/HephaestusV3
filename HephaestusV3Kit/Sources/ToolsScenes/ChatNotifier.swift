@@ -85,18 +85,24 @@ final class ChatNotifier: NSObject, UNUserNotificationCenterDelegate {
         if event.kind == .needsYou, !NSApp.isActive {
             NSApp.requestUserAttention(.informationalRequest)
         }
-        guard center != nil else { return }
+        // Nothing would be posted for the chat the key window shows: no summary runs for it either.
+        guard center != nil, !(NSApp.isActive && chats.isInKeyWindow(event.chatID)) else { return }
         let choices = choices()
         guard event.kind == .needsYou ? choices.needsYou : choices.finished else { return }
         guard choices.aiSummary, event.summaryInput != nil else {
             post(event, body: event.detail)
             return
         }
+        // Dropped when a newer event came, the chat went, or it no longer waits: checked before the summary runs, and
+        // after.
+        let wanted: @MainActor @Sendable () -> Bool = { [weak self] in
+            guard let self else { return false }
+            return generations[event.chatID] == generation && chats.chats[event.chatID] != nil
+                && (event.kind == .finished || chats.waitingChats.contains(event.chatID))
+        }
         Task {
-            let line = await chats.summary(of: event)
-            // Dropped when a newer event came, the chat went, or it no longer waits.
-            guard generations[event.chatID] == generation, chats.chats[event.chatID] != nil,
-                  event.kind == .finished || chats.waitingChats.contains(event.chatID) else { return }
+            let line = await chats.summary(of: event, stillWanted: wanted)
+            guard wanted() else { return }
             post(event, body: line)
         }
     }

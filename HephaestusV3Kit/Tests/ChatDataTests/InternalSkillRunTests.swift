@@ -135,6 +135,13 @@ struct InternalSkillRunTests {
         let token = try #require(server?["headers"]?["Authorization"]?.stringValue?.replacing("Bearer ", with: ""))
         #expect(token.count == 64)
         #expect(session.tokens.caller(for: token) == nil, "The token ends with the run")
+
+        // A notification that can no longer be posted runs no Claude: its fallback detail comes back.
+        let before = runner.runs.count
+        let event = ChatEvent(chatID: "C1", projectID: "HEPH", title: "T", kind: .finished, detail: "Claude finished replying",
+                              summaryInput: "Claude's reply:\nDone.")
+        #expect(await session.summary(of: event, stillWanted: { false }) == "Claude finished replying")
+        #expect(runner.runs.count == before)
         await projects.stop()
     }
 }

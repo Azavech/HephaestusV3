@@ -131,11 +131,16 @@ extension ChatSession {
     }
 
     /// The event's line written by `notification-summary`, 30 s at most and two at a time; the fallback detail when
-    /// it fails, times out or says nothing.
-    public func summary(of event: ChatEvent) async -> String {
+    /// it fails, times out or says nothing. `stillWanted` is asked once a run may start: when its notification can no
+    /// longer be posted, no Claude runs for it.
+    public func summary(of event: ChatEvent, stillWanted: @MainActor () -> Bool = { true }) async -> String {
         guard let input = event.summaryInput else { return event.detail }
         while summaryRuns >= 2 {
             await withCheckedContinuation { summaryWaiters.append($0) }
+        }
+        guard stillWanted() else {
+            if !summaryWaiters.isEmpty { summaryWaiters.removeFirst().resume() }
+            return event.detail
         }
         summaryRuns += 1
         defer {
