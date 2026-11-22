@@ -62,6 +62,14 @@ struct InternalSkillTests {
         }
     }
 
+    @Test("An empty front matter reads as the defaults with the text after it, instead of crashing")
+    func emptyFrontMatter() {
+        let defaults = InternalSkill.resumeChat.defaults
+        let values = DataFolder.values(of: "---\n---\nText", defaults: defaults)
+        #expect(values.content == "Text" && values.model == defaults.model && values.effort == defaults.effort && values.otherLines.isEmpty)
+        #expect(DataFolder.values(of: "---\n\n---\nText", defaults: defaults).content == "Text")
+    }
+
     @Test("Front matter lines the app doesn't use are kept and written back after its keys; values it can't use leave the defaults")
     func otherLines() throws {
         try withFolder { folder in

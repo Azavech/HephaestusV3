@@ -317,7 +317,10 @@ extension DataFolder {
             return values
         }
         values.content = String(text[close.upperBound...])
-        let frontMatter = text[text.index(text.startIndex, offsetBy: 4)..<close.lowerBound]
+        // An empty front matter (`---` right after `---`) closes before its first line could start.
+        let start = text.index(text.startIndex, offsetBy: 4)
+        guard close.lowerBound > start else { return values }
+        let frontMatter = text[start..<close.lowerBound]
         for line in frontMatter.split(separator: "\n", omittingEmptySubsequences: false).map(String.init) {
             let parts = line.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
             // The app's keys are always taken, so they are never written twice; a value they can't use leaves

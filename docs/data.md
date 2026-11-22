@@ -2268,7 +2268,7 @@ effort: low
   **Restore Default** writes them back, other lines kept: `set-ticket-title`
   and `notification-summary` are `haiku` and `low`; a skill without its own is `default` and `high`, as a new chat.
 - **Reading** (`DataFolder.readSkill(_:)`): the front matter is the lines between a first `---` line and the
-  next. `name` is ignored (the code's name stands); `model` with a value, and `effort` with one of the five levels,
+  next, none when the second follows the first at once. `name` is ignored (the code's name stands); `model` with a value, and `effort` with one of the five levels,
   replace the defaults, and any other value of theirs leaves the default; every other line is kept as written
   (`InternalSkillValues.otherLines`) and written back. The content is the text after the closing `---` line; a
   file without front matter is all content, with the default model and effort; without a file, or one that can't
