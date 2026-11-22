@@ -55,6 +55,20 @@ struct SystemPromptsTests {
         #expect(model.isSaved(skill))
     }
 
+    @Test("Restore Default gives back the app's content, model and effort, saved at once, other front matter lines kept (HEPH-9)")
+    func restoreDefaults() {
+        var written = InternalSkillValues(content: "Turn the feedback into tickets.", model: "sonnet", effort: .high, otherLines: ["description: Mine."])
+        let store = SampleInternalSkillStore(saved: ["set-ticket-title": written])
+        let model = SystemPromptsModel(store: store, saveDelay: .seconds(60))
+        #expect(!model.isDefault(skill))
+        model.restoreDefaults(of: skill)
+        written = skill.defaults
+        written.otherLines = ["description: Mine."]
+        #expect(store.saved["set-ticket-title"] == written)
+        #expect(model.isDefault(skill) && model.isSaved(skill))
+        #expect(model.content(of: skill).contains("get_ticket"))
+    }
+
     @Test("A failed save keeps the text and says why; the next one that works clears it")
     func failure() {
         let store = SampleInternalSkillStore(failure: .writeFailed(path: "skills/set-ticket-title/SKILL.md", reason: "Permission denied"))

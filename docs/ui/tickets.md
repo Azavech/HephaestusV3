@@ -551,7 +551,9 @@ A ticket created **without a title** (the user's request): by Claude's `create_t
 [feedback chat](chat.md#feedback)'s Claude may make it. It takes the description's first line as its provisional title at once,
 then the app runs `set-ticket-title` in the background with the ticket's link alone, as the editor's **Generate
 Title** does ([Generate Title](#generate-title)): Claude reads the ticket whole, attachments included (the
-screenshot a feedback chat attached):
+screenshot a feedback chat attached). The skill's default text, V3's own, asks for a title of at most 80
+characters naming what the ticket asks for or reports, without its id, status, author or dates ([System
+Prompts › Internal skills](system-prompts.md#internal-skills)):
 
 - When the answer gives a title ([Generate Title](#generate-title)'s rule), it replaces the provisional one,
   written by the app on its own: the history entry's author is `automatic`, and the activity reads "It was named

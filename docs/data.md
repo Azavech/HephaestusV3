@@ -2247,7 +2247,8 @@ effort: low
 
 - **`model`**: what the CLI's `--model` takes (`default`, `haiku`, `opus`, a model id); **`effort`**: `low`,
   `medium`, `high`, `xhigh` or `max`. They are what the app uses when it runs the skill itself; a chat that calls
-  the skill keeps its own. Each skill's defaults come from the code (`InternalSkill.defaults`): `set-ticket-title`
+  the skill keeps its own. Each skill's defaults come from the code (`InternalSkill.defaults`), and System Prompts'
+  **Restore Default** writes them back, other lines kept: `set-ticket-title`
   and `notification-summary` are `haiku` and `low`; a skill without its own is `default` and `high`, as a new chat.
 - **Reading** (`DataFolder.readSkill(_:)`): the front matter is the lines between a first `---` line and the
   next. `name` is ignored (the code's name stands); `model` with a value, and `effort` with one of the five levels,

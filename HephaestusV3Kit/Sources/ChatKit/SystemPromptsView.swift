@@ -144,6 +144,20 @@ final class SystemPromptsModel {
         save(skill)
     }
 
+    /// Whether the skill's content, model and effort are the app's own.
+    func isDefault(_ skill: InternalSkill) -> Bool {
+        let current = values(of: skill)
+        return current.content == skill.defaults.content && current.model == skill.defaults.model && current.effort == skill.defaults.effort
+    }
+
+    /// Restore Default: the app's content, model and effort, saved at once; the file's other front matter lines stay.
+    func restoreDefaults(of skill: InternalSkill) {
+        var restored = skill.defaults
+        restored.otherLines = values(of: skill).otherLines
+        values[skill.name] = restored
+        save(skill)
+    }
+
     /// Saves a skill now when it has a change.
     func save(_ skill: InternalSkill) {
         pending[skill.name]?.cancel()
@@ -208,7 +222,9 @@ public struct SystemPromptsView: View {
                         model.setEffort(settings.effort, of: skill)
                     },
                     isSaved: model.isSaved(skill),
-                    failure: model.failures[skill.name]
+                    failure: model.failures[skill.name],
+                    isDefault: model.isDefault(skill),
+                    restoreDefaults: { model.restoreDefaults(of: skill) }
                 )
                 .id(skill.id)
             } else {
@@ -247,6 +263,9 @@ private struct SkillEditor: View {
     let setSettings: (ChatSettings) -> Void
     let isSaved: Bool
     let failure: String?
+    let isDefault: Bool
+    let restoreDefaults: () -> Void
+    @State private var confirmsRestore = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -287,7 +306,24 @@ private struct SkillEditor: View {
                 .accessibilityLabel(Text("Content", bundle: #bundle))
                 .accessibilityIdentifier("systemPrompts.content")
 
-            status
+            HStack(alignment: .firstTextBaseline) {
+                status
+                Spacer()
+                Button(String(localized: "Restore Default", bundle: #bundle)) {
+                    confirmsRestore = true
+                }
+                .disabled(isDefault)
+                .help(String(localized: "Gives this skill the app's content, model and effort back.", bundle: #bundle))
+                .accessibilityIdentifier("systemPrompts.restoreDefault")
+            }
+        }
+        .confirmationDialog(
+            String(localized: "Restore the default content, model and effort of \(skill.name)?", bundle: #bundle),
+            isPresented: $confirmsRestore
+        ) {
+            Button(String(localized: "Restore Default", bundle: #bundle), role: .destructive, action: restoreDefaults)
+        } message: {
+            Text("What you wrote in this skill is replaced by the app's own text.", bundle: #bundle)
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -315,8 +351,14 @@ private struct SkillEditor: View {
 
 // MARK: Previews
 
-#Preview("Empty", traits: .fixedLayout(width: 900, height: 560)) {
+#Preview("Defaults", traits: .fixedLayout(width: 900, height: 560)) {
     SystemPromptsView(model: SystemPromptsModel(store: SampleInternalSkillStore()))
+}
+
+#Preview("Report Feedback, Empty", traits: .fixedLayout(width: 900, height: 560)) {
+    let model = SystemPromptsModel(store: SampleInternalSkillStore())
+    model.selection = InternalSkill.reportFeedback.id
+    return SystemPromptsView(model: model)
 }
 
 #Preview("Written, Dark", traits: .fixedLayout(width: 900, height: 560)) {

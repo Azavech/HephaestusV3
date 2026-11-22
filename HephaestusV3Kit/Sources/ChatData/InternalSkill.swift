@@ -24,8 +24,15 @@ public struct InternalSkill: Hashable, Sendable, Identifiable {
     }
 
     /// Setting a ticket's title: the app runs it on each ticket created without a title, and for Generate Title.
-    /// A short answer, so a quick model at a low effort.
-    public static let setTicketTitle = InternalSkill(name: "set-ticket-title", defaultModel: "haiku", defaultEffort: .low)
+    /// A short answer, so a quick model at a low effort. Its default text is V3's own, so that titles name the
+    /// ticket's subject before the user writes one (HEPH-9).
+    public static let setTicketTitle = InternalSkill(name: "set-ticket-title", defaultContent: """
+        Give a ticket its title. The message links the ticket (its Attached: line), holds a description, or both: \
+        read a linked ticket with get_ticket; a description in the message is newer than the ticket's and replaces it.
+        The title names what the ticket asks for or reports, in at most 80 characters, such as "Line up the New \
+        Bundle + with the sidebar rows". Leave out the ticket's id, status, author and dates.
+        Answer with the title alone, on one line, without quotes, Markdown or a final period.
+        """, defaultModel: "haiku", defaultEffort: .low)
 
     /// Turning feedback into a ticket: the first message of a feedback chat calls it.
     public static let reportFeedback = InternalSkill(name: "report-feedback", isCalledFromChats: true)

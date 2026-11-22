@@ -446,6 +446,9 @@
     "Found automatically" : {
 
     },
+    "Gives this skill the app's content, model and effort back." : {
+
+    },
     "Hex Color" : {
       "comment" : "The field of a color's hex value or system name"
     },
@@ -778,6 +781,12 @@
     "Replies are samples until a model is connected." : {
 
     },
+    "Restore Default" : {
+
+    },
+    "Restore the default content, model and effort of %@?" : {
+
+    },
     "Result" : {
       "comment" : "A call's result"
     },
@@ -1030,6 +1039,9 @@
 
     },
     "What needs my attention?" : {
+
+    },
+    "What you wrote in this skill is replaced by the app's own text." : {
 
     },
     "What's left before %@ can be closed?" : {
