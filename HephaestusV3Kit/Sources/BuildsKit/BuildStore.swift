@@ -115,7 +115,8 @@ public final class LiveBuildStore: BuildStore {
     /// Where gh downloads a file before it moves into the Downloads folder.
     @ObservationIgnored private let temporary: URL
     @ObservationIgnored private let downloads: URL
-    @ObservationIgnored private var refreshing: Set<String> = []
+    /// The reads running, by repository and list: a second caller waits for the one running rather than reading again.
+    @ObservationIgnored private var refreshing: [String: Task<Void, Never>] = [:]
     /// Returns once gh can be looked for: the projects' session's first lookup of the tools.
     @ObservationIgnored private let toolsReady: @MainActor () async -> Void
     /// A project's GitHub page as its settings say now, by id: a tab keeps the project it opened with.
@@ -170,10 +171,31 @@ public final class LiveBuildStore: BuildStore {
         }
     }
 
+    /// Returns once the list is read: by this call, or by the read of the same list another window or widget had
+    /// running.
     func refresh(_ project: Project, releases: Bool) async {
+        await refresh(project, releases: releases, after: false)
+    }
+
+    /// `afterChange`: the caller changed the list (a re-run, a cancel), so a read already running, which started
+    /// before, isn't enough: one more follows it, unless another started meanwhile.
+    private func refresh(_ project: Project, releases: Bool, after afterChange: Bool) async {
         let key = key(project) + (releases ? "#releases" : "#runs")
-        guard refreshing.insert(key).inserted else { return }
-        defer { refreshing.remove(key) }
+        if let running = refreshing[key] {
+            await running.value
+            guard afterChange else { return }
+            if let newer = refreshing[key] {
+                await newer.value
+                return
+            }
+        }
+        let read = Task { await read(project, releases: releases) }
+        refreshing[key] = read
+        await read.value
+        if refreshing[key] == read { refreshing[key] = nil }
+    }
+
+    private func read(_ project: Project, releases: Bool) async {
         // Runs read as the app opens wait for the first lookup of the tools rather than finding gh missing.
         await toolsReady()
         do throws(BuildError) {
@@ -218,7 +240,7 @@ public final class LiveBuildStore: BuildStore {
         } catch {
             throw BuildActionError(message: error.description)
         }
-        await refresh(project, releases: false)
+        await refresh(project, releases: false, after: true)
     }
 
     func cancel(_ run: WorkflowRun, of project: Project) async throws(BuildActionError) {
@@ -227,7 +249,7 @@ public final class LiveBuildStore: BuildStore {
         } catch {
             throw BuildActionError(message: error.description)
         }
-        await refresh(project, releases: false)
+        await refresh(project, releases: false, after: true)
     }
 
     func download(_ asset: String, of release: Release, of project: Project) async throws(BuildActionError) -> URL {

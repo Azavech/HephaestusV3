@@ -434,6 +434,29 @@ private struct GitHubRunForTests: Decodable {
 @Suite("The store's repository")
 @MainActor
 struct BuildRepositoryTests {
+    @Test("A second read of a list running returns once the list is read, not at once")
+    func secondReadWaits() async throws {
+        let gate = ReadGate()
+        let store = LiveBuildStore(cli: { GitHubCLI(gh: nil, environment: [:], runner: SystemProcessRunner.shared) },
+                                   temporary: FileManager.default.temporaryDirectory, toolsReady: { await gate.wait() },
+                                   page: { _ in "https://github.com/example/orders" })
+        let project = try #require(Project.samples.first)
+        let first = Task { await store.refresh(project, releases: false) }
+        while gate.waiting == 0 { await Task.yield() }
+        var secondReturned = false
+        let second = Task {
+            await store.refresh(project, releases: false)
+            secondReturned = true
+        }
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(!secondReturned, "The first read is still waiting for the tools")
+        #expect(gate.waiting == 1, "The second caller doesn't read again")
+        gate.open()
+        await second.value
+        await first.value
+        if case .loading = store.runs(of: project) { Issue.record("The list is read when the second read returns") }
+    }
+
     @Test("The GitHub page is read from the project's settings as they are now, not from the project a tab kept")
     func pageNow() throws {
         var page: String?
@@ -443,5 +466,25 @@ struct BuildRepositoryTests {
         #expect(store.repository(of: project) == nil)
         page = "https://github.com/example/orders"
         #expect(store.repository(of: project)?.description == "example/orders")
+    }
+}
+
+/// Holds the store's reads at the tools lookup until the test opens it.
+@MainActor
+private final class ReadGate {
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+    private var isOpen = false
+    private(set) var waiting = 0
+
+    func wait() async {
+        guard !isOpen else { return }
+        waiting += 1
+        await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func open() {
+        isOpen = true
+        waiters.forEach { $0.resume() }
+        waiters.removeAll()
     }
 }

@@ -61,7 +61,9 @@ releases of Tools. A focus that names a run not read yet is applied once the lis
 the end of the last read; then the selected run's jobs (again while it runs or waits, and when the list's status
 differs from theirs) and its step's log. **Refresh** reads at once; a re-run or a cancel reads the list and the
 run's jobs again once done. The lists, the jobs and the log keep what they show while a read runs: they change
-only when the new read replaces them.
+only when the new read replaces them. Windows and the Recent Builds widget showing the same repository share
+its reads: one that asks while the same list is being read waits for that read rather than reading again, and
+a re-run or a cancel waits for it, then reads once more.
 
 The window opens at 1180 × 720 pt.
 
