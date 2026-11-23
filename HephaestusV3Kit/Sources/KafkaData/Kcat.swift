@@ -233,6 +233,21 @@ public struct Kcat: Sendable {
         return result.standardOutput
     }
 
+    /// A line of kcat's standard error as a problem worth showing, or nil: its errors (`% ERROR: `, `% FATAL: `) and
+    /// librdkafka's logs of level 0 to 3 (`%3|<time>|FAIL|<client>| [<thread>]: <text>`), as their text alone. Its
+    /// notes, such as "% Reading configuration from file …", and its warnings, such as a deprecated property kcat
+    /// sets itself, are left out.
+    static func problem(_ line: String) -> String? {
+        let text = line.trimmingCharacters(in: .whitespaces)
+        for mark in ["% ERROR: ", "%ERROR: ", "% FATAL: "] where text.hasPrefix(mark) {
+            return String(text.dropFirst(mark.count))
+        }
+        guard text.count > 2, text.hasPrefix("%"), let level = text.dropFirst().first, ("0"..."3").contains(level),
+              text.dropFirst(2).first == "|" else { return nil }
+        if let range = text.range(of: "]: ") { return String(text[range.upperBound...]) }
+        return text.split(separator: "|", maxSplits: 4).last.map(String.init)
+    }
+
     /// The last error kcat wrote, without its `% ERROR: ` mark.
     static func message(_ standardError: Data) -> String? {
         let lines = String(decoding: standardError, as: UTF8.self).split(whereSeparator: \.isNewline)
@@ -275,6 +290,14 @@ public final class KafkaSpy: Sendable {
     private let process: ChildProcess
     private let config: URL
     private let continuation: AsyncStream<Update>.Continuation
+    /// The last problem kcat reported, which says why it ended when it gives up.
+    private let lastProblem = LastProblem()
+
+    final class LastProblem: Sendable {
+        private let value = Mutex<String?>(nil)
+        func set(_ problem: String) { value.withLock { $0 = problem } }
+        var current: String? { value.withLock { $0 } }
+    }
 
     /// The spies running, so the app ends them when it quits: kcat runs in a process group of its own.
     private static let running = Mutex<[ObjectIdentifier: KafkaSpy]>([:])
@@ -296,11 +319,13 @@ public final class KafkaSpy: Sendable {
         self.continuation = continuation
         let output = process.standardOutput
         let errors = process.standardError
+        let lastProblem = lastProblem
         Task.detached(priority: .utility) {
             if let errors {
                 for try await line in errors.bytes.lines {
-                    let text = line.trimmingCharacters(in: .whitespaces)
-                    if !text.isEmpty { continuation.yield(.problem(Kcat.message(Data(text.utf8)) ?? text)) }
+                    guard let problem = Kcat.problem(line) else { continue }
+                    lastProblem.set(problem)
+                    continuation.yield(.problem(problem))
                 }
             }
         }
@@ -317,7 +342,10 @@ public final class KafkaSpy: Sendable {
             let termination = await process.waitForExit()
             try? FileManager.default.removeItem(at: config)
             KafkaSpy.running.withLock { _ = $0.removeValue(forKey: id) }
-            continuation.yield(.ended(termination.isSuccess || termination == .signaled(SIGTERM) ? nil : "kcat ended: \(termination)."))
+            // kcat's own reason when it gave up, such as every broker down; its status otherwise.
+            try? await Task.sleep(for: .milliseconds(100))
+            let reason = lastProblem.current ?? "kcat ended: \(termination)."
+            continuation.yield(.ended(termination.isSuccess || termination == .signaled(SIGTERM) ? nil : reason))
             continuation.finish()
         }
     }

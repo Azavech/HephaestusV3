@@ -2337,8 +2337,11 @@ ssl.ca.location=probe                                              (with TLS: th
   gives kcat's last error line, without its `% ERROR: ` mark.
 - An event, a line of `-J`: `topic`, `partition`, `offset`, `ts` (milliseconds; none when 0), `key`, `payload`, and
   `headers`, a flat list of names and values (`KafkaEvent`).
-- **A spy** (`KafkaSpy`) runs kcat in a process group of its own; its standard error's lines are problems it retries
-  past, its end is a stop (SIGTERM) or kcat's exit status. The app ends every spy as it quits.
+- **A spy** (`KafkaSpy`) runs kcat in a process group of its own. Of its standard error, its errors (`% ERROR: `,
+  `% FATAL: `) and librdkafka's logs of levels 0 to 3 (`%3|<time>|FAIL|…| [<thread>]: <text>`, their text alone) are
+  problems it retries past; its notes ("% Reading configuration from file …") and warnings are left out. It ends on a
+  stop (SIGTERM), or on its own, its last problem saying why (such as "Local: All broker connections are down: 1/1
+  brokers are down: terminating"), else its exit status. The app ends every spy as it quits.
 
 ## Memories
 

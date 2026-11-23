@@ -63,6 +63,27 @@ struct KafkaDataTests {
         #expect(Kcat.message(Data("% ERROR: Local: Broker transport failure\n".utf8)) == "Local: Broker transport failure")
     }
 
+    @Test("kcat's standard error: its errors and librdkafka's failures are problems; its notes and warnings aren't")
+    func problems() {
+        #expect(Kcat.problem("% ERROR: Local: All broker connections are down: 1/1 brokers are down: terminating")
+            == "Local: All broker connections are down: 1/1 brokers are down: terminating")
+        #expect(Kcat.problem("%3|1795394970.026|FAIL|rdkafka#producer-1| [thrd:localhost:9094/bootstrap]: localhost:9094/bootstrap: Connect to ipv6#[::1]:9094 failed: Connection refused (after 0ms in state CONNECT)")
+            == "localhost:9094/bootstrap: Connect to ipv6#[::1]:9094 failed: Connection refused (after 0ms in state CONNECT)")
+        #expect(Kcat.problem("% Reading configuration from file /tmp/kcat.properties") == nil)
+        #expect(Kcat.problem("%4|1795394975.137|CONFWARN|rdkafka#consumer-1| [thrd:app]: Configuration property auto.commit.enable is deprecated") == nil)
+        #expect(Kcat.problem("") == nil)
+    }
+
+    @Test("A spy kcat ends says kcat's reason")
+    func ended() async throws {
+        let fake = try FakeKcat(script: "echo '% Reading configuration from file x' >&2; echo '% ERROR: Local: All broker connections are down: terminating' >&2; exit 1")
+        let spy = try fake.kcat.spy(KafkaConnection(brokers: ["localhost:9094"]), selection: .topics(["orders"]), fromBeginning: true)
+        var updates: [KafkaSpy.Update] = []
+        for await update in spy.updates { updates.append(update) }
+        #expect(updates == [.problem("Local: All broker connections are down: terminating"), .ended("Local: All broker connections are down: terminating")])
+        #expect(fake.arguments.contains("auto.offset.reset=earliest") && fake.arguments.last == "orders")
+    }
+
     @Test("Topics from the metadata, sorted, Kafka's own marked")
     func topics() async throws {
         let fake = try FakeKcat(script: #"echo '{"topics":[{"topic":"orders","partitions":[{},{},{}]},{"topic":"__consumer_offsets","partitions":[{}]}]}'"#)
