@@ -65,6 +65,8 @@ let package = Package(
         // Chats: their files, the Claude CLI and its stream-json protocol, the chats' processes.
         // Claude's memories: the CLI's memory folders, the global one, their files and MEMORY.md.
         .target(name: "MemoryData", dependencies: ["FileStorage", yams]),
+        // Kafka through kcat: an environment's topics, its events, and the spies that follow them.
+        .target(name: "KafkaData", dependencies: ["ExternalTools"]),
         .target(name: "ChatData", dependencies: ["FileStorage", "ExternalTools", "ProjectData", "MCPKit", "TextFormats", "MemoryData"]),
         // Virtual machines: the image and machine files, ipsw.me, the download and install of macOS, disk
         // clones, the Virtualization framework's machines and the guest agent's protocol.
@@ -91,6 +93,8 @@ let package = Package(
         toolTarget("ChatKit", data: ["ChatData", "MCPKit", "ProjectData", "FileStorage", "TextViews", "TextFormats"]),
         // Memories: the global memories and each project's, which Claude writes and the user edits.
         toolTarget("MemoriesKit", data: ["MemoryData", "FileStorage", "TextViews", "TextFormats"]),
+        // Kafka: the events of an environment's topics, through kcat.
+        toolTarget("KafkaKit", data: ["KafkaData", "ProjectData", "ExternalTools", "MCPKit"]),
 
         // The only target that knows every tool: scenes, menu commands and route handling.
         .target(
@@ -98,7 +102,7 @@ let package = Package(
             dependencies: [
                 "ToolsFoundation", "ProjectData", "FileStorage", "MCPKit", "TicketData", "ChatData", "BuildData", "ContractData", "ClusterData", "MachineData", "ProjectsKit",
                 "DashboardsKit", "TicketsKit", "ServiceMapKit", "ContractsKit", "BuildsKit", "MachinesKit", "ChatKit",
-                "MemoryData", "MemoriesKit", design, .product(name: "UpdateData", package: "Updater"),
+                "MemoryData", "MemoriesKit", "KafkaData", "KafkaKit", design, .product(name: "UpdateData", package: "Updater"),
             ],
             resources: strings,
             swiftSettings: isolation
@@ -116,6 +120,7 @@ let package = Package(
         testTarget("ClusterData", settings: []),
         testTarget("MachineData", settings: []),
         testTarget("MemoryData", settings: []),
+        testTarget("KafkaData", settings: []),
         testTarget("ToolsFoundation"),
         testTarget("ProjectsKit"),
         testTarget("DashboardsKit"),
@@ -126,6 +131,7 @@ let package = Package(
         testTarget("MachinesKit"),
         testTarget("ChatKit"),
         testTarget("MemoriesKit"),
+        testTarget("KafkaKit"),
         testTarget("ToolsScenes"),
     ]
 )

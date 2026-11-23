@@ -126,7 +126,8 @@ project's own.
 ### Tools
 
 One tile per tool of the project, in menu order. A service with a contract has six tools. A service
-without one has five, with no Contracts. An app or a library has four: Dashboard, Tickets, Builds and Chat
+without one has five, with no Contracts. An app or a library has four: Dashboard, Tickets, Builds and Chat. A
+project with Kafka brokers has a Kafka tile too, "Events of every topic in <n> environments"
 ([Navigation › Tools per project](navigation.md#tools-per-project)).
 
 Each tile is a group box with:

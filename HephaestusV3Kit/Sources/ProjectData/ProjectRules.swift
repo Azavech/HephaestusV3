@@ -106,6 +106,24 @@ public enum ProjectRules {
         return parts.count == 2 && parts.allSatisfy { !$0.isEmpty }
     }
 
+    /// Kafka brokers: `host:port` separated by commas, each host not empty, each port 1–65535, no white space
+    /// inside one; written back as typed, trimmed.
+    public static func isKafkaBrokerList(_ value: String) -> Bool {
+        let brokers = value.split(separator: ",", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
+        return !brokers.isEmpty && brokers.allSatisfy { broker in
+            guard !broker.contains(where: { $0.isWhitespace }), let colon = broker.lastIndex(of: ":") else { return false }
+            let host = broker[..<colon]
+            guard !host.isEmpty, let port = Int(broker[broker.index(after: colon)...]) else { return false }
+            return (1...65535).contains(port)
+        }
+    }
+
+    public static func kafkaBrokers(_ value: String?, field: String) throws(ProjectRuleError) -> String? {
+        guard let trimmed = trimmedOrNil(value) else { return nil }
+        guard isKafkaBrokerList(trimmed) else { throw .kafkaBrokers(field: field) }
+        return trimmed
+    }
+
     public static func jaeger(_ value: String?, field: String) throws(ProjectRuleError) -> String? {
         guard let trimmed = trimmedOrNil(value) else { return nil }
         guard isJaegerService(trimmed) else { throw .jaeger(field: field) }
@@ -148,6 +166,7 @@ public enum ProjectRuleError: Error, Sendable, Hashable, CustomStringConvertible
     case jaeger(field: String)
     case argoCDApplication(field: String)
     case kubeconfig(field: String)
+    case kafkaBrokers(field: String)
     case githubPage
     case color
     case duplicateEnvironment(String)
@@ -166,6 +185,7 @@ public enum ProjectRuleError: Error, Sendable, Hashable, CustomStringConvertible
         case let .jaeger(field): "\(field): use a Jaeger as <namespace>/<name>."
         case let .argoCDApplication(field): "\(field): use an Argo CD application as <name> or <namespace>/<name>."
         case let .kubeconfig(field): "\(field): use a kubeconfig file as an absolute path or a path starting with ~/."
+        case let .kafkaBrokers(field): "\(field): use brokers as host:port, separated by commas."
         case .githubPage: "githubPage: use a page of the form https://github.com/<owner>/<name>."
         case .color: "color: use a tint or a color of the form #RRGGBB."
         case let .duplicateEnvironment(name): "An environment named “\(name)” already exists."

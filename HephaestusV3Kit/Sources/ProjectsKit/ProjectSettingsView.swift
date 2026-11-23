@@ -404,6 +404,30 @@ private struct ProjectSettingsForm: View {
                        isOn: Binding { selected?.allowInvalidCertificates ?? false } set: { on in Task { await model.applyCertificates(on) } })
                     .accessibilityIdentifier("projectSettings.certificates")
                 message(.certificates)
+                // Kafka, which the Kafka tool reads with kcat (docs/ui/project-settings.md › Kafka).
+                field(String(localized: "Kafka Brokers", bundle: #bundle), text: $model.kafkaBrokers, field: .kafkaBrokers,
+                      prompt: inherited ? (parent?.kafkaBrokers ?? "") : "localhost:9094", monospaced: true) {
+                    await model.applyEnvironmentField(.kafkaBrokers)
+                }
+                field(String(localized: "Kafka User", bundle: #bundle), text: $model.kafkaUsername, field: .kafkaUsername,
+                      prompt: inherited ? (parent?.kafkaUsername ?? "") : String(localized: "None", bundle: #bundle)) {
+                    await model.applyEnvironmentField(.kafkaUsername)
+                }
+                LabeledContent(String(localized: "Kafka Password", bundle: #bundle)) {
+                    SecureField(String(localized: "Kafka Password", bundle: #bundle), text: $model.kafkaPassword,
+                                prompt: Text("Kept on this Mac", bundle: #bundle))
+                        .labelsHidden()
+                        .multilineTextAlignment(.trailing)
+                        .focused($focus, equals: .kafkaPassword)
+                        .onSubmit { model.applyKafkaPassword() }
+                        .disabled(model.kafkaUsername.isEmpty && (parent?.kafkaUsername ?? selected?.kafkaUsername) == nil)
+                }
+                .accessibilityIdentifier("projectSettings.kafkaPassword")
+                message(.kafkaPassword)
+                Toggle(String(localized: "Kafka over TLS", bundle: #bundle),
+                       isOn: Binding { selected?.kafkaTLS ?? false } set: { on in Task { await model.applyKafkaTLS(on) } })
+                    .accessibilityIdentifier("projectSettings.kafkaTLS")
+                message(.kafkaTLS)
             }
         } header: {
             sectionHeader(.environments)
@@ -513,7 +537,9 @@ private struct ProjectSettingsForm: View {
         case .icon: await model.applyIcon()
         case .docsPath: await model.applyDocsPath()
         case .githubPage: await model.applyGitHubPage()
-        case .environmentName, .kubeconfig, .namespace, .deployment, .jaeger, .url, .port: await model.applyEnvironmentField(field)
+        case .environmentName, .kubeconfig, .namespace, .deployment, .jaeger, .url, .port, .kafkaBrokers, .kafkaUsername:
+            await model.applyEnvironmentField(field)
+        case .kafkaPassword: model.applyKafkaPassword()
         default: break
         }
     }
@@ -536,6 +562,10 @@ private struct ProjectSettingsForm: View {
         case .url: "url"
         case .port: "port"
         case .certificates: "certificates"
+        case .kafkaBrokers: "kafkaBrokers"
+        case .kafkaUsername: "kafkaUsername"
+        case .kafkaPassword: "kafkaPassword"
+        case .kafkaTLS: "kafkaTLS"
         }
     }
 
@@ -563,7 +593,8 @@ final class PreviewSettingsBackend: ProjectSettingsBackend {
         let local = EnvironmentEntry(name: "local", url: "http://127.0.0.1", port: 8080)
         let staging = EnvironmentEntry(name: "staging", url: "https://staging.example.com", allowInvalidCertificates: true,
                                        namespace: "orders", deployment: "orders-api", jaeger: "tracing/jaeger",
-                                       kubeconfig: "~/.kube/staging.yaml")
+                                       kubeconfig: "~/.kube/staging.yaml", kafkaBrokers: "kafka.staging.example.com:9093",
+                                       kafkaUsername: "hephaestus", kafkaTLS: true)
         var orders = ResolvedSettings()
         orders.environments = [local, staging]
         orders.currentEnvironment = "staging"
@@ -607,6 +638,11 @@ final class PreviewSettingsBackend: ProjectSettingsBackend {
     func waitForTools() async {}
 
     func update(_ id: String, _ change: ProjectChange) async throws(ProjectError) {}
+
+    /// Orders' staging password, shown as dots; Worker has none of its own and takes its parent's.
+    func kafkaPassword(project: String, environment: String) -> String? {
+        project == "ORD" && environment == "staging" ? "example-password" : nil
+    }
 }
 
 /// Answers `get namespaces` and `get deployments` with fixed names.
@@ -624,16 +660,16 @@ func previewSettings(_ id: Project.ID) -> ProjectSettingsWindow {
     return ProjectSettingsWindow(model: model)
 }
 
-#Preview("Service", traits: .appChrome, .fixedLayout(width: 600, height: 900)) {
+#Preview("Service", traits: .appChrome, .fixedLayout(width: 600, height: 1080)) {
     previewSettings("ORD")
 }
 
-#Preview("Service, Dark", traits: .appChrome, .fixedLayout(width: 600, height: 900)) {
+#Preview("Service, Dark", traits: .appChrome, .fixedLayout(width: 600, height: 1080)) {
     previewSettings("ORD")
         .preferredColorScheme(.dark)
 }
 
-#Preview("Sub Project, Inherited", traits: .appChrome, .fixedLayout(width: 600, height: 960)) {
+#Preview("Sub Project, Inherited", traits: .appChrome, .fixedLayout(width: 600, height: 1090)) {
     previewSettings("WRK")
 }
 

@@ -336,6 +336,7 @@ a project: Claude may read and change every project of this Mac, as the user can
 | `k8s_restart`, `k8s_scale`, `k8s_port_forward`, `k8s_stop_port_forward`, `argocd_sync` | ServiceMapKit | operateClusters | kubectl |
 | `vm_list_images`, `vm_list`, `vm_screenshot`, `vm_ui_tree` | MachinesKit | read | the machine host, the guest agent ([Data › Virtual machines](data.md#virtual-machines)) |
 | `vm_set_account`, `vm_create`, `vm_start`, `vm_stop`, `vm_shell`, `vm_click`, `vm_drag`, `vm_scroll`, `vm_type`, `vm_key`, `vm_copy_in`, `vm_copy_out` | MachinesKit | operateMachines | the machine host, the guest agent ([Guest agent](guest-agent.md)) |
+| `list_kafka_topics`, `read_kafka_events` | KafkaKit | read | kcat, on this Mac ([Data › Kafka](data.md#kafka)) |
 | `open_in_app` | ToolsScenes | read | a route ([Navigation › Routes](ui/navigation.md#routes)) |
 
 A project's JSON (`get_project`, `create_project`, `update_project`): `id`, `name`, `type` (`none`,
@@ -344,7 +345,7 @@ sub projects' identifiers), `docsPath`, `githubPage` (as it resolves), `graphEna
 folder's `origin` as last read) and `originGithubPage` (its GitHub page), and `project`, the project file's own
 values, as V2's tool gave them: `githubPage` as typed, `graphEnabled`, `environments` (its own) and
 `environmentOverrides` (by environment name, the values it changes). Each environment: `name`, `url`, `port`, `baseURL`, `allowInvalidCertificates`, `namespace`, `deployment`, `jaeger`,
-`argoCDApplication`, `kubeconfig`. Absent values are left out. Errors map to codes this way: an identifier in
+`argoCDApplication`, `kubeconfig`, `kafkaBrokers`, `kafkaUsername` (never the Kafka password). Absent values are left out. Errors map to codes this way: an identifier in
 use or a folder that holds a project, `conflict`; a broken rule or a folder outside the parent, `invalid`; an
 unknown project or folder, `notFound`; no data folder, `unavailable`; a file that can't be written,
 `internal`. The messages are the English ones of [Data › Validation](data.md#validation) and `ProjectError`.
@@ -367,6 +368,12 @@ machine Claude creates is the user's, kept and listed as any other, and the setu
 Errors map from `MachineError`'s kinds, with the messages of [Data › Virtual machines](data.md#virtual-machines):
 `invalid`, `notFound`, `conflict`, `unavailable`, `internal`. The tools that act in a guest need the machine running and its guest agent connected ([Guest agent](guest-agent.md)). No result
 carries the guest account's password: Type Password in the window types it.
+
+**Kafka.** `list_kafka_topics` and `read_kafka_events` read an environment's Kafka as the [Kafka](ui/kafka.md) tool
+does, through kcat on this Mac, from the brokers, user and password of the environment; the password never
+leaves the app. Without `environment`, the project's first environment with brokers. Errors: an environment
+without brokers (`invalid`), a project without any (`notFound`), no kcat or a kcat failure, with its message
+(`unavailable`).
 
 ### list_projects
 
@@ -3327,6 +3334,90 @@ Input schema:
 }
 ```
 
+### list_kafka_topics
+
+- **Calls:** `kcat -L -J` with the environment's connection ([Data › Kafka](data.md#kafka)).
+- **Result:** `{"environment": <name>, "brokers": <brokers>, "topics": [{"name", "partitions"}]}`, sorted by name.
+- **Errors:** those of the Kafka paragraph above.
+
+Description:
+
+```text
+Returns the Kafka topics of an environment of a project, each with its partitions, as kcat reads them from the brokers this Mac reaches. Topics whose names start with _ are Kafka's own.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "environment" : {
+      "description" : "The environment whose Kafka to read, as get_project names it; the project's first environment with Kafka brokers when omitted.",
+      "type" : "string"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    }
+  },
+  "required" : [
+    "projectID"
+  ],
+  "type" : "object"
+}
+```
+
+### read_kafka_events
+
+- **Calls:** `kcat -C -J -e -o -<last>` on each topic, one after the other; without `topics`, the topics of the
+  metadata but Kafka's own, 50 at most.
+- **Result:** `{"environment": <name>, "events": [...]}`, oldest first, 500 at most: each `topic`, `partition`,
+  `offset`, `timestamp` (ISO 8601, when kcat gives one), `key`, `headers` (`name`, `value`, in order), `value`, and
+  `valueCut: true` when the value was cut after 8,000 characters.
+- **Errors:** those of the Kafka paragraph above.
+
+Description:
+
+```text
+Returns the last events of Kafka topics of an environment of a project, oldest first: each with its topic, partition, offset, time, key, headers and value (cut after 8,000 characters). topics omitted reads every topic but Kafka's own, 50 at most. last is how many events of each partition, 10 by default; 500 events at most in all.
+```
+
+Input schema:
+
+```json
+{
+  "additionalProperties" : false,
+  "properties" : {
+    "environment" : {
+      "description" : "The environment whose Kafka to read, as get_project names it; the project's first environment with Kafka brokers when omitted.",
+      "type" : "string"
+    },
+    "last" : {
+      "description" : "How many of the last events of each partition, 1 to 100; 10 by default.",
+      "maximum" : 100,
+      "minimum" : 1,
+      "type" : "integer"
+    },
+    "projectID" : {
+      "description" : "Project identifier, 2 to 8 letters, such as ORD.",
+      "type" : "string"
+    },
+    "topics" : {
+      "description" : "The topics to read; every topic but Kafka's own when omitted.",
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
+    }
+  },
+  "required" : [
+    "projectID"
+  ],
+  "type" : "object"
+}
+```
+
 ### open_in_app
 
 - **Calls:** a route: `project` opens the Projects window with the project selected (`.project(id)`),
@@ -3404,6 +3495,7 @@ Input schema:
             "serviceMap",
             "contracts",
             "builds",
+            "kafka",
             "chat"
           ],
           "type" : "string"
@@ -3552,6 +3644,7 @@ Input schema:
             "serviceMap",
             "contracts",
             "builds",
+            "kafka",
             "chat"
           ],
           "type" : "string"

@@ -219,10 +219,16 @@
     "Enter an identifier." : {
 
     },
+    "Enter brokers as host:port, separated by commas, for example localhost:9094." : {
+
+    },
     "Environment" : {
 
     },
     "Environments" : {
+
+    },
+    "Events of every topic in ^[%lld environment](inflect: true)" : {
 
     },
     "Existing Folder" : {
@@ -297,6 +303,21 @@
 
     },
     "Jaeger" : {
+
+    },
+    "Kafka Brokers" : {
+
+    },
+    "Kafka Password" : {
+
+    },
+    "Kafka User" : {
+
+    },
+    "Kafka over TLS" : {
+
+    },
+    "Kept on this Mac" : {
 
     },
     "Kubeconfig File" : {
@@ -507,6 +528,9 @@
 
     },
     "The GitHub page typed for “%@” is removed. A page from its parent or its origin remote still applies." : {
+
+    },
+    "The app has no data folder." : {
 
     },
     "The environments of “%@” and its changes to inherited ones are removed. Its parent’s environments still apply." : {

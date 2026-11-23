@@ -8,6 +8,8 @@ nonisolated public enum ToolKind: String, CaseIterable, Identifiable, Codable, S
     case serviceMap
     case contracts
     case builds
+    /// The events of an environment's Kafka topics, as they arrive: some topics, or all of them at once.
+    case kafka
     /// Conversations with Claude about the project. Claude reads and changes things only through
     /// the other tools, as one more client of them.
     case chat

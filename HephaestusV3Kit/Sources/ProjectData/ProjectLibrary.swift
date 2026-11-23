@@ -571,6 +571,8 @@ public actor ProjectLibrary {
             copy.jaeger = try ProjectRules.jaeger(environment.jaeger, field: field + ".jaeger")
             copy.argoCDApplication = try ProjectRules.argoCDApplication(environment.argoCDApplication, field: field + ".argoCDApplication")
             copy.kubeconfig = try ProjectRules.kubeconfig(environment.kubeconfig, field: field + ".kubeconfig")
+            copy.kafkaBrokers = try ProjectRules.kafkaBrokers(environment.kafkaBrokers, field: field + ".kafkaBrokers")
+            copy.kafkaUsername = try ProjectRules.line(environment.kafkaUsername, field: field + ".kafkaUsername")
             list.append(copy)
             kept.append(false)
         }
@@ -602,6 +604,8 @@ public actor ProjectLibrary {
             copy.jaeger = try ProjectRules.jaeger(change.jaeger, field: field + ".jaeger")
             copy.argoCDApplication = try ProjectRules.argoCDApplication(change.argoCDApplication, field: field + ".argoCDApplication")
             copy.kubeconfig = try ProjectRules.kubeconfig(change.kubeconfig, field: field + ".kubeconfig")
+            copy.kafkaBrokers = try ProjectRules.kafkaBrokers(change.kafkaBrokers, field: field + ".kafkaBrokers")
+            copy.kafkaUsername = try ProjectRules.line(change.kafkaUsername, field: field + ".kafkaUsername")
             if !copy.isEmpty || !copy.unknownKeys.isEmpty {
                 result[name] = copy
             }

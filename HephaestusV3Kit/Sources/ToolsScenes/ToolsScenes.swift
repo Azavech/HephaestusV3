@@ -168,7 +168,8 @@ func appToolReader(directory: ProjectDirectory, tickets: LiveTicketStore?, build
         case .serviceMap: return ServiceMapReader.read(reference.focus, environment: reference.environment, project: project, store: maps)
         case .contracts: return ContractsReader.read(reference.focus, project: project, store: contracts)
         case .builds: return BuildsReader.read(reference.focus, project: project, store: builds)
-        case .dashboard, .chat: return nil
+        // A Kafka event lives in the tool's memory only: Claude reads it again with read_kafka_events.
+        case .dashboard, .chat, .kafka: return nil
         }
     }
 }
@@ -610,6 +611,7 @@ extension ToolKind {
         case .serviceMap: 880
         case .contracts: 760
         case .builds: 900
+        case .kafka: 900
         // The list, the conversation and the inspector: below this the conversation gets too narrow.
         case .chat: 960
         }

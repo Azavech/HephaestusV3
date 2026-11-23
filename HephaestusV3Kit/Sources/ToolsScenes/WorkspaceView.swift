@@ -3,6 +3,7 @@ import BuildsKit
 import ChatKit
 import ContractsKit
 import DashboardsKit
+import KafkaKit
 import MachinesKit
 import MemoriesKit
 import ProjectsKit
@@ -338,6 +339,8 @@ private struct ToolTab: View {
             }, project: project)
         case .builds:
             BuildsRootView(state: workspace.state(for: tab) { BuildsTabState(project: project, focus: tab.focus, store: appData.buildStore) })
+        case .kafka:
+            KafkaRootView(state: workspace.state(for: tab) { KafkaTabState(project: project, store: appData.kafkaStore) })
         case .chat:
             ChatRootView(state: workspace.state(for: tab) {
                 ChatTabState(project: project, focus: tab.focus, store: appData.chatStore, directory: directory)

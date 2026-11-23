@@ -148,6 +148,7 @@ The files that belong to this Mac rather than to a project.
 | `Worktrees/<project id>/<ticket id>/`        | The git worktree of a ticket chat a bundle's chat started, on the branch `<bundle id>/<ticket id>` ([Implement chats](#implement-chats)).                                                                                                    |
 | `Runtime/plugins/hephaestus-skills/`         | The internal skills chats call, as a Claude Code plugin, written before each chat process starts ([Chat plugin](#chat-plugin)).                                                                                                              |
 | `Runtime/downloads/<UUID>/`                  | A release file gh downloads, before it moves into the Downloads folder; removed afterwards ([Builds › Downloads](#downloads)).                                                                                                               |
+| `Runtime/kafka/kcat-<UUID>.properties`       | One kcat run's connection, mode 0600, the password in it; removed when the run ends ([Kafka](#kafka)).                                                                                                                                       |
 | `Runtime/screenshots/<window id>-<time>.png` | A window `debug_screenshot` captured, with `HEPHAESTUS_DEBUG_TOOLS=1` ([MCP › Debug tools](mcp.md#debug-tools)); kept.                                                                                                                       |
 | `VirtualMachines/`                           | The images and machines ([Virtual machines › Storage](#storage)).                                                                                                                                                                            |
 | `Runtime/guest/`                             | The guest agent and its install script, shared with a setup machine ([Virtual machines › Setup](#setup)).                                                                                                                                    |
@@ -325,6 +326,9 @@ Kubernetes resources it runs on.
 | jaeger                   | `jaeger`                   | `String?`     | no       | `null`  | The Kubernetes Service of the environment's Jaeger, `<namespace>/<name>`: one `/`, parts not empty, no white space.                                      |
 | argoCDApplication        | `argoCDApplication`        | `String?`     | no       | `null`  | The Argo CD Application: `<name>`, in the namespace `argocd`, or `<namespace>/<name>`; one `/` at most, parts not empty, no white space.                 |
 | kubeconfig               | `kubeconfig`               | `String?`     | no       | `null`  | The kubeconfig file: an absolute path or one starting with `~/`; `null` uses kubectl's default (`KUBECONFIG` of the login shell, else `~/.kube/config`). |
+| kafkaBrokers             | `kafkaBrokers`             | `String?`     | no       | `null`  | The Kafka brokers this Mac reaches, `host:port` separated by commas, each port 1–65535 ([Kafka](#kafka)). Left out of the file while `null`.             |
+| kafkaUsername            | `kafkaUsername`            | `String?`     | no       | `null`  | The SASL user (SCRAM-SHA-512); `null` connects without SASL. Its password is this Mac's ([Secrets file](#secrets-file)). Left out while `null`.          |
+| kafkaTLS                 | `kafkaTLS`                 | `Bool`        | no       | `false` | The brokers are reached over TLS. Written only while `true`.                                                                                             |
 | unknownKeys              | —                          | `YAMLMapping` | —        | empty   | [Unknown keys](#unknown-keys). A `context` key is one: kubectl always uses the kubeconfig file's current context.                                        |
 
 - `url` and the five Kubernetes keys are single lines, read and written trimmed, an empty value being `null`.
@@ -335,8 +339,8 @@ Kubernetes resources it runs on.
 
 Swift type `EnvironmentOverride`, one value of `environmentOverrides`, under the name of the environment it
 changes. A key with a value replaces the parent's; `null` keeps the parent's, so a change can't remove a
-parent's value. Every field of the environment but its name can change: V3 adds `namespace` and
-`kubeconfig` to V2's six keys.
+parent's value. Every field of the environment but its name can change: V3 adds `namespace`,
+`kubeconfig` and the three Kafka keys to V2's six keys.
 
 | Swift name               | Key                        | Type          | Default | Rules                                                                               |
 |--------------------------|----------------------------|---------------|---------|-------------------------------------------------------------------------------------|
@@ -348,9 +352,12 @@ parent's value. Every field of the environment but its name can change: V3 adds 
 | jaeger                   | `jaeger`                   | `String?`     | `null`  | `<namespace>/<name>`.                                                               |
 | argoCDApplication        | `argoCDApplication`        | `String?`     | `null`  | `<name>` or `<namespace>/<name>`.                                                   |
 | kubeconfig               | `kubeconfig`               | `String?`     | `null`  | V3's addition. As `EnvironmentEntry.kubeconfig`. Left out of the file while `null`. |
+| kafkaBrokers             | `kafkaBrokers`             | `String?`     | `null`  | V3's addition. As `EnvironmentEntry.kafkaBrokers`. Left out while `null`.           |
+| kafkaUsername            | `kafkaUsername`            | `String?`     | `null`  | V3's addition. One line. Left out while `null`.                                     |
+| kafkaTLS                 | `kafkaTLS`                 | `Bool?`       | `null`  | V3's addition. Stored only while it differs from the parent's.                      |
 | unknownKeys              | —                          | `YAMLMapping` | empty   | [Unknown keys](#unknown-keys).                                                      |
 
-V2's six keys are written in this order, `null` included; V3's two only when set. The string keys are read
+V2's six keys are written in this order, `null` included; V3's five only when set. The string keys are read
 and written trimmed, an empty value being `null`. Names are compared with the
 inherited environments' exactly, letter case included. `applied(to:)` gives the parent's environment with the
 values the change sets; `isEmpty` is true when it sets none.
@@ -2289,10 +2296,49 @@ access.
 |--------------------|-----------------------------------------------------------------------------------------------------------------------|
 | `schema`           | `1`                                                                                                                   |
 | `mcpExternalToken` | The MCP server's external token: 64 lowercase hexadecimal characters ([MCP › Authentication](mcp.md#authentication)). |
+| `kafkaPasswords`   | The Kafka passwords of this Mac, by `<project id>/<environment name>` ([Kafka](#kafka)); left out when there is none. |
 
 - `DataFolder.externalToken(make:)` reads the token; when the file is missing, isn't a JSON object, or holds no
   valid token, it makes one and writes it, the file's other keys kept. `replaceExternalToken(with:)` writes a
   new one the same way. The mode is set to 0600 after each write.
+- `kafkaPassword(project:environment:)` reads a Kafka password; `setKafkaPassword(_:project:environment:)` writes
+  one, or removes it when empty, the file's other keys kept. Project Settings › Kafka Password writes them.
+
+## Kafka
+
+The Kafka tool ([UI › Kafka](ui/kafka.md)) and Claude's Kafka tools read an environment's topics with kcat, Kafka's
+command-line client, on this Mac (the user's choice, 22 November 2026): `KafkaData` runs it, `KafkaKit`'s
+`LiveKafkaStore` gives it the connection.
+
+- **kcat**: the first `kcat`, else `kafkacat`, of the login shell's `PATH` (`Tools.kcat`), looked up with the other
+  tools; none until installed (`brew install kcat`): "kcat isn't installed: install it with Homebrew, brew install
+  kcat.".
+- **Connection** (`KafkaConnection`): the environment's brokers as they apply (a sub project's change included);
+  its user; and its password: the project's own in `secrets.json`, else the nearest parent's for an environment of
+  that name. Each run writes it as librdkafka properties in `Runtime/kafka/kcat-<UUID>.properties`, mode 0600, which
+  `-F` names, so the password is never an argument; the file goes when the run ends:
+
+```properties
+bootstrap.servers=<brokers>
+security.protocol=PLAINTEXT | SSL | SASL_PLAINTEXT | SASL_SSL      (by the user and TLS)
+sasl.mechanisms=SCRAM-SHA-512                                      (with a user, as Strimzi's KafkaUser)
+sasl.username=<user>
+sasl.password=<password>
+ssl.ca.location=probe                                              (with TLS: the system's certificates)
+```
+
+| Run    | Arguments after `-F <file>`                                                                                                                                         | Gives                                                                                                                                                                      |
+|--------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Topics | `-L -J -m 15`                                                                                                                                                       | The metadata's topics, sorted by name, each with its partitions; Kafka's own start with `_`.                                                                               |
+| Read   | `-C -J -e -q -o -<last> -t <topic>`, one topic after the other                                                                                                      | The last events of each partition, oldest first, 500 at most in all.                                                                                                       |
+| Spy    | `-G hephaestus-spy-<8 hexadecimal characters> -J -u -q -X enable.auto.commit=false -X auto.offset.reset=latest <topics or ^[^_].*>` (`earliest` from the beginning) | Each event as it arrives, until stopped: a consumer of a group of its own that commits nothing, the pattern for every topic but Kafka's own, those created later included. |
+
+- Topics and reads stop after 20 s: "kcat didn't answer within 20 seconds: are the brokers reachable?"; a failure
+  gives kcat's last error line, without its `% ERROR: ` mark.
+- An event, a line of `-J`: `topic`, `partition`, `offset`, `ts` (milliseconds; none when 0), `key`, `payload`, and
+  `headers`, a flat list of names and values (`KafkaEvent`).
+- **A spy** (`KafkaSpy`) runs kcat in a process group of its own; its standard error's lines are problems it retries
+  past, its end is a stop (SIGTERM) or kcat's exit status. The app ends every spy as it quits.
 
 ## Memories
 
@@ -2525,6 +2571,7 @@ windows put in their own words; its `description` is the English message of the 
 | `jaeger(field:)`             | `<field>: use a Jaeger as <namespace>/<name>.`                                    |
 | `argoCDApplication(field:)`  | `<field>: use an Argo CD application as <name> or <namespace>/<name>.`            |
 | `kubeconfig(field:)`         | `<field>: use a kubeconfig file as an absolute path or a path starting with ~/.`  |
+| `kafkaBrokers(field:)`       | `<field>: use brokers as host:port, separated by commas.`                         |
 | `githubPage`                 | `githubPage: use a page of the form https://github.com/<owner>/<name>.`           |
 | `duplicateEnvironment(name)` | `An environment named “<name>” already exists.`                                   |
 

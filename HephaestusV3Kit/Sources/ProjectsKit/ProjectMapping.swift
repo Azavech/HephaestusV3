@@ -69,7 +69,8 @@ extension DeploymentEnvironment {
     public init(_ entry: EnvironmentEntry, inheritedFrom: Project.ID?) {
         self.init(name: entry.name, cluster: nil, namespace: entry.namespace, url: entry.baseURL, health: nil,
                   deployment: entry.deployment, jaeger: entry.jaeger, argoCDApplication: entry.argoCDApplication,
-                  kubeconfig: entry.kubeconfig, allowsInvalidCertificates: entry.allowInvalidCertificates, inheritedFrom: inheritedFrom)
+                  kubeconfig: entry.kubeconfig, kafkaBrokers: entry.kafkaBrokers, allowsInvalidCertificates: entry.allowInvalidCertificates,
+                  inheritedFrom: inheritedFrom)
     }
 }
 
@@ -186,6 +187,8 @@ public enum ProjectMessages {
             String(localized: "Enter an application as <name> or <namespace>/<name>.", bundle: #bundle)
         case .kubeconfig:
             String(localized: "Enter an absolute path or a path starting with ~/.", bundle: #bundle)
+        case .kafkaBrokers:
+            String(localized: "Enter brokers as host:port, separated by commas, for example localhost:9094.", bundle: #bundle)
         case .githubPage:
             String(localized: "Enter a GitHub page, for example https://github.com/owner/name.", bundle: #bundle)
         case .color:

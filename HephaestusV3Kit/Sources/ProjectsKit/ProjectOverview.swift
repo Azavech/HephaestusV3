@@ -336,6 +336,9 @@ private struct ToolTile: View {
             }
         case .chat:
             Text("Ask Claude, which reads through these tools", bundle: #bundle)
+        case .kafka:
+            let count = project.environments.filter { $0.kafkaBrokers != nil }.count
+            Text("Events of every topic in ^[\(count) environment](inflect: true)", bundle: #bundle)
         case .builds:
             if let activity = project.activity {
                 Text("Last run on \(activity.lastBuildAt, format: .dateTime.day().month(.abbreviated).hour().minute())", bundle: #bundle)

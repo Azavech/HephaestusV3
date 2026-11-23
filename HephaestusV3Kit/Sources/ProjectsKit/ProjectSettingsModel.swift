@@ -1,5 +1,6 @@
 import AppKit
 import ExternalTools
+import FileStorage
 import Foundation
 import Observation
 import ProjectData
@@ -16,9 +17,28 @@ protocol ProjectSettingsBackend: AnyObject {
     /// Returns once the tools were looked up the first time.
     func waitForTools() async
     func update(_ id: String, _ change: ProjectChange) async throws(ProjectError)
+    /// This Mac's Kafka password of an environment of a project, from `secrets.json`.
+    func kafkaPassword(project: String, environment: String) -> String?
+    func setKafkaPassword(_ password: String?, project: String, environment: String) throws(StorageError)
 }
 
-extension ProjectSession: ProjectSettingsBackend {}
+extension ProjectSettingsBackend {
+    func kafkaPassword(project: String, environment: String) -> String? { nil }
+    func setKafkaPassword(_ password: String?, project: String, environment: String) throws(StorageError) {}
+}
+
+extension ProjectSession: ProjectSettingsBackend {
+    func kafkaPassword(project: String, environment: String) -> String? {
+        dataFolder?.kafkaPassword(project: project, environment: environment)
+    }
+
+    func setKafkaPassword(_ password: String?, project: String, environment: String) throws(StorageError) {
+        guard let dataFolder else {
+            throw .writeFailed(path: "secrets.json", reason: String(localized: "The app has no data folder.", bundle: #bundle))
+        }
+        try dataFolder.setKafkaPassword(password, project: project, environment: environment)
+    }
+}
 
 /// A project's settings: each field applies on its own, as soon as it changes (a text field on Return or
 /// when it loses the focus), with the rules of docs/ui/project-settings.md. A sub project takes each field it
@@ -30,6 +50,7 @@ final class ProjectSettingsModel {
         case name, kind, tint, icon, docsPath, githubPage, graph
         case environments
         case environmentName, kubeconfig, namespace, deployment, jaeger, url, port, certificates
+        case kafkaBrokers, kafkaUsername, kafkaPassword, kafkaTLS
     }
 
     /// Whether kubectl reaches the cluster of the selected environment's kubeconfig file.
@@ -88,6 +109,10 @@ final class ProjectSettingsModel {
     var jaeger = ""
     var url = ""
     var port = ""
+    var kafkaBrokers = ""
+    var kafkaUsername = ""
+    /// This Mac's password, kept in `secrets.json`, never in the project's files.
+    var kafkaPassword = ""
     private(set) var connection = Connection.none
     private(set) var namespaces: [String] = []
     private(set) var deployments: [String] = []
@@ -277,7 +302,8 @@ final class ProjectSettingsModel {
     }
 
     /// The environment fields a text field edits.
-    static let environmentFields: [Field] = [.environmentName, .kubeconfig, .namespace, .deployment, .jaeger, .url, .port]
+    static let environmentFields: [Field] = [.environmentName, .kubeconfig, .namespace, .deployment, .jaeger, .url, .port,
+                                             .kafkaBrokers, .kafkaUsername]
 
     /// Applies every environment field that differs from the stored value, in one change.
     func applyPendingEnvironmentFields() async {
@@ -310,6 +336,8 @@ final class ProjectSettingsModel {
                 case .jaeger: change.jaeger = ProjectRules.trimmedOrNil(jaeger)
                 case .url: change.url = ProjectRules.trimmedOrNil(url)
                 case .port: change.port = port ?? nil
+                case .kafkaBrokers: change.kafkaBrokers = ProjectRules.trimmedOrNil(kafkaBrokers)
+                case .kafkaUsername: change.kafkaUsername = ProjectRules.trimmedOrNil(kafkaUsername)
                 default: break
                 }
             }
@@ -329,6 +357,8 @@ final class ProjectSettingsModel {
                 case .jaeger: entry.jaeger = ProjectRules.trimmedOrNil(jaeger)
                 case .url: entry.url = ProjectRules.trimmedOrNil(url)
                 case .port: entry.port = port ?? nil
+                case .kafkaBrokers: entry.kafkaBrokers = ProjectRules.trimmedOrNil(kafkaBrokers)
+                case .kafkaUsername: entry.kafkaUsername = ProjectRules.trimmedOrNil(kafkaUsername)
                 default: break
                 }
             }
@@ -353,6 +383,35 @@ final class ProjectSettingsModel {
             var list = file.environments
             list[index].allowInvalidCertificates = on
             await applyEnvironments(list, field: .certificates, selecting: name)
+        }
+    }
+
+    /// Kafka over TLS: for an inherited environment, stored only while it differs from the parent's.
+    func applyKafkaTLS(_ on: Bool) async {
+        guard let file = project?.file, let name = selectedEnvironment else { return }
+        if isInherited {
+            var change = file.environmentOverrides[name] ?? EnvironmentOverride()
+            change.kafkaTLS = on == parentEnvironment?.kafkaTLS ? nil : on
+            var overrides = file.environmentOverrides
+            overrides[name] = change.isEmpty && change.unknownKeys.isEmpty ? nil : change
+            await apply(.kafkaTLS, ProjectChange(environmentOverrides: overrides))
+        } else if let index = file.environments.firstIndex(where: { $0.name == name }) {
+            var list = file.environments
+            list[index].kafkaTLS = on
+            await applyEnvironments(list, field: .kafkaTLS, selecting: name)
+        }
+    }
+
+    /// The Kafka password: this Mac's, in `secrets.json`, under the project and the environment; empty removes it.
+    func applyKafkaPassword() {
+        guard let name = selectedEnvironment else { return }
+        let stored = backend.kafkaPassword(project: projectID, environment: name) ?? ""
+        guard kafkaPassword != stored else { return clear(.kafkaPassword) }
+        do throws(StorageError) {
+            try backend.setKafkaPassword(kafkaPassword, project: projectID, environment: name)
+            clear(.kafkaPassword)
+        } catch {
+            messages[.kafkaPassword] = error.description
         }
     }
 
@@ -406,6 +465,11 @@ final class ProjectSettingsModel {
         if editing != .jaeger { jaeger = (inherited ? change?.jaeger : entry?.jaeger) ?? "" }
         if editing != .url { url = (inherited ? change?.url : entry?.url) ?? "" }
         if editing != .port { port = ((inherited ? change?.port : entry?.port).map(String.init)) ?? "" }
+        if editing != .kafkaBrokers { kafkaBrokers = (inherited ? change?.kafkaBrokers : entry?.kafkaBrokers) ?? "" }
+        if editing != .kafkaUsername { kafkaUsername = (inherited ? change?.kafkaUsername : entry?.kafkaUsername) ?? "" }
+        if editing != .kafkaPassword {
+            kafkaPassword = selectedEnvironment.flatMap { backend.kafkaPassword(project: projectID, environment: $0) } ?? ""
+        }
     }
 
     /// The port field as a number: empty is none; anything else must be 1–65535.

@@ -88,15 +88,21 @@ nonisolated public struct Project: Identifiable, Hashable, Sendable {
     }
 
     /// The tools that apply to this project, in menu order: the Dashboard first, and Chat
-    /// last. Contracts only for a service with one.
+    /// last. Contracts only for a service with one; Kafka for a project with an environment that has brokers.
     public var tools: [ToolKind] {
+        let kafka: [ToolKind] = hasKafka ? [.kafka] : []
         switch kind {
         case .service:
-            activity?.contractVersion == nil && !hasContract
-                ? [.dashboard, .tickets, .serviceMap, .builds, .chat]
-                : [.dashboard, .tickets, .serviceMap, .contracts, .builds, .chat]
-        case .app, .library, .other: [.dashboard, .tickets, .builds, .chat]
+            return (activity?.contractVersion == nil && !hasContract
+                ? [.dashboard, .tickets, .serviceMap, .builds]
+                : [.dashboard, .tickets, .serviceMap, .contracts, .builds]) + kafka + [.chat]
+        case .app, .library, .other: return [.dashboard, .tickets, .builds] + kafka + [.chat]
         }
+    }
+
+    /// Whether an environment of the project has Kafka brokers.
+    public var hasKafka: Bool {
+        environments.contains { $0.kafkaBrokers != nil }
     }
 }
 
@@ -133,13 +139,15 @@ nonisolated public struct DeploymentEnvironment: Identifiable, Hashable, Sendabl
     public let argoCDApplication: String?
     /// The kubeconfig file, an absolute path or one starting with `~/`.
     public let kubeconfig: String?
+    /// The Kafka brokers this Mac reaches, `host:port` separated by commas; nil without Kafka.
+    public let kafkaBrokers: String?
     public let allowsInvalidCertificates: Bool
     /// The parent it is inherited from, for an environment of a sub project that comes from its parent.
     public let inheritedFrom: String?
 
     public init(name: String, cluster: String?, namespace: String?, url: String?, health: Health?,
                 deployment: String? = nil, jaeger: String? = nil, argoCDApplication: String? = nil, kubeconfig: String? = nil,
-                allowsInvalidCertificates: Bool = false, inheritedFrom: String? = nil) {
+                kafkaBrokers: String? = nil, allowsInvalidCertificates: Bool = false, inheritedFrom: String? = nil) {
         self.name = name
         self.cluster = cluster
         self.namespace = namespace
@@ -149,6 +157,7 @@ nonisolated public struct DeploymentEnvironment: Identifiable, Hashable, Sendabl
         self.jaeger = jaeger
         self.argoCDApplication = argoCDApplication
         self.kubeconfig = kubeconfig
+        self.kafkaBrokers = kafkaBrokers
         self.allowsInvalidCertificates = allowsInvalidCertificates
         self.inheritedFrom = inheritedFrom
     }
@@ -156,7 +165,7 @@ nonisolated public struct DeploymentEnvironment: Identifiable, Hashable, Sendabl
     /// The same environment, inherited from `parent`.
     public func inherited(from parent: String) -> DeploymentEnvironment {
         DeploymentEnvironment(name: name, cluster: cluster, namespace: namespace, url: url, health: health, deployment: deployment,
-                              jaeger: jaeger, argoCDApplication: argoCDApplication, kubeconfig: kubeconfig,
+                              jaeger: jaeger, argoCDApplication: argoCDApplication, kubeconfig: kubeconfig, kafkaBrokers: kafkaBrokers,
                               allowsInvalidCertificates: allowsInvalidCertificates, inheritedFrom: parent)
     }
 }

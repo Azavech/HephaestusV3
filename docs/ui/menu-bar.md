@@ -83,8 +83,9 @@ A click on a row opens the project's window (see [What opening does](#what-openi
 ([Navigation › Available tools](navigation.md#available-tools)), at its trailing edge; a tool that isn't
 available has no button and no ⌘ shortcut:
 
-- They come in menu order: Dashboard, Tickets, Service Map, Contracts, Builds, Chat. A service without a
-  contract has no Contracts button, and an app or a library has only Dashboard, Tickets, Builds and Chat.
+- They come in menu order: Dashboard, Tickets, Service Map, Contracts, Builds, Kafka, Chat. A service without a
+  contract has no Contracts button, an app or a library has only Dashboard, Tickets, Builds and Chat, and only a
+  project with Kafka brokers has Kafka.
 - Each button is the tool's symbol alone, in a 24 × 24 pt frame that grows with the text size, in
   `textPrimary`.
 - Each help tag names the tool and its shortcut, such as "Builds (⌘5)". A shortcut belongs to its tool,

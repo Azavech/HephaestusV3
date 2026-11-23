@@ -168,6 +168,27 @@ extension DataFolder {
         try writeSecrets(object)
     }
 
+    /// The Kafka password of an environment of a project, from `kafkaPasswords` (docs/data.md › Secrets file); nil
+    /// when none is stored.
+    public func kafkaPassword(project: String, environment: String) -> String? {
+        (readSecrets()["kafkaPasswords"] as? [String: Any])?[Self.kafkaKey(project, environment)] as? String
+    }
+
+    /// Stores, or removes with nil or an empty value, an environment's Kafka password, the file's other keys kept.
+    public func setKafkaPassword(_ password: String?, project: String, environment: String) throws(StorageError) {
+        var object = readSecrets()
+        var passwords = object["kafkaPasswords"] as? [String: Any] ?? [:]
+        let key = Self.kafkaKey(project, environment)
+        if let password, !password.isEmpty { passwords[key] = password } else { passwords[key] = nil }
+        object["kafkaPasswords"] = passwords.isEmpty ? nil : passwords
+        try writeSecrets(object)
+    }
+
+    /// `<project id>/<environment name>`.
+    static func kafkaKey(_ project: String, _ environment: String) -> String {
+        "\(project)/\(environment)"
+    }
+
     private func readSecrets() -> [String: Any] {
         guard let data = try? Data(contentsOf: secretsFile),
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return ["schema": 1] }

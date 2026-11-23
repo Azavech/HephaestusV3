@@ -198,12 +198,21 @@ public struct EnvironmentEntry: Codable, Sendable, Hashable {
     public var argoCDApplication: String?
     /// The kubeconfig file, an absolute path or one starting with `~/`; nil uses kubectl's default.
     public var kubeconfig: String?
+    /// The Kafka brokers this Mac reaches, `host:port` separated by commas, such as `localhost:9094`; nil for none
+    /// (docs/data.md › Kafka).
+    public var kafkaBrokers: String?
+    /// The SASL user Kafka knows the app as (SCRAM-SHA-512, Strimzi's KafkaUser); nil connects without SASL. Its
+    /// password is this Mac's, in `secrets.json`.
+    public var kafkaUsername: String?
+    /// Whether the brokers are reached over TLS.
+    public var kafkaTLS: Bool
     /// The keys the app doesn't know, such as an old `context`, in their order.
     public var unknownKeys: YAMLMapping
 
     public init(name: String, url: String? = nil, port: Int? = nil, allowInvalidCertificates: Bool = false,
                 namespace: String? = nil, deployment: String? = nil, jaeger: String? = nil, argoCDApplication: String? = nil,
-                kubeconfig: String? = nil, unknownKeys: YAMLMapping = [:]) {
+                kubeconfig: String? = nil, kafkaBrokers: String? = nil, kafkaUsername: String? = nil, kafkaTLS: Bool = false,
+                unknownKeys: YAMLMapping = [:]) {
         self.name = name
         self.url = url
         self.port = port
@@ -213,11 +222,14 @@ public struct EnvironmentEntry: Codable, Sendable, Hashable {
         self.jaeger = jaeger
         self.argoCDApplication = argoCDApplication
         self.kubeconfig = kubeconfig
+        self.kafkaBrokers = kafkaBrokers
+        self.kafkaUsername = kafkaUsername
+        self.kafkaTLS = kafkaTLS
         self.unknownKeys = unknownKeys
     }
 
     static let knownKeys: Set<String> = ["name", "url", "port", "allowInvalidCertificates", "namespace", "deployment", "jaeger",
-                                         "argoCDApplication", "kubeconfig"]
+                                         "argoCDApplication", "kubeconfig", "kafkaBrokers", "kafkaUsername", "kafkaTLS"]
 
     /// The URL and the Kubernetes keys are read trimmed, an empty value being null.
     public init(from decoder: any Decoder) throws {
@@ -231,6 +243,9 @@ public struct EnvironmentEntry: Codable, Sendable, Hashable {
         jaeger = ProjectRules.trimmedOrNil(try c.optional("jaeger", String.self))
         argoCDApplication = ProjectRules.trimmedOrNil(try c.optional("argoCDApplication", String.self))
         kubeconfig = ProjectRules.trimmedOrNil(try c.optional("kubeconfig", String.self))
+        kafkaBrokers = ProjectRules.trimmedOrNil(try c.optional("kafkaBrokers", String.self))
+        kafkaUsername = ProjectRules.trimmedOrNil(try c.optional("kafkaUsername", String.self))
+        kafkaTLS = try c.value("kafkaTLS", default: false)
         unknownKeys = try c.unknownKeys(known: Self.knownKeys)
     }
 
@@ -245,7 +260,16 @@ public struct EnvironmentEntry: Codable, Sendable, Hashable {
         try c.encodeOptional(jaeger, "jaeger")
         try c.encodeOptional(argoCDApplication, "argoCDApplication")
         try c.encodeOptional(kubeconfig, "kubeconfig")
+        // V3's Kafka keys only when set, so that a file without Kafka keeps its layout.
+        try c.encodeIfPresent(kafkaBrokers, "kafkaBrokers")
+        try c.encodeIfPresent(kafkaUsername, "kafkaUsername")
+        if kafkaTLS { try c.encode(true, "kafkaTLS") }
         try c.encodeUnknownKeys(unknownKeys, known: Self.knownKeys)
+    }
+
+    /// The brokers, trimmed, the empty ones left out.
+    public var kafkaBrokerList: [String] {
+        (kafkaBrokers ?? "").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
     }
 
     /// The URL with its port replaced by `port` when set, without a trailing `/`; nil without a URL.
@@ -276,11 +300,14 @@ public struct EnvironmentOverride: Codable, Sendable, Hashable {
     public var jaeger: String?
     public var argoCDApplication: String?
     public var kubeconfig: String?
+    public var kafkaBrokers: String?
+    public var kafkaUsername: String?
+    public var kafkaTLS: Bool?
     public var unknownKeys: YAMLMapping
 
     public init(url: String? = nil, port: Int? = nil, allowInvalidCertificates: Bool? = nil, namespace: String? = nil,
                 deployment: String? = nil, jaeger: String? = nil, argoCDApplication: String? = nil, kubeconfig: String? = nil,
-                unknownKeys: YAMLMapping = [:]) {
+                kafkaBrokers: String? = nil, kafkaUsername: String? = nil, kafkaTLS: Bool? = nil, unknownKeys: YAMLMapping = [:]) {
         self.url = url
         self.port = port
         self.allowInvalidCertificates = allowInvalidCertificates
@@ -289,11 +316,14 @@ public struct EnvironmentOverride: Codable, Sendable, Hashable {
         self.jaeger = jaeger
         self.argoCDApplication = argoCDApplication
         self.kubeconfig = kubeconfig
+        self.kafkaBrokers = kafkaBrokers
+        self.kafkaUsername = kafkaUsername
+        self.kafkaTLS = kafkaTLS
         self.unknownKeys = unknownKeys
     }
 
     static let knownKeys: Set<String> = ["url", "port", "allowInvalidCertificates", "namespace", "deployment", "jaeger",
-                                         "argoCDApplication", "kubeconfig"]
+                                         "argoCDApplication", "kubeconfig", "kafkaBrokers", "kafkaUsername", "kafkaTLS"]
 
     /// The string keys are read trimmed, an empty value being null.
     public init(from decoder: any Decoder) throws {
@@ -306,6 +336,9 @@ public struct EnvironmentOverride: Codable, Sendable, Hashable {
         jaeger = ProjectRules.trimmedOrNil(try c.optional("jaeger", String.self))
         argoCDApplication = ProjectRules.trimmedOrNil(try c.optional("argoCDApplication", String.self))
         kubeconfig = ProjectRules.trimmedOrNil(try c.optional("kubeconfig", String.self))
+        kafkaBrokers = ProjectRules.trimmedOrNil(try c.optional("kafkaBrokers", String.self))
+        kafkaUsername = ProjectRules.trimmedOrNil(try c.optional("kafkaUsername", String.self))
+        kafkaTLS = try c.optional("kafkaTLS")
         unknownKeys = try c.unknownKeys(known: Self.knownKeys)
     }
 
@@ -320,13 +353,16 @@ public struct EnvironmentOverride: Codable, Sendable, Hashable {
         try c.encodeOptional(jaeger, "jaeger")
         try c.encodeOptional(argoCDApplication, "argoCDApplication")
         try c.encodeIfPresent(kubeconfig, "kubeconfig")
+        try c.encodeIfPresent(kafkaBrokers, "kafkaBrokers")
+        try c.encodeIfPresent(kafkaUsername, "kafkaUsername")
+        try c.encodeIfPresent(kafkaTLS, "kafkaTLS")
         try c.encodeUnknownKeys(unknownKeys, known: Self.knownKeys)
     }
 
     /// True when the change replaces none of the parent's values.
     public var isEmpty: Bool {
         url == nil && port == nil && allowInvalidCertificates == nil && namespace == nil && deployment == nil && jaeger == nil
-            && argoCDApplication == nil && kubeconfig == nil
+            && argoCDApplication == nil && kubeconfig == nil && kafkaBrokers == nil && kafkaUsername == nil && kafkaTLS == nil
     }
 
     /// The parent's environment with the values this change sets; its name and other fields stay.
@@ -340,6 +376,9 @@ public struct EnvironmentOverride: Codable, Sendable, Hashable {
         if let jaeger { result.jaeger = jaeger }
         if let argoCDApplication { result.argoCDApplication = argoCDApplication }
         if let kubeconfig { result.kubeconfig = kubeconfig }
+        if let kafkaBrokers { result.kafkaBrokers = kafkaBrokers }
+        if let kafkaUsername { result.kafkaUsername = kafkaUsername }
+        if let kafkaTLS { result.kafkaTLS = kafkaTLS }
         return result
     }
 

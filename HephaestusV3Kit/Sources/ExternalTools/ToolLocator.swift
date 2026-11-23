@@ -9,13 +9,17 @@ public struct Tools: Sendable, Hashable {
     public var ssh: String?
     public var kubectl: String?
     public var gh: String?
+    /// kcat, Kafka's command-line client, which the Kafka tool runs (`kcat`, else its old name `kafkacat`).
+    public var kcat: String?
 
-    public init(environment: [String: String], git: String? = nil, ssh: String? = nil, kubectl: String? = nil, gh: String? = nil) {
+    public init(environment: [String: String], git: String? = nil, ssh: String? = nil, kubectl: String? = nil, gh: String? = nil,
+                kcat: String? = nil) {
         self.environment = ShellEnvironment.forChildren(environment)
         self.git = git
         self.ssh = ssh
         self.kubectl = kubectl
         self.gh = gh
+        self.kcat = kcat
     }
 
     /// Before the lookup ends, no tool is known.
@@ -43,7 +47,8 @@ public enum ToolLocator {
             }
         }
         return Tools(environment: environment, git: git, ssh: executable(named: "ssh", inPATH: path),
-                     kubectl: executable(named: "kubectl", inPATH: path), gh: executable(named: "gh", inPATH: path))
+                     kubectl: executable(named: "kubectl", inPATH: path), gh: executable(named: "gh", inPATH: path),
+                     kcat: executable(named: "kcat", inPATH: path) ?? executable(named: "kafkacat", inPATH: path))
     }
 
     /// The first executable file named `name` in the folders of a `PATH` value; relative and empty

@@ -38,7 +38,7 @@ A grouped form (`Form`, `.formStyle(.grouped)`), scrolling vertically, in sectio
 | **Location** | Folder, Parent and its note, Docs Folder | Always; Parent and its note for a sub project only |
 | **GitHub** | GitHub Page | When the project has a typed page |
 | **Service** | Enable graph, or for a sub project Graph | For a service (`goService`); for any other type when the project sets the graph |
-| **Environments** | Environment with `+` and `−`, Name, Kubeconfig File, Namespace, Deployment, Jaeger, API Access, Allow invalid certificates | For a service; for any other type when the project has an environment of its own or a change to an inherited one |
+| **Environments** | Environment with `+` and `−`, Name, Kubeconfig File, Namespace, Deployment, Jaeger, API Access, Allow invalid certificates, Kafka Brokers, Kafka User, Kafka Password, Kafka over TLS | For a service; for any other type when the project has an environment of its own or a change to an inherited one |
 
 Each of these three also shows once added with `+`. A value that only comes from the parent or from the origin
 remote doesn't show a section: it still applies, to the tools as everywhere, and shows greyed in the section's
@@ -154,14 +154,25 @@ GitHub section is in `+`.*
   `http` or `https` URL: "Enter an http or https URL."; port: 1–65535: "Enter a port from 1 to 65535.";
   empty removes either.
 - **Allow invalid certificates**: toggle, applied at once.
+- **Kafka**, which the [Kafka](kafka.md) tool reads with kcat (the user's request, 22 November 2026):
+  - **Kafka Brokers** (`projectSettings.kafkaBrokers`): monospaced, placeholder `localhost:9094`: the brokers this
+    Mac reaches, `host:port` separated by commas: "Enter brokers as host:port, separated by commas, for example
+    localhost:9094."; empty removes them. An environment with brokers gives the project its Kafka tool.
+  - **Kafka User** (`projectSettings.kafkaUsername`): placeholder "None": the SASL user (SCRAM-SHA-512, a Strimzi
+    KafkaUser); empty connects without SASL.
+  - **Kafka Password** (`projectSettings.kafkaPassword`): a secure field, placeholder "Kept on this Mac", enabled
+    while a user applies: applied on Return or when it loses the focus, to this Mac's `secrets.json`, never to the
+    project's files ([Data › Secrets file](../data.md#secrets-file)); empty removes it. A failed write shows under it.
+  - **Kafka over TLS** (`projectSettings.kafkaTLS`): toggle, applied at once.
 - **Inherited environments.** A sub project's pop-up lists its parent's environments first, whatever the
   two projects' types. While one is selected, a note says "Inherited from “<parent>”: fields left empty keep
   its values, shown in grey.", `−` is disabled and Name is disabled with the parent's name. Kubeconfig File,
-  Namespace, Deployment, Jaeger, URL and Port show the project's change, empty when it has none, with the
+  Namespace, Deployment, Jaeger, URL, Port, Kafka Brokers and Kafka User show the project's change, empty when it has none, with the
   parent's values as placeholders. They write `environmentOverrides`: an empty field gives back the parent's
   value, and a change that sets nothing is removed. The certificates toggle shows the value that applies and
-  is stored only while it differs from the parent's. The dot and the suggestions use the kubeconfig file and
-  namespace that apply.
+  is stored only while it differs from the parent's, and so is Kafka over TLS. The password field shows the sub
+  project's own password: left empty, the Kafka tool takes its parent's. The dot and the suggestions use the
+  kubeconfig file and namespace that apply.
 - The Argo CD application has no field; a stored one is kept by every change.
 
 ## States
@@ -206,8 +217,8 @@ the cluster". The icon button's VoiceOver label is "Choose Icon…". The picker'
 
 ## Previews
 
-`ProjectSettingsWindow` on a fixed snapshot whose kubectl answers from fixed lists: "Service", "Service,
-Dark", "Sub Project, Inherited", "App", "Other, Nothing Set", "Not Found", "Largest Text".
+`ProjectSettingsWindow` on a fixed snapshot whose kubectl answers from fixed lists, staging with Kafka brokers, a
+user and Orders' password: "Service", "Service, Dark", "Sub Project, Inherited", "App", "Other, Nothing Set", "Not Found", "Largest Text".
 
 ## Open issues
 

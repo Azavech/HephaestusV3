@@ -9,6 +9,8 @@ import DashboardsKit
 import ExternalTools
 import FileStorage
 import MachineData
+import KafkaData
+import KafkaKit
 import MachinesKit
 import MemoryData
 import MCPKit
@@ -74,6 +76,8 @@ final class AppData {
     let contractStore: LiveContractStore
     /// The runs and releases of the projects' GitHub repositories, read with gh.
     let buildStore: LiveBuildStore
+    /// The Kafka tool's reads and spies, through kcat (docs/data.md › Kafka).
+    let kafkaStore: LiveKafkaStore
     /// The images and virtual machines of the data folder, and the machines that run (docs/architecture.md › MachineData).
     let machineHost: MachineHost
     /// The machines as the Virtual Machines window shows them.
@@ -238,6 +242,7 @@ final class AppData {
         contractStore = LiveContractStore(projects: session)
         serviceMapStore = LiveServiceMapStore(projects: session)
         let downloads = (DataFolder.resolve()?.url ?? FileManager.default.temporaryDirectory).appendingPathComponent("Runtime/downloads", isDirectory: true)
+        kafkaStore = LiveKafkaStore(session: session)
         buildStore = LiveBuildStore(cli: {
             GitHubCLI(gh: session.tools.gh, environment: session.tools.environment, runner: SystemProcessRunner.shared)
         }, temporary: downloads, toolsReady: { await session.waitForTools() },
@@ -285,6 +290,8 @@ final class AppData {
             // The tools started for the projects end with the app, the chats' Claude processes too; the lock
             // goes with the process.
             SystemProcessRunner.shared.terminateAll()
+            // The Kafka spies run in process groups of their own.
+            KafkaSpy.stopAll()
             MainActor.assumeIsolated {
                 chats.stopAll()
                 // Every machine and setup stops at once, every download and install ends.
@@ -400,7 +407,8 @@ final class AppData {
         externalToken = try? folder.externalToken(make: MCPTokens.generate)
         tokens.replace(with: Set([externalToken].compactMap { $0 }))
         let registry = AppTools.registry(session: session, tickets: tickets, chats: chats, contracts: contractStore, maps: serviceMapStore,
-                                          machines: machineHost, implementer: implementer, debugTools: DebugTools.isEnabled) { [weak self] route in
+                                          machines: machineHost, implementer: implementer, kafka: kafkaStore,
+                                          debugTools: DebugTools.isEnabled) { [weak self] route in
             guard let open = self?.openRoute else { return false }
             open(route)
             return true

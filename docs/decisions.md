@@ -434,3 +434,12 @@ popover. These were open.
 | How are they reached? | As V2's: `debug_screenshot`, `debug_navigate`, `debug_ui_state` and `debug_click`, listed only when the app is launched with `HEPHAESTUS_DEBUG_TOOLS=1` (the user's request to bring over every V2 feature, 22 November 2026). Every token runs them; an internal skill's run doesn't. | [MCP › Debug tools](mcp.md#debug-tools) |
 | What does a window's state hold? | V3's own values: a window's tabs and selected tab (`WorkspaceValue`), a chat window's chat; V2's `WindowState` doesn't exist in V3. `debug_navigate` takes `open_in_app`'s targets, V3's kinds. | same |
 | How is a window captured and clicked? | The feedback screenshot's in-process capture, and mouse events built inside the app, as V2: no permission, offscreen windows work, the user's pointer stays. | same |
+
+## Kafka
+
+| Question | Default chosen | Where |
+| --- | --- | --- |
+| How does the app read Kafka? | With kcat on this Mac, from brokers this Mac reaches (the user's choice, 22 November 2026, over a kcat pod in the cluster or a client of the app's own). kcat is installed by the user, as gh and kubectl are. | [Data › Kafka](data.md#kafka) |
+| Where are the brokers and the credentials? | The brokers, the SASL user and TLS are environment settings in the project file, shared with the repository and inherited by sub projects; the password is this Mac's, in `secrets.json`, given to kcat in a 0600 file, never as an argument. SCRAM-SHA-512, Strimzi's KafkaUser mechanism. | [UI › Project Settings](ui/project-settings.md) |
+| How does it spy on every topic at once? | One kcat consumer of a group of its own that commits nothing, subscribed to `^[^_].*`: every topic but Kafka's own, those created later included, without moving any service's offsets. | [UI › Kafka › Spying](ui/kafka.md#spying) |
+| Where does it show? | A tool of its own, Kafka (⌘8, after Virtual Machines' ⌘7), for a project with brokers; events newest first, 5,000 kept (keep RAM low); Claude reads with `list_kafka_topics` and `read_kafka_events`. | [UI › Kafka](ui/kafka.md) |

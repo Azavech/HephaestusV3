@@ -54,6 +54,12 @@ enum ChatSuggestion {
             ]
         case .contracts:
             return [String(localized: "Show an example request for \(title)", bundle: #bundle, comment: "A suggestion; the value is an API operation, such as createOrder")]
+        case .kafka:
+            // An event, `<topic>/<partition>/<offset>`, or a topic.
+            return [
+                String(localized: "What does \(title) say?", bundle: #bundle, comment: "A suggestion; the value is a Kafka event or topic, such as greetings.sent/1/42"),
+                String(localized: "Which service publishes \(title)?", bundle: #bundle, comment: "A suggestion; the value is a Kafka event or topic, such as greetings.sent/1/42"),
+            ]
         case .dashboard, .chat:
             return project
         }

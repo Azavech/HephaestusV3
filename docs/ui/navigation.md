@@ -17,6 +17,7 @@ tab by its old window's name, "the Tickets window", meaning the tab.
 | **Service Map**      | Same                                              | ⌘3, a tile, the menu bar panel, a link         | [Service Map](service-map.md)           |
 | **Contracts**        | Same                                              | ⌘4, a tile, the menu bar panel, a link         | [Contracts](contracts.md)               |
 | **Builds**           | Same                                              | ⌘5, a tile, the menu bar panel, a link         | [Builds](builds.md)                     |
+| **Kafka**            | Same, for a project with Kafka brokers            | ⌘8, a tile, the menu bar panel                 | [Kafka](kafka.md)                       |
 | **Chat**             | Same                                              | ⌘6, a tile, the menu bar panel, the chat panel | [Chat](chat.md)                         |
 | **Virtual Machines** | One in the app                                    | ⌘7 (Window menu)                               | [Virtual Machines](virtual-machines.md) |
 | **Project Settings** | One per project                                   | ⇧⌘, (File menu), Projects' More menu           | [Project Settings](project-settings.md) |
@@ -50,6 +51,7 @@ menus read it directly.
 | Tickets          | The Tickets window, its tile, Window ▸ Tickets (⌘2), its menu bar button                                                                                                               | Yes       |
 | Chat             | The Chat window, its tile, Window ▸ Chat (⌘6), its menu bar button, the chat panel of the available tools' windows, Settings ▸ Chat and Settings ▸ Notifications                       | Yes       |
 | Builds           | The Builds window, its tile, Window ▸ Builds (⌘5), its menu bar button, the Dashboard's Recent Builds widget                                                                           | Yes       |
+| Kafka            | The Kafka window, its tile, Window ▸ Kafka (⌘8), its menu bar button, for a project with Kafka brokers                                                                                 | Yes       |
 | Contracts        | The Contracts window, its tile, Window ▸ Contracts (⌘4), its menu bar button, for a service whose folder holds `openapi/contract.yaml`                                                 | Yes       |
 | Service Map      | The Service Map window, its tile, Window ▸ Service Map (⌘3), its menu bar button, the Dashboard's service widgets                                                                      | Yes       |
 | Virtual Machines | Its window, Window ▸ Virtual Machines (⌘7), Settings ▸ Virtual Machines                                                                                                                | Yes       |
@@ -66,6 +68,8 @@ Window menu enables only those, and the project switcher greys out the projects 
 | Service with a contract    | Dashboard, Tickets, Service Map, Contracts, Builds, Chat |
 | Service without a contract | Dashboard, Tickets, Service Map, Builds, Chat            |
 | App, Library, Other        | Dashboard, Tickets, Builds, Chat                         |
+
+A project with an environment that has Kafka brokers also has **Kafka**, after Builds, before Chat ([Kafka](kafka.md)).
 
 ## Anatomy of a window
 
@@ -364,6 +368,7 @@ closes the tab and ⇧⌘W the window. These replace the items SwiftUI adds for 
 | Service Map      | ⌘3       | Same                                                                                          |
 | Contracts        | ⌘4       | Same                                                                                          |
 | Builds           | ⌘5       | Same                                                                                          |
+| Kafka            | ⌘8       | Same                                                                                          |
 | Chat             | ⌘6       | Same                                                                                          |
 | Virtual Machines | ⌘7       | Always                                                                                        |
 | Memories         | ⌘9       | Always: the selected tab's project's memories, else the global ones ([Memories](memories.md)) |

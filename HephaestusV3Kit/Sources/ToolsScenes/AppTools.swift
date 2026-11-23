@@ -6,6 +6,7 @@ import ChatKit
 import Foundation
 import MCPKit
 import MachineData
+import KafkaKit
 import MachinesKit
 import ProjectData
 import TicketData
@@ -20,7 +21,8 @@ import ToolsFoundation
 enum AppTools {
     /// `open` shows a route in a window, and says whether a window could.
     static func registry(session: ProjectSession, tickets: TicketSession, chats: ChatSession, contracts: LiveContractStore,
-                         maps: LiveServiceMapStore, machines: MachineHost, implementer: Implementer, debugTools: Bool = false,
+                         maps: LiveServiceMapStore, machines: MachineHost, implementer: Implementer, kafka: (any KafkaStore)? = nil,
+                         debugTools: Bool = false,
                          open: @escaping @MainActor (Route) -> Bool) -> ToolRegistry {
         let feedback = FeedbackLink(isUnlinked: { chats.isUnlinkedFeedback($0) }, link: { chats.linkFeedback($0, toTicket: $1) })
         let ticketCounts: @MainActor (String) -> [String: Int] = { id in
@@ -30,7 +32,7 @@ enum AppTools {
                                                                                                                    replyModel: { chats.replyModel(of: $0) })
             + ChatTools.operations(chats: chats, projects: session) + implementer.operations() + BuildTools.operations(projects: session)
             + ContractTools.operations(contracts: contracts, projects: session) + ClusterTools.operations(maps: maps, projects: session)
-            + MachineTools.operations(host: machines) + [openInApp(session: session, tickets: tickets, chats: chats, machines: machines, open: open)]
+            + MachineTools.operations(host: machines) + KafkaTools.operations(store: kafka ?? LiveKafkaStore(session: session)) + [openInApp(session: session, tickets: tickets, chats: chats, machines: machines, open: open)]
             + (debugTools ? DebugTools.operations(session: session, tickets: tickets, chats: chats, machines: machines, open: open) : []))
     }
 

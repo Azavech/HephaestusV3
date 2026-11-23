@@ -226,6 +226,9 @@ struct ProjectDetailJSON: Encodable {
         let jaeger: String?
         let argoCDApplication: String?
         let kubeconfig: String?
+        /// The Kafka tools' brokers and SASL user; left out without them. The password is never given.
+        let kafkaBrokers: String?
+        let kafkaUsername: String?
 
         init(_ entry: EnvironmentEntry) {
             name = entry.name
@@ -238,6 +241,8 @@ struct ProjectDetailJSON: Encodable {
             jaeger = entry.jaeger
             argoCDApplication = entry.argoCDApplication
             kubeconfig = entry.kubeconfig
+            kafkaBrokers = entry.kafkaBrokers
+            kafkaUsername = entry.kafkaUsername
         }
     }
 

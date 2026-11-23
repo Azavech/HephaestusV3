@@ -1,7 +1,7 @@
 # Hephaestus V3 — UI specification
 
 Hephaestus V3 is a suite of developer tools for the Mac: projects and their sub projects, a Dashboard, Tickets,
-a Service Map, Contracts, Builds, Chat and Virtual Machines. Each tool has its own window for one project
+a Service Map, Contracts, Builds, Kafka, Chat and Virtual Machines. Each tool has its own window for one project
 at a time. This specification describes every window: what it is for, its parts, its controls, its states,
 how it adapts from a Mac's width to an iPhone's, and how it is made accessible.
 
@@ -43,6 +43,7 @@ strings and tests. The shared, generic components come from AZDesign, whose refe
 | [Virtual Machines](virtual-machines.md) | The Mac's virtual machines |
 | [System Prompts](system-prompts.md) | The app's internal Claude skills and their content |
 | [Memories](memories.md) | Claude's memories: the global ones and each project's |
+| [Kafka](kafka.md) | The events of an environment's Kafka topics, all of them at once or those chosen |
 
 ## Conventions
 

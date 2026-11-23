@@ -1,0 +1,185 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%lld Topics" : {
+
+    },
+    "(the oldest %lld dropped)" : {
+
+    },
+    "All Topics" : {
+
+    },
+    "Choose the topics to spy on" : {
+
+    },
+    "Choose topics, or keep All Topics, then press Start." : {
+
+    },
+    "Clear" : {
+
+    },
+    "Clear the Events (⌘K)" : {
+
+    },
+    "Copy" : {
+
+    },
+    "Copy Key" : {
+
+    },
+    "Copy Topic" : {
+
+    },
+    "Copy Value" : {
+
+    },
+    "Environment" : {
+
+    },
+    "Events show here as %@ receive them." : {
+
+    },
+    "Every topic but Kafka's own, those created later included" : {
+
+    },
+    "Filter Events" : {
+
+    },
+    "Filter Topics" : {
+
+    },
+    "From" : {
+
+    },
+    "From Now" : {
+
+    },
+    "From the Beginning" : {
+
+    },
+    "Give an environment its Kafka brokers in Project Settings." : {
+
+    },
+    "Headers" : {
+
+    },
+    "Inspector" : {
+
+    },
+    "Joining %@…" : {
+
+    },
+    "Key" : {
+
+    },
+    "Listed the Kafka topics of %@" : {
+
+    },
+    "Look Again" : {
+
+    },
+    "No Kafka" : {
+
+    },
+    "No Topic" : {
+
+    },
+    "None" : {
+
+    },
+    "Not Spying" : {
+
+    },
+    "Partition %lld · Offset %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Partition %1$lld · Offset %2$@"
+          }
+        }
+      }
+    },
+    "Partition · Offset" : {
+
+    },
+    "Project Settings…" : {
+
+    },
+    "Read Kafka events of %@" : {
+
+    },
+    "Read the Topics Again" : {
+
+    },
+    "Refresh" : {
+
+    },
+    "Select an event" : {
+
+    },
+    "Show or Hide the Event" : {
+
+    },
+    "Spying on %@ since %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Spying on %1$@ since %2$@"
+          }
+        }
+      }
+    },
+    "Start" : {
+
+    },
+    "Start Spying (⌘R)" : {
+
+    },
+    "Stop" : {
+
+    },
+    "Stop Spying (⌘.)" : {
+
+    },
+    "Stopped" : {
+
+    },
+    "The Kafka tool reads topics with kcat. Install it with Homebrew, brew install kcat, then look again." : {
+
+    },
+    "The Spy Stopped" : {
+
+    },
+    "The environment whose Kafka the tool reads" : {
+
+    },
+    "Time" : {
+
+    },
+    "Topic" : {
+
+    },
+    "Value" : {
+
+    },
+    "Waiting for Events" : {
+
+    },
+    "Where the spy starts reading: new events, or every event the topics keep" : {
+
+    },
+    "^[%lld event](inflect: true)" : {
+
+    },
+    "^[%lld partition](inflect: true)" : {
+
+    },
+    "kcat Isn't Installed" : {
+
+    }
+  },
+  "version" : "1.0"
+}

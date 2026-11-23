@@ -11,6 +11,7 @@ extension ToolKind {
         case .serviceMap: String(localized: "Service Map", bundle: #bundle)
         case .contracts: String(localized: "Contracts", bundle: #bundle)
         case .builds: String(localized: "Builds", bundle: #bundle)
+        case .kafka: String(localized: "Kafka", bundle: #bundle)
         case .chat: String(localized: "Chat", bundle: #bundle)
         }
     }
@@ -22,11 +23,13 @@ extension ToolKind {
         case .serviceMap: "point.3.connected.trianglepath.dotted"
         case .contracts: "curlybraces.square"
         case .builds: "hammer"
+        case .kafka: "envelope.arrow.triangle.branch"
         case .chat: "bubble.left.and.text.bubble.right"
         }
     }
 
-    /// The ⌘-key that opens the tool for the key window's project. The Dashboard is ⌘1.
+    /// The ⌘-key that opens the tool for the key window's project. The Dashboard is ⌘1; Kafka, added after Virtual
+    /// Machines' ⌘7, ⌘8.
     public var shortcut: KeyEquivalent {
         switch self {
         case .dashboard: "1"
@@ -34,6 +37,7 @@ extension ToolKind {
         case .serviceMap: "3"
         case .contracts: "4"
         case .builds: "5"
+        case .kafka: "8"
         case .chat: "6"
         }
     }
